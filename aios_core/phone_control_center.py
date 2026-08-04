@@ -13,6 +13,7 @@ from .android_leads import AndroidLeadQueue
 from .followup_templates import FollowupTemplateStore
 from .phone_state_health import PhoneStateHealth
 from .phone_sync_status import PhoneSyncStatus
+from .phone_inventory import PhoneInventory
 
 
 TIMERS = (
@@ -46,6 +47,7 @@ class PhoneControlCenter:
         template_store_factory: Callable[[Path], FollowupTemplateStore] = FollowupTemplateStore,
         state_health_factory: Callable[[Path], PhoneStateHealth] = PhoneStateHealth,
         sync_status_factory: Callable[[Path], PhoneSyncStatus] = PhoneSyncStatus,
+        inventory_factory: Callable[[Path], PhoneInventory] = PhoneInventory,
     ):
         self.root = Path(root)
         self.gateway_factory = gateway_factory
@@ -54,6 +56,7 @@ class PhoneControlCenter:
         self.template_store_factory = template_store_factory
         self.state_health_factory = state_health_factory
         self.sync_status_factory = sync_status_factory
+        self.inventory_factory = inventory_factory
 
     def snapshot(self) -> dict:
         gateway = self.gateway_factory(self.root)
@@ -80,6 +83,7 @@ class PhoneControlCenter:
         audit = PhoneActionAudit(self.root).summary()
         state_health = self.state_health_factory(self.root).snapshot()
         sync_status = self.sync_status_factory(self.root).snapshot()
+        inventory = self.inventory_factory(self.root).latest()
         bank_snapshot = self.bank_monitor_factory(self.root).snapshot()
         banks = bank_snapshot.get("banks") or []
         bank_tasks = bank_snapshot.get("tasks") or {}
@@ -137,6 +141,14 @@ class PhoneControlCenter:
                 "overdue": int(bank_tasks.get("overdue") or 0),
             },
             "sync": {"fresh": int(sync_status.get("fresh") or 0), "total": int(sync_status.get("total") or 0), "sources": sync_status.get("sources") or []},
+            "inventory": {
+                "android": str(inventory.get("android") or ""), "sdk": int(inventory.get("sdk") or 0),
+                "companion_version": str(inventory.get("companion_version") or ""),
+                "apps_available": int(inventory.get("apps_available") or 0),
+                "apps_calibrated": int(inventory.get("apps_calibrated") or 0),
+                "calibrations_stale": int(inventory.get("calibrations_stale") or 0),
+                "availability_drift": list(inventory.get("availability_drift") or []),
+            },
             "state_health": {
                 "status": str(state_health.get("status") or "unknown"),
                 "invalid": len(state_health.get("invalid") or []),
@@ -163,6 +175,7 @@ def format_telegram(snapshot: dict) -> str:
     templates = snapshot.get("templates") or {}
     state_health = snapshot.get("state_health") or {}
     sync = snapshot.get("sync") or {}
+    inventory = snapshot.get("inventory") or {}
     available = sum(1 for app in apps if app.get("available"))
     calibrated = sum(1 for app in apps if app.get("calibrated"))
     timers_ok = sum(1 for active in timers.values() if active)
@@ -182,6 +195,7 @@ def format_telegram(snapshot: dict) -> str:
         f"Восстановление: {snapshot.get('recovery', {}).get('action', 'unknown')}",
         f"Состояние данных: {state_health.get('status', 'unknown')} · WireGuard: {'✅' if state_health.get('wireguard_active') else '⚠️'} · backup: {state_health.get('backup_age_hours', '—')} ч",
         f"Синхронизации: {sync.get('fresh', 0)}/{sync.get('total', 0)} свежие",
+        f"Инвентарь: Android {inventory.get('android') or '—'} · SDK {inventory.get('sdk') or '—'} · калиброваны {inventory.get('apps_calibrated', 0)} · устарели {inventory.get('calibrations_stale', 0)}",
     ]
     if snapshot.get("issues"):
         lines.append("Проблемы: <code>" + ", ".join(str(value) for value in snapshot["issues"]) + "</code>")
