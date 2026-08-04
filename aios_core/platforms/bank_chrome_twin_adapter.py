@@ -67,15 +67,26 @@ class BankChromeTwinAdapter(ChromeTwinAdapter):
         return None
 
     async def is_logged_in(self, page) -> bool:
-        """Признак того, что мы уже в кабинете (не на странице входа)."""
+        """Признак того, что мы уже в кабинете (не на странице входа).
+
+        Более надёжно: URL с login/auth/signin => не залогинен.
+        Наличие видимого поля входа (тел/карта) => не залогинен.
+        Иначе считаем залогиненным (fallback).
+        """
         url = (page.url or "").lower()
-        if "login" in url or "auth" in url or "signin" in url:
+        if any(k in url for k in ("login", "auth", "signin", "/auth", "authorization")):
             return False
-        # Приват24: вход не меняет URL, а идёт через JS-модалку с полем карты.
-        # Наличие поля входа (тел/карта) = ещё не залогинен.
+        # Приват24/банки: наличие видимого поля входа = ещё не залогинен.
         try:
             login_input = page.locator(self.login_field_selector).first
             if await login_input.count() and await login_input.is_visible():
+                return False
+        except Exception:
+            pass
+        # Поле ввода кода/пароля тоже может быть признаком незавершённого входа
+        try:
+            code_input = page.locator(self.code_field_selector).first
+            if await code_input.count() and await code_input.is_visible():
                 return False
         except Exception:
             pass
@@ -143,15 +154,43 @@ class BankChromeTwinAdapter(ChromeTwinAdapter):
                 await page.wait_for_timeout(wait_code_sec * 1000)
                 code = await self._read_sms_code()
             if code:
+                # Приват24/бизнес-банки вводят код по цифрам в отдельные поля.
+                # Сначала пробуем одно поле, потом по цифрам.
+                filled_code = False
                 for sel in [self.code_field_selector]:
                     try:
                         box = page.locator(sel).first
-                        if await box.count():
+                        if await box.count() and await box.is_visible():
+                            await box.click(timeout=2500)
                             await box.fill(code)
                             await box.press("Enter")
+                            filled_code = True
                             break
                     except Exception:
                         continue
+                if not filled_code:
+                    # по цифрам: ищем видимые input в зоне кода
+                    digits = [c for c in code if c.isdigit()]
+                    inputs = page.locator("input[type='tel'], input[type='text'], input:not([type])")
+                    n = await inputs.count()
+                    filled_cells = 0
+                    for i in range(n):
+                        try:
+                            box = inputs.nth(i)
+                            if not await box.is_visible():
+                                continue
+                            if filled_cells < len(digits):
+                                await box.click(timeout=1000)
+                                await box.fill(digits[filled_cells])
+                                filled_cells += 1
+                        except Exception:
+                            break
+                    if filled_cells >= 3:
+                        filled_code = True
+                        await page.wait_for_timeout(2000)
+                if not filled_code:
+                    return {"status": "need_code",
+                            "message": f"{self.bank_name}: не нашёл поле кода, введите {code} вручную"}
                 await page.wait_for_timeout(5000)
                 return {"status": "ok", "message": f"{self.bank_name}: код введён",
                         "url": page.url}
