@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 from aios_core.phone_control_center import PhoneControlCenter
 from aios_core.phone_metrics import PhoneMetricsStore
+from aios_core.phone_inventory import PhoneInventory
 
 ROOT = Path(__file__).resolve().parent
 STATE = ROOT / "data" / "android_gateway" / "phone_control_digest_state.json"
@@ -101,6 +102,7 @@ def check(force: bool = False, dry_run: bool = False, bootstrap: bool = False, c
     snapshot = center_factory(ROOT).snapshot()
     if not dry_run:
         PhoneMetricsStore(ROOT).record(snapshot)
+        PhoneInventory(ROOT).record()
     state = _read(STATE, {})
     today = _today()
     due = bool(force or state.get("last_date") != today)

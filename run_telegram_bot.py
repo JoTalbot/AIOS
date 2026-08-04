@@ -2029,6 +2029,26 @@ _last_phone_crm_tasks: dict[int, list[dict]] = {}
 _last_bank_tasks: dict[int, list[dict]] = {}
 
 
+def _handle_phone_inventory_intent(api, chat_id: int, text: str) -> bool:
+    t = " ".join(str(text or "").casefold().split())
+    if not any(phrase in t for phrase in ("инвентарь телефона", "версии телефона", "версии android", "профили телефона")):
+        return False
+    try:
+        from aios_core.phone_inventory import PhoneInventory
+        report = PhoneInventory(PROJECT_ROOT).record()
+        drift = report.get("availability_drift") or []
+        api.send_message(chat_id,
+                         "📦 <b>Инвентарь телефона</b>\n"
+                         f"Android: {report.get('android') or '—'} · SDK: {report.get('sdk') or '—'}\n"
+                         f"Companion: {report.get('companion_version') or '—'}\n"
+                         f"Приложения: {report.get('apps_available', 0)} доступны · {report.get('apps_calibrated', 0)} калиброваны · устарели: {report.get('calibrations_stale', 0)}\n"
+                         f"WireGuard: {'✅' if report.get('wireguard_active') else '⚠️'}"
+                         + (f"\nИзменения доступности: {', '.join(map(str, drift))}" if drift else ""))
+    except Exception:
+        api.send_message(chat_id, "⚠️ Инвентарь телефона временно недоступен.")
+    return True
+
+
 def _handle_phone_metrics_intent(api, chat_id: int, text: str) -> bool:
     t = " ".join(str(text or "").casefold().split())
     if not any(phrase in t for phrase in ("тренды телефона", "тренд телефона", "экспорт метрик телефона", "метрики телефона", "калибровки телефона", "статус калибровок")):
@@ -3349,7 +3369,9 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
-    # Metrics, bank monitor, recovery, weekly report, phone center/audit and leads precede broad CRM words.
+    # Inventory, metrics, bank monitor, recovery, reports and leads precede broad CRM words.
+    if _handle_phone_inventory_intent(api, chat_id, text):
+        return True
     if _handle_phone_metrics_intent(api, chat_id, text):
         return True
     if _handle_phone_bank_monitor_intent(api, chat_id, text):
