@@ -93,3 +93,38 @@ def test_complete_local_crm_followup_needs_confirmation(monkeypatch):
     finally:
         bot._last_phone_crm_tasks.pop(chat_id, None)
         bot._pending_confirm.pop(chat_id, None)
+
+
+def test_crm_task_can_prepare_but_not_send_messenger_draft(monkeypatch):
+    import run_telegram_bot as bot
+
+    queue = Queue()
+
+    class Messenger:
+        title = "WhatsApp"
+        def __init__(self): self.calls = []
+        def open_chat(self, contact, confirm=False):
+            self.calls.append(("open", contact, confirm))
+            return {"status": "opened"}
+        def prepare_draft(self, text, confirm=False):
+            self.calls.append(("draft", text, confirm))
+            return {"status": "draft_ready", "draft_id": "draft-1"}
+
+    messenger = Messenger()
+    monkeypatch.setattr(bot, "_phone_lead_queue", lambda: queue)
+    monkeypatch.setattr(bot, "_phone_adapter", lambda app: messenger)
+    api = API()
+    chat_id = 808184
+    try:
+        bot._handle_phone_lead_intent(api, chat_id, "CRM задачи телефона")
+        command = "подготовь черновик по CRM задаче 1 в WhatsApp: Иван | Привет"
+        assert bot._handle_phone_lead_intent(api, chat_id, command)
+        pending = bot._pending_confirm.pop(chat_id)
+        assert pending["kind"] == "phone_crm_task_draft"
+        assert bot._confirm_phone_pending(api, chat_id, pending["kind"], pending["data"])
+        assert messenger.calls == [("open", "Иван", True), ("draft", "Привет", True)]
+        # Sending remains an independent third step.
+        assert bot._pending_confirm[chat_id]["kind"] == "whatsapp_send_draft"
+    finally:
+        bot._last_phone_crm_tasks.pop(chat_id, None)
+        bot._pending_confirm.pop(chat_id, None)

@@ -1,0 +1,10 @@
+[Unit]
+Description=Send AIOS phone control digest daily at 20:00 Kyiv time
+
+[Timer]
+OnCalendar=*-*-* 20:00:00 Europe/Kyiv
+Persistent=true
+Unit=aios-phone-control-digest.service
+
+[Install]
+WantedBy=timers.target
