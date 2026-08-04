@@ -27,10 +27,13 @@ def main() -> int:
         result = queue.promote_to_crm_task(sys.argv[2])
     elif command == "tasks":
         result = {"status": "ok", "tasks": queue.list_crm_tasks()}
+    elif command == "weekly":
+        days = int(sys.argv[2]) if len(sys.argv) >= 3 and sys.argv[2].isdigit() else 7
+        result = queue.weekly_metrics(days)
     elif command == "complete" and len(sys.argv) >= 3:
         result = queue.complete_crm_task(sys.argv[2])
     else:
-        result = {"status": "error", "error": "sync|summary|list [source]|review <id>|promote <id>|tasks|complete <task_id>"}
+        result = {"status": "error", "error": "sync|summary|list [source]|review <id>|promote <id>|tasks|weekly [days]|complete <task_id>"}
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("status") in ("ok", "reviewed", "already_reviewed") else 1
 

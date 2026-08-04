@@ -1,0 +1,10 @@
+[Unit]
+Description=Send AIOS weekly phone/CRM report Sunday at 20:10 Kyiv time
+
+[Timer]
+OnCalendar=Sun *-*-* 20:10:00 Europe/Kyiv
+Persistent=false
+Unit=aios-phone-weekly-report.service
+
+[Install]
+WantedBy=timers.target
