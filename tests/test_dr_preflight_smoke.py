@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 import json
 import subprocess
+import os
+import pytest
+
+if not os.path.exists('/root/agents/-Octopus/scripts/dr_config_preflight.py'):
+    pytest.skip('octopus runtime не установлен на этом хосте', allow_module_level=True)
+
 
 
 def _json_from_cmd(cmd):

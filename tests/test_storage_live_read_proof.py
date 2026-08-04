@@ -1,6 +1,14 @@
 import json
+import os
 import subprocess
 import sys
+
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    not os.path.exists('scripts/octopus-storage-live-read-proof.py'),
+    reason='octopus-storage-live-read-proof.py отсутствует на этом хосте',
+)
 
 from swarm.ops.storage_live_read_proof import prove_many, prove_path
 

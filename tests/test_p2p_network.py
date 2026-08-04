@@ -44,6 +44,9 @@ def test_task_endpoint_keeps_query_api_compatible():
 
 
 def test_swarm_uses_mock_mode_without_openrouter_key(monkeypatch):
+    # litellm грузит .env при первом импорте (внутри обработчика запроса),
+    # что вернуло бы ключи обратно. Импортируем модуль заранее, до удаления.
+    from aios_core import llm_swarm_debate  # noqa: F401
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 

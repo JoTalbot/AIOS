@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 import json
 import subprocess
+import os
+import pytest
+
+if not os.path.exists('/opt/octopus-memory-restore-drill.py'):
+    pytest.skip('octopus runtime не установлен на этом хосте', allow_module_level=True)
+
 
 
 def _run_json(cmd):

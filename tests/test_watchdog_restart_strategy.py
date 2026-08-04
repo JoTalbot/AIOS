@@ -2,6 +2,12 @@
 import importlib.util
 from unittest import mock
 
+import os
+import pytest
+
+if not os.path.exists('/opt/octopus-watchdog.py'):
+    pytest.skip('/opt/octopus-watchdog.py отсутствует на этом хосте', allow_module_level=True)
+
 spec = importlib.util.spec_from_file_location('octopus_watchdog', '/opt/octopus-watchdog.py')
 wd = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(wd)

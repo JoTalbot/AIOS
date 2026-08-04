@@ -25,7 +25,7 @@ def test_omnipresent_30_modules():
     """Verify functionality across 30 omnipresent modules."""
     # 1. Prompt Engineer
     pe = AutonomousPromptEngineer()
-    assert "engineered_prompt" in pe.engineer_prompt("prompt")
+    assert "engineered_prompt" in pe.generate_prompt("prompt")
 
     # 2. Vector Partitioning
     vp = VectorIndexPartitioning()

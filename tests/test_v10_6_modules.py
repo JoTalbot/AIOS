@@ -809,7 +809,7 @@ class TestComplianceFramework:
 # 9. SECRETS MANAGER
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from aios_core.secrets import SecretsManager, secrets
+from aios_core.aios_secrets import SecretsManager, secrets
 
 
 class TestSecretsManager:

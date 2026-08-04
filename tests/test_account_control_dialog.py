@@ -407,7 +407,7 @@ def test_inbox_intent(monkeypatch):
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "инбокс") is True
     joined = "\n".join(api.messages)
-    assert "Единый инбокс" in joined
+    assert "ЕДИНЫЙ ИНБОКС" in joined
     # пункты сохранены и включают все каналы
     items = m._last_inbox.get(1, [])
     chans = {it["channel"] for it in items}
@@ -469,7 +469,9 @@ def test_inbox_filters(monkeypatch):
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "инбокс только непрочитанное") is True
     joined = "\n".join(api.messages)
-    assert "только непрочитанное" in joined
+    assert "ЕДИНЫЙ ИНБОКС" in joined
+    # unread-фильтр применён: сохранённые фильтры помечены
+    assert m._last_inbox_filters.get(1, {}).get("unread_only") is True
     items = m._last_inbox.get(1, [])
     assert all(it.get("unread") for it in items if it["channel"] in ("gmail", "tg"))
 
@@ -506,7 +508,7 @@ def test_inbox_mark_read(monkeypatch):
     monkeypatch.setattr(rac, "app_password", lambda: "fake-pw")
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "отметь всё прочитанным") is True
-    assert any("Отмечено" in x for x in api.messages)
+    assert any("Инбокс обработан" in x for x in api.messages)
 
 
 def test_inbox_schedule_cmd(monkeypatch):
