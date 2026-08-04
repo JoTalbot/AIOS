@@ -1,0 +1,40 @@
+{
+  "nodes": [
+    {
+      "id": "aios-main",
+      "role": "local",
+      "ip": "127.0.0.1",
+      "check_type": "tcp_only",
+      "tags": [
+        "local",
+        "aios"
+      ],
+      "external": false,
+      "restart": {
+        "strategy": "local_systemd",
+        "target": "aios-api.service",
+        "parent_restart_allowed": false,
+        "budget": {
+          "max_restarts": 2,
+          "window_seconds": 900
+        }
+      }
+    },
+    {
+      "id": "aios-parent",
+      "role": "parent",
+      "ip": "167.233.95.7",
+      "check_type": "http",
+      "tags": [
+        "aios"
+      ],
+      "restart": {
+        "strategy": "none",
+        "budget": {
+          "max_restarts": 0,
+          "window_seconds": 900
+        }
+      }
+    }
+  ]
+}

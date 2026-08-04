@@ -1,5 +1,5 @@
 name: privat_biz
-android_package: ""
+android_package: "ua.privatbank.ap24"
 agent_module: aios_core.platforms.privat_business_chrome_twin_adapter
 storage_class: null
 adb_class: null

@@ -1,7 +1,7 @@
 name: chrome_twin
 android_package: com.android.chrome
 agent_module: aios_core.platforms.chrome_twin_adapter
-storage_class: aios_core.modules.chrome_twin.storage.ChromeTwinStorage
+storage_class: null
 adb_class: null
 default_locale: uk-UA
 description: "Chrome Twin — Двойник пользователя в Google Chrome с личным Google аккаунтом. Выполняет любые действия по команде во всех сервисах Google (Gmail, Drive, Docs, Calendar, YouTube и т.д.) и любых сайтах через Playwright."
