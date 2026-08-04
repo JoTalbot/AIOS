@@ -49,6 +49,8 @@ def test_bank_notification_tasks_bootstrap_then_track_new_ids(tmp_path):
     assert monitor.sync_tasks()["added"] == 1
     task = monitor.list_tasks()[0]
     assert task["source"] == "Privat24"
+    assert task["age_state"] == "fresh"
+    assert monitor.task_summary()["pending"] == 1
     raw = (data / "bank_notification_tasks.json").read_text(encoding="utf-8")
     assert "secret" not in raw
     assert "123456" not in raw

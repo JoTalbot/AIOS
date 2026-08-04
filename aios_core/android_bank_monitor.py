@@ -22,6 +22,21 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _age_state(created_at: object) -> str:
+    try:
+        created = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        hours = max(0.0, (datetime.now(timezone.utc) - created.astimezone(timezone.utc)).total_seconds() / 3600)
+    except Exception:
+        return "unknown"
+    if hours >= 24:
+        return "overdue"
+    if hours >= 1:
+        return "attention"
+    return "fresh"
+
+
 def _read(path: Path, default):
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -109,11 +124,19 @@ class AndroidBankMonitor:
         for task in pending:
             source = str(task.get("source") or "Банк")
             by_source[source] = by_source.get(source, 0) + 1
-        return {"status": "ok", "total": len(tasks), "pending": len(pending), "by_source": by_source}
+        age_states = [_age_state(task.get("created_at")) for task in pending]
+        return {
+            "status": "ok", "total": len(tasks), "pending": len(pending), "by_source": by_source,
+            "attention": sum(state == "attention" for state in age_states),
+            "overdue": sum(state == "overdue" for state in age_states),
+        }
 
     def list_tasks(self, limit: int = 30) -> list[dict]:
         return [
-            {"id": task.get("id"), "source": task.get("source"), "observed_at": task.get("observed_at"), "status": task.get("status")}
+            {
+                "id": task.get("id"), "source": task.get("source"), "observed_at": task.get("observed_at"),
+                "status": task.get("status"), "age_state": _age_state(task.get("created_at")),
+            }
             for task in self._tasks() if task.get("status") == "pending_review"
         ][-max(1, min(int(limit), MAX_TASKS)):]
 
