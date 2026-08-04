@@ -1,0 +1,11 @@
+[Unit]
+Description=Check safe Android inventory drift every 30 minutes
+
+[Timer]
+OnBootSec=8min
+OnUnitActiveSec=30min
+Persistent=true
+Unit=aios-phone-inventory.service
+
+[Install]
+WantedBy=timers.target

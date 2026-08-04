@@ -1,0 +1,12 @@
+[Unit]
+Description=AIOS token-free Android configuration backup
+After=network-online.target aios-android-gateway.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_android_config_backup.py
+StandardOutput=append:/root/AIOS/logs/android_config_backup.log
+StandardError=append:/root/AIOS/logs/android_config_backup.log
