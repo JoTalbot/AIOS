@@ -120,6 +120,15 @@ def _android_audit_summary() -> dict:
         return {"status": "error", "count": 0, "last": None}
 
 
+def _phone_operations() -> dict:
+    """Safe phone operations summary without messages, screens or coordinates."""
+    try:
+        from aios_core.phone_control_center import PhoneControlCenter
+        return PhoneControlCenter(ROOT).snapshot()
+    except Exception:
+        return {"status": "error", "issues": ["unavailable"]}
+
+
 def _customer_crm() -> dict:
     try:
         from aios_core.crm import CRMStore
@@ -264,6 +273,23 @@ def build() -> None:
                 f"Безопасный журнал телефона: {audit.get('count')} событий · "
                 f"последнее: {last_audit.get('action', '—')} · {str(last_audit.get('at') or '')[:19]}"
             ).classes("text-xs text-gray-500")
+
+    # Сводный безопасный центр управления телефоном.
+    phone_ops = _phone_operations()
+    with ui.card().classes("w-full border-l-4 border-cyan-600"):
+        ui.label("🛠 Центр управления телефоном").classes("text-lg font-bold")
+        state = "✅ стабильно" if phone_ops.get("status") == "ok" else "⚠️ требуется внимание"
+        device_ops = phone_ops.get("device") or {}
+        sync_ops = phone_ops.get("sync") or {}
+        jobs_ops = phone_ops.get("jobs") or {}
+        inv_ops = phone_ops.get("inventory") or {}
+        leads_ops = phone_ops.get("leads") or {}
+        bank_ops = phone_ops.get("bank_tasks") or {}
+        template_ops = phone_ops.get("templates") or {}
+        ui.label(f"{state} · ADB: {'✅' if device_ops.get('connected') else '⚠️'} · Companion: {'✅' if device_ops.get('companion') else '⚠️'} · восстановление: {(phone_ops.get('recovery') or {}).get('action', '—')}").classes("text-sm")
+        ui.label(f"Android {inv_ops.get('android') or '—'} · SDK {inv_ops.get('sdk') or '—'} · синхронизации: {sync_ops.get('fresh', 0)}/{sync_ops.get('total', 0)} · jobs: {jobs_ops.get('active', 0)}/{jobs_ops.get('total', 0)}").classes("text-sm")
+        ui.label(f"Лиды: {leads_ops.get('pending', 0)} · CRM follow-up: {leads_ops.get('crm_open', 0)} · банковские задачи: {bank_ops.get('pending', 0)} · шаблоны: {template_ops.get('count', 0)}").classes("text-sm")
+        ui.label(f"Данные: {(phone_ops.get('state_health') or {}).get('status', '—')} · WireGuard: {'✅' if (phone_ops.get('state_health') or {}).get('wireguard_active') else '⚠️'} · backup: {(phone_ops.get('state_health') or {}).get('backup_age_hours', '—')} ч").classes("text-xs text-gray-500")
 
     # Посылки Новой Пошты
     parcels = _np_parcels()

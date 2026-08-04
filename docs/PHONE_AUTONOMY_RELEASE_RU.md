@@ -14,6 +14,10 @@ AIOS integrates a real Android phone through WireGuard, ADB and AIOS Companion. 
 - Weekly phone/CRM report — Sunday 20:10 Kyiv time.
 - Android configuration backup — daily 02:45 Kyiv time.
 
+## Dashboard
+
+Protected CRM dashboard includes a metadata-only **Phone Operations Center** card: ADB, Companion, recovery, sync freshness, scheduled jobs, leads, follow-up tasks, bank tasks, template count, backup and WireGuard. It does not show chat content, notification text, accounts, coordinates, photos or audio.
+
 ## Safe owner commands
 
 ```text
