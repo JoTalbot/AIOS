@@ -2027,6 +2027,18 @@ _last_phone_leads: dict[int, list[dict]] = {}
 _last_phone_crm_tasks: dict[int, list[dict]] = {}
 
 
+def _handle_phone_control_center_intent(api, chat_id: int, text: str) -> bool:
+    t = " ".join(str(text or "").casefold().split())
+    if not any(phrase in t for phrase in ("центр телефона", "статус автоматизации телефона", "контроль телефона", "центр android")):
+        return False
+    try:
+        from aios_core.phone_control_center import PhoneControlCenter, format_telegram
+        api.send_message(chat_id, format_telegram(PhoneControlCenter(PROJECT_ROOT).snapshot()))
+    except Exception:
+        api.send_message(chat_id, "⚠️ Центр управления телефоном временно недоступен.")
+    return True
+
+
 def _handle_phone_audit_intent(api, chat_id: int, text: str) -> bool:
     """Render the metadata-only phone action log on explicit owner request."""
     t = " ".join(str(text or "").casefold().split())
@@ -3067,7 +3079,9 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
-    # Phone audit and metadata-only leads/tasks precede broad CRM words.
+    # Phone center/audit and metadata-only leads/tasks precede broad CRM words.
+    if _handle_phone_control_center_intent(api, chat_id, text):
+        return True
     if _handle_phone_audit_intent(api, chat_id, text):
         return True
     if _handle_phone_lead_intent(api, chat_id, text):
