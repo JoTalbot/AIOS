@@ -1,0 +1,12 @@
+[Unit]
+Description=AIOS safe Android inventory drift check
+After=network-online.target aios-android-gateway.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_phone_inventory_alert.py --alert
+StandardOutput=append:/root/AIOS/logs/phone_inventory.log
+StandardError=append:/root/AIOS/logs/phone_inventory.log

@@ -118,7 +118,10 @@ class PhoneInventory:
         previous_apps = {str(app.get("id")): bool(app.get("available")) for app in previous.get("apps", []) if isinstance(app, dict)}
         current_apps = {str(app.get("id")): bool(app.get("available")) for app in current.get("apps", [])}
         drift = sorted(key for key in set(previous_apps) | set(current_apps) if previous_apps.get(key) != current_apps.get(key))
+        version_fields = ("android", "sdk", "companion_version", "wireguard_active")
+        version_drift = [field for field in version_fields if previous and previous.get(field) != current.get(field)]
         current["availability_drift"] = drift
+        current["version_drift"] = version_drift
         history.append(current)
         _write(self.path, history[-MAX_HISTORY:])
         return current
@@ -126,3 +129,12 @@ class PhoneInventory:
     def latest(self) -> dict:
         rows = _read(self.path, [])
         return rows[-1] if isinstance(rows, list) and rows else {}
+
+    def summary(self) -> dict:
+        last = self.latest()
+        return {
+            "status": "ok", "snapshots": len(self._rows()),
+            "availability_drift": list(last.get("availability_drift") or []),
+            "version_drift": list(last.get("version_drift") or []),
+            "calibrations_stale": int(last.get("calibrations_stale") or 0),
+        }

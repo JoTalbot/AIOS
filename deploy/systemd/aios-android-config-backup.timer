@@ -1,0 +1,10 @@
+[Unit]
+Description=Create token-free Android configuration backup daily at 02:45 Kyiv time
+
+[Timer]
+OnCalendar=*-*-* 02:45:00 Europe/Kyiv
+Persistent=false
+Unit=aios-android-config-backup.service
+
+[Install]
+WantedBy=timers.target

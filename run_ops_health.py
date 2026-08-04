@@ -29,6 +29,8 @@ SERVICES = (
     "aios-android-leads.timer",
     "aios-phone-control-digest.timer",
     "aios-phone-weekly-report.timer",
+    "aios-phone-inventory.timer",
+    "aios-android-config-backup.timer",
     "aios-messenger-profile-backup.timer",
 )
 
