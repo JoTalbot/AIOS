@@ -96,12 +96,44 @@ class PhoneMetricsStore:
         if not rows:
             return {"status": "ok", "snapshots": 0, "changes": {}}
         first, last = rows[0], rows[-1]
-        fields = ("leads_pending", "crm_open", "crm_attention", "crm_overdue", "bank_unread", "bank_tasks", "bank_attention", "bank_overdue")
+        fields = (
+            "leads_pending", "crm_open", "crm_attention", "crm_overdue", "bank_unread", "bank_tasks", "bank_attention", "bank_overdue",
+            "adb_connected", "companion_connected", "location_ready", "camera_permission", "microphone_permission",
+            "apps_available", "apps_calibrated", "timers_active",
+        )
         return {
             "status": "ok", "snapshots": len(rows),
-            "changes": {field: int(last.get(field) or 0) - int(first.get(field) or 0) for field in fields},
+            "changes": {field: int(bool(last.get(field))) - int(bool(first.get(field))) if isinstance(last.get(field), bool) else int(last.get(field) or 0) - int(first.get(field) or 0) for field in fields},
             "last": last,
         }
+
+    def availability(self, limit: int = 30) -> dict:
+        rows = self.recent(limit)
+        if not rows:
+            return {"status": "ok", "snapshots": 0, "adb_pct": 0, "companion_pct": 0, "location_pct": 0, "timers_pct": 0}
+        total = len(rows)
+        pct = lambda key: round(100 * sum(bool(row.get(key)) for row in rows) / total)
+        timers_ok = sum(bool(row.get("timers_total")) and int(row.get("timers_active") or 0) == int(row.get("timers_total") or 0) for row in rows)
+        return {
+            "status": "ok", "snapshots": total,
+            "adb_pct": pct("adb_connected"), "companion_pct": pct("companion_connected"),
+            "location_pct": pct("location_ready"), "camera_pct": pct("camera_permission"),
+            "microphone_pct": pct("microphone_permission"), "timers_pct": round(100 * timers_ok / total),
+        }
+
+    def calibration_report(self) -> dict:
+        value = _read(self.root / "data" / "android_gateway" / "app_ui_calibrations.json", {})
+        rows = []
+        for profile, item in (value.items() if isinstance(value, dict) else []):
+            if not isinstance(item, dict):
+                continue
+            selectors = dict(item.get("selectors") or {})
+            rows.append({
+                "profile": str(profile), "checked_at": str(item.get("checked_at") or ""),
+                "ready": bool(selectors) and all(bool(value) for value in selectors.values()),
+                "selectors": len(selectors),
+            })
+        return {"status": "ok", "count": len(rows), "apps": rows}
 
     def export_csv(self) -> Path:
         rows = self._rows()
