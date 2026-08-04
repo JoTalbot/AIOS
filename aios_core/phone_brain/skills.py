@@ -130,10 +130,12 @@ class SkillEngine:
     """Загрузка и выполнение декларативных phone-skills."""
 
     def __init__(self, root: Path | str, gateway: Any = None, events: Any = None,
-                 skills_dir: Path | str | None = None, poll_interval: float = 0.7):
+                 skills_dir: Path | str | None = None, poll_interval: float = 0.7,
+                 vision: Any = None):
         self.root = Path(root)
         self.gateway = gateway
         self.events = events
+        self.vision = vision
         self.skills_dir = (Path(skills_dir) if skills_dir
                            else self.root / "skills" / "phone")
         self.poll_interval = max(0.2, float(poll_interval))
@@ -176,6 +178,7 @@ class SkillEngine:
             step.setdefault("id", f"step_{index}")
         return {"id": skill_id, "title": str(data.get("title") or skill_id)[:120],
                 "app": str(data.get("app") or "")[:60],
+                "params": [str(p) for p in (data.get("params") or [])][:12],
                 "confirm": bool(data.get("confirm", True)),
                 "sensitive": bool(data.get("sensitive", False)),
                 "steps": steps, "file": path.name}
@@ -205,6 +208,7 @@ class SkillEngine:
         """Метаданные доступных skills (без тел шагов)."""
         self._ensure_loaded()
         items = [{"id": skill["id"], "title": skill["title"], "app": skill["app"],
+                  "params": skill.get("params") or [],
                   "confirm": skill["confirm"], "sensitive": skill["sensitive"],
                   "steps": len(skill["steps"]), "file": skill["file"]}
                  for skill in self._skills.values()]
@@ -247,11 +251,41 @@ class SkillEngine:
         entry = stats.get(key) or {"ok": {}, "fail": {}}
         bucket = entry.setdefault("ok" if ok else "fail", {})
         bucket[str(index)] = int(bucket.get(str(index)) or 0) + 1
-        if ok:
+        if ok and index >= 0:
             entry["last_good"] = index
         entry["updated_at"] = iso()
         stats[key] = entry
         self._save_stats()
+
+    def _learn(self, skill_id: str, step_id: str, x: int, y: int) -> None:
+        """Запоминает координаты, подсказанные VLM (этап 3 самовосстановление)."""
+        stats = self._load_stats()
+        key = f"{skill_id}:{step_id}"
+        entry = stats.get(key) or {"ok": {}, "fail": {}}
+        entry["learned"] = {"center": [int(x), int(y)], "at": iso()}
+        entry["updated_at"] = iso()
+        stats[key] = entry
+        self._save_stats()
+
+    @staticmethod
+    def _find_by_learned(snapshot: dict, center: list) -> dict | None:
+        """Ищет живой узел рядом с запомненной VLM-точкой (±90px по Чебышёву)."""
+        try:
+            cx, cy = int(center[0]), int(center[1])
+        except (TypeError, ValueError, IndexError):
+            return None
+        best: dict | None = None
+        best_distance = 90
+        for node in snapshot.get("nodes") or []:
+            if not isinstance(node, dict):
+                continue
+            node_center = _node_center(node)
+            if node_center is None:
+                continue
+            distance = max(abs(node_center[0] - cx), abs(node_center[1] - cy))
+            if distance <= best_distance:
+                best, best_distance = node, distance
+        return best
 
     # ------------------------------------------------------------- events
 
@@ -285,11 +319,18 @@ class SkillEngine:
         """Ждёт появления элемента по fallback-цепочке; возвращает результат шага."""
         deadline = time.monotonic() + max(0.0, timeout)
         ordered = self._ordered_selectors(skill_id, str(step["id"]), step["selectors"])
+        learned = (self._load_stats().get(f"{skill_id}:{step['id']}") or {}).get("learned")
         while True:
             snapshot = self._snapshot()
             if snapshot.get("status") != "ok":
                 return {"ok": False, "code": "ui_unavailable",
                         "error": str(snapshot.get("error") or "UI недоступен")[:200]}
+            # Ранее восстановленная VLM точка имеет приоритет над цепочкой.
+            if learned and isinstance(learned.get("center"), list):
+                node = self._find_by_learned(snapshot, learned["center"])
+                if node is not None:
+                    self._mark(skill_id, str(step["id"]), -1, True)
+                    return {"ok": True, "selector": -1, "node": node, "snapshot": snapshot}
             try:
                 resolved = [(index, _interpolate(selector, params)) for index, selector in ordered]
             except KeyError as exc:
@@ -353,6 +394,13 @@ class SkillEngine:
 
         if verb in ("ui.wait", "ui.tap"):
             found = self._wait_match(skill_id, step, params, timeout)
+            if (not found["ok"] and verb == "ui.tap" and found.get("code") == "ui_not_found"
+                    and step.get("heal") and self.vision is not None):
+                healed = self._heal_and_tap(skill, step)
+                if healed["ok"]:
+                    return healed
+                return {"ok": False, "code": "ui_not_found",
+                        "error": f"{found.get('error')}; vision: {healed.get('error')}"[:250]}
             if not found["ok"] or verb == "ui.wait":
                 if found["ok"]:
                     found.pop("node", None)
@@ -384,6 +432,28 @@ class SkillEngine:
 
         return {"ok": False, "code": "invalid_skill", "error": f"неизвестный глагол {verb}"}
 
+    def _heal_and_tap(self, skill: dict, step: dict) -> dict:
+        """Восстановление: скриншот → VLM ищет элемент по heal_hint → тап → обучение."""
+        hint = str(step.get("heal_hint") or "").strip()
+        if not hint:
+            return {"ok": False, "error": "шаг без heal_hint"}
+        try:
+            shot = self.gateway.screenshot()
+        except Exception as exc:
+            return {"ok": False, "error": f"screenshot: {exc}"[:160]}
+        if shot.get("status") != "ok":
+            return {"ok": False, "error": f"screenshot: {shot.get('error', 'failed')}"[:160]}
+        located = self.vision.locate(shot.get("file"), hint)
+        if located.get("status") != "ok":
+            return {"ok": False, "error": str(located.get("error") or "элемент не найден")[:160]}
+        tapped = self.gateway.tap(int(located["x"]), int(located["y"]), confirm=True)
+        if tapped.get("status") != "ok":
+            return {"ok": False, "error": "тап по VLM-координатам не прошёл"}
+        self._learn(skill["id"], str(step["id"]), int(located["x"]), int(located["y"]))
+        self._event("skill_heal", {"skill": skill["id"], "step": str(step["id"]),
+                                   "provider": str(located.get("provider") or "")})
+        return {"ok": True, "selector": -1, "healed": True}
+
     # ---------------------------------------------------------------- run
 
     def run(self, skill_id: str, params: dict | None = None) -> dict:
@@ -399,6 +469,8 @@ class SkillEngine:
             record = {"id": str(step["id"]), "ok": bool(result.get("ok"))}
             if result.get("selector") is not None:
                 record["selector"] = result["selector"]
+            if result.get("healed"):
+                record["healed"] = True
             if not result.get("ok"):
                 if step.get("optional"):
                     record["skipped"] = True
