@@ -261,7 +261,8 @@ MAIN_MENU_KEYBOARD = {
     "keyboard": [
         [{"text": "🧠 Кодер"}, {"text": "📊 Статистика"}],
         [{"text": "🛒 OLX"}, {"text": "📱 Платформы"}],
-        [{"text": "🌐 Аккаунты"}, {"text": "🖥 Сервер"}],
+        [{"text": "📲 Телефон"}, {"text": "🌐 Аккаунты"}],
+        [{"text": "🖥 Сервер"}],
         [{"text": "🐳 Docker"}, {"text": "❤️ Health"}],
         [{"text": "💾 Backup"}, {"text": "🚨 Alerts"}],
         [{"text": "🔑 API Ключи"}, {"text": "📋 Логи"}],
@@ -299,6 +300,19 @@ ACCOUNTS_MENU_KEYBOARD = {
         [{"text": "🌐 Google"}, {"text": "📸 Instagram"}],
         [{"text": "📘 Facebook"}, {"text": "🎵 TikTok"}],
         [{"text": "🛒 OLX"}, {"text": "◀️ Меню"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
+PHONE_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "📲 Центр телефона"}, {"text": "🛠 Восстановление"}],
+        [{"text": "📥 Лиды телефона"}, {"text": "📌 CRM задачи"}],
+        [{"text": "🏦 Банки телефона"}, {"text": "📈 Тренды телефона"}],
+        [{"text": "🔄 Синхронизации"}, {"text": "📋 Журнал телефона"}],
+        [{"text": "🚕 Маршруты"}, {"text": "🧩 Калибровки"}],
+        [{"text": "◀️ Меню"}],
     ],
     "resize_keyboard": True,
     "one_time_keyboard": False,
@@ -6053,9 +6067,44 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
     elif data == "menu_olx":
         reply = chr(128722) + " <b>OLX</b>"
         keyboard = OLX_MENU_KEYBOARD
+    elif data == "phone_center":
+        _handle_phone_control_center_intent(api, chat_id, "центр телефона")
+        return
+    elif data == "phone_recovery":
+        _handle_phone_recovery_intent(api, chat_id, "восстановление телефона")
+        return
+    elif data == "phone_leads":
+        _handle_phone_lead_intent(api, chat_id, "лиды телефона")
+        return
+    elif data == "phone_crm_tasks":
+        _handle_phone_lead_intent(api, chat_id, "CRM задачи телефона")
+        return
+    elif data == "phone_banks":
+        _handle_phone_bank_monitor_intent(api, chat_id, "статус банков телефона")
+        return
+    elif data == "phone_trends":
+        _handle_phone_metrics_intent(api, chat_id, "тренды телефона")
+        return
+    elif data == "phone_sync":
+        _handle_phone_recovery_intent(api, chat_id, "статус синхронизации телефона")
+        return
+    elif data == "phone_audit":
+        _handle_phone_audit_intent(api, chat_id, "журнал телефона")
+        return
+    elif data == "phone_calibrations":
+        _handle_phone_metrics_intent(api, chat_id, "калибровки телефона")
+        return
+    elif data == "phone_routes":
+        api.send_message(chat_id, "🚕 <b>Маршруты</b>\n«маршрут Uklon: откуда -> куда»\n«маршрут EasyWay: остановка или адрес»\n\nАдрес и заказ выбираются вручную.")
+        return
     elif data == "menu_accounts":
         reply = cmd_accounts()
         keyboard = ACCOUNTS_MENU_KEYBOARD
+    elif data == "menu_phone":
+        reply = ("📲 <b>Телефон AIOS</b>\n\n"
+                 "Центр, лиды, CRM follow-up, банки, метрики, синхронизации и журнал доступны через кнопки ниже. "
+                 "Маршруты и сообщения остаются подтверждаемыми действиями.")
+        keyboard = PHONE_MENU_KEYBOARD
     elif data == "accounts_google":
         reply = "🌐 <b>Google аккаунт</b> (jo.talbot@gmail.com)\n\nВыберите действие — или просто напишите «проверь почту» / «покажи календарь»."
         keyboard = GOOGLE_MENU_KEYBOARD
@@ -6850,6 +6899,17 @@ BUTTON_ACTIONS = {
     "📊 Статистика": "menu_stats",
     "🛒 OLX": "menu_olx",
     "📱 Платформы": "menu_platforms",
+    "📲 Телефон": "menu_phone",
+    "📲 Центр телефона": "phone_center",
+    "🛠 Восстановление": "phone_recovery",
+    "📥 Лиды телефона": "phone_leads",
+    "📌 CRM задачи": "phone_crm_tasks",
+    "🏦 Банки телефона": "phone_banks",
+    "📈 Тренды телефона": "phone_trends",
+    "🔄 Синхронизации": "phone_sync",
+    "📋 Журнал телефона": "phone_audit",
+    "🚕 Маршруты": "phone_routes",
+    "🧩 Калибровки": "phone_calibrations",
     "🖥 Сервер": "menu_server",
     "🐳 Docker": "menu_docker",
     "🔑 API Ключи": "menu_keys",
