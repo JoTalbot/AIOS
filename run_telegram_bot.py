@@ -313,7 +313,7 @@ PHONE_MENU_KEYBOARD = {
         [{"text": "🔄 Синхронизации"}, {"text": "📋 Журнал телефона"}],
         [{"text": "🗄 Здоровье данных"}, {"text": "📦 Инвентарь"}],
         [{"text": "📤 Экспорт метрик"}, {"text": "🧩 Калибровки"}],
-        [{"text": "🚕 Маршруты"}],
+        [{"text": "🧪 Сценарии"}, {"text": "🚕 Маршруты"}],
         [{"text": "◀️ Меню"}],
     ],
     "resize_keyboard": True,
@@ -2045,6 +2045,18 @@ _last_phone_crm_tasks: dict[int, list[dict]] = {}
 _last_bank_tasks: dict[int, list[dict]] = {}
 
 
+def _handle_phone_workflow_readiness_intent(api, chat_id: int, text: str) -> bool:
+    t = " ".join(str(text or "").casefold().split())
+    if not any(phrase in t for phrase in ("проверка сценариев телефона", "готовность сценариев", "тест сценариев телефона")):
+        return False
+    try:
+        from aios_core.phone_workflow_readiness import PhoneWorkflowReadiness, format_telegram
+        api.send_message(chat_id, format_telegram(PhoneWorkflowReadiness(PROJECT_ROOT).snapshot()))
+    except Exception:
+        api.send_message(chat_id, "⚠️ Проверка сценариев телефона временно недоступна.")
+    return True
+
+
 def _handle_phone_jobs_intent(api, chat_id: int, text: str) -> bool:
     t = " ".join(str(text or "").casefold().split())
     if not any(phrase in t for phrase in ("планировщик телефона", "статус jobs телефона", "задачи планировщика телефона", "dry run jobs телефона")):
@@ -3407,7 +3419,9 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
-    # Jobs, inventory, metrics, bank monitor, recovery, reports and leads precede broad CRM words.
+    # Workflow readiness, jobs, inventory, metrics, bank monitor, recovery, reports and leads precede broad CRM words.
+    if _handle_phone_workflow_readiness_intent(api, chat_id, text):
+        return True
     if _handle_phone_jobs_intent(api, chat_id, text):
         return True
     if _handle_phone_inventory_intent(api, chat_id, text):
@@ -6099,6 +6113,9 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
     elif data == "phone_routes":
         api.send_message(chat_id, "🚕 <b>Маршруты</b>\n«маршрут Uklon: откуда -> куда»\n«маршрут EasyWay: остановка или адрес»\n\nАдрес и заказ выбираются вручную.")
         return
+    elif data == "phone_workflows":
+        _handle_phone_workflow_readiness_intent(api, chat_id, "проверка сценариев телефона")
+        return
     elif data == "phone_data_health":
         _handle_phone_recovery_intent(api, chat_id, "здоровье данных телефона")
         return
@@ -6924,6 +6941,7 @@ BUTTON_ACTIONS = {
     "🗄 Здоровье данных": "phone_data_health",
     "📦 Инвентарь": "phone_inventory",
     "📤 Экспорт метрик": "phone_metrics_export",
+    "🧪 Сценарии": "phone_workflows",
     "🖥 Сервер": "menu_server",
     "🐳 Docker": "menu_docker",
     "🔑 API Ключи": "menu_keys",
