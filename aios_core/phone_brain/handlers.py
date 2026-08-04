@@ -34,6 +34,7 @@ class JobContext:
     gateway: AndroidGateway
     supervisor: Any
     events: Any
+    store: Any = None
 
 
 @dataclass
@@ -217,6 +218,22 @@ def _h_device_pull(payload: dict, ctx: JobContext) -> dict:
     return ctx.gateway.pull_file(path, confirm=True)
 
 
+def _h_queue_confirm(payload: dict, ctx: JobContext) -> dict:
+    """Одобрение черновика владельцем: need_confirm → обратно в очередь с confirm."""
+    if ctx.store is None:
+        return {"status": "error", "error": "store недоступен", "retry": False}
+    try:
+        job_id = int(payload.get("id") or 0)
+    except (TypeError, ValueError):
+        job_id = 0
+    if not job_id:
+        return {"status": "error", "error": "Нужен id задачи", "retry": False}
+    result = ctx.store.confirm_job(job_id)
+    if result.get("status") == "error":
+        result["retry"] = False
+    return result
+
+
 # Read-only команды legacy CLI, доступные через очередь (мост для миграции бота).
 _READ_COMMANDS = {
     "status", "apps", "profiles", "companion", "notifications", "accessibility",
@@ -274,6 +291,8 @@ BUILTIN_HANDLERS: list[Handler] = [
     Handler("device.pull", _h_device_pull, timeout=150,
             confirm_action="android_pull_file",
             description="Забрать файл из разрешённых папок телефона (confirm=true)"),
+    Handler("queue.confirm", _h_queue_confirm, timeout=15, needs_device=False,
+            description="Подтвердить черновик-задачу (need_confirm → выполнение)"),
 ]
 
 

@@ -269,6 +269,38 @@ class JobStore:
                 " error='lease expired' WHERE status='running' AND lease_until < ?", (now,))
             return int(cursor.rowcount)
 
+    def confirm_job(self, job_id: int) -> dict:
+        """Подтверждение владельцем: need_confirm/queued → выполнение с confirm=true.
+
+        Завершает цикл «черновик на одобрение»: reaction engine / CLI / бот
+        ставят задачу без confirm, владелец одобряет — задача выполняется.
+        Для queued-задачи confirm просто проставляется до её взятия в работу —
+        одобрение возможно в любой момент до исполнения."""
+        with self._db() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT * FROM jobs WHERE id=?", (int(job_id),)).fetchone()
+            if row is None:
+                return {"status": "error", "error": "job not found"}
+            status = row["status"]
+            if status not in ("need_confirm", "queued"):
+                return {"status": "error",
+                        "error": f"Задача в статусе {status}, подтверждать нечего"}
+            try:
+                payload = json.loads(row["payload"] or "{}")
+                if not isinstance(payload, dict):
+                    payload = {}
+            except ValueError:
+                payload = {}
+            if payload.get("confirm"):
+                return {"status": "ok", "id": int(job_id), "kind": row["kind"],
+                        "note": "уже подтверждена"}
+            payload["confirm"] = True
+            conn.execute(
+                "UPDATE jobs SET status='queued', payload=?, run_after=?, finished_at=NULL,"
+                " lease_until=NULL, lease_token=NULL, error=NULL WHERE id=?",
+                (json.dumps(payload, ensure_ascii=False), iso(), int(job_id)))
+            return {"status": "ok", "id": int(job_id), "kind": row["kind"]}
+
     def cancel(self, job_id: int) -> dict:
         """Отменяет задачу, пока она в очереди (running-задачи в этапе 1 не трогаем)."""
         with self._db() as conn:
