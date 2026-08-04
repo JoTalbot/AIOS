@@ -93,10 +93,16 @@ def collect(service_probe=_service_active, android_probe=None) -> dict:
         issues.append(f"backup:устарел:{backup_age}ч")
     env_mode = _mode(ROOT / ".env")
     chrome_mode = _mode(ROOT / "data" / "chrome_twin" / "default")
+    lead_mode = _mode(ROOT / "data" / "android_gateway" / "lead_candidates.json")
+    crm_followup_mode = _mode(ROOT / "data" / "android_gateway" / "crm_followup_tasks.json")
     if env_mode is not None and env_mode > 0o600:
         issues.append(f"permissions:.env:{env_mode:o}")
     if chrome_mode is not None and chrome_mode > 0o700:
         issues.append(f"permissions:chrome:{chrome_mode:o}")
+    if lead_mode is not None and lead_mode > 0o600:
+        issues.append(f"permissions:phone_leads:{lead_mode:o}")
+    if crm_followup_mode is not None and crm_followup_mode > 0o600:
+        issues.append(f"permissions:phone_crm_followups:{crm_followup_mode:o}")
     android = (android_probe or _android_probe)()
     if android.get("registered"):
         if not android.get("adb_connected"):

@@ -26,6 +26,22 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _age_state(created_at: object) -> str:
+    """Classify a local follow-up age without storing/revealing message data."""
+    try:
+        created = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        hours = max(0.0, (datetime.now(timezone.utc) - created.astimezone(timezone.utc)).total_seconds() / 3600)
+    except Exception:
+        return "unknown"
+    if hours >= 24:
+        return "overdue"
+    if hours >= 1:
+        return "attention"
+    return "fresh"
+
+
 def _read(path: Path, default: Any) -> Any:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -109,9 +125,13 @@ class AndroidLeadQueue:
             source = str(item.get("source") or "Телефон")
             by_source[source] = by_source.get(source, 0) + 1
         tasks = self._tasks()
+        open_tasks = [task for task in tasks if task.get("status") == "open"]
+        age_states = [_age_state(task.get("created_at")) for task in open_tasks]
         return {
             "status": "ok", "total": len(items), "pending": len(pending), "by_source": by_source,
-            "crm_open": sum(1 for task in tasks if task.get("status") == "open"),
+            "crm_open": len(open_tasks),
+            "crm_attention": sum(state == "attention" for state in age_states),
+            "crm_overdue": sum(state == "overdue" for state in age_states),
         }
 
     def list_pending(self, limit: int = 20, source: str = "") -> list[dict]:
@@ -181,6 +201,7 @@ class AndroidLeadQueue:
                 "id": task.get("id"), "lead_id": task.get("lead_id"),
                 "source": task.get("source"), "created_at": task.get("created_at"),
                 "action": task.get("action"), "status": task.get("status"),
+                "age_state": _age_state(task.get("created_at")),
             }
             for task in rows[-max(1, min(int(limit), MAX_LEADS)):]
         ]
