@@ -6,7 +6,7 @@ import time
 from typing import Any
 from pydantic import BaseModel, Field
 
-from aios_core.security.security_policy import Authenticator
+from aios_core.advanced_security import AdvancedSecurity, Authenticator
 
 class FreeEnergyResult(BaseModel):
     observations_processed: int = Field(..., description="Number of processed observations")
@@ -19,7 +19,7 @@ class ActiveInferenceEngine:
 
     def __init__(self) -> None:
         self.history: list[dict[str, Any]] = []
-        self.authenticator = Authenticator()
+        self.authenticator = Authenticator(AdvancedSecurity())
 
     def minimize_free_energy(
         self,

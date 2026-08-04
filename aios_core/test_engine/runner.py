@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 from .models import (
     TestCase,
     TestResult,
+    TestSuiteResult,
     TestStatus,
     TestCategory,
     TestSeverity,
@@ -174,44 +175,6 @@ class TestRunner:
 
     def _now_iso(self) -> str:
         return datetime.now(timezone.utc).isoformat()
-
-
-@dataclass
-class TestResult:
-    """Represents a single test result."""
-
-    test_name: str
-    category: TestCategory
-    severity: TestSeverity
-    expected_decision: str
-    evaluation: Dict[str, str]
-    actual_decision: str
-    status: TestStatus
-    message: str
-    retry_count: int
-    error: str
-    started_at: str
-    completed_at: str
-    duration_ms: float
-
-
-@dataclass
-class TestSuiteResult:
-    """Represents a suite of test results."""
-
-    suite_name: str
-    started_at: str
-    completed_at: str
-    total: int
-    passed: int
-    failed: int
-    errors: int
-    skipped: int
-    status: TestStatus
-    results: List[TestResult]
-    by_category: Dict[TestCategory, int]
-    by_severity: Dict[TestSeverity, int]
-    duration_ms: float
 
 
 class TestRunnerTestCase(TestCase):

@@ -85,6 +85,21 @@ class APIAdapter:
             raise ValueError(f"Invalid HTTP method. Allowed: {allowed_methods}")
         return method
 
+    def execute_api_call(
+        self,
+        protocol: str,
+        endpoint: str,
+        method: str = "POST",
+        data: Optional[Any] = None,
+    ) -> dict[str, Any]:
+        """Legacy single-call API (backward-compatible alias).
+
+        Wraps a single payload into a ``BatchRequest`` and delegates to the
+        batch executor so all security validation stays in one place.
+        """
+        batch = BatchRequest(data=[data] if data is not None else [], context={})
+        return self.execute_batch_api_call(protocol, endpoint, batch, method=method)
+
     def execute_batch_api_call(
         self,
         protocol: str,

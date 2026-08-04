@@ -20,8 +20,17 @@ import re
 from pathlib import Path
 from typing import Any
 
-from django.utils.html import escape
-from django.middleware.csrf import get_token
+try:
+    from django.utils.html import escape
+    from django.middleware.csrf import get_token
+except ModuleNotFoundError:  # django не установлен в минимальном окружении
+    import html as _html
+
+    def escape(value: str) -> str:
+        return _html.escape(value, quote=True)
+
+    def get_token(request=None) -> str:
+        return 
 
 logger = logging.getLogger(__name__)
 

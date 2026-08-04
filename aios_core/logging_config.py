@@ -69,6 +69,14 @@ def set_log_context(
         _ctx_task_id.set(task_id)
 
 
+# Sensitive field patterns to sanitize (восстановлено: удалено автокодером,
+# из-за чего _sanitize падал с NameError и не маскировал секреты в логах)
+_SENSITIVE_FIELDS = frozenset({
+    "password", "token", "secret", "api_key", "auth",
+    "credential", "private_key", "access_key",
+})
+
+
 def clear_log_context() -> None:
     """Reset all log context variables to defaults."""
     _ctx_agent_id.set("system")
