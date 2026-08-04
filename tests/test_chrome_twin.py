@@ -33,8 +33,25 @@ async def test_chrome_twin_action_history():
 @pytest.mark.asyncio
 async def test_chrome_twin_custom_action_parsing():
     adapter = ChromeTwinAdapter(config={"profile": "test", "headless": True})
-    # Mock _ensure_browser to avoid real browser launch
-    adapter._ensure_browser = AsyncMock(return_value=Mock(url="https://google.com", title=AsyncMock(return_value="Google")))
+    # Mock _ensure_browser to avoid real browser launch.
+    # The adapter awaits page.goto/wait_for_timeout, so the fake page must
+    # expose async methods, not a plain Mock.
+    class _FakePage:
+        url = "https://google.com"
+
+        async def goto(self, *a, **k):
+            return None
+
+        async def wait_for_timeout(self, *a, **k):
+            return None
+
+        async def title(self):
+            return "Google"
+
+        async def evaluate(self, *a, **k):
+            return None
+
+    adapter._ensure_browser = AsyncMock(return_value=_FakePage())
     # Mock navigate
     adapter.navigate = AsyncMock(return_value={"status": "ok", "url": "https://mail.google.com"})
     

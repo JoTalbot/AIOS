@@ -253,24 +253,19 @@ class TestBackupChaos:
         manager = BackupManager(str(db_path), str(backup_dir))
         metadata = manager.create_backup()
 
-        # Try to restore to read-only location
-        readonly_dir = tmp_path / "readonly"
-        readonly_dir.mkdir()
-        readonly_file = readonly_dir / "restore.sqlite"
-
-        # Make directory read-only
-        readonly_dir.chmod(0o444)
+        # Try to restore into a location that cannot be written
+        # (chmod-based read-only does not work when tests run as root,
+        # so use a target inside a non-existent directory instead)
+        missing_dir = tmp_path / "no_such_dir"
+        readonly_file = missing_dir / "restore.sqlite"
 
         try:
             success = manager.restore_backup(metadata.backup_id, str(readonly_file))
             # Should fail gracefully
             assert not success
-        except PermissionError:
+        except (PermissionError, FileNotFoundError):
             # Expected
             pass
-        finally:
-            # Restore permissions for cleanup
-            readonly_dir.chmod(0o755)
 
     def test_backup_verification_with_tampered_checksum(self, tmp_path):
         """Test backup verification detects tampered checksums."""

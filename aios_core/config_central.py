@@ -171,7 +171,12 @@ def _apply_env_overrides(cfg: AIOSConfig) -> None:
         elif field_name == "keys":
             import json
 
-            setattr(section, field_name, json.loads(value))
+            parsed = json.loads(value)
+            if isinstance(section, dict):
+                # api_keys секция хранится как plain dict
+                section["keys"] = parsed
+            else:
+                setattr(section, field_name, parsed)
         elif hasattr(section, field_name):
             ftype = type(getattr(section, field_name))
             setattr(section, field_name, ftype(value))
