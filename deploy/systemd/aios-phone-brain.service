@@ -1,0 +1,18 @@
+[Unit]
+Description=AIOS Phone Brain - умный демон Android-шлюза (очередь задач, супервизор устройства)
+After=network-online.target wg-quick@wg0.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+Environment=AIOS_ADB_BIN=/usr/local/bin/aios-adb
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_phone_brain.py run
+Restart=always
+RestartSec=10
+# Логи пишет сам демон (ротация 3x1 МБ в logs/phone_brain.log);
+# stdout идёт в journald.
+
+[Install]
+WantedBy=multi-user.target
