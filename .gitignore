@@ -105,3 +105,7 @@ data/tech_debt_report.json
 data/chrome_twin/
 docs/VNC_SETUP.md
 backups/sessions/
+
+# Transient ops backups (may contain deployment config / sessions)
+backups/manual/
+backups/messenger_profiles/
