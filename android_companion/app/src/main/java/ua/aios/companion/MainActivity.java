@@ -51,13 +51,13 @@ public class MainActivity extends Activity {
         root.addView(status);
 
         root.addView(button("Запустить защищённый gateway", v -> startGateway()));
-        root.addView(button("Разрешения: камера и геолокация", v -> requestRuntimePermissions()));
+        root.addView(button("Разрешения: камера, микрофон и геолокация", v -> requestRuntimePermissions()));
         root.addView(button("Разрешить доступ к уведомлениям", v -> openNotificationSettings()));
         root.addView(button("Разрешить управление приложениями", v -> openAccessibilitySettings()));
         root.addView(button("Обновить статус", v -> refreshStatus()));
 
         TextView safety = new TextView(this);
-        safety.setText("AIOS не получает доступ к банковским приложениям, биометрии, SMS или звонкам без отдельного подтверждения.");
+        safety.setText("AIOS не записывает камеру или микрофон в фоне. Любая будущая запись требует отдельного явного действия.");
         safety.setTextSize(13);
         safety.setPadding(0, 24, 0, 0);
         root.addView(safety);
@@ -92,6 +92,7 @@ public class MainActivity extends Activity {
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION,
                     Manifest.permission.CAMERA,
+                    Manifest.permission.RECORD_AUDIO,
                     Manifest.permission.READ_MEDIA_IMAGES,
             }, 100);
         } else {
@@ -99,6 +100,7 @@ public class MainActivity extends Activity {
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION,
                     Manifest.permission.CAMERA,
+                    Manifest.permission.RECORD_AUDIO,
             }, 100);
         }
     }
@@ -122,10 +124,12 @@ public class MainActivity extends Activity {
         boolean notifications = NotificationRelayService.isEnabled(this);
         boolean accessibility = AIOSAccessibilityService.isEnabled(this);
         String location = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ? "разрешена" : "не выдана";
+        String microphone = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED ? "разрешён" : "не разрешён";
         status.setText("Токен AIOS: " + (token ? "настроен" : "ожидает настройки") + "\n"
                 + "Уведомления: " + (notifications ? "разрешены" : "не разрешены") + "\n"
                 + "Управление приложениями: " + (accessibility ? "разрешено" : "не разрешено") + "\n"
                 + "Геолокация: " + location + "\n"
+                + "Микрофон: " + microphone + " (запись выключена)\n"
                 + "Gateway: локальный порт 8765 (после запуска)");
     }
 }
