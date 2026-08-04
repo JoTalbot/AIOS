@@ -1,0 +1,13 @@
+# OTP/коды подтверждения: НЕ пересылать никуда — только считаем в журнале.
+# Демонстрирует privacy-first правило: событие не содержит ни текста, ни
+# замаскированных данных уведомления — лишь сам факт и приложение.
+id: otp_guard_event
+title: "🔐 Входящий код (только учёт)"
+match:
+  package: [ua.privatbank.ap24, ua.com.abank, com.whatsapp, com.iMe.android]
+  text_regex: "(код|коды|сode|парол)"
+action:
+  type: event
+  name: otp_arrived
+autonomy: alert_only
+cooldown_seconds: 30

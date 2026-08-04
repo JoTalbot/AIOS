@@ -340,3 +340,28 @@ def planner_handlers(planner: Any, vision: Any) -> list[Handler]:
                 confirm_action="phone_vision_tap",
                 description="Тап по элементу, найденному VLM по описанию hint (confirm=true)"),
     ]
+
+
+# ------------------------------------------------- reaction engine (этап 4)
+
+def reaction_handlers(reactor: Any) -> list[Handler]:
+    """Фабрика обработчиков reaction engine: ручной цикл и список правил."""
+
+    def _tick(payload: dict, ctx: JobContext) -> dict:
+        result = reactor.tick()
+        if result.get("status") == "ok":
+            return result
+        if result.get("status") in ("offline", "unconfigured", "unregistered"):
+            return {"status": "offline", "error": result.get("error", "")}
+        return {"status": "error", "error": str(result.get("error") or "")[:200]}
+
+    def _rules(payload: dict, ctx: JobContext) -> dict:
+        reactor.reload()
+        return {"status": "ok", "rules": reactor.list_rules(), "state": reactor.state_summary()}
+
+    return [
+        Handler("react.tick", _tick, timeout=90, needs_device=False,
+                description="Один цикл оценки уведомлений по правилам phone_reactions/"),
+        Handler("react.rules", _rules, timeout=15, needs_device=False,
+                description="Список правил реакций и состояние дедупликации"),
+    ]

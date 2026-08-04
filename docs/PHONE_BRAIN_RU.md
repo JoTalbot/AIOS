@@ -40,6 +40,36 @@ run_phone_brain.py  — CLI
 | `skill.list` | — | Список phone-skills и ошибки загрузки |
 | `plan.run` | device + companion + confirm | Цель на русском → LLM-план из skills → выполнение |
 | `vision.tap` | device + companion + confirm | Тап по элементу, найденному VLM по описанию `hint` |
+| `react.tick` | — | Один цикл оценки уведомлений по правилам |
+| `react.rules` | — | Список правил реакций и состояние дедупликации |
+
+## Reaction engine (этап 4)
+
+Цикл демона каждые 30с забирает уведомления Companion и применяет правила из
+`phone_reactions/*.yaml`:
+
+```yaml
+id: bank_income_alert
+title: "💰 Поступление на карту"
+match:
+  package: [ua.privatbank.ap24, ua.com.abank]
+  text_regex: "(поповн|зарах)"      # regex идёт по МАСКИРОВАННОМУ тексту
+action:
+  type: telegram                     # telegram | enqueue | event
+  template: "💰 <b>{label}</b>: {text}"
+autonomy: alert_only                 # alert_only | draft | auto
+cooldown_seconds: 120
+```
+
+**Действия:** `telegram` — алерт владельцу (ключи из `.env`, HTML-экранирование);
+`enqueue` — задача в очередь с шаблонными payload; `event` — запись в журнал.
+**Автономия:** `alert_only` — только алерты; `draft` — задача приходит БЕЗ confirm
+и останавливается в `need_confirm` (черновик на одобрение); `auto` — с confirm.
+**Дедуп** по hash уведомления + per-rule cooldown; состояние —
+`reactions_state.json`. OTP и номера карт в алертах/журнале только в виде `••••`
+(тест `test_event_action_has_no_text` это гарантирует).
+
+API: `GET /reactions` — правила и состояние.
 
 ## LLM + VLM (этап 3)
 

@@ -1,0 +1,13 @@
+# Поступления на карты Privat24 / A-Bank → Telegram-алерт владельцу.
+# Текст уже замаскирован (суммы из 4+ цифр видны как ••••) — это нормально:
+# приватность важнее точной суммы в алерте, детали в банковском приложении.
+id: bank_income_alert
+title: "💰 Поступление на карту"
+match:
+  package: [ua.privatbank.ap24, ua.com.abank]
+  text_regex: "(поповн|зарах|зачисл|отриман|поступл|\\+\\s?\\d)"
+action:
+  type: telegram
+  template: "💰 <b>{label}</b>: {text}"
+autonomy: alert_only
+cooldown_seconds: 120

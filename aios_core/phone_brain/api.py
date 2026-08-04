@@ -95,6 +95,8 @@ class BrainAPI:
                     if segments == ["events"]:
                         limit = int(self._query().get("limit") or 50)
                         return self._send(200, {"status": "ok", "events": daemon.events.recent(limit)})
+                    if segments == ["reactions"]:
+                        return self._send(200, daemon.reactions_info())
                     if segments == ["jobs"]:
                         query = self._query()
                         jobs = daemon.store.list(status=query.get("status") or None,
