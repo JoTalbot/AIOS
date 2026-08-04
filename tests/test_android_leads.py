@@ -22,14 +22,20 @@ def test_sync_keeps_notification_content_out_of_lead_queue(tmp_path):
             "id": "ime-1", "package": "com.iMe.android", "app": "iMe",
             "title": "Имя", "text": "личное", "collected_at": "2026-08-04T10:02:00+00:00",
         },
+        {
+            "id": "wa-call", "package": "com.whatsapp", "app": "WhatsApp",
+            "title": "Голосовой вызов завершился", "text": "service", "collected_at": "2026-08-04T10:03:00+00:00",
+        },
     ], ensure_ascii=False), encoding="utf-8")
 
     queue = AndroidLeadQueue(tmp_path)
     first = queue.sync()
     second = queue.sync()
     assert first["added"] == 2
+    assert first["ignored"] == 1
     assert second["added"] == 0
     assert queue.summary()["pending"] == 2
+    assert queue.summary()["ignored"] == 1
     raw = (data / "lead_candidates.json").read_text(encoding="utf-8")
     assert "секретный текст" not in raw
     assert "123456" not in raw
