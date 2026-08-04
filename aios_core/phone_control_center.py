@@ -46,6 +46,7 @@ class PhoneControlCenter:
     def snapshot(self) -> dict:
         gateway = self.gateway_factory(self.root)
         device = gateway.status()
+        capture = gateway.capture_status() if device.get("connected") else {}
         location = gateway.location_status() if device.get("connected") else {}
         profile_result = gateway.app_profiles() if device.get("connected") else {"profiles": []}
         profiles = profile_result.get("profiles") or []
@@ -85,6 +86,9 @@ class PhoneControlCenter:
                 "android": str(device.get("android") or ""),
                 "location_permission": bool(location.get("permission")),
                 "location_ready": bool(location.get("ready")),
+                "camera_permission": bool(capture.get("camera_permission")),
+                "microphone_permission": bool(capture.get("microphone_permission")),
+                "background_capture": bool(capture.get("background_capture")),
             },
             "apps": app_rows,
             "leads": {
@@ -117,6 +121,7 @@ def format_telegram(snapshot: dict) -> str:
         f"Состояние: <b>{state}</b>",
         f"ADB: {'✅ подключён' if device.get('connected') else '⚠️ офлайн'} · Companion: {'✅ активен' if device.get('companion') else '⚠️ недоступен'}",
         f"Геолокация: {'✅ готова' if device.get('location_ready') else ('🟡 разрешена, но системно недоступна' if device.get('location_permission') else '⚠️ не разрешена')}",
+        f"Камера: {'✅ разрешена' if device.get('camera_permission') else '⚪ не разрешена'} · микрофон: {'✅ разрешён' if device.get('microphone_permission') else '⚪ не разрешён'} · фоновой захват: {'⚠️' if device.get('background_capture') else 'выключен'}",
         f"Приложения: {available}/{len(apps)} доступны · интерфейсы откалиброваны: {calibrated}",
         f"Лиды: {leads.get('pending', 0)} · CRM follow-up: {leads.get('crm_open', 0)} · внимание: {leads.get('crm_attention', 0)} · просрочены: {leads.get('crm_overdue', 0)}",
         f"Таймеры: {timers_ok}/{len(timers)} активны · аудит: {snapshot.get('audit', {}).get('count', 0)} событий",

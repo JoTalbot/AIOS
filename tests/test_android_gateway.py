@@ -120,6 +120,20 @@ def test_open_app_confirms_foreground_after_adb_timeout(tmp_path, monkeypatch):
     assert result["status"] == "ok"
 
 
+def test_capture_status_never_starts_camera_or_microphone(tmp_path, monkeypatch):
+    from aios_core.android_gateway import AndroidGateway
+
+    gateway = AndroidGateway(tmp_path)
+    monkeypatch.setattr(gateway, "_companion_request", lambda path, timeout=12: {
+        "status": "ok", "camera_permission": True, "microphone_permission": False,
+        "camera_capture_enabled": False, "microphone_capture_enabled": False, "background_capture": False,
+    })
+    result = gateway.capture_status()
+    assert result["camera_capture_enabled"] is False
+    assert result["microphone_capture_enabled"] is False
+    assert result["background_capture"] is False
+
+
 def test_location_status_never_requires_confirmation_or_coordinates(tmp_path, monkeypatch):
     from aios_core.android_gateway import AndroidGateway
 

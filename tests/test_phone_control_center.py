@@ -14,6 +14,9 @@ class Gateway:
             "companion": {"connected": True},
         }
 
+    def capture_status(self):
+        return {"status": "ok", "camera_permission": True, "microphone_permission": False, "background_capture": False}
+
     def location_status(self):
         return {"status": "ok", "permission": True, "ready": False}
 

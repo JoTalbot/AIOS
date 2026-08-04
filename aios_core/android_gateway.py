@@ -457,6 +457,10 @@ class AndroidGateway:
                 return result
         return {"status": "error", "error": "UI-элемент не найден"}
 
+    def capture_status(self) -> dict:
+        """Return camera/microphone readiness only; never starts capture."""
+        return self._companion_request("capture-status")
+
     def location_status(self) -> dict:
         """Return readiness flags only; this never requests coordinates."""
         return self._companion_request("location-status")
