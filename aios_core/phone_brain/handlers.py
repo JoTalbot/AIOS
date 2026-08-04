@@ -204,6 +204,19 @@ def _h_notify_collect(payload: dict, ctx: JobContext) -> dict:
             "error": (ran["stderr_tail"] or ran["stdout_tail"] or f"exit {ran['exit_code']}")[:200]}
 
 
+def _h_device_location(payload: dict, ctx: JobContext) -> dict:
+    """Текущая геолокация через Companion (бот подтверждает на своей стороне)."""
+    return ctx.gateway.location(confirm=True)
+
+
+def _h_device_pull(payload: dict, ctx: JobContext) -> dict:
+    """Забрать файл из разрешённых папок общего хранилища телефона."""
+    path = str(payload.get("path") or "").strip()
+    if not path:
+        return {"status": "error", "error": "Нужен path файла", "retry": False}
+    return ctx.gateway.pull_file(path, confirm=True)
+
+
 # Read-only команды legacy CLI, доступные через очередь (мост для миграции бота).
 _READ_COMMANDS = {
     "status", "apps", "profiles", "companion", "notifications", "accessibility",
@@ -255,6 +268,12 @@ BUILTIN_HANDLERS: list[Handler] = [
             description="Открыть приложение по профилю/pакету (нужен confirm=true)"),
     Handler("notify.collect", _h_notify_collect, timeout=120, needs_companion=True,
             description="Сбор уведомлений приложений в инбокс AIOS"),
+    Handler("device.location", _h_device_location, timeout=45, needs_companion=True,
+            confirm_action="android_location",
+            description="Текущая геолокация телефона (нужен confirm=true)"),
+    Handler("device.pull", _h_device_pull, timeout=150,
+            confirm_action="android_pull_file",
+            description="Забрать файл из разрешённых папок телефона (confirm=true)"),
 ]
 
 

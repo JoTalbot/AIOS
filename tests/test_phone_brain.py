@@ -11,8 +11,15 @@ import pytest
 from aios_core.phone_brain.common import iso, utc_now
 from aios_core.phone_brain.device import DeviceSupervisor
 from aios_core.phone_brain.events import EventLog
-from aios_core.phone_brain.handlers import Executor, Handler, JobContext
+from aios_core.phone_brain.handlers import BUILTIN_HANDLERS, Executor, Handler, JobContext
 from aios_core.phone_brain.queue_store import JobStore
+
+
+def test_builtin_location_and_pull_kinds() -> None:
+    kinds = {h.kind: h for h in BUILTIN_HANDLERS}
+    assert kinds["device.location"].confirm_action == "android_location"
+    assert kinds["device.pull"].confirm_action == "android_pull_file"
+    assert kinds["device.pull"].timeout >= 150
 
 
 @pytest.fixture()
