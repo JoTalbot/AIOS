@@ -84,16 +84,25 @@ def collect(service_probe=_service_active, android_probe=None) -> dict:
         issues.append(f"backup:устарел:{backup_age}ч")
     env_mode = _mode(ROOT / ".env")
     chrome_mode = _mode(ROOT / "data" / "chrome_twin" / "default")
-    lead_mode = _mode(ROOT / "data" / "android_gateway" / "lead_candidates.json")
-    crm_followup_mode = _mode(ROOT / "data" / "android_gateway" / "crm_followup_tasks.json")
     if env_mode is not None and env_mode > 0o600:
         issues.append(f"permissions:.env:{env_mode:o}")
     if chrome_mode is not None and chrome_mode > 0o700:
         issues.append(f"permissions:chrome:{chrome_mode:o}")
-    if lead_mode is not None and lead_mode > 0o600:
-        issues.append(f"permissions:phone_leads:{lead_mode:o}")
-    if crm_followup_mode is not None and crm_followup_mode > 0o600:
-        issues.append(f"permissions:phone_crm_followups:{crm_followup_mode:o}")
+    # All phone workflow state is metadata-only but still private. Keep it
+    # owner-readable only and surface a health issue if permissions drift.
+    phone_private_files = {
+        "phone_leads": ROOT / "data" / "android_gateway" / "lead_candidates.json",
+        "phone_crm_followups": ROOT / "data" / "android_gateway" / "crm_followup_tasks.json",
+        "phone_audit": ROOT / "data" / "android_gateway" / "action_audit.json",
+        "phone_calibrations": ROOT / "data" / "android_gateway" / "app_ui_calibrations.json",
+        "phone_recovery": ROOT / "data" / "android_gateway" / "recovery.json",
+        "phone_lead_digest": ROOT / "data" / "android_gateway" / "lead_digest_state.json",
+        "phone_daily_digest": ROOT / "data" / "android_gateway" / "phone_control_digest_state.json",
+    }
+    for label, path in phone_private_files.items():
+        mode = _mode(path)
+        if mode is not None and mode > 0o600:
+            issues.append(f"permissions:{label}:{mode:o}")
     android = (android_probe or _android_probe)()
     if android.get("registered"):
         if not android.get("adb_connected"):

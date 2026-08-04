@@ -32,6 +32,17 @@ def test_collect_reports_disconnected_registered_android(monkeypatch, tmp_path):
     assert "android:companion_offline" not in report["issues"]
 
 
+def test_collect_reports_overpermissive_phone_audit(monkeypatch, tmp_path):
+    import run_ops_health as health
+
+    monkeypatch.setattr(health, "ROOT", tmp_path)
+    monkeypatch.setattr(health, "SERVICES", ())
+    monkeypatch.setattr(health, "_backup_age_hours", lambda: 1.0)
+    monkeypatch.setattr(health, "_mode", lambda path: 0o644 if str(path).endswith("action_audit.json") else 0o600)
+    report = health.collect(android_probe=lambda: {"registered": False})
+    assert "permissions:phone_audit:644" in report["issues"]
+
+
 def test_alert_state_deduplicates_unchanged_issues(monkeypatch, tmp_path):
     import run_ops_health as health
 
