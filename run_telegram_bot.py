@@ -2157,6 +2157,11 @@ def _phone_lead_queue():
     return AndroidLeadQueue(PROJECT_ROOT)
 
 
+def _followup_templates():
+    from aios_core.followup_templates import FollowupTemplateStore
+    return FollowupTemplateStore(PROJECT_ROOT)
+
+
 def _handle_phone_lead_intent(api, chat_id: int, text: str) -> bool:
     """Privacy-preserving queue for WhatsApp/iMe notification contacts."""
     raw = str(text or "").strip()
@@ -2166,11 +2171,51 @@ def _handle_phone_lead_intent(api, chat_id: int, text: str) -> bool:
     ))
     has_lead_scope = any(stem in t for stem in ("лид", "обращен", "потенциальн"))
     has_task_scope = any(phrase in t for phrase in ("crm задач", "crm-задач", "crm follow", "follow-up", "задачи телефона"))
+    has_template_scope = any(phrase in t for phrase in ("шаблон follow", "шаблоны follow", "шаблон ответа", "шаблоны ответов"))
     # Follow-up commands may omit «телефон» only after this chat received a
-    # metadata-only list. No message content is used for that resolution.
-    if not ((has_lead_scope or has_task_scope) and (has_phone_scope or chat_id in _last_phone_leads or chat_id in _last_phone_crm_tasks)):
+    # metadata-only list. Template management is private local configuration.
+    if not (has_template_scope or ((has_lead_scope or has_task_scope) and (has_phone_scope or chat_id in _last_phone_leads or chat_id in _last_phone_crm_tasks))):
         return False
     queue = _phone_lead_queue()
+    templates = _followup_templates()
+    template_add = re.search(r"(?:добавь|сохрани)\s+шаблон(?:\s+follow[- ]?up|\s+ответа)?\s*:\s*([^|]{1,80})\|\s*(.+)$", raw, re.IGNORECASE)
+    if template_add:
+        result = templates.upsert(template_add.group(1).strip(), template_add.group(2).strip())
+        if result.get("status") in ("created", "updated"):
+            api.send_message(chat_id, f"✅ Шаблон follow-up «{_esc_tg(result.get('name'))}» сохранён локально.")
+        else:
+            api.send_message(chat_id, f"⚠️ Шаблон не сохранён: {_esc_tg(result.get('error') or '?')}")
+        return True
+    if has_template_scope and not has_task_scope:
+        rows = templates.list()
+        if not rows:
+            api.send_message(chat_id, "📝 <b>Шаблоны follow-up</b>\nШаблонов пока нет.")
+        else:
+            api.send_message(chat_id, "📝 <b>Шаблоны follow-up</b>\n" + "\n".join(f"• {_esc_tg(row.get('name'))}" for row in rows[:30]))
+        return True
+    template_draft = re.search(
+        r"(?:подготовь|сделай)\s+шаблон\s+(.+?)\s+(?:по|для)\s+(?:crm\s*)?задач\w*\s*#?(\d+)\s+"
+        r"(?:в\s+)?(whatsapp|ватсап|ватс\s*апп|вотсап|ime|i\.me|айми|име)\s*:\s*(.+)$",
+        raw, re.IGNORECASE,
+    )
+    if template_draft:
+        template = templates.get(template_draft.group(1).strip())
+        tasks = _last_phone_crm_tasks.get(chat_id) or []
+        index = int(template_draft.group(2))
+        if not template:
+            api.send_message(chat_id, "ℹ️ Шаблон не найден. Откройте «шаблоны follow-up» или добавьте его.")
+            return True
+        if not 1 <= index <= len(tasks):
+            api.send_message(chat_id, "ℹ️ Сначала откройте «CRM задачи телефона», затем укажите номер задачи.")
+            return True
+        app_token = template_draft.group(3).casefold()
+        app = "ime" if app_token in ("ime", "i.me", "айми", "име") else "whatsapp"
+        contact = template_draft.group(4).strip()
+        _pending_confirm[chat_id] = {"kind": "phone_crm_task_draft", "data": {
+            "task_id": tasks[index - 1].get("id"), "app": app, "contact": contact, "text": template.get("text") or "",
+        }}
+        api.send_message(chat_id, "✍️ Открыть указанный чат и вставить выбранный шаблон follow-up? Отправка потребует отдельного подтверждения. «да» / «нет»")
+        return True
     draft_from_task = re.search(
         r"(?:подготовь|сделай)\s+(?:черновик|ответ)\s+(?:по|для)\s+(?:crm\s*)?задач\w*\s*#?(\d+)\s+"
         r"(?:в\s+)?(whatsapp|ватсап|ватс\s*апп|вотсап|ime|i\.me|айми|име)\s*:\s*([^|]{1,100})\|\s*(.+)$",
