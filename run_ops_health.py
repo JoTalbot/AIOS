@@ -59,26 +59,15 @@ def _backup_age_hours() -> float | None:
 
 
 def _android_probe() -> dict:
-    """Probe Android transport/Companion without reading screen or app data."""
+    """Probe/recover Android transport without reading screen or app data."""
     try:
-        from aios_core.android_gateway import AndroidGateway
-
-        gateway = AndroidGateway(ROOT)
-        registered = bool(gateway.serial)
-        reconnect = gateway.connect() if registered else {"status": "unregistered"}
-        state = gateway._run(["get-state"], timeout=12).stdout.strip() if registered else ""
-        companion = gateway._companion_request("health", timeout=8)
-        return {
-            "registered": registered,
-            "adb_connected": state == "device",
-            "companion_connected": companion.get("status") == "ok",
-            "reconnect_status": reconnect.get("status"),
-        }
+        from aios_core.android_recovery import AndroidRecovery
+        return AndroidRecovery(ROOT).check()
     except Exception:
         # Do not include transport exception text in a Telegram health alert:
         # it can contain network details and is not actionable for the owner.
         return {"registered": True, "adb_connected": False, "companion_connected": False,
-                "reconnect_status": "error"}
+                "reconnect_status": "error", "action": "phone_vpn_or_companion_needed"}
 
 
 def collect(service_probe=_service_active, android_probe=None) -> dict:

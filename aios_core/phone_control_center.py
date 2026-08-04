@@ -51,6 +51,7 @@ class PhoneControlCenter:
         profile_result = gateway.app_profiles() if device.get("connected") else {"profiles": []}
         profiles = profile_result.get("profiles") or []
         calibration = _read_json(self.root / "data" / "android_gateway" / "app_ui_calibrations.json", {})
+        recovery = _read_json(self.root / "data" / "android_gateway" / "recovery.json", {})
         app_rows = []
         for profile in profiles:
             profile_id = str(profile.get("id") or "")
@@ -103,6 +104,10 @@ class PhoneControlCenter:
                 "last_status": str((audit.get("last") or {}).get("status") or ""),
             },
             "timers": timers,
+            "recovery": {
+                "status": str(recovery.get("status") or "unknown"),
+                "action": str(recovery.get("action") or "unknown"),
+            },
         }
 
 
@@ -125,6 +130,7 @@ def format_telegram(snapshot: dict) -> str:
         f"Приложения: {available}/{len(apps)} доступны · интерфейсы откалиброваны: {calibrated}",
         f"Лиды: {leads.get('pending', 0)} · CRM follow-up: {leads.get('crm_open', 0)} · внимание: {leads.get('crm_attention', 0)} · просрочены: {leads.get('crm_overdue', 0)}",
         f"Таймеры: {timers_ok}/{len(timers)} активны · аудит: {snapshot.get('audit', {}).get('count', 0)} событий",
+        f"Восстановление: {snapshot.get('recovery', {}).get('action', 'unknown')}",
     ]
     if snapshot.get("issues"):
         lines.append("Проблемы: <code>" + ", ".join(str(value) for value in snapshot["issues"]) + "</code>")

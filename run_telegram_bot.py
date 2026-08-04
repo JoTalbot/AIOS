@@ -2027,6 +2027,26 @@ _last_phone_leads: dict[int, list[dict]] = {}
 _last_phone_crm_tasks: dict[int, list[dict]] = {}
 
 
+def _handle_phone_recovery_intent(api, chat_id: int, text: str) -> bool:
+    t = " ".join(str(text or "").casefold().split())
+    if not any(phrase in t for phrase in ("восстановление телефона", "диагностика телефона", "почини телефон", "проверка adb")):
+        return False
+    try:
+        from aios_core.android_recovery import AndroidRecovery
+        report = AndroidRecovery(PROJECT_ROOT).check()
+        action = str(report.get("action") or "unknown")
+        labels = {
+            "none": "✅ Подключение ADB и AIOS Companion работают штатно.",
+            "wireless_debug_endpoint_needed": "⚠️ Companion доступен, но требуется новый endpoint Беспроводной отладки.",
+            "companion_restart_needed": "⚠️ ADB подключён, но AIOS Companion недоступен. Откройте Companion или перезапустите его на телефоне.",
+            "phone_vpn_or_companion_needed": "⚠️ Телефон или WireGuard/Companion недоступны. Проверьте VPN и подключение телефона.",
+        }
+        api.send_message(chat_id, "🛠 <b>Восстановление телефона</b>\n" + labels.get(action, "⚠️ Нужна проверка подключения."))
+    except Exception:
+        api.send_message(chat_id, "⚠️ Диагностика телефона временно недоступна.")
+    return True
+
+
 def _handle_phone_weekly_report_intent(api, chat_id: int, text: str) -> bool:
     t = " ".join(str(text or "").casefold().split())
     if not any(phrase in t for phrase in ("недельный отчёт телефона", "недельный отчет телефона", "отчёт лидов за неделю", "отчет лидов за неделю", "недельная сводка телефона")):
@@ -3165,7 +3185,9 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
-    # Weekly report, phone center/audit and metadata-only leads/tasks precede broad CRM words.
+    # Recovery, weekly report, phone center/audit and metadata-only leads/tasks precede broad CRM words.
+    if _handle_phone_recovery_intent(api, chat_id, text):
+        return True
     if _handle_phone_weekly_report_intent(api, chat_id, text):
         return True
     if _handle_phone_control_center_intent(api, chat_id, text):
