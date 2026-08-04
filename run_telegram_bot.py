@@ -2089,6 +2089,31 @@ def _handle_phone_lead_intent(api, chat_id: int, text: str) -> bool:
     if not ((has_lead_scope or has_task_scope) and (has_phone_scope or chat_id in _last_phone_leads or chat_id in _last_phone_crm_tasks)):
         return False
     queue = _phone_lead_queue()
+    draft_from_task = re.search(
+        r"(?:подготовь|сделай)\s+(?:черновик|ответ)\s+(?:по|для)\s+(?:crm\s*)?задач\w*\s*#?(\d+)\s+"
+        r"(?:в\s+)?(whatsapp|ватсап|ватс\s*апп|вотсап|ime|i\.me|айми|име)\s*:\s*([^|]{1,100})\|\s*(.+)$",
+        raw, re.IGNORECASE,
+    )
+    if draft_from_task:
+        tasks = _last_phone_crm_tasks.get(chat_id) or []
+        index = int(draft_from_task.group(1))
+        if not 1 <= index <= len(tasks):
+            api.send_message(chat_id, "ℹ️ Сначала откройте «CRM задачи телефона», затем укажите номер задачи.")
+            return True
+        app_token = draft_from_task.group(2).casefold()
+        app = "ime" if app_token in ("ime", "i.me", "айми", "име") else "whatsapp"
+        contact = draft_from_task.group(3).strip()
+        body = draft_from_task.group(4).strip()
+        if not contact or not body:
+            api.send_message(chat_id, "ℹ️ Формат: «подготовь черновик по CRM задаче 1 в WhatsApp: Имя | Текст»")
+            return True
+        _pending_confirm[chat_id] = {"kind": "phone_crm_task_draft", "data": {
+            "task_id": tasks[index - 1].get("id"), "app": app, "contact": contact, "text": body,
+        }}
+        api.send_message(chat_id,
+                         "✍️ Открыть указанный чат и вставить черновик из CRM follow-up задачи?\n"
+                         "Открытие чата может отметить его прочитанным; отправка потребует отдельного подтверждения. «да» / «нет»")
+        return True
     complete = re.search(r"(?:закрой|заверши|выполни)\s+(?:crm\s*)?(?:задач\w*|follow[- ]?up)\s*#?(\d+)", raw, re.IGNORECASE)
     if complete:
         tasks = _last_phone_crm_tasks.get(chat_id) or []
@@ -2465,6 +2490,25 @@ def _cancel_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
 def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
     """Perform one already-confirmed app step; return True when handled."""
     try:
+        if kind == "phone_crm_task_draft":
+            app = str(data.get("app") or "")
+            adapter = _phone_adapter(app)
+            if not adapter:
+                api.send_message(chat_id, "⚠️ Неизвестный мессенджер для CRM-задачи.")
+                return True
+            opened = adapter.open_chat(str(data.get("contact") or ""), confirm=True)
+            if opened.get("status") != "opened":
+                api.send_message(chat_id, f"⚠️ {_esc_tg(adapter.title)}: {_phone_error(opened)}")
+                return True
+            drafted = adapter.prepare_draft(str(data.get("text") or ""), confirm=True)
+            if drafted.get("status") != "draft_ready":
+                api.send_message(chat_id, f"⚠️ Черновик не подготовлен: {_phone_error(drafted)}")
+                return True
+            send_kind = "ime_send_draft" if app == "ime" else "whatsapp_send_draft"
+            _pending_confirm[chat_id] = {"kind": send_kind, "data": {"draft_id": drafted.get("draft_id")}}
+            api.send_message(chat_id,
+                             "✅ Черновик из CRM follow-up задачи вставлен и проверен. Отправить его сейчас? Это отдельное действие. «да» / «нет»")
+            return True
         if kind == "phone_crm_task_complete":
             result = _phone_lead_queue().complete_crm_task(str(data.get("task_id") or ""))
             if result.get("status") in ("completed", "already_completed"):

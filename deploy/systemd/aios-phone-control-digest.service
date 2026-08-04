@@ -1,0 +1,12 @@
+[Unit]
+Description=AIOS daily metadata-only phone control digest
+After=network-online.target aios-android-leads.timer
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_phone_control_digest.py
+StandardOutput=append:/root/AIOS/logs/phone_control_digest.log
+StandardError=append:/root/AIOS/logs/phone_control_digest.log

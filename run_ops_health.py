@@ -27,6 +27,7 @@ SERVICES = (
     "wg-quick@wg0.service",
     "aios-android-gateway.service",
     "aios-android-leads.timer",
+    "aios-phone-control-digest.timer",
     "aios-messenger-profile-backup.timer",
 )
 
