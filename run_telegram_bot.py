@@ -2114,9 +2114,19 @@ def _handle_phone_bank_monitor_intent(api, chat_id: int, text: str) -> bool:
 def _handle_phone_recovery_intent(api, chat_id: int, text: str) -> bool:
     t = " ".join(str(text or "").casefold().split())
     data_scope = any(phrase in t for phrase in ("здоровье данных телефона", "состояние данных телефона", "проверка данных телефона"))
-    if not (data_scope or any(phrase in t for phrase in ("восстановление телефона", "диагностика телефона", "почини телефон", "проверка adb"))):
+    sync_scope = any(phrase in t for phrase in ("статус синхронизации телефона", "синхронизации телефона", "проверка синхронизации телефона"))
+    if not (data_scope or sync_scope or any(phrase in t for phrase in ("восстановление телефона", "диагностика телефона", "почини телефон", "проверка adb"))):
         return False
     try:
+        if sync_scope:
+            from aios_core.phone_sync_status import PhoneSyncStatus
+            report = PhoneSyncStatus(PROJECT_ROOT).snapshot()
+            lines = ["🔄 <b>Синхронизации телефона</b>", f"Свежие: {report.get('fresh', 0)}/{report.get('total', 0)}"]
+            for item in (report.get('sources') or [])[:10]:
+                age = item.get('age_minutes')
+                lines.append(f"• {item.get('id')}: {'✅' if item.get('exists') else '⚪'} · {str(age) + ' мин' if age is not None else 'нет времени'}")
+            api.send_message(chat_id, "\n".join(lines))
+            return True
         if data_scope:
             from aios_core.phone_state_health import PhoneStateHealth
             report = PhoneStateHealth(PROJECT_ROOT).snapshot()
