@@ -12,6 +12,7 @@ import sys
 import time
 from pathlib import Path
 
+from aios_core.android_audit import PhoneActionAudit
 from aios_core.android_gateway import AndroidGateway
 from aios_core.android_phone_workflows import (
     EasyWayPhoneAdapter,
@@ -85,6 +86,8 @@ def main() -> int:
     elif command == "phone-status" and len(sys.argv) >= 3:
         adapter = adapter_for(sys.argv[2], gateway)
         result = adapter.status() if adapter else {"status": "error", "error": "Неизвестное приложение"}
+    elif command == "audit":
+        result = {"status": "ok", "events": PhoneActionAudit(ROOT).recent(limit=30)}
     elif command == "calibrate" and len(sys.argv) >= 3:
         adapter = adapter_for(sys.argv[2], gateway)
         result = adapter.calibrate(confirm=confirmed) if adapter else {"status": "error", "error": "Неизвестное приложение"}
@@ -130,7 +133,7 @@ def main() -> int:
             "error": (
                 "register|connect|status|apps|profiles|companion|notifications|accessibility|"
                 "ui-snapshot|clipboard|paste|tap-ui|location|files|pull|screenshot|ui-dump|"
-                "open|tap|home|back|phone-status|calibrate|whatsapp-open-chat|whatsapp-read|"
+                "open|tap|home|back|phone-status|audit|calibrate|whatsapp-open-chat|whatsapp-read|"
                 "whatsapp-draft|whatsapp-send|ime-draft|ime-send|uklon-open-driver|"
                 "uklon-stage-route|uklon-enter|easyway-stage-route|easyway-enter|watch"
             ),

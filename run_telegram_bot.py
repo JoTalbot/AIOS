@@ -2027,6 +2027,37 @@ _last_phone_leads: dict[int, list[dict]] = {}
 _last_phone_crm_tasks: dict[int, list[dict]] = {}
 
 
+def _handle_phone_audit_intent(api, chat_id: int, text: str) -> bool:
+    """Render the metadata-only phone action log on explicit owner request."""
+    t = " ".join(str(text or "").casefold().split())
+    if not any(phrase in t for phrase in ("журнал телефона", "аудит телефона", "действия телефона", "логи телефона")):
+        return False
+    from aios_core.android_audit import PhoneActionAudit
+    events = PhoneActionAudit(PROJECT_ROOT).recent(limit=20)
+    if not events:
+        api.send_message(chat_id, "📋 <b>Журнал телефона</b>\nБезопасных действий пока не зарегистрировано.")
+        return True
+    labels = {
+        "app_open": "Открытие приложения", "app_ui_calibration": "Калибровка интерфейса",
+        "messenger_chat_open": "Открытие чата", "messenger_draft": "Черновик сообщения",
+        "messenger_send": "Отправка сообщения", "uklon_route": "Черновик Uklon",
+        "uklon_route_query": "Поиск Uklon", "easyway_route": "Черновик EasyWay",
+        "easyway_route_query": "Поиск EasyWay",
+    }
+    lines = ["📋 <b>БЕЗОПАСНЫЙ ЖУРНАЛ ТЕЛЕФОНА</b>", "━━━━━━━━━━━━━━━━"]
+    for index, event in enumerate(events[-15:][::-1], 1):
+        action = labels.get(str(event.get("action") or ""), str(event.get("action") or "действие"))
+        status = _esc_tg(str(event.get("status") or "—"))
+        package = _esc_tg(str(event.get("package") or ""))
+        at = _esc_tg(str(event.get("at") or "")[:19])
+        lines.append(f"{index:02d}. <b>{_esc_tg(action)}</b> · {status}" + (f" · <code>{package}</code>" if package else ""))
+        lines.append(f"    🕐 {at}")
+    lines.append("━━━━━━━━━━━━━━━━")
+    lines.append("<i>Журнал не содержит текста сообщений, имён, маршрутов, координат, фото, аудио или координат нажатий.</i>")
+    api.send_message(chat_id, "\n".join(lines)[:3900])
+    return True
+
+
 def _phone_lead_queue():
     from aios_core.android_leads import AndroidLeadQueue
     return AndroidLeadQueue(PROJECT_ROOT)
@@ -3036,7 +3067,9 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
-    # Metadata-only phone leads/tasks have priority over broad CRM words.
+    # Phone audit and metadata-only leads/tasks precede broad CRM words.
+    if _handle_phone_audit_intent(api, chat_id, text):
+        return True
     if _handle_phone_lead_intent(api, chat_id, text):
         return True
 
