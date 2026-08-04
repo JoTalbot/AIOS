@@ -2132,6 +2132,85 @@ _last_phone_crm_tasks: dict[int, list[dict]] = {}
 _last_bank_tasks: dict[int, list[dict]] = {}
 
 
+def _phone_brain_api_request(method: str, path: str, body: dict | None = None,
+                             req_timeout: float = 4.0) -> dict:
+    """Прямой вызов локального API Phone Brain (мониторинг и одобрения)."""
+    import urllib.request as _ureq2
+    data = json.dumps(body).encode("utf-8") if body is not None else None
+    request = _ureq2.Request(_PHONE_BRAIN_API + path, data=data, method=method,
+                             headers={"Content-Type": "application/json"})
+    try:
+        with _ureq2.urlopen(request, timeout=req_timeout) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)[:160]}
+
+
+def _handle_phone_brain_intent(api, chat_id: int, text: str) -> bool:
+    """«мозг» — статус Phone Brain; «черновики» — очередь на одобрение;
+    «подтверди N» — одобрить черновик (цикл автономных ответов клиентам)."""
+    import re as _re2
+    t = " ".join(str(text or "").casefold().split())
+    approve = _re2.match(r"^(?:подтверди|подтвердить|підтверди|confirm)\s+([0-9]{1,9})\b", t)
+    if approve:
+        job_id = int(approve.group(1))
+        result = _phone_brain_api_request("POST", f"/jobs/{job_id}/confirm", {})
+        if result.get("status") == "ok":
+            api.send_message(chat_id, f"✅ Черновик #{job_id} подтверждён — отправлен в работу.")
+        else:
+            api.send_message(chat_id, f"⚠️ #{job_id}: {_esc_tg(result.get('error') or 'ошибка демона')}")
+        return True
+    if any(term in t for term in ("черновики телефона", "список черновиков", "черновики",
+                                  "на одобрение")):
+        data = _phone_brain_api_request("GET", "/jobs?status=need_confirm&limit=10")
+        if data.get("status") == "error":
+            api.send_message(chat_id, "⚠️ Phone Brain недоступен (демон не отвечает).")
+            return True
+        jobs = data.get("jobs") or []
+        if not jobs:
+            api.send_message(chat_id, "📭 Черновиков на одобрение нет.")
+            return True
+        lines = [f"✉️ <b>Черновиков на одобрение: {len(jobs)}</b>"]
+        for job in jobs[-10:]:
+            action = str((job.get("result") or {}).get("action") or job.get("kind") or "")
+            lines.append(f"• #{job.get('id')} <code>{_esc_tg(str(job.get('kind') or ''))}</code>"
+                         f" — {_esc_tg(action[:60])}")
+        lines.append("Подтвердить: «подтверди N» (например, «подтверди %s»)."
+                     % (jobs[0].get("id") or "N"))
+        api.send_message(chat_id, "\n".join(lines))
+        return True
+    if any(term in t for term in ("мозг", "статус мозга", "phone brain", "мозг телефона",
+                                  "статус демона телефона")):
+        health = _phone_brain_api_request("GET", "/health")
+        if health.get("status") == "error":
+            api.send_message(chat_id, "⚠️ Phone Brain недоступен (демон не отвечает).")
+            return True
+        daemon = health.get("daemon") or {}
+        device = (health.get("device") or {}).get("device") or {}
+        brain = (health.get("device") or {}).get("brain") or {}
+        queue = health.get("queue") or {}
+        uptime = int(daemon.get("uptime_seconds") or 0)
+        connected = "🟢 онлайн" if device.get("connected") else "🔴 офлайн"
+        backoff = brain.get("backoff_seconds")
+        extra = (f", reconnect через {backoff}с"
+                 if not device.get("connected") and backoff else "")
+        qparts = " · ".join(f"{k}:{v}" for k, v in sorted(queue.items()) if v) or "пусто"
+        reactions = _phone_brain_api_request("GET", "/reactions")
+        rules_n = len([r for r in (reactions.get("rules") or []) if r.get("id")])
+        api.send_message(
+            chat_id,
+            "🧠 <b>Phone Brain</b> v%s\n"
+            "Аптайм: %dм %dс · занятая задача: %s\n"
+            "Очередь: %s\n"
+            "Устройство: %s%s · правил реакций: %d\n"
+            "Команды: «черновики» · «подтверди N»"
+            % (_esc_tg(str(health.get("version") or "?")), uptime // 60, uptime % 60,
+               daemon.get("busy_job") or "—", _esc_tg(qparts), connected, _esc_tg(extra),
+               rules_n))
+        return True
+    return False
+
+
 def _handle_phone_workflow_readiness_intent(api, chat_id: int, text: str) -> bool:
     t = " ".join(str(text or "").casefold().split())
     if not any(phrase in t for phrase in ("проверка сценариев телефона", "готовность сценариев", "тест сценариев телефона")):
@@ -3507,6 +3586,8 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             return True
 
     # Workflow readiness, jobs, inventory, metrics, bank monitor, recovery, reports and leads precede broad CRM words.
+    if _handle_phone_brain_intent(api, chat_id, text):
+        return True
     if _handle_phone_workflow_readiness_intent(api, chat_id, text):
         return True
     if _handle_phone_jobs_intent(api, chat_id, text):
