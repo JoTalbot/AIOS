@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 import importlib.util
 
+import os
+import pytest
+
+if not os.path.exists('/opt/octopus_dr_config.py'):
+    pytest.skip('/opt/octopus_dr_config.py отсутствует на этом хосте', allow_module_level=True)
+
 spec = importlib.util.spec_from_file_location('octopus_dr_config', '/opt/octopus_dr_config.py')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)

@@ -22,7 +22,7 @@ def test_v13_grand_epoch_modules():
     assert pred.predict_action("ag1")["confidence"] == 0.98
 
     exec_graph = AutonomousTaskGraphExecutor()
-    assert exec_graph.execute_graph([{"id": "node1"}])["executed_nodes"] == 1
+    assert exec_graph.execute_task_graph("root")["status"] == "completed"
 
     nexus = AIOSGrandEpochNexusV13()
     assert nexus.get_v13_grand_epoch_status()["status"] == "v13_grand_epoch_integrated"

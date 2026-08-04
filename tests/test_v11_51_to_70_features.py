@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from starlette.testclient import TestClient
 
 from aios_core.active_inference import ActiveInferenceEngine
@@ -29,7 +31,8 @@ from aios_core.topological_compression import TopologicalDataCompressor
 from sdk.aios_sdk import AIOSClientSync
 
 
-def test_singularity_20_modules():
+@pytest.mark.asyncio
+async def test_singularity_20_modules():
     """Verify functionality across all 20 singularity modules."""
     # 1. HyperGraph RAG
     rag = AIOSHyperGraphRAG()
@@ -81,7 +84,7 @@ def test_singularity_20_modules():
 
     # 13. Ethical Boundary
     boundary = AgentEthicalBoundaryGuard()
-    assert boundary.check_boundary("safe action")["ethically_safe"] is True
+    assert (await boundary.check_boundary("safe action"))["ethically_safe"] is True
 
     # 14. Self Tuning Pacer
     pacer = ContinuousSelfTuningPacer()

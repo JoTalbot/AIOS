@@ -1,3 +1,6 @@
+import hmac
+import hashlib
+
 import pytest
 
 from aios_core.cv_rpa_bridge import ComputerVisionRPA
@@ -22,12 +25,14 @@ async def test_inter_swarm_coordination():
     coord = InterSwarmCoordinator("europe_cluster")
     coord.register_swarm("us_cluster", "wss://us.aios.cloud", ProtocolType.WEBSOCKET)
 
-    # Handshake
-    auth_success = await coord.handshake("us_cluster", "valid_token")
+    # Handshake (v10.20+: nonce-based HMAC auth)
+    nonce = "nonce-123"
+    token = hmac.new(coord.secret_key, nonce.encode(), hashlib.sha256).hexdigest()
+    auth_success = await coord.handshake("us_cluster", token, nonce)
     assert auth_success is True
 
     # Delegation
-    res = await coord.delegate_task("us_cluster", {"id": "task_99", "type": "heavy_ml"})
+    res = await coord.delegate_task("us_cluster", {"id": "task_99", "type": "heavy_ml"}, token, nonce)
     assert res["status"] == "accepted"
     assert "remote" in res["remote_task_id"]
 

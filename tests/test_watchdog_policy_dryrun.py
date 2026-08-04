@@ -1,6 +1,15 @@
 import json
+import os
 import subprocess
 import sys
+
+import pytest
+
+DRY_RUN_SCRIPT = "scripts/octopus-watchdog-policy-dryrun.py"
+pytestmark = pytest.mark.skipif(
+    not os.path.exists(DRY_RUN_SCRIPT),
+    reason="octopus-watchdog-policy-dryrun.py отсутствует на этом хосте",
+)
 
 
 def test_watchdog_policy_dryrun_json_reports_no_restarts():
