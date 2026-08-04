@@ -13,6 +13,16 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _age_days(value: object) -> float | None:
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return max(0.0, (datetime.now(timezone.utc) - parsed.astimezone(timezone.utc)).total_seconds() / 86400)
+    except Exception:
+        return None
+
+
 def _read(path: Path) -> list[dict]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -44,9 +54,22 @@ class FollowupTemplateStore:
 
     def list(self) -> list[dict]:
         return [
-            {"name": str(item.get("name") or ""), "created_at": str(item.get("created_at") or ""), "updated_at": str(item.get("updated_at") or "")}
+            {
+                "name": str(item.get("name") or ""), "created_at": str(item.get("created_at") or ""),
+                "updated_at": str(item.get("updated_at") or ""), "last_used_at": str(item.get("last_used_at") or ""),
+                "used_count": int(item.get("used_count") or 0),
+            }
             for item in self._items()
         ]
+
+    def summary(self) -> dict:
+        items = self._items()
+        ages = [_age_days(item.get("updated_at") or item.get("created_at")) for item in items]
+        return {
+            "status": "ok", "count": len(items),
+            "stale": sum(age is not None and age >= 30 for age in ages),
+            "used_total": sum(int(item.get("used_count") or 0) for item in items),
+        }
 
     def get(self, name: str) -> dict | None:
         key = " ".join(str(name or "").casefold().split())
@@ -54,6 +77,17 @@ class FollowupTemplateStore:
             if " ".join(str(item.get("name") or "").casefold().split()) == key:
                 return dict(item)
         return None
+
+    def mark_used(self, name: str) -> dict:
+        key = " ".join(str(name or "").casefold().split())
+        items = self._items()
+        for item in items:
+            if " ".join(str(item.get("name") or "").casefold().split()) == key:
+                item["last_used_at"] = _now()
+                item["used_count"] = int(item.get("used_count") or 0) + 1
+                _write(self.path, items)
+                return {"status": "used", "name": str(item.get("name") or "")}
+        return {"status": "not_found"}
 
     def upsert(self, name: str, text: str) -> dict:
         clean_name = " ".join(str(name or "").split())[:80]

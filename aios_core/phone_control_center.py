@@ -10,6 +10,7 @@ from .android_audit import PhoneActionAudit
 from .android_bank_monitor import AndroidBankMonitor
 from .android_gateway import AndroidGateway
 from .android_leads import AndroidLeadQueue
+from .followup_templates import FollowupTemplateStore
 
 
 TIMERS = (
@@ -40,11 +41,13 @@ class PhoneControlCenter:
         gateway_factory: Callable[[Path], AndroidGateway] = AndroidGateway,
         service_probe: Callable[[str], bool] = _service_active,
         bank_monitor_factory: Callable[[Path], AndroidBankMonitor] = AndroidBankMonitor,
+        template_store_factory: Callable[[Path], FollowupTemplateStore] = FollowupTemplateStore,
     ):
         self.root = Path(root)
         self.gateway_factory = gateway_factory
         self.service_probe = service_probe
         self.bank_monitor_factory = bank_monitor_factory
+        self.template_store_factory = template_store_factory
 
     def snapshot(self) -> dict:
         gateway = self.gateway_factory(self.root)
@@ -67,6 +70,7 @@ class PhoneControlCenter:
                 "selectors": dict(cal.get("selectors") or {}) if isinstance(cal, dict) else {},
             })
         leads = AndroidLeadQueue(self.root).summary()
+        templates = self.template_store_factory(self.root).summary()
         audit = PhoneActionAudit(self.root).summary()
         bank_snapshot = self.bank_monitor_factory(self.root).snapshot()
         banks = bank_snapshot.get("banks") or []
@@ -104,6 +108,11 @@ class PhoneControlCenter:
                 "crm_attention": int(leads.get("crm_attention") or 0),
                 "crm_overdue": int(leads.get("crm_overdue") or 0),
             },
+            "templates": {
+                "count": int(templates.get("count") or 0),
+                "stale": int(templates.get("stale") or 0),
+                "used_total": int(templates.get("used_total") or 0),
+            },
             "audit": {
                 "count": int(audit.get("count") or 0),
                 "last_action": str((audit.get("last") or {}).get("action") or ""),
@@ -134,6 +143,7 @@ def format_telegram(snapshot: dict) -> str:
     timers = snapshot.get("timers") or {}
     banks = snapshot.get("banks") or []
     bank_tasks = snapshot.get("bank_tasks") or {}
+    templates = snapshot.get("templates") or {}
     available = sum(1 for app in apps if app.get("available"))
     calibrated = sum(1 for app in apps if app.get("calibrated"))
     timers_ok = sum(1 for active in timers.values() if active)
@@ -148,6 +158,7 @@ def format_telegram(snapshot: dict) -> str:
         f"Лиды: {leads.get('pending', 0)} · CRM follow-up: {leads.get('crm_open', 0)} · внимание: {leads.get('crm_attention', 0)} · просрочены: {leads.get('crm_overdue', 0)}",
         "Банки: " + (" · ".join(f"{bank.get('title')}: {bank.get('unread_notifications', 0)} уведомл." for bank in banks) if banks else "нет данных"),
         f"Банковские задачи: {bank_tasks.get('pending', 0)} · внимание: {bank_tasks.get('attention', 0)} · просрочены: {bank_tasks.get('overdue', 0)}",
+        f"Шаблоны follow-up: {templates.get('count', 0)} · не обновлялись 30+ дн.: {templates.get('stale', 0)} · использований: {templates.get('used_total', 0)}",
         f"Таймеры: {timers_ok}/{len(timers)} активны · аудит: {snapshot.get('audit', {}).get('count', 0)} событий",
         f"Восстановление: {snapshot.get('recovery', {}).get('action', 'unknown')}",
     ]

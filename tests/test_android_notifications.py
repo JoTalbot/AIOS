@@ -23,6 +23,7 @@ def test_collector_masks_codes_and_deduplicates(monkeypatch, tmp_path):
     second = collector.collect()
     assert first["added"] == 1
     assert second["added"] == 0
+    assert second["duplicates"] == 1
     items = json.loads(collector.DATA.read_text())
     assert "123456" not in items[0]["title"]
     assert "654321" not in items[0]["text"]

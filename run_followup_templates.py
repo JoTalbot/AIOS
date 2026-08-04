@@ -16,6 +16,8 @@ def main() -> int:
     store = FollowupTemplateStore(ROOT)
     if command == "list":
         result = {"status": "ok", "templates": store.list()}
+    elif command == "summary":
+        result = store.summary()
     elif command == "get" and len(sys.argv) >= 3:
         item = store.get(" ".join(sys.argv[2:]))
         result = {"status": "ok", "template": item} if item else {"status": "not_found"}
@@ -23,7 +25,7 @@ def main() -> int:
         divider = sys.argv.index("|")
         result = store.upsert(" ".join(sys.argv[2:divider]), " ".join(sys.argv[divider + 1:]))
     else:
-        result = {"status": "error", "error": "list|get <name>|set <name> | <text>"}
+        result = {"status": "error", "error": "list|summary|get <name>|set <name> | <text>"}
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("status") in ("ok", "created", "updated") else 1
 

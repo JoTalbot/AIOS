@@ -2211,6 +2211,13 @@ def _handle_phone_lead_intent(api, chat_id: int, text: str) -> bool:
         app_token = template_draft.group(3).casefold()
         app = "ime" if app_token in ("ime", "i.me", "айми", "име") else "whatsapp"
         contact = template_draft.group(4).strip()
+        # Audit only template selection metadata, never its name or text.
+        templates.mark_used(template_draft.group(1).strip())
+        try:
+            from aios_core.android_audit import PhoneActionAudit
+            PhoneActionAudit(PROJECT_ROOT).record("followup_template", "selected")
+        except Exception:
+            pass
         _pending_confirm[chat_id] = {"kind": "phone_crm_task_draft", "data": {
             "task_id": tasks[index - 1].get("id"), "app": app, "contact": contact, "text": template.get("text") or "",
         }}
