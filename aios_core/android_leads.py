@@ -93,6 +93,7 @@ class AndroidLeadQueue:
         self.notifications_path = self.root / "data" / "android_gateway" / "notifications.json"
         self.path = self.root / "data" / "android_gateway" / "lead_candidates.json"
         self.tasks_path = self.root / "data" / "android_gateway" / "crm_followup_tasks.json"
+        self.sync_state_path = self.root / "data" / "android_gateway" / "lead_sync_state.json"
 
     def _items(self) -> list[dict]:
         value = _read(self.path, [])
@@ -146,7 +147,9 @@ class AndroidLeadQueue:
             else:
                 ignored += 1
         self._save(items)
-        return {"status": "ok", "added": added, "ignored": ignored, "total": self.summary().get("total", 0), "pending": self.summary().get("pending", 0)}
+        summary = self.summary()
+        _write(self.sync_state_path, {"checked_at": _now(), "added": added, "ignored": ignored, "pending": summary.get("pending", 0)})
+        return {"status": "ok", "added": added, "ignored": ignored, "total": summary.get("total", 0), "pending": summary.get("pending", 0)}
 
     def summary(self) -> dict:
         items = self._items()

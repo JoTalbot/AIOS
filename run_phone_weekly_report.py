@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 from aios_core.android_audit import PhoneActionAudit
@@ -14,6 +15,19 @@ from aios_core.phone_control_center import PhoneControlCenter
 from aios_core.phone_metrics import PhoneMetricsStore
 
 ROOT = Path(__file__).resolve().parent
+STATE = ROOT / "data" / "android_gateway" / "phone_weekly_report_state.json"
+
+
+def _write_state(value: dict) -> None:
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    temporary = STATE.with_name(f".{STATE.name}.tmp")
+    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+    import os
+    os.replace(temporary, STATE)
+    try:
+        STATE.chmod(0o600)
+    except OSError:
+        pass
 
 
 def _env(name: str) -> str:
@@ -69,6 +83,8 @@ def main() -> int:
     days = next((int(value) for value in sys.argv[1:] if value.isdigit()), 7)
     text = build_text(days=days)
     sent = _send(text) if "--send" in args else False
+    if sent:
+        _write_state({"sent_at": datetime.now().astimezone().isoformat(timespec="seconds"), "days": days})
     print(json.dumps({"status": "ok", "days": days, "sent": sent, "text": "" if sent else text}, ensure_ascii=False))
     return 0
 
