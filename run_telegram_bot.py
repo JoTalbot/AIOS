@@ -2029,6 +2029,30 @@ _last_phone_crm_tasks: dict[int, list[dict]] = {}
 _last_bank_tasks: dict[int, list[dict]] = {}
 
 
+def _handle_phone_metrics_intent(api, chat_id: int, text: str) -> bool:
+    t = " ".join(str(text or "").casefold().split())
+    if not any(phrase in t for phrase in ("тренды телефона", "тренд телефона", "экспорт метрик телефона", "метрики телефона")):
+        return False
+    try:
+        from aios_core.phone_metrics import PhoneMetricsStore
+        store = PhoneMetricsStore(PROJECT_ROOT)
+        if "экспорт" in t:
+            target = store.export_csv()
+            api.send_document(chat_id, str(target), caption="📈 Метрики телефона · агрегированные данные")
+            return True
+        trend = store.trend(limit=7)
+        changes = trend.get("changes") or {}
+        api.send_message(chat_id,
+                         "📈 <b>Тренды телефона</b>\n"
+                         f"Снимков: {trend.get('snapshots', 0)}\n"
+                         f"Лиды: {changes.get('leads_pending', 0):+d} · CRM follow-up: {changes.get('crm_open', 0):+d}\n"
+                         f"Банковские задачи: {changes.get('bank_tasks', 0):+d}\n"
+                         "<i>Экспорт содержит только агрегаты, без чатов, имён, номеров, координат и текстов.</i>")
+    except Exception:
+        api.send_message(chat_id, "⚠️ Метрики телефона временно недоступны.")
+    return True
+
+
 def _handle_phone_bank_monitor_intent(api, chat_id: int, text: str) -> bool:
     raw = str(text or "").strip()
     t = " ".join(raw.casefold().split())
@@ -3295,7 +3319,9 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
-    # Bank monitor, recovery, weekly report, phone center/audit and leads precede broad CRM words.
+    # Metrics, bank monitor, recovery, weekly report, phone center/audit and leads precede broad CRM words.
+    if _handle_phone_metrics_intent(api, chat_id, text):
+        return True
     if _handle_phone_bank_monitor_intent(api, chat_id, text):
         return True
     if _handle_phone_recovery_intent(api, chat_id, text):

@@ -99,6 +99,7 @@ def collect(service_probe=_service_active, android_probe=None) -> dict:
         "phone_lead_digest": ROOT / "data" / "android_gateway" / "lead_digest_state.json",
         "phone_daily_digest": ROOT / "data" / "android_gateway" / "phone_control_digest_state.json",
         "phone_followup_templates": ROOT / "data" / "android_gateway" / "followup_templates.json",
+        "phone_metrics_history": ROOT / "data" / "android_gateway" / "control_history.json",
     }
     for label, path in phone_private_files.items():
         mode = _mode(path)
