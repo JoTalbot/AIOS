@@ -26,13 +26,21 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _as_utc(value: object) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
 def _age_state(created_at: object) -> str:
     """Classify a local follow-up age without storing/revealing message data."""
     try:
-        created = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
-        if created.tzinfo is None:
-            created = created.replace(tzinfo=timezone.utc)
-        hours = max(0.0, (datetime.now(timezone.utc) - created.astimezone(timezone.utc)).total_seconds() / 3600)
+        created = _as_utc(created_at)
+        if created is None:
+            return "unknown"
+        hours = max(0.0, (datetime.now(timezone.utc) - created).total_seconds() / 3600)
     except Exception:
         return "unknown"
     if hours >= 24:
@@ -205,6 +213,31 @@ class AndroidLeadQueue:
             }
             for task in rows[-max(1, min(int(limit), MAX_LEADS)):]
         ]
+
+    def weekly_metrics(self, days: int = 7) -> dict:
+        """Return counts for a period; never includes lead/customer content."""
+        window = max(1, min(int(days), 90))
+        cutoff = datetime.now(timezone.utc).timestamp() - window * 86400
+
+        def recent(value: object) -> bool:
+            parsed = _as_utc(value)
+            return bool(parsed and parsed.timestamp() >= cutoff)
+
+        leads = self._items()
+        tasks = self._tasks()
+        current = self.summary()
+        return {
+            "status": "ok",
+            "days": window,
+            "leads_created": sum(recent(item.get("created_at")) for item in leads),
+            "leads_reviewed": sum(recent(item.get("reviewed_at")) for item in leads),
+            "leads_promoted": sum(recent(item.get("promoted_at")) for item in leads),
+            "tasks_created": sum(recent(task.get("created_at")) for task in tasks),
+            "tasks_completed": sum(recent(task.get("completed_at")) for task in tasks),
+            "tasks_open": int(current.get("crm_open") or 0),
+            "tasks_attention": int(current.get("crm_attention") or 0),
+            "tasks_overdue": int(current.get("crm_overdue") or 0),
+        }
 
     def complete_crm_task(self, task_id: str) -> dict:
         tasks = self._tasks()

@@ -1,0 +1,12 @@
+[Unit]
+Description=AIOS weekly metadata-only phone and CRM report
+After=network-online.target aios-phone-control-digest.timer
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_phone_weekly_report.py --send
+StandardOutput=append:/root/AIOS/logs/phone_weekly_report.log
+StandardError=append:/root/AIOS/logs/phone_weekly_report.log
