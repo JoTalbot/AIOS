@@ -19,6 +19,25 @@ def test_android_status_intent_uses_gateway(monkeypatch):
     assert any("Android Device Adapter" in str(item) for item in api.messages)
 
 
+def test_android_location_status_is_coordinate_free(monkeypatch):
+    import run_telegram_bot as bot
+
+    monkeypatch.setattr(bot, "_android_gateway_run", lambda args, timeout=60: {
+        "status": "ok", "permission": True, "gps_enabled": False,
+        "network_enabled": True, "ready": True,
+    })
+
+    class API:
+        def __init__(self): self.messages = []
+        def send_message(self, *args, **kwargs): self.messages.append(args)
+
+    api = API()
+    assert bot._handle_android_gateway_intent(api, 5, "статус геолокации телефона") is True
+    text = str(api.messages[-1])
+    assert "GPS" in text
+    assert "latitude" not in text
+
+
 def test_android_open_requires_confirmation():
     import run_telegram_bot as bot
 

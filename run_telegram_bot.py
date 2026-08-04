@@ -2721,6 +2721,21 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
         else:
             api.send_message(chat_id, f"⚠️ Уведомления недоступны: {_esc_tg(data.get('error') or data.get('status') or '?')}")
         return True
+    if any(phrase in t for phrase in ("статус геолокации телефона", "готовность геолокации", "геолокация доступна")):
+        data = _android_gateway_run(["location-status"])
+        if data.get("status") == "ok":
+            permission = bool(data.get("permission"))
+            ready = bool(data.get("ready"))
+            gps = bool(data.get("gps_enabled"))
+            network = bool(data.get("network_enabled"))
+            api.send_message(chat_id,
+                             "📍 <b>Геолокация телефона</b>\n"
+                             f"Разрешение: {'✅' if permission else '⚠️'}\n"
+                             f"GPS: {'✅ включён' if gps else '⚪ выключен'} · сеть: {'✅ включена' if network else '⚪ выключена'}\n"
+                             f"Готовность без запроса координат: {'✅' if ready else '⚠️'}")
+        else:
+            api.send_message(chat_id, f"⚠️ Статус геолокации недоступен: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+        return True
     if any(phrase in t for phrase in ("геолокация телефона", "местоположение телефона", "где телефон", "локация телефона")):
         _pending_confirm[chat_id] = {"kind": "android_location", "data": {}}
         api.send_message(chat_id, "📍 Запросить текущую геолокацию телефона?\n\n«да» / «нет»")

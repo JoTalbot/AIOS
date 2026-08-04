@@ -19,3 +19,5 @@ def test_companion_binds_only_to_wireguard_address():
     assert 'candidate.bind(new InetSocketAddress(tunnel, PORT));' in source
     assert 'address.getHostAddress().startsWith("10.203.")' in source
     assert 'AIOSAccessibilityService.snapshot("full".equalsIgnoreCase' in source
+    assert 'case "/location-status": response = locationStatus(); break;' in source
+    assert '.put("ready", permission && (gps || network))' in source

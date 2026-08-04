@@ -156,6 +156,7 @@ public class CompanionService extends Service {
                 case "/apps": response = apps(); break;
                 case "/permissions": response = permissions(); break;
                 case "/location": response = location(); break;
+                case "/location-status": response = locationStatus(); break;
                 case "/accessibility": response = accessibility(); break;
                 case "/ui":
                     // Full node text is served only after a deliberate request;
@@ -276,6 +277,20 @@ public class CompanionService extends Service {
     private JSONObject accessibility() throws Exception {
         return new JSONObject().put("status", "ok")
                 .put("enabled", AIOSAccessibilityService.isEnabled(this));
+    }
+
+    private JSONObject locationStatus() throws Exception {
+        boolean permission = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        LocationManager manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        boolean gps = false;
+        boolean network = false;
+        try { gps = manager.isProviderEnabled(LocationManager.GPS_PROVIDER); } catch (Exception ignored) { }
+        try { network = manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER); } catch (Exception ignored) { }
+        return new JSONObject().put("status", "ok")
+                .put("permission", permission)
+                .put("gps_enabled", gps)
+                .put("network_enabled", network)
+                .put("ready", permission && (gps || network));
     }
 
     private JSONObject location() throws Exception {

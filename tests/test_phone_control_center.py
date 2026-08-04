@@ -14,6 +14,9 @@ class Gateway:
             "companion": {"connected": True},
         }
 
+    def location_status(self):
+        return {"status": "ok", "permission": True, "ready": False}
+
     def app_profiles(self):
         return {"profiles": [
             {"id": "whatsapp", "title": "WhatsApp", "available": True},
