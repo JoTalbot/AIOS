@@ -318,11 +318,11 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                 try:
                     await page.get_by_role("button", name="Далі").click(timeout=3000)
                     print("Clicked Далі")
-                except:
+                except Exception:
                     try:
                         await page.get_by_role("button", name="Next").click(timeout=3000)
                         print("Clicked Next")
-                    except:
+                    except Exception:
                         await page.keyboard.press("Enter")
                         print("Pressed Enter after phone")
                 
@@ -352,11 +352,11 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                     try:
                         await page.get_by_role("button", name="Увійти").click(timeout=3000)
                         print("Clicked Увійти")
-                    except:
+                    except Exception:
                         try:
                             await page.get_by_role("button", name="Войти").click(timeout=3000)
                             print("Clicked Войти")
-                        except:
+                        except Exception:
                             await page.keyboard.press("Enter")
                             print("Pressed Enter for login")
                     
@@ -394,7 +394,7 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
             traceback.print_exc()
             try:
                 await page.screenshot(path="/tmp/olx_error.png")
-            except:
+            except Exception:
                 pass
             return {"status": "failed", "error": str(e), "url": page.url if 'page' in locals() else "unknown"}
 
@@ -421,7 +421,7 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                     try:
                         title = await el.text_content()
                         ads.append({"id": f"ad_{i}", "title": title[:100] if title else "No title"})
-                    except:
+                    except Exception:
                         continue
             except Exception as e:
                 print(f"Ad parsing failed: {e}")

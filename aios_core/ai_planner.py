@@ -58,7 +58,8 @@ class AITaskPlanner:
         Returns:
             A dictionary representing the task graph.
         """
-        prompt = f"Decompose goal into steps: {goal}. Context: {context or {{}}}"
+        context_repr: Dict[str, Any] = context if context is not None else {}
+        prompt = f"Decompose goal into steps: {goal}. Context: {context_repr}"
         resp = self._generate_llm_response(prompt, provider)
 
         # Define the task graph steps.  This is currently hardcoded, but could be

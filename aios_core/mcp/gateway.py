@@ -48,6 +48,15 @@ import requests  # Added for POST requests with authorization
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+class _MCPError(Exception):
+    """Internal error carrying a JSON-RPC error code."""
+
+    def __init__(self, code: int, message: str) -> None:
+        super().__init__(message)
+        self.code = int(code)
+        self.message = message
+
+
 class ConstitutionGuard:
     """Wraps every MCP tool call with constitutional evaluation.
 
@@ -143,32 +152,6 @@ class GatewayConfig:
 
 
 class MCPGateway:
-    def handle_request(self, raw: str) -> str:
-        """Legacy compatibility: delegates to handle_message"""
-        try:
-            import json
-            data = json.loads(raw or "{}")
-            if hasattr(self, 'handle_message'):
-                result = self.handle_message(data)
-                return result if isinstance(result, str) else __import__('json').dumps(result)
-            return json.dumps({"result": "ok"})
-        except Exception as e:
-            import json, traceback
-            traceback.print_exc()
-            return json.dumps({"error": str(e)})
-
-    """Main MCP Gateway that routes JSON-RPC 2.0 requests.
-
-    Usage (programmatic, no HTTP server — that's for Phase 2.7):
-        gateway = MCPGateway(gateway_config)
-        response = gateway.handle_request(
-            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
-        )
-        response = gateway.handle_request(
-            '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
-        )
-    """
-
     def __init__(self, config: GatewayConfig | None = None, db: Database | None = None):
         """Initialize MCPGateway."""
         self.config = config or GatewayConfig()
@@ -201,58 +184,171 @@ class MCPGateway:
         self._initialized = False
         self._request_log: list[dict] = []
 
+        # Gateway identity / version
+        self.version = "1.0.0"
+
     # ------------------------------------------------------------------
-    # Built-in tool registration
+    # JSON-RPC 2.0 dispatcher (MCP protocol)
     # ------------------------------------------------------------------
 
-    def handle_request(self, raw: str) -> str:
-        """Legacy compatibility: JSON-RPC string -> response JSON string."""
+    def handle_request(self, raw: str) -> str | None:
+        """Handle a JSON-RPC 2.0 request/notification string.
+
+        Returns the response JSON string, or ``None`` for notifications
+        (which must not produce a response per the MCP spec).
+        """
+        import json as _json
+
+        if not raw or not raw.strip():
+            return _json.dumps({
+                "jsonrpc": "2.0", "id": None,
+                "error": {"code": JSONRPCError.PARSE_ERROR, "message": "Parse error"},
+            })
         try:
-            import json
-            from .protocol import MCPProtocol
-            data = json.loads(raw or "{}")
-            # data is JSON-RPC request
-            # Use the gateway's internal routing via _handle
-            # Simulate request handling
-            method = data.get("method", "")
-            params = data.get("params", {})
-            request_id = data.get("id")
-            # Try to call via protocol handler if available
-            if hasattr(self, 'handle_message'):
-                try:
-                    result = self.handle_message(data)
-                    if isinstance(result, str):
-                        return result
-                    return json.dumps(result)
-                except Exception:
-                    pass
-            # Fallback: direct tool call simulation for approval stats
-            if method == "tools/call":
-                tool_name = params.get("name")
-                if tool_name == "approval_stats" or "approval" in str(tool_name):
-                    # Return mock approval stats for test
-                    resp = {
-                        "jsonrpc": "2.0",
-                        "id": request_id,
-                        "result": {
-                            "content": [{"text": '{"count": 1, "pending": 0}'}]
-                        }
-                    }
-                    return json.dumps(resp)
-            # Generic success fallback for tests
-            resp = {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "content": [{"text": '{"count": 1}'}]
-                }
-            }
-            return json.dumps(resp)
-        except Exception as e:
-            import json, traceback
-            traceback.print_exc()
-            return json.dumps({"jsonrpc": "2.0", "id": None, "error": {"message": str(e)}})
+            data = _json.loads(raw)
+        except Exception:
+            return _json.dumps({
+                "jsonrpc": "2.0", "id": None,
+                "error": {"code": JSONRPCError.PARSE_ERROR, "message": "Parse error"},
+            })
+        if not isinstance(data, dict) or data.get("jsonrpc") != "2.0" or "method" not in data:
+            return _json.dumps({
+                "jsonrpc": "2.0", "id": None,
+                "error": {"code": JSONRPCError.INVALID_REQUEST, "message": "Invalid Request"},
+            })
 
+        method = data["method"]
+        params = data.get("params") or {}
+        request_id = data.get("id")
+
+        if request_id is None:  # notification — no response
+            self._request_log.append({"method": method, "notification": True})
+            return None
+
+        try:
+            result = self._dispatch(method, params)
+        except _MCPError as exc:
+            return _json.dumps({
+                "jsonrpc": "2.0", "id": request_id,
+                "error": {"code": exc.code, "message": exc.message},
+            })
+        except Exception as exc:  # noqa: BLE001 — JSON-RPC errors go to the client
+            return _json.dumps({
+                "jsonrpc": "2.0", "id": request_id,
+                "error": {"code": JSONRPCError.INTERNAL_ERROR, "message": str(exc)[:300]},
+            })
+
+        self._request_log.append({"method": method, "id": request_id})
+        return _json.dumps({"jsonrpc": "2.0", "id": request_id, "result": result})
+
+    def _dispatch(self, method: str, params: dict) -> dict:
+        """Route an MCP method to its handler."""
+        if method == "initialize":
+            self._initialized = True
+            return {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {"tools": {"listChanged": True}},
+                "serverInfo": {"name": "aios-mcp-gateway", "version": self.version},
+            }
+        if method == "ping":
+            return {"pong": True}
+        if method == "tools/list":
+            return {"tools": self.tools.list_tools()}
+        if method == "tools/call":
+            return self._tools_call(params)
+        if method == "resources/list":
+            return {"resources": self.resources.list_resources()}
+        if method == "resources/read":
+            return self._resources_read(params)
+        if method == "prompts/list":
+            return {"prompts": self.prompts.list_prompts()}
+        if method == "prompts/get":
+            return self._prompts_get(params)
+        if method == "aios/evaluate":
+            return self._aios_evaluate(params)
+        if method == "aios/approvals":
+            approvals = list(self.runtime.approvals.history())
+            return {"count": len(approvals), "approvals": approvals}
+        if method == "aios/stats":
+            return self.stats()
+        raise _MCPError(JSONRPCError.METHOD_NOT_FOUND, f"Method not found: {method}")
+
+    def _tools_call(self, params: dict) -> dict:
+        """Execute a tool call through the constitution guard."""
+        name = params.get("name", "")
+        arguments = params.get("arguments") or {}
+        tool_def = self.tools.get(name)
+        if tool_def is None:
+            raise _MCPError(JSONRPCError.METHOD_NOT_FOUND, f"Tool not found: {name}")
+
+        verdict = self.guard.check(MCPToolCall(name=name, arguments=arguments), tool_def)
+        if not verdict.get("allowed"):
+            code = (JSONRPCError.CONSTITUTION_REVIEW
+                    if verdict.get("decision") == "REVIEW"
+                    else JSONRPCError.CONSTITUTION_DENIED)
+            raise _MCPError(code, verdict.get("reason") or verdict.get("decision") or "Denied")
+
+        result = self.tools.call(MCPToolCall(name=name, arguments=arguments))
+        return {"content": result.content, "isError": result.is_error}
+
+    def _resources_read(self, params: dict) -> dict:
+        uri = params.get("uri", "")
+        content = self.resources.read(uri)
+        if content is None:
+            raise _MCPError(JSONRPCError.RESOURCE_NOT_FOUND, f"Resource not found: {uri}")
+        return {"contents": [{
+            "uri": content.uri,
+            "mimeType": getattr(content, "mime_type", "text/plain"),
+            "text": content.text,
+        }]}
+
+    def _prompts_get(self, params: dict) -> dict:
+        name = params.get("name", "")
+        arguments = params.get("arguments") or {}
+        result = self.prompts.render(name, arguments)
+        if result is None:
+            raise _MCPError(JSONRPCError.METHOD_NOT_FOUND, f"Prompt not found: {name}")
+        return {"description": result.description, "messages": result.messages}
+
+    def _aios_evaluate(self, params: dict) -> dict:
+        action = {
+            "goal": params.get("goal", ""),
+            "scope": params.get("scope", "general"),
+            "risk": params.get("risk", "low"),
+            "audit_log": True,
+            "agent_id": "mcp-gateway",
+            "authority": "user",
+        }
+        evaluation = self.runtime.request_execution(action)
+        return {
+            "decision": evaluation.get("decision", "DENY"),
+            "allowed": evaluation.get("allowed", False),
+            "evaluation_id": evaluation.get("evaluation_id", ""),
+            "reason": evaluation.get("reason", ""),
+        }
+
+    def stats(self) -> dict:
+        """Gateway statistics across all subsystems."""
+        return {
+            "gateway": {
+                "initialized": self._initialized,
+                "version": self.version,
+                "requests": len(self._request_log),
+            },
+            "tools": self.tools.stats(),
+            "resources": self.resources.stats(),
+            "prompts": self.prompts.stats(),
+            "constitution_guard": self.guard.stats(),
+            "runtime": self.runtime.stats(),
+            "database": self.runtime.db.stats(),
+        }
+
+    def close(self) -> None:
+        """Close the underlying database connection."""
+        try:
+            self.runtime.db.close()
+        except Exception:  # noqa: BLE001
+            pass
 
     def _register_builtin_resources(self):
         """Register built-in AIOS resources (constitution/policies overview)."""
