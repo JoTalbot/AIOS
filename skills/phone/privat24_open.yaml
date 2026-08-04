@@ -1,0 +1,23 @@
+# Privat24: только открыть приложение и убедиться, что оно на переднем плане.
+# Банковские операции — вне skill-движка (sensitive-профиль шлюза).
+id: privat24_open
+title: "Privat24: открыть приложение"
+app: privat24
+confirm: true
+sensitive: true
+steps:
+  - id: open_app
+    do: app.open
+    package: ua.privatbank.ap24
+
+  - id: wait_foreground
+    do: ui.wait
+    timeout: 10
+    optional: true            # холодный старт может показать splash/логин
+    selectors:
+      - {resource: "ua.privatbank.ap24:id/root"}
+      - {resource: "ua.privatbank.ap24:id/container"}
+
+  - id: verify_foreground
+    do: verify
+    foreground: ua.privatbank.ap24

@@ -1,0 +1,38 @@
+# WhatsApp: открыть чат с контактом (без отправки сообщений).
+# params: contact — имя контакта как в телефонной книге.
+id: whatsapp_open_chat
+title: "WhatsApp: открыть чат"
+app: whatsapp
+confirm: true
+sensitive: false
+steps:
+  - id: open_app
+    do: app.open
+    package: com.whatsapp
+
+  - id: wait_home
+    do: ui.wait
+    timeout: 8
+    selectors:
+      - {resource: "com.whatsapp:id/conversations_row"}
+      - {text: "Чаты"}
+      - {text: "Chats"}
+
+  - id: open_search
+    do: ui.tap
+    timeout: 5
+    selectors:
+      - {resource: "com.whatsapp:id/menuitem_search"}
+      - {desc_contains: "Поиск"}
+      - {desc_contains: "Search"}
+
+  - id: type_contact
+    do: ui.type
+    text: "${contact}"
+
+  - id: open_result
+    do: ui.tap
+    timeout: 7
+    selectors:
+      - {text: "${contact}"}
+      - {text_contains: "${contact}"}

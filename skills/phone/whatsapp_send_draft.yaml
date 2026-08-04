@@ -1,0 +1,51 @@
+# WhatsApp: открыть чат, вставить текст и нажать отправить.
+# params: contact — имя контакта, text — текст сообщения.
+# ВНИМАНИЕ: выполняет фактическую отправку — confirm обязателен.
+id: whatsapp_send_draft
+title: "WhatsApp: отправить сообщение"
+app: whatsapp
+confirm: true
+sensitive: false
+steps:
+  - id: open_app
+    do: app.open
+    package: com.whatsapp
+
+  - id: wait_home
+    do: ui.wait
+    timeout: 8
+    selectors:
+      - {resource: "com.whatsapp:id/conversations_row"}
+      - {text: "Чаты"}
+      - {text: "Chats"}
+
+  - id: open_search
+    do: ui.tap
+    timeout: 5
+    selectors:
+      - {resource: "com.whatsapp:id/menuitem_search"}
+      - {desc_contains: "Поиск"}
+      - {desc_contains: "Search"}
+
+  - id: type_contact
+    do: ui.type
+    text: "${contact}"
+
+  - id: open_result
+    do: ui.tap
+    timeout: 7
+    selectors:
+      - {text: "${contact}"}
+      - {text_contains: "${contact}"}
+
+  - id: type_message
+    do: ui.type
+    text: "${text}"
+
+  - id: tap_send
+    do: ui.tap
+    timeout: 5
+    selectors:
+      - {resource: "com.whatsapp:id/send"}
+      - {desc_contains: "Отправить"}
+      - {desc_contains: "Send"}

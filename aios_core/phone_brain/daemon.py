@@ -23,16 +23,17 @@ from aios_core.phone_brain import __version__
 from aios_core.phone_brain.api import BrainAPI
 from aios_core.phone_brain.device import DeviceSupervisor
 from aios_core.phone_brain.events import EventLog
-from aios_core.phone_brain.handlers import Executor, JobContext
+from aios_core.phone_brain.handlers import Executor, JobContext, skill_handlers
 from aios_core.phone_brain.common import iso, parse_iso, read_json, utc_now
 from aios_core.phone_brain.queue_store import JobStore
+from aios_core.phone_brain.skills import SkillEngine
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "poll_interval": 10,
     "worker_interval": 2,
     "defer_seconds": 30,
     "api": {"host": "127.0.0.1", "port": 8790},
-    "queue": {"retry_base_seconds": 20, "retry_cap_seconds": 900, "lease_seconds": 180,
+    "queue": {"retry_base_seconds": 20, "retry_cap_seconds": 900, "lease_seconds": 300,
               "default_max_attempts": 3, "retention_days": 7, "defer_limit": 20},
     "device": {"min_interval": 30, "max_interval": 900, "escalate_after_seconds": 600},
 }
@@ -92,6 +93,10 @@ class PhoneBrainDaemon:
             escalate_after_seconds=device_cfg["escalate_after_seconds"], events=self.events)
         self.executor = Executor(JobContext(root=self.root, gateway=self.gateway,
                                             supervisor=self.supervisor, events=self.events))
+        # Этап 2: декларативный skill-движок поверх очереди
+        self.skills = SkillEngine(self.root, gateway=self.gateway, events=self.events)
+        for handler in skill_handlers(self.skills):
+            self.executor.register(handler)
         api_cfg = self.config["api"]
         self.api = BrainAPI(self, host=api_cfg["host"], port=api_cfg["port"])
         self.started_at = iso()
