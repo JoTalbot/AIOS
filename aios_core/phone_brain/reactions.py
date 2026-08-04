@@ -45,6 +45,7 @@ APP_LABELS = {
     "ua.com.uklon.uklondriver": "Uklon Driver",
     "com.iMe.android": "iMe Messenger",
     "com.eway": "EasyWay",
+    "ua.slando": "OLX",
 }
 
 ACTION_TYPES = {"telegram", "enqueue", "event", "llm_enqueue"}

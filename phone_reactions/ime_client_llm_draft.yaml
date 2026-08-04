@@ -1,0 +1,20 @@
+# Клиентские вопросы в iMe → LLM-черновик → need_confirm → approve владельцем.
+# Аналог whatsapp_client_llm_draft для iMe Messenger.
+id: ime_client_llm_draft
+title: "✉️ LLM-черновик ответа клиенту iMe"
+match:
+  package: [com.iMe.android]
+  text_regex: "(куп\\w+|цен\\w+|стоимост|доставк|ремонт|сервіс|услуг|скільки|сколько|заказ|наличи)"
+action:
+  type: llm_enqueue
+  prompt: "Ты — вежливый менеджер мастерской. Сообщение клиента: «{text}». Составь короткий (до 60 слов) деловой ответ на русском: поблагодари, ответь по сути или задай один уточняющий вопрос, предложи следующий шаг. Без эмодзи. Только текст ответа."
+  job:
+    kind: skill.run
+    payload:
+      skill: ime_send_draft
+      params:
+        contact: "{title}"
+        text: "{draft}"
+  notify: true
+autonomy: draft
+cooldown_seconds: 600

@@ -148,6 +148,21 @@ def test_unknown_skill(root: Path) -> None:
     assert engine.run("ghost")["code"] == "unknown_skill"
 
 
+def test_all_repo_skills_load_cleanly() -> None:
+    """Все штатные skills репозитория (skills/phone/) загружаются без ошибок."""
+    repo_root = Path(__file__).resolve().parents[1]
+    engine = SkillEngine(repo_root, gateway=FakeGateway([{"status": "ok", "nodes": []}]))
+    skills = engine.list()
+    real = [s for s in skills if s.get("id")]
+    assert len(real) >= 7, f"skills загружено {len(real)}, ожидалось ≥7"
+    broken = [s for s in skills if s.get("error")]
+    assert broken == [], f"битые skill-файлы: {broken}"
+    ids = {s["id"] for s in real}
+    for expected in ("whatsapp_open_chat", "whatsapp_send_draft", "privat24_open",
+                     "ime_open_chat", "ime_send_draft", "olx_open_chats", "uklon_driver_open"):
+        assert expected in ids, f"нет штатного skill {expected}"
+
+
 def test_ui_unavailable(root: Path) -> None:
     _write_skill(root, OPEN_CHAT_SKILL)
     engine = SkillEngine(root, gateway=FakeGateway([{"status": "offline"}]))

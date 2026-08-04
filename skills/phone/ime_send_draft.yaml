@@ -1,0 +1,49 @@
+# iMe Messenger: открыть чат, вставить текст, нажать отправить.
+# params: contact, text. Фактическая отправка — confirm обязателен.
+id: ime_send_draft
+title: "iMe: отправить сообщение"
+app: ime
+params: [contact, text]
+confirm: true
+sensitive: false
+steps:
+  - id: open_app
+    do: app.open
+    package: com.iMe.android
+
+  - id: open_search
+    do: ui.tap
+    timeout: 8
+    heal: true
+    heal_hint: "the search icon (magnifying glass) in the Telegram-style main chats screen of the iMe app"
+    selectors:
+      - {resource: "com.iMe.android:id/menu_search"}
+      - {desc_contains: "Поиск"}
+      - {desc_contains: "Search"}
+
+  - id: type_contact
+    do: ui.type
+    text: "${contact}"
+
+  - id: open_result
+    do: ui.tap
+    timeout: 7
+    heal: true
+    heal_hint: "the chat search result row titled ${contact}"
+    selectors:
+      - {text: "${contact}"}
+      - {text_contains: "${contact}"}
+
+  - id: type_message
+    do: ui.type
+    text: "${text}"
+
+  - id: tap_send
+    do: ui.tap
+    timeout: 5
+    heal: true
+    heal_hint: "the round send button at the bottom right of the message input row in iMe"
+    selectors:
+      - {desc_contains: "Отправить"}
+      - {desc_contains: "Send"}
+      - {resource: "com.iMe.android:id/send"}

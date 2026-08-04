@@ -1,0 +1,44 @@
+# iMe Messenger: открыть чат с контактом (без отправки).
+# params: contact — имя контакта в адресной книге.
+id: ime_open_chat
+title: "iMe: открыть чат"
+app: ime
+params: [contact]
+confirm: true
+sensitive: false
+steps:
+  - id: open_app
+    do: app.open
+    package: com.iMe.android
+
+  - id: wait_home
+    do: ui.wait
+    timeout: 8
+    optional: true          # холодный старт может показать splash
+    selectors:
+      - {desc_contains: "Search"}
+      - {desc_contains: "Поиск"}
+      - {resource: "com.iMe.android:id/menu_search"}
+
+  - id: open_search
+    do: ui.tap
+    timeout: 6
+    heal: true
+    heal_hint: "the search icon (magnifying glass) in the Telegram-style main chats screen of the iMe app"
+    selectors:
+      - {resource: "com.iMe.android:id/menu_search"}
+      - {desc_contains: "Поиск"}
+      - {desc_contains: "Search"}
+
+  - id: type_contact
+    do: ui.type
+    text: "${contact}"
+
+  - id: open_result
+    do: ui.tap
+    timeout: 7
+    heal: true
+    heal_hint: "the chat search result row titled ${contact}"
+    selectors:
+      - {text: "${contact}"}
+      - {text_contains: "${contact}"}
