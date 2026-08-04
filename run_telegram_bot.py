@@ -2029,6 +2029,28 @@ _last_phone_crm_tasks: dict[int, list[dict]] = {}
 _last_bank_tasks: dict[int, list[dict]] = {}
 
 
+def _handle_phone_jobs_intent(api, chat_id: int, text: str) -> bool:
+    t = " ".join(str(text or "").casefold().split())
+    if not any(phrase in t for phrase in ("планировщик телефона", "статус jobs телефона", "задачи планировщика телефона", "dry run jobs телефона")):
+        return False
+    try:
+        from aios_core.phone_jobs import PhoneJobs
+        jobs = PhoneJobs(PROJECT_ROOT)
+        report = jobs.dry_run() if "dry run" in t else jobs.snapshot()
+        if "dry run" in t:
+            valid = sum(1 for item in report.get("jobs") or [] if item.get("valid"))
+            api.send_message(chat_id, f"🧪 <b>Dry-run jobs телефона</b>\nСкриптов проверено: {valid}/{len(report.get('jobs') or [])}")
+        else:
+            backup = report.get("backup") or {}
+            api.send_message(chat_id,
+                             "⏱ <b>Планировщик телефона</b>\n"
+                             f"Jobs: {report.get('active', 0)}/{report.get('total', 0)} · статус: {report.get('status')}\n"
+                             f"Android config backup: {backup.get('count', 0)} · retention: {'✅' if backup.get('retention_ok', True) else '⚠️'} · JSON проблем: {backup.get('invalid', 0)}")
+    except Exception:
+        api.send_message(chat_id, "⚠️ Статус jobs телефона временно недоступен.")
+    return True
+
+
 def _handle_phone_inventory_intent(api, chat_id: int, text: str) -> bool:
     t = " ".join(str(text or "").casefold().split())
     if not any(phrase in t for phrase in ("инвентарь телефона", "версии телефона", "версии android", "профили телефона")):
@@ -3369,7 +3391,9 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
-    # Inventory, metrics, bank monitor, recovery, reports and leads precede broad CRM words.
+    # Jobs, inventory, metrics, bank monitor, recovery, reports and leads precede broad CRM words.
+    if _handle_phone_jobs_intent(api, chat_id, text):
+        return True
     if _handle_phone_inventory_intent(api, chat_id, text):
         return True
     if _handle_phone_metrics_intent(api, chat_id, text):
