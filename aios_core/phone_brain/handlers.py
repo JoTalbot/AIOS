@@ -256,3 +256,40 @@ BUILTIN_HANDLERS: list[Handler] = [
     Handler("notify.collect", _h_notify_collect, timeout=120, needs_companion=True,
             description="Сбор уведомлений приложений в инбокс AIOS"),
 ]
+
+
+# ------------------------------------------------------- skill engine (этап 2)
+
+def skill_handlers(engine: Any) -> list[Handler]:
+    """Фабрика обработчиков skill-движка: выполнение и список декларативных skills."""
+
+    def _run(payload: dict, ctx: JobContext) -> dict:
+        skill_id = str(payload.get("skill") or "").strip()
+        if not skill_id:
+            return {"status": "error", "error": "Нужен skill id", "retry": False}
+        result = engine.run(skill_id, params=payload.get("params") or {})
+        if result.get("status") == "ok":
+            return result
+        code = str(result.get("code") or "")
+        # Неизвестный/битый skill и нехватка параметров повторять бессмысленно.
+        retry = code not in ("unknown_skill", "missing_param", "invalid_skill")
+        step_info = f"шаг {result.get('step')}: " if result.get("step") else ""
+        return {"status": "error", "retry": retry, "engine": result,
+                "error": (step_info + str(result.get("error") or code))[:250]}
+
+    def _precheck(payload: dict) -> dict | None:
+        skill = engine.get(str(payload.get("skill") or ""))
+        if skill and skill.get("confirm") and not payload.get("confirm"):
+            return {"status": "need_confirm", "action": f"phone_skill:{skill['id']}"}
+        return None
+
+    def _list(payload: dict, ctx: JobContext) -> dict:
+        engine.reload()  # подхватываем новые/изменённые файлы без рестарта демона
+        return {"status": "ok", "skills": engine.list()}
+
+    return [
+        Handler("skill.run", _run, timeout=280, needs_companion=True, precheck=_precheck,
+                description="Выполнить декларативный skill из skills/phone/ (список — skill.list)"),
+        Handler("skill.list", _list, timeout=15, needs_device=False,
+                description="Список доступных phone-skills и ошибки загрузки"),
+    ]

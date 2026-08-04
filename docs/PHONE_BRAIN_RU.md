@@ -36,6 +36,56 @@ run_phone_brain.py  — CLI
 | `ui.snapshot` | device + companion | UI-дерево; `include_text:true` требует `confirm:true` |
 | `app.open` | device + confirm | Открыть приложение (package/profile) |
 | `notify.collect` | device + companion | Сбор уведомлений в инбокс |
+| `skill.run` | device + companion (+ confirm у skill) | Выполнить декларативный skill из `skills/phone/` |
+| `skill.list` | — | Список phone-skills и ошибки загрузки |
+
+## Skill-движок (этап 2)
+
+Сценарии управления телефоном — YAML/JSON-файлы в `skills/phone/`:
+
+```yaml
+id: whatsapp_open_chat
+title: "WhatsApp: открыть чат"
+confirm: true                 # нужен payload {"confirm": true}
+sensitive: false
+steps:
+  - id: open_app
+    do: app.open
+    package: com.whatsapp
+  - id: open_search
+    do: ui.tap
+    timeout: 5
+    selectors:                # упорядоченная fallback-цепочка
+      - {resource: "com.whatsapp:id/menuitem_search"}
+      - {desc_contains: "Поиск"}
+      - {desc_contains: "Search"}
+  - id: type_contact
+    do: ui.type
+    text: "${contact}"        # подстановка из payload.params
+```
+
+**Глаголы шагов:** `app.open`, `ui.wait`, `ui.tap`, `ui.type` (клипборд+paste,
+кириллица-безопасно), `ui.key`, `wait`, `verify` (selectors или foreground-пакет).
+Флаг шага `optional: true` — ошибка превращается в пропуск.
+
+**Селекторы** (комбинируемые ключи): `text`, `text_contains`, `desc`, `desc_contains`,
+`resource` (точное или суффикс `:id/...`), `label` (text или desc), `bounds` (±24px).
+
+**Память селекторов** (`data/android_gateway/skill_stats.json`): движок помечает,
+какой индекс цепочки реально сработал (`last_good`) и при следующих запусках
+проверяет его первым. Падающие цепочки накапливают `fail`-счётчики — сигнал
+для LLM-восстановления (этап 3). Текст экрана наружу не выходит: только id шагов
+и типы селекторов.
+
+```bash
+python run_phone_brain.py enqueue skill.list
+python run_phone_brain.py enqueue skill.run \
+  '{"skill":"whatsapp_open_chat","params":{"contact":"Мама"}}' --confirm
+```
+
+Битый skill-файл не мешает остальным: виден в `skill.list` с текстом ошибки.
+Изменённые файлы подхватываются `skill.list` без рестарта (reload), а выполнение
+использует кэш до `engine.reload()`.
 
 ## Статусы задачи
 
