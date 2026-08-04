@@ -20,6 +20,12 @@ LEAD_SOURCES = {
     "com.iMe.android": "iMe Messenger",
 }
 MAX_LEADS = 300
+SERVICE_MARKERS = (
+    "голосовий виклик завершився", "голосовой вызов завершился",
+    "відеовиклик завершився", "видеовызов завершился",
+    "missed call", "входящий звонок", "исходящий звонок",
+    "звонок завершен", "вызов завершен",
+)
 
 
 def _now() -> str:
@@ -48,6 +54,16 @@ def _age_state(created_at: object) -> str:
     if hours >= 1:
         return "attention"
     return "fresh"
+
+
+def _classification(event: dict) -> str:
+    """Classify transient notification text without storing it in lead data."""
+    preview = " ".join(str(event.get(key) or "") for key in ("title", "text")).casefold().strip()
+    if not preview:
+        return "ignored_empty"
+    if any(marker in preview for marker in SERVICE_MARKERS):
+        return "ignored_service"
+    return "message_candidate"
 
 
 def _read(path: Path, default: Any) -> Any:
@@ -103,6 +119,7 @@ class AndroidLeadQueue:
         items = self._items()
         known = {str(item.get("notification_id") or "") for item in items}
         added = 0
+        ignored = 0
         for event in notifications:
             if not isinstance(event, dict):
                 continue
@@ -110,24 +127,31 @@ class AndroidLeadQueue:
             notification_id = str(event.get("id") or "")
             if package not in LEAD_SOURCES or not notification_id or notification_id in known:
                 continue
+            classification = _classification(event)
+            is_candidate = classification == "message_candidate"
             items.append({
                 "id": self._lead_id(package, notification_id),
                 "notification_id": notification_id,
                 "source": LEAD_SOURCES[package],
                 "package": package,
                 "observed_at": str(event.get("collected_at") or _now()),
-                "status": "pending_review",
+                "status": "pending_review" if is_candidate else "ignored_notification",
+                "classification": classification,
                 "created_at": _now(),
-                "requires_manual_chat_open": True,
+                "requires_manual_chat_open": bool(is_candidate),
             })
             known.add(notification_id)
-            added += 1
+            if is_candidate:
+                added += 1
+            else:
+                ignored += 1
         self._save(items)
-        return {"status": "ok", "added": added, "total": len(items), "pending": self.summary().get("pending", 0)}
+        return {"status": "ok", "added": added, "ignored": ignored, "total": self.summary().get("total", 0), "pending": self.summary().get("pending", 0)}
 
     def summary(self) -> dict:
         items = self._items()
         pending = [item for item in items if item.get("status") == "pending_review"]
+        ignored = [item for item in items if item.get("status") == "ignored_notification"]
         by_source: dict[str, int] = {}
         for item in pending:
             source = str(item.get("source") or "Телефон")
@@ -136,7 +160,7 @@ class AndroidLeadQueue:
         open_tasks = [task for task in tasks if task.get("status") == "open"]
         age_states = [_age_state(task.get("created_at")) for task in open_tasks]
         return {
-            "status": "ok", "total": len(items), "pending": len(pending), "by_source": by_source,
+            "status": "ok", "total": len(items) - len(ignored), "pending": len(pending), "ignored": len(ignored), "by_source": by_source,
             "crm_open": len(open_tasks),
             "crm_attention": sum(state == "attention" for state in age_states),
             "crm_overdue": sum(state == "overdue" for state in age_states),
