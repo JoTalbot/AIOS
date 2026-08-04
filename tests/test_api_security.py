@@ -7,8 +7,10 @@ from aios_core.api.app import create_app
 
 
 @pytest.mark.asyncio
-async def test_api_fails_closed_without_configured_keys():
-    app = create_app()
+async def test_api_fails_closed_without_configured_keys(monkeypatch):
+    # Isolate from the production .env (may define AIOS_API_KEYS)
+    monkeypatch.delenv("AIOS_API_KEYS", raising=False)
+    app = create_app(api_keys={})
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         assert (await client.get("/health")).status_code == 200
         response = await client.get("/api/v1/stats")
@@ -109,7 +111,8 @@ def test_api_key_configuration_rejects_empty_or_non_string_roles():
 
 
 @pytest.mark.asyncio
-async def test_health_and_api_documentation_are_public_but_api_remains_closed():
+async def test_health_and_api_documentation_are_public_but_api_remains_closed(monkeypatch):
+    monkeypatch.delenv("AIOS_API_KEYS", raising=False)
     app = create_app()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         assert (await client.get("/health")).status_code == 200

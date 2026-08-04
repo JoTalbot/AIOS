@@ -178,6 +178,12 @@ def test_resolve_apk_passthrough_cache_and_fetch(tmp_path):
 
 
 def test_secret_env_precedence(monkeypatch):
+    # Isolate from the production .env (loaded by other tests)
+    for _k in ("AIOS_SECRET__INSTAGRAM__USERNAME",
+               "AIOS_SECRET__INSTAGRAM__PASSWORD",
+               "AIOS_SECRET__INSTAGRAM__WORK__USERNAME",
+               "AIOS_SECRET__INSTAGRAM__WORK__PASSWORD"):
+        monkeypatch.delenv(_k, raising=False)
     monkeypatch.setenv("AIOS_SECRET__INSTAGRAM__USERNAME", "plat-user")
     monkeypatch.setenv("AIOS_SECRET__INSTAGRAM__WORK__USERNAME", "prof-user")
     assert secret("instagram", "USERNAME") == "plat-user"
@@ -196,6 +202,9 @@ def test_required_secret_errors_with_env_name(monkeypatch):
 
 
 def test_load_secrets_file_no_override_by_default(tmp_path, monkeypatch):
+    for _k in ("AIOS_SECRET__INSTAGRAM__USERNAME", "AIOS_SECRET__INSTAGRAM__PASSWORD",
+               "AIOS_SECRET__INSTAGRAM__DEFAULT__USERNAME", "AIOS_SECRET__INSTAGRAM__DEFAULT__PASSWORD"):
+        monkeypatch.delenv(_k, raising=False)
     secrets_file = tmp_path / "secrets.env"
     secrets_file.write_text(
         "# comment\nAIOS_SECRET__INSTAGRAM__USERNAME='file-user'\nAIOS_SECRET__INSTAGRAM__PASSWORD=file-pass\n",

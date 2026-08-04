@@ -96,6 +96,15 @@ class CodeRAG:
                         current_func = None
                         func_lines = []
                         in_func = False
+            # Flush the trailing function (was lost before: single-function
+            # files indexed nothing)
+            if current_func and func_lines:
+                functions.append({
+                    "name": current_func,
+                    "code": "\n".join(func_lines[:30]),
+                    "file": str(file_path.relative_to(self.repo_path)),
+                    "line": len(lines) - len(func_lines),
+                })
             return functions
         except Exception:
             return []

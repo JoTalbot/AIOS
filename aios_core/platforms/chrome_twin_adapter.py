@@ -33,22 +33,29 @@ from pathlib import Path
 
 from .base import IncomingMessage, PlatformAdapter, SentMessage
 
-# Загрузка .env в окружение (CDP-адрес, токены и т.п.), чтобы адаптеры
-# работали одинаково и из CLI, и из сервисов, и из бота.
-for _env_path in (Path(__file__).resolve().parents[2] / ".env",):
-    if _env_path.exists():
-        try:
-            for _line in _env_path.read_text(encoding="utf-8").splitlines():
-                _line = _line.strip()
-                if not _line or _line.startswith("#") or "=" not in _line:
-                    continue
-                _k, _, _v = _line.partition("=")
-                _k = _k.strip()
-                _v = _v.strip().strip('"').strip("'")
-                if _k and _k not in os.environ:
-                    os.environ[_k] = _v
-        except Exception:
-            pass
+def _ensure_env_loaded() -> None:
+    """Лениво загрузить .env в окружение (CDP-адрес, токены и т.п.).
+
+    Вызывается из __init__ адаптера, а не при импорте модуля, чтобы не
+    загрязнять os.environ глобально (ломало тесты, ожидающие чистое
+    окружение).
+    """
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    if not env_path.exists():
+        return
+    try:
+        for _line in env_path.read_text(encoding="utf-8").splitlines():
+            _line = _line.strip()
+            if not _line or _line.startswith("#") or "=" not in _line:
+                continue
+            _key, _, _value = _line.partition("=")
+            _key = _key.strip()
+            _value = _value.strip().strip('"').strip("'")
+            if _key and _key not in os.environ:
+                os.environ[_key] = _value
+    except Exception:
+        pass
+
 
 try:
     from playwright.async_api import async_playwright
@@ -99,6 +106,7 @@ class ChromeTwinAdapter(PlatformAdapter):
     """
 
     def __init__(self, config: dict[str, Any] | None = None):
+        _ensure_env_loaded()
         super().__init__(config or {})
         self.profile = self.config.get("profile") or os.getenv("CHROME_TWIN_PROFILE") or "default"
         self.user_data_dir = self.config.get("user_data_dir") or os.getenv("CHROME_TWIN_DATA_DIR") or f"data/chrome_twin/{self.profile}"
