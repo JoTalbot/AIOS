@@ -155,6 +155,7 @@ public class CompanionService extends Service {
                 case "/battery": response = battery(); break;
                 case "/apps": response = apps(); break;
                 case "/permissions": response = permissions(); break;
+                case "/capture-status": response = captureStatus(); break;
                 case "/location": response = location(); break;
                 case "/location-status": response = locationStatus(); break;
                 case "/accessibility": response = accessibility(); break;
@@ -271,7 +272,21 @@ public class CompanionService extends Service {
                 .put("accessibility", AIOSAccessibilityService.isEnabled(this))
                 .put("location", checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
                 .put("camera", checkSelfPermission(android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
+                .put("microphone", checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
                 .put("media", Build.VERSION.SDK_INT < 33 || checkSelfPermission(android.Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED);
+    }
+
+    private JSONObject captureStatus() throws Exception {
+        boolean camera = checkSelfPermission(android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+        boolean microphone = checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+        // The Companion intentionally exposes readiness only. There is no
+        // camera/microphone capture endpoint and no background capture path.
+        return new JSONObject().put("status", "ok")
+                .put("camera_permission", camera)
+                .put("microphone_permission", microphone)
+                .put("camera_capture_enabled", false)
+                .put("microphone_capture_enabled", false)
+                .put("background_capture", false);
     }
 
     private JSONObject accessibility() throws Exception {

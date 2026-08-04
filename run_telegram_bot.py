@@ -2721,6 +2721,21 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
         else:
             api.send_message(chat_id, f"⚠️ Уведомления недоступны: {_esc_tg(data.get('error') or data.get('status') or '?')}")
         return True
+    if any(phrase in t for phrase in ("статус камеры телефона", "статус микрофона телефона", "статус камеры и микрофона", "готовность камеры")):
+        data = _android_gateway_run(["capture-status"])
+        if data.get("status") == "ok":
+            camera = bool(data.get("camera_permission"))
+            microphone = bool(data.get("microphone_permission"))
+            background = bool(data.get("background_capture"))
+            api.send_message(chat_id,
+                             "📷 <b>Камера и микрофон телефона</b>\n"
+                             f"Камера: {'✅ разрешена' if camera else '⚪ не разрешена'}\n"
+                             f"Микрофон: {'✅ разрешён' if microphone else '⚪ не разрешён'}\n"
+                             f"Фоновый захват: {'⚠️ включён' if background else '✅ выключен'}\n"
+                             "Фото и аудио не записываются этим статусом.")
+        else:
+            api.send_message(chat_id, f"⚠️ Статус камеры/микрофона недоступен: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+        return True
     if any(phrase in t for phrase in ("статус геолокации телефона", "готовность геолокации", "геолокация доступна")):
         data = _android_gateway_run(["location-status"])
         if data.get("status") == "ok":

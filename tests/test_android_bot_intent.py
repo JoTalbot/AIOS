@@ -19,6 +19,25 @@ def test_android_status_intent_uses_gateway(monkeypatch):
     assert any("Android Device Adapter" in str(item) for item in api.messages)
 
 
+def test_android_capture_status_never_reports_capture(monkeypatch):
+    import run_telegram_bot as bot
+
+    monkeypatch.setattr(bot, "_android_gateway_run", lambda args, timeout=60: {
+        "status": "ok", "camera_permission": True, "microphone_permission": False,
+        "background_capture": False,
+    })
+
+    class API:
+        def __init__(self): self.messages = []
+        def send_message(self, *args, **kwargs): self.messages.append(args)
+
+    api = API()
+    assert bot._handle_android_gateway_intent(api, 5, "статус камеры и микрофона телефона") is True
+    text = str(api.messages[-1])
+    assert "Фоновый захват" in text
+    assert "выключен" in text
+
+
 def test_android_location_status_is_coordinate_free(monkeypatch):
     import run_telegram_bot as bot
 

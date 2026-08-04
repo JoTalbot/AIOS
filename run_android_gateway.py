@@ -65,6 +65,8 @@ def main() -> int:
         result = gateway.paste(confirm=confirmed)
     elif command == "tap-ui" and len(sys.argv) >= 3:
         result = gateway.tap_ui(_text_after(2), confirm=confirmed)
+    elif command == "capture-status":
+        result = gateway.capture_status()
     elif command == "location-status":
         result = gateway.location_status()
     elif command == "location":
@@ -134,7 +136,7 @@ def main() -> int:
             "status": "error",
             "error": (
                 "register|connect|status|apps|profiles|companion|notifications|accessibility|"
-                "ui-snapshot|clipboard|paste|tap-ui|location-status|location|files|pull|screenshot|ui-dump|"
+                "ui-snapshot|clipboard|paste|tap-ui|capture-status|location-status|location|files|pull|screenshot|ui-dump|"
                 "open|tap|home|back|phone-status|audit|calibrate|whatsapp-open-chat|whatsapp-read|"
                 "whatsapp-draft|whatsapp-send|ime-draft|ime-send|uklon-open-driver|"
                 "uklon-stage-route|uklon-enter|easyway-stage-route|easyway-enter|watch"

@@ -21,3 +21,5 @@ def test_companion_binds_only_to_wireguard_address():
     assert 'AIOSAccessibilityService.snapshot("full".equalsIgnoreCase' in source
     assert 'case "/location-status": response = locationStatus(); break;' in source
     assert '.put("ready", permission && (gps || network))' in source
+    assert 'case "/capture-status": response = captureStatus(); break;' in source
+    assert '.put("background_capture", false)' in source
