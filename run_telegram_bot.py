@@ -2113,9 +2113,19 @@ def _handle_phone_bank_monitor_intent(api, chat_id: int, text: str) -> bool:
 
 def _handle_phone_recovery_intent(api, chat_id: int, text: str) -> bool:
     t = " ".join(str(text or "").casefold().split())
-    if not any(phrase in t for phrase in ("восстановление телефона", "диагностика телефона", "почини телефон", "проверка adb")):
+    data_scope = any(phrase in t for phrase in ("здоровье данных телефона", "состояние данных телефона", "проверка данных телефона"))
+    if not (data_scope or any(phrase in t for phrase in ("восстановление телефона", "диагностика телефона", "почини телефон", "проверка adb"))):
         return False
     try:
+        if data_scope:
+            from aios_core.phone_state_health import PhoneStateHealth
+            report = PhoneStateHealth(PROJECT_ROOT).snapshot()
+            api.send_message(chat_id,
+                             "🗄 <b>Состояние данных телефона</b>\n"
+                             f"Статус: {'✅' if report.get('status') == 'ok' else '⚠️'}\n"
+                             f"WireGuard: {'✅' if report.get('wireguard_active') else '⚠️'} · backup: {report.get('backup_age_hours', '—')} ч\n"
+                             f"Файлов состояния: {len(report.get('files') or [])} · проблем JSON: {len(report.get('invalid') or [])} · размер: {report.get('total_bytes', 0)} байт")
+            return True
         from aios_core.android_recovery import AndroidRecovery
         report = AndroidRecovery(PROJECT_ROOT).check()
         action = str(report.get("action") or "unknown")

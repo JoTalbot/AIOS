@@ -11,6 +11,7 @@ from .android_bank_monitor import AndroidBankMonitor
 from .android_gateway import AndroidGateway
 from .android_leads import AndroidLeadQueue
 from .followup_templates import FollowupTemplateStore
+from .phone_state_health import PhoneStateHealth
 
 
 TIMERS = (
@@ -42,12 +43,14 @@ class PhoneControlCenter:
         service_probe: Callable[[str], bool] = _service_active,
         bank_monitor_factory: Callable[[Path], AndroidBankMonitor] = AndroidBankMonitor,
         template_store_factory: Callable[[Path], FollowupTemplateStore] = FollowupTemplateStore,
+        state_health_factory: Callable[[Path], PhoneStateHealth] = PhoneStateHealth,
     ):
         self.root = Path(root)
         self.gateway_factory = gateway_factory
         self.service_probe = service_probe
         self.bank_monitor_factory = bank_monitor_factory
         self.template_store_factory = template_store_factory
+        self.state_health_factory = state_health_factory
 
     def snapshot(self) -> dict:
         gateway = self.gateway_factory(self.root)
@@ -72,6 +75,7 @@ class PhoneControlCenter:
         leads = AndroidLeadQueue(self.root).summary()
         templates = self.template_store_factory(self.root).summary()
         audit = PhoneActionAudit(self.root).summary()
+        state_health = self.state_health_factory(self.root).snapshot()
         bank_snapshot = self.bank_monitor_factory(self.root).snapshot()
         banks = bank_snapshot.get("banks") or []
         bank_tasks = bank_snapshot.get("tasks") or {}
@@ -128,6 +132,13 @@ class PhoneControlCenter:
                 "attention": int(bank_tasks.get("attention") or 0),
                 "overdue": int(bank_tasks.get("overdue") or 0),
             },
+            "state_health": {
+                "status": str(state_health.get("status") or "unknown"),
+                "invalid": len(state_health.get("invalid") or []),
+                "total_bytes": int(state_health.get("total_bytes") or 0),
+                "backup_age_hours": state_health.get("backup_age_hours"),
+                "wireguard_active": bool(state_health.get("wireguard_active")),
+            },
             "timers": timers,
             "recovery": {
                 "status": str(recovery.get("status") or "unknown"),
@@ -145,6 +156,7 @@ def format_telegram(snapshot: dict) -> str:
     banks = snapshot.get("banks") or []
     bank_tasks = snapshot.get("bank_tasks") or {}
     templates = snapshot.get("templates") or {}
+    state_health = snapshot.get("state_health") or {}
     available = sum(1 for app in apps if app.get("available"))
     calibrated = sum(1 for app in apps if app.get("calibrated"))
     timers_ok = sum(1 for active in timers.values() if active)
@@ -162,6 +174,7 @@ def format_telegram(snapshot: dict) -> str:
         f"Шаблоны follow-up: {templates.get('count', 0)} · не обновлялись 30+ дн.: {templates.get('stale', 0)} · использований: {templates.get('used_total', 0)}",
         f"Таймеры: {timers_ok}/{len(timers)} активны · аудит: {snapshot.get('audit', {}).get('count', 0)} событий",
         f"Восстановление: {snapshot.get('recovery', {}).get('action', 'unknown')}",
+        f"Состояние данных: {state_health.get('status', 'unknown')} · WireGuard: {'✅' if state_health.get('wireguard_active') else '⚠️'} · backup: {state_health.get('backup_age_hours', '—')} ч",
     ]
     if snapshot.get("issues"):
         lines.append("Проблемы: <code>" + ", ".join(str(value) for value in snapshot["issues"]) + "</code>")
