@@ -109,3 +109,6 @@ backups/sessions/
 # Transient ops backups (may contain deployment config / sessions)
 backups/manual/
 backups/messenger_profiles/
+
+# Node registry config (no secrets)
+!config/nodes.json

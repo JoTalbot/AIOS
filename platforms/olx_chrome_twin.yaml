@@ -1,7 +1,7 @@
 name: olx_chrome_twin
 android_package: com.android.chrome
 agent_module: aios_core.platforms.olx_chrome_twin_adapter
-storage_class: aios_core.modules.chrome_twin.storage.ChromeTwinStorage
+storage_class: null
 adb_class: null
 default_locale: uk-UA
 description: "OLX Ukraine via Chrome Twin — использует залогиненный Google аккаунт jo.talbot@gmail.com и сохраненные пароли Chrome для входа в OLX с логином 959052288. Автоматизация через Playwright с профилем data/chrome_twin/default/"
