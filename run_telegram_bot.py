@@ -2027,6 +2027,18 @@ _last_phone_leads: dict[int, list[dict]] = {}
 _last_phone_crm_tasks: dict[int, list[dict]] = {}
 
 
+def _handle_phone_bank_monitor_intent(api, chat_id: int, text: str) -> bool:
+    t = " ".join(str(text or "").casefold().split())
+    if not any(phrase in t for phrase in ("банки телефона", "статус банков телефона", "банковские уведомления телефона", "банки android")):
+        return False
+    try:
+        from aios_core.android_bank_monitor import AndroidBankMonitor, format_telegram
+        api.send_message(chat_id, format_telegram(AndroidBankMonitor(PROJECT_ROOT).snapshot()))
+    except Exception:
+        api.send_message(chat_id, "⚠️ Безопасный статус банков телефона временно недоступен.")
+    return True
+
+
 def _handle_phone_recovery_intent(api, chat_id: int, text: str) -> bool:
     t = " ".join(str(text or "").casefold().split())
     if not any(phrase in t for phrase in ("восстановление телефона", "диагностика телефона", "почини телефон", "проверка adb")):
@@ -3185,7 +3197,9 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
-    # Recovery, weekly report, phone center/audit and metadata-only leads/tasks precede broad CRM words.
+    # Bank monitor, recovery, weekly report, phone center/audit and leads precede broad CRM words.
+    if _handle_phone_bank_monitor_intent(api, chat_id, text):
+        return True
     if _handle_phone_recovery_intent(api, chat_id, text):
         return True
     if _handle_phone_weekly_report_intent(api, chat_id, text):
