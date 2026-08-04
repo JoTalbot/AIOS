@@ -33,6 +33,23 @@ from pathlib import Path
 
 from .base import IncomingMessage, PlatformAdapter, SentMessage
 
+# Загрузка .env в окружение (CDP-адрес, токены и т.п.), чтобы адаптеры
+# работали одинаково и из CLI, и из сервисов, и из бота.
+for _env_path in (Path(__file__).resolve().parents[2] / ".env",):
+    if _env_path.exists():
+        try:
+            for _line in _env_path.read_text(encoding="utf-8").splitlines():
+                _line = _line.strip()
+                if not _line or _line.startswith("#") or "=" not in _line:
+                    continue
+                _k, _, _v = _line.partition("=")
+                _k = _k.strip()
+                _v = _v.strip().strip('"').strip("'")
+                if _k and _k not in os.environ:
+                    os.environ[_k] = _v
+        except Exception:
+            pass
+
 try:
     from playwright.async_api import async_playwright
     HAS_PLAYWRIGHT = True
