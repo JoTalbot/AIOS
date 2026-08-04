@@ -23,10 +23,12 @@ from aios_core.phone_brain import __version__
 from aios_core.phone_brain.api import BrainAPI
 from aios_core.phone_brain.device import DeviceSupervisor
 from aios_core.phone_brain.events import EventLog
-from aios_core.phone_brain.handlers import Executor, JobContext, planner_handlers, skill_handlers
+from aios_core.phone_brain.handlers import (Executor, JobContext, planner_handlers,
+                                            reaction_handlers, skill_handlers)
 from aios_core.phone_brain.common import iso, parse_iso, read_json, utc_now
 from aios_core.phone_brain.planner import PhonePlanner
 from aios_core.phone_brain.queue_store import JobStore
+from aios_core.phone_brain.reactions import ReactionEngine
 from aios_core.phone_brain.skills import SkillEngine
 from aios_core.phone_brain.vision import VisionLocator
 
@@ -40,7 +42,23 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "device": {"min_interval": 30, "max_interval": 900, "escalate_after_seconds": 600},
     "vision": {"enabled": True, "gemini_model": "gemini-2.0-flash",
                "openrouter_model": "google/gemini-2.0-flash-001"},
+    "reactions": {"enabled": True, "interval": 30},
 }
+
+
+def load_env_file(root: Path) -> dict:
+    """Значения из .env (не экспортируются; нужны Telegram-ключи реакций)."""
+    env: dict = {}
+    try:
+        for line in (root / ".env").read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            env[key.strip()] = value.strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return env
 
 
 def load_config(root: Path) -> dict:
@@ -110,6 +128,11 @@ class PhoneBrainDaemon:
         # Этап 3: LLM-планировщик и VLM-тап
         self.planner = PhonePlanner(self.skills)
         for handler in planner_handlers(self.planner, self.vision):
+            self.executor.register(handler)
+        # Этап 4: reaction engine (правила на уведомления)
+        self.reactions = ReactionEngine(self.root, gateway=self.gateway, store=self.store,
+                                        events=self.events, env=load_env_file(self.root))
+        for handler in reaction_handlers(self.reactions):
             self.executor.register(handler)
         api_cfg = self.config["api"]
         self.api = BrainAPI(self, host=api_cfg["host"], port=api_cfg["port"])
@@ -201,6 +224,19 @@ class PhoneBrainDaemon:
                 self.logger.exception("❌ ошибка супервизора: %s", exc)
             self._stop.wait(float(self.config["poll_interval"]))
 
+    def _reaction_loop(self) -> None:
+        interval = float((self.config.get("reactions") or {}).get("interval", 30))
+        self.logger.info("⚡ reaction engine запущен (интервал %ss)", int(interval))
+        while not self._stop.is_set():
+            try:
+                result = self.reactions.tick()
+                if result.get("status") == "ok" and result.get("matched"):
+                    self.logger.info("⚡ реакции: обработано уведомлений %s, срабатываний %s",
+                                     result.get("checked"), result.get("matched"))
+            except Exception as exc:  # noqa: BLE001
+                self.logger.exception("❌ ошибка reaction engine: %s", exc)
+            self._stop.wait(interval)
+
     # ------------------------------------------------------------- public
 
     def health(self) -> dict:
@@ -218,6 +254,11 @@ class PhoneBrainDaemon:
                         "started_at": self.started_at})
         return metrics
 
+    def reactions_info(self) -> dict:
+        enabled = bool((self.config.get("reactions") or {}).get("enabled", True))
+        return {"status": "ok", "enabled": enabled, "rules": self.reactions.list_rules(),
+                "state": self.reactions.state_summary()}
+
     def run(self) -> int:
         self.logger.info("🧠 Phone Brain v%s запускается (root=%s)", __version__, self.root)
         self.store.requeue_expired()
@@ -232,6 +273,9 @@ class PhoneBrainDaemon:
                                       daemon=True)
         worker.start()
         supervisor.start()
+        if (self.config.get("reactions") or {}).get("enabled", True):
+            threading.Thread(target=self._reaction_loop, name="phone-brain-reactions",
+                             daemon=True).start()
 
         def _shutdown(signum: int, _frame: Any) -> None:
             self.logger.info("🛑 сигнал %s — остановка Phone Brain", signum)

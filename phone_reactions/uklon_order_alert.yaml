@@ -1,0 +1,11 @@
+# Заказы/оповещения Uklon Driver → Telegram-алерт (приложение водителя не
+# должно оставаться без внимания, когда владелец не у телефона).
+id: uklon_order_alert
+title: "🚕 Uklon Driver: событие"
+match:
+  package: [ua.com.uklon.uklondriver]
+action:
+  type: telegram
+  template: "🚕 <b>Uklon Driver</b>: {text}"
+autonomy: alert_only
+cooldown_seconds: 60
