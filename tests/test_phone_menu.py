@@ -7,6 +7,8 @@ def test_phone_menu_button_mapping_and_rendering():
 
     assert bot.BUTTON_ACTIONS["📲 Телефон"] == "menu_phone"
     assert bot.BUTTON_ACTIONS["📲 Центр телефона"] == "phone_center"
+    assert bot.BUTTON_ACTIONS["📤 Экспорт метрик"] == "phone_metrics_export"
+    assert bot.BUTTON_ACTIONS["🗄 Здоровье данных"] == "phone_data_health"
 
     class API:
         def __init__(self): self.messages = []

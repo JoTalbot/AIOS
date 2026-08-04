@@ -311,7 +311,9 @@ PHONE_MENU_KEYBOARD = {
         [{"text": "📥 Лиды телефона"}, {"text": "📌 CRM задачи"}],
         [{"text": "🏦 Банки телефона"}, {"text": "📈 Тренды телефона"}],
         [{"text": "🔄 Синхронизации"}, {"text": "📋 Журнал телефона"}],
-        [{"text": "🚕 Маршруты"}, {"text": "🧩 Калибровки"}],
+        [{"text": "🗄 Здоровье данных"}, {"text": "📦 Инвентарь"}],
+        [{"text": "📤 Экспорт метрик"}, {"text": "🧩 Калибровки"}],
+        [{"text": "🚕 Маршруты"}],
         [{"text": "◀️ Меню"}],
     ],
     "resize_keyboard": True,
@@ -6097,6 +6099,15 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
     elif data == "phone_routes":
         api.send_message(chat_id, "🚕 <b>Маршруты</b>\n«маршрут Uklon: откуда -> куда»\n«маршрут EasyWay: остановка или адрес»\n\nАдрес и заказ выбираются вручную.")
         return
+    elif data == "phone_data_health":
+        _handle_phone_recovery_intent(api, chat_id, "здоровье данных телефона")
+        return
+    elif data == "phone_inventory":
+        _handle_phone_inventory_intent(api, chat_id, "инвентарь телефона")
+        return
+    elif data == "phone_metrics_export":
+        _handle_phone_metrics_intent(api, chat_id, "экспорт метрик телефона")
+        return
     elif data == "menu_accounts":
         reply = cmd_accounts()
         keyboard = ACCOUNTS_MENU_KEYBOARD
@@ -6910,6 +6921,9 @@ BUTTON_ACTIONS = {
     "📋 Журнал телефона": "phone_audit",
     "🚕 Маршруты": "phone_routes",
     "🧩 Калибровки": "phone_calibrations",
+    "🗄 Здоровье данных": "phone_data_health",
+    "📦 Инвентарь": "phone_inventory",
+    "📤 Экспорт метрик": "phone_metrics_export",
     "🖥 Сервер": "menu_server",
     "🐳 Docker": "menu_docker",
     "🔑 API Ключи": "menu_keys",
