@@ -49,7 +49,19 @@ def main() -> int:
     existing = [t for t in targets if t.exists() and t.is_file()]
     print(f"Файлов для бэкапа: {len(existing)} (+ Chrome-профиль {profile.exists()})")
 
-    cmd = ["tar", "-czf", str(out)]
+    # Chrome активно пишет в профиль во время бэкапа: исключаем кэши/сокеты
+    # (пересоздаются автоматически), предупреждения tar не считаем ошибкой.
+    excludes = [
+        "default/Default/Cache", "default/Default/Code Cache",
+        "default/Default/GPUCache", "default/Default/Service Worker",
+        "default/SingletonSocket", "default/SingletonCookie",
+        "default/SingletonLock",
+    ]
+    cmd = ["tar", "-czf", str(out),
+           "--warning=no-file-changed", "--warning=no-file-removed",
+           "--warning=no-file-ignored", "--ignore-failed-read"]
+    for pattern in excludes:
+        cmd += ["--exclude", pattern]
     for t in existing:
         cmd.append("-C")
         cmd.append(str(t.parent))
@@ -58,7 +70,7 @@ def main() -> int:
         cmd += ["-C", str(profile.parent), "default"]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-        if r.returncode != 0:
+        if r.returncode >= 2:  # rc=1 — только предупреждения, бэкап валиден
             print("Ошибка tar:", r.stderr[-300:])
             return 1
     except Exception as e:
