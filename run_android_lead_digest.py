@@ -9,6 +9,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+from aios_core.android_bank_monitor import AndroidBankMonitor
 from aios_core.android_leads import AndroidLeadQueue
 
 ROOT = Path(__file__).resolve().parent
@@ -72,12 +73,20 @@ def _queue_snapshot() -> tuple[list[dict], dict]:
     return queue.list_pending(limit=300), queue.summary()
 
 
+def _bank_tasks() -> list[dict]:
+    return AndroidBankMonitor(ROOT).list_tasks(limit=300)
+
+
 def check(alert: bool = False, bootstrap: bool = False) -> dict:
     rows, summary = _queue_snapshot()
+    bank_tasks = _bank_tasks()
     state = _read(STATE, {"known_ids": []})
     known = {str(value) for value in (state.get("known_ids") or [])}
     new_rows = [row for row in rows if str(row.get("id") or "") not in known]
     current_ids = [str(row.get("id") or "") for row in rows if row.get("id")]
+    known_bank_ids = {str(value) for value in (state.get("known_bank_task_ids") or [])}
+    new_bank_tasks = [task for task in bank_tasks if str(task.get("id") or "") not in known_bank_ids]
+    current_bank_ids = [str(task.get("id") or "") for task in bank_tasks if task.get("id")]
     by_source: dict[str, int] = {}
     for row in new_rows:
         source = str(row.get("source") or "Телефон")
@@ -88,25 +97,28 @@ def check(alert: bool = False, bootstrap: bool = False) -> dict:
     crm_overdue = int(summary.get("crm_overdue") or 0)
     overdue_increased = crm_overdue > previous_overdue
     sent = False
-    if alert and not bootstrap and (new_rows or overdue_increased):
+    if alert and not bootstrap and (new_rows or new_bank_tasks or overdue_increased):
         source_summary = " · ".join(f"{source}: {count}" for source, count in sorted(by_source.items()))
         lines = ["📲 <b>Телефонные лиды и CRM follow-up</b>"]
         if new_rows:
             lines.append(f"Новых карточек для проверки: <b>{len(new_rows)}</b>" + (f" · {source_summary}" if source_summary else ""))
         if crm_open:
             lines.append(f"Открытых CRM follow-up: <b>{crm_open}</b> · внимание: {crm_attention} · просрочены: {crm_overdue}")
-        lines.append("<i>Содержимое чатов, имена и номера не передавались.</i>")
+        if new_bank_tasks:
+            lines.append(f"Новых локальных банковских задач: <b>{len(new_bank_tasks)}</b>")
+        lines.append("<i>Содержимое чатов, суммы, карты, OTP, имена и номера не передавались.</i>")
         sent = _send("\n".join(lines))
     # Keep a bounded union so reviewing old records cannot make a later lead
     # look old merely because the pending count changed.
     merged = list(dict.fromkeys((state.get("known_ids") or []) + current_ids))[-600:]
+    merged_bank = list(dict.fromkeys((state.get("known_bank_task_ids") or []) + current_bank_ids))[-600:]
     _write(STATE, {
-        "checked_at": _now(), "known_ids": merged,
-        "pending": len(rows), "last_new": len(new_rows), "last_alert_sent": sent,
+        "checked_at": _now(), "known_ids": merged, "known_bank_task_ids": merged_bank,
+        "pending": len(rows), "last_new": len(new_rows), "last_bank_new": len(new_bank_tasks), "last_alert_sent": sent,
         "crm_open": crm_open, "crm_attention": crm_attention, "crm_overdue": crm_overdue,
     })
     return {
-        "status": "ok", "pending": len(rows), "new": len(new_rows),
+        "status": "ok", "pending": len(rows), "new": len(new_rows), "bank_new": len(new_bank_tasks),
         "by_source": by_source, "sent": sent, "bootstrap": bool(bootstrap),
         "crm_open": crm_open, "crm_attention": crm_attention, "crm_overdue": crm_overdue,
     }
