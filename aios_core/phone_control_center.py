@@ -107,6 +107,7 @@ class PhoneControlCenter:
                 "crm_open": int(leads.get("crm_open") or 0),
                 "crm_attention": int(leads.get("crm_attention") or 0),
                 "crm_overdue": int(leads.get("crm_overdue") or 0),
+                "by_source": dict(leads.get("by_source") or {}),
             },
             "templates": {
                 "count": int(templates.get("count") or 0),

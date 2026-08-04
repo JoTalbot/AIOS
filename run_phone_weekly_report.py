@@ -11,6 +11,7 @@ from pathlib import Path
 from aios_core.android_audit import PhoneActionAudit
 from aios_core.android_leads import AndroidLeadQueue
 from aios_core.phone_control_center import PhoneControlCenter
+from aios_core.phone_metrics import PhoneMetricsStore
 
 ROOT = Path(__file__).resolve().parent
 
@@ -47,6 +48,8 @@ def build_text(root: Path = ROOT, days: int = 7) -> str:
     metrics = AndroidLeadQueue(root).weekly_metrics(days)
     control = PhoneControlCenter(root).snapshot()
     audit_events = PhoneActionAudit(root).recent(limit=500)
+    trend = PhoneMetricsStore(root).trend(limit=7)
+    changes = trend.get("changes") or {}
     return "\n".join([
         f"📊 <b>Недельный отчёт AIOS · телефон · {metrics['days']} дн.</b>",
         f"Лиды: новые {metrics['leads_created']} · обработаны {metrics['leads_reviewed']} · переведены в follow-up {metrics['leads_promoted']}",
@@ -55,6 +58,7 @@ def build_text(root: Path = ROOT, days: int = 7) -> str:
         "Банки: " + (" · ".join(f"{bank.get('title')}: {bank.get('unread_notifications', 0)} уведомл." for bank in (control.get('banks') or [])) if control.get('banks') else "нет данных"),
         f"Банковские задачи: {(control.get('bank_tasks') or {}).get('pending', 0)} · внимание: {(control.get('bank_tasks') or {}).get('attention', 0)} · просрочены: {(control.get('bank_tasks') or {}).get('overdue', 0)}",
         f"Шаблоны follow-up: {(control.get('templates') or {}).get('count', 0)} · не обновлялись 30+ дн.: {(control.get('templates') or {}).get('stale', 0)}",
+        f"Тренд по {trend.get('snapshots', 0)} снимкам: лиды {changes.get('leads_pending', 0):+d} · CRM {changes.get('crm_open', 0):+d} · банковские задачи {changes.get('bank_tasks', 0):+d}",
         f"Безопасный аудит: {len(audit_events)} технических событий в журнале",
         "<i>Тексты чатов, имена, номера, маршруты, координаты, фото и аудио не включаются.</i>",
     ])
