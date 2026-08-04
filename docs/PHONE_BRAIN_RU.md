@@ -38,6 +38,33 @@ run_phone_brain.py  — CLI
 | `notify.collect` | device + companion | Сбор уведомлений в инбокс |
 | `skill.run` | device + companion (+ confirm у skill) | Выполнить декларативный skill из `skills/phone/` |
 | `skill.list` | — | Список phone-skills и ошибки загрузки |
+| `plan.run` | device + companion + confirm | Цель на русском → LLM-план из skills → выполнение |
+| `vision.tap` | device + companion + confirm | Тап по элементу, найденному VLM по описанию `hint` |
+
+## LLM + VLM (этап 3)
+
+**Планировщик** (`plan.run`): цель владельца собирается LLM (существующий
+`LLMBalancer`, только импорт) в цепочку skills с параметрами. Валидация плана:
+только известные skills, все объявленные `params`, ≤ 3 шагов, строковые значения.
+
+```bash
+python run_phone_brain.py enqueue plan.run \
+  '{"goal":"напиши маме в WhatsApp что я задержусь на час"}' --confirm
+```
+
+**Самовосстановление селекторов**: шаг skill'а с `heal: true` + `heal_hint: "..."`
+при полном падении fallback-цепочки идёт в VLM: скриншот → Gemini API
+(fallback: OpenRouter) → координаты элемента → тап → запись `learned.center`
+в `skill_stats.json`. Следующие запуски сначала ищут живой узел рядом с
+выученной точкой (±90px) и VLM больше не вызывают. События `skill_heal` — в
+журнале, файл скриншота остаётся локально.
+
+**`vision.tap`** — ручной VLM-тап: `{"hint":"кнопка поиска", "confirm":true}`.
+
+Конфиг (`phone_brain_config.json` → секция `vision`):
+`enabled`, `gemini_model` (default `gemini-2.0-flash`),
+`openrouter_model` (default `google/gemini-2.0-flash-001`).
+Ключи читаются из env / `data/.llm_keys.json` (как у llm_balancer).
 
 ## Skill-движок (этап 2)
 

@@ -3,6 +3,7 @@
 id: privat24_open
 title: "Privat24: открыть приложение"
 app: privat24
+params: []
 confirm: true
 sensitive: true
 steps:

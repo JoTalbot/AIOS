@@ -3,6 +3,7 @@
 id: whatsapp_open_chat
 title: "WhatsApp: открыть чат"
 app: whatsapp
+params: [contact]
 confirm: true
 sensitive: false
 steps:
@@ -21,6 +22,8 @@ steps:
   - id: open_search
     do: ui.tap
     timeout: 5
+    heal: true
+    heal_hint: "the search icon (magnifying glass) in the top app bar of the WhatsApp chats screen"
     selectors:
       - {resource: "com.whatsapp:id/menuitem_search"}
       - {desc_contains: "Поиск"}
@@ -33,6 +36,8 @@ steps:
   - id: open_result
     do: ui.tap
     timeout: 7
+    heal: true
+    heal_hint: "the chat search result row titled ${contact}"
     selectors:
       - {text: "${contact}"}
       - {text_contains: "${contact}"}

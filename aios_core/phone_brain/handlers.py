@@ -293,3 +293,50 @@ def skill_handlers(engine: Any) -> list[Handler]:
         Handler("skill.list", _list, timeout=15, needs_device=False,
                 description="Список доступных phone-skills и ошибки загрузки"),
     ]
+
+
+# ------------------------------------------------- planner + vision (этап 3)
+
+def planner_handlers(planner: Any, vision: Any) -> list[Handler]:
+    """Фабрика обработчиков LLM-планировщика и VLM-тапа."""
+
+    def _plan_run(payload: dict, ctx: JobContext) -> dict:
+        goal = str(payload.get("goal") or "").strip()
+        if not goal:
+            return {"status": "error", "error": "Пустая цель", "retry": False}
+        result = planner.run(goal)
+        if result.get("status") == "ok":
+            return result
+        code = str(result.get("code") or "")
+        # Ошибки синтеза плана повторять бессмысленно; ошибки провайдера и UI — да.
+        retry = code in ("llm_unavailable", "ui_unavailable", "ui_not_found",
+                         "app_open_failed", "tap_failed")
+        return {"status": "error", "retry": retry,
+                "error": str(result.get("error") or code)[:250],
+                "plan": result.get("plan") or [], "executed": result.get("executed") or []}
+
+    def _vision_tap(payload: dict, ctx: JobContext) -> dict:
+        hint = str(payload.get("hint") or "").strip()
+        if not hint:
+            return {"status": "error", "error": "Нужен hint (описание элемента)", "retry": False}
+        shot = ctx.gateway.screenshot()
+        if shot.get("status") != "ok":
+            status = "offline" if shot.get("status") == "offline" else "error"
+            return {"status": status, "error": str(shot.get("error") or "screenshot failed")[:160]}
+        located = vision.locate(shot.get("file"), hint)
+        if located.get("status") != "ok":
+            return {"status": "error", "error": str(located.get("error"))[:180]}
+        tapped = ctx.gateway.tap(int(located["x"]), int(located["y"]), confirm=True)
+        if tapped.get("status") != "ok":
+            return {"status": "error", "error": "тап по VLM-координатам не прошёл"}
+        return {"status": "ok", "x": located["x"], "y": located["y"],
+                "provider": located.get("provider")}
+
+    return [
+        Handler("plan.run", _plan_run, timeout=280, needs_companion=True,
+                confirm_action="phone_plan_run",
+                description="Цель на русском → LLM-план из skills → выполнение (confirm=true)"),
+        Handler("vision.tap", _vision_tap, timeout=120, needs_companion=True,
+                confirm_action="phone_vision_tap",
+                description="Тап по элементу, найденному VLM по описанию hint (confirm=true)"),
+    ]
