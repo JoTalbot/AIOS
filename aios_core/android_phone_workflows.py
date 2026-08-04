@@ -363,25 +363,28 @@ class ActiveAppAdapter:
         pasted = self.gateway.paste(confirm=True)
         if pasted.get("status") != "ok":
             return pasted
-        time.sleep(0.35)
-        verified = self._active_ui(include_text=True)
-        # Android can temporarily expose the keyboard as the active window.
-        # We only dismiss a recognised input method immediately after a verified
-        # app field/paste sequence, then re-check the target app and its text.
-        if verified.get("status") == "wrong_active_app" and self._is_input_method(verified.get("active_package")):
-            dismissed = self.gateway.key("KEYCODE_BACK", confirm=True)
-            if dismissed.get("status") == "ok":
-                time.sleep(0.35)
-                verified = self._active_ui(include_text=True)
-        if verified.get("status") != "ok":
-            return verified
-        matching = any(
-            node.get("editable") and _same_draft_text(node.get("text"), query)
-            for node in (verified.get("nodes") or [])
-        )
-        if not matching:
-            return {"status": "error", "error": "Поисковый запрос не подтверждён интерфейсом; выбор результата заблокирован"}
-        return {"status": "query_entered", "length": len(query)}
+        deadline = time.monotonic() + 3.0
+        verified: dict = {}
+        while True:
+            time.sleep(0.25)
+            verified = self._active_ui(include_text=True)
+            # Android can temporarily expose the keyboard as the active window.
+            # We only dismiss a recognised input method immediately after a verified
+            # app field/paste sequence, then re-check the target app and its text.
+            if verified.get("status") == "wrong_active_app" and self._is_input_method(verified.get("active_package")):
+                dismissed = self.gateway.key("KEYCODE_BACK", confirm=True)
+                if dismissed.get("status") == "ok" and time.monotonic() < deadline:
+                    continue
+            if verified.get("status") != "ok":
+                return verified
+            matching = any(
+                node.get("editable") and _same_draft_text(node.get("text"), query)
+                for node in (verified.get("nodes") or [])
+            )
+            if matching:
+                return {"status": "query_entered", "length": len(query)}
+            if time.monotonic() >= deadline:
+                return {"status": "error", "error": "Поисковый запрос не подтверждён интерфейсом; выбор результата заблокирован"}
 
     @staticmethod
     def _label(node: dict) -> str:
