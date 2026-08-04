@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable
 
 from .android_audit import PhoneActionAudit
+from .android_bank_monitor import AndroidBankMonitor
 from .android_gateway import AndroidGateway
 from .android_leads import AndroidLeadQueue
 
@@ -38,10 +39,12 @@ class PhoneControlCenter:
         root: Path | str,
         gateway_factory: Callable[[Path], AndroidGateway] = AndroidGateway,
         service_probe: Callable[[str], bool] = _service_active,
+        bank_monitor_factory: Callable[[Path], AndroidBankMonitor] = AndroidBankMonitor,
     ):
         self.root = Path(root)
         self.gateway_factory = gateway_factory
         self.service_probe = service_probe
+        self.bank_monitor_factory = bank_monitor_factory
 
     def snapshot(self) -> dict:
         gateway = self.gateway_factory(self.root)
@@ -65,6 +68,7 @@ class PhoneControlCenter:
             })
         leads = AndroidLeadQueue(self.root).summary()
         audit = PhoneActionAudit(self.root).summary()
+        banks = self.bank_monitor_factory(self.root).snapshot().get("banks") or []
         timers = {name: bool(self.service_probe(name)) for name in TIMERS}
         companion = device.get("companion") or {}
         connected = bool(device.get("connected"))
@@ -103,6 +107,10 @@ class PhoneControlCenter:
                 "last_action": str((audit.get("last") or {}).get("action") or ""),
                 "last_status": str((audit.get("last") or {}).get("status") or ""),
             },
+            "banks": [
+                {"title": str(bank.get("title") or "Банк"), "available": bool(bank.get("available")), "unread_notifications": int(bank.get("unread_notifications") or 0)}
+                for bank in banks
+            ],
             "timers": timers,
             "recovery": {
                 "status": str(recovery.get("status") or "unknown"),
@@ -117,6 +125,7 @@ def format_telegram(snapshot: dict) -> str:
     leads = snapshot.get("leads") or {}
     apps = snapshot.get("apps") or []
     timers = snapshot.get("timers") or {}
+    banks = snapshot.get("banks") or []
     available = sum(1 for app in apps if app.get("available"))
     calibrated = sum(1 for app in apps if app.get("calibrated"))
     timers_ok = sum(1 for active in timers.values() if active)
@@ -129,6 +138,7 @@ def format_telegram(snapshot: dict) -> str:
         f"Камера: {'✅ разрешена' if device.get('camera_permission') else '⚪ не разрешена'} · микрофон: {'✅ разрешён' if device.get('microphone_permission') else '⚪ не разрешён'} · фоновой захват: {'⚠️' if device.get('background_capture') else 'выключен'}",
         f"Приложения: {available}/{len(apps)} доступны · интерфейсы откалиброваны: {calibrated}",
         f"Лиды: {leads.get('pending', 0)} · CRM follow-up: {leads.get('crm_open', 0)} · внимание: {leads.get('crm_attention', 0)} · просрочены: {leads.get('crm_overdue', 0)}",
+        "Банки: " + (" · ".join(f"{bank.get('title')}: {bank.get('unread_notifications', 0)} уведомл." for bank in banks) if banks else "нет данных"),
         f"Таймеры: {timers_ok}/{len(timers)} активны · аудит: {snapshot.get('audit', {}).get('count', 0)} событий",
         f"Восстановление: {snapshot.get('recovery', {}).get('action', 'unknown')}",
     ]
