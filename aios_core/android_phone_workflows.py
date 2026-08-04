@@ -590,6 +590,9 @@ class WhatsAppPhoneAdapter(MessengerDraftAdapter):
     title = "WhatsApp"
     search_labels = ("поиск", "search", "поиск…", "search…")
 
+    def _calibration_selectors(self, nodes: list[dict]) -> dict[str, bool]:
+        return {"chat_search": bool(self._find_control(nodes, self.search_labels))}
+
     def _exact_chat_target(self, nodes: list[dict], contact: str) -> tuple[dict | None, bool]:
         target = _fold(contact)
         candidates: dict[tuple[int, int, int, int], dict] = {}
