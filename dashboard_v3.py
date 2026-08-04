@@ -242,8 +242,11 @@ def build() -> None:
         pending_leads = int(leads.get("pending") or 0)
         lead_sources = " · ".join(f"{source}: {count}" for source, count in (leads.get("by_source") or {}).items())
         crm_followups = int(leads.get("crm_open") or 0)
+        crm_attention = int(leads.get("crm_attention") or 0)
+        crm_overdue = int(leads.get("crm_overdue") or 0)
         ui.label(
             f"Потенциальные лиды телефона: {pending_leads} · CRM follow-up: {crm_followups}"
+            f" · внимание: {crm_attention} · просрочены: {crm_overdue}"
             + (f" · {lead_sources}" if lead_sources else "")
         ).classes("text-sm text-amber-700" if (pending_leads or crm_followups) else "text-sm text-gray-500")
 

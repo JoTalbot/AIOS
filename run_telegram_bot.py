@@ -2062,11 +2062,18 @@ def _handle_phone_lead_intent(api, chat_id: int, text: str) -> bool:
         if not tasks:
             api.send_message(chat_id, "📌 <b>CRM задачи телефона</b>\nОткрытых follow-up задач нет.")
             return True
-        lines = ["📌 <b>CRM FOLLOW-UP ЗАДАЧИ ТЕЛЕФОНА</b>", "━━━━━━━━━━━━━━━━"]
+        summary = queue.summary()
+        lines = [
+            "📌 <b>CRM FOLLOW-UP ЗАДАЧИ ТЕЛЕФОНА</b>",
+            f"<i>Открыты: {summary.get('crm_open', len(tasks))} · внимание: {summary.get('crm_attention', 0)} · просрочены: {summary.get('crm_overdue', 0)}</i>",
+            "━━━━━━━━━━━━━━━━",
+        ]
+        age_label = {"fresh": "🟢 Новая", "attention": "🟠 Внимание", "overdue": "🔴 Просрочена", "unknown": "⚪ Без времени"}
         for index, task in enumerate(tasks[:12], 1):
             source = _esc_tg(str(task.get("source") or "Телефон"))
             created = _esc_tg(str(task.get("created_at") or "")[:19])
-            lines.append(f"╭─ <code>{index:02d}</code> 📌 <b>{source}</b>")
+            age = age_label.get(str(task.get("age_state") or ""), "⚪ Без времени")
+            lines.append(f"╭─ <code>{index:02d}</code> 📌 <b>{source}</b> · {age}")
             lines.append("├ Открыть чат и вручную проверить обращение")
             lines.append(f"╰ 🕐 {created or 'время недоступно'}")
         lines.append("━━━━━━━━━━━━━━━━")
