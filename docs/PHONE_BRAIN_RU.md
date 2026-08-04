@@ -62,12 +62,28 @@ cooldown_seconds: 120
 ```
 
 **Действия:** `telegram` — алерт владельцу (ключи из `.env`, HTML-экранирование);
-`enqueue` — задача в очередь с шаблонными payload; `event` — запись в журнал.
+`enqueue` — задача в очередь с шаблонными payload; `event` — запись в журнал;
+`llm_enqueue` — LLM-черновик (текст `{draft}` из LLMBalancer) → задача +
+Telegram-уведомление с id для одобрения.
 **Автономия:** `alert_only` — только алерты; `draft` — задача приходит БЕЗ confirm
 и останавливается в `need_confirm` (черновик на одобрение); `auto` — с confirm.
 **Дедуп** по hash уведомления + per-rule cooldown; состояние —
 `reactions_state.json`. OTP и номера карт в алертах/журнале только в виде `••••`
 (тест `test_event_action_has_no_text` это гарантирует).
+
+### Одобрение черновиков (полный цикл автономии)
+
+```
+правило llm_enqueue → LLM-черновик → задача (без confirm)
+→ need_confirm при исполнении → Telegram «Черновик #N … confirm N»
+→ владелец: python run_phone_brain.py confirm N   (или POST /jobs/<id>/confirm)
+→ задача выполняется с confirm=true
+```
+
+`confirm_job` идемпотентен и работает из статусов `need_confirm` и `queued`
+(одобрение успевает до исполнения). Из терминальных — отказ.
+CLI: `run_phone_brain.py confirm <id>`; API: `POST /jobs/<id>/confirm`;
+для программного вызова — `queue.confirm` job с `{"id": N}`.
 
 API: `GET /reactions` — правила и состояние.
 

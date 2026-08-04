@@ -114,7 +114,8 @@ class PhoneBrainDaemon:
             max_interval=device_cfg["max_interval"],
             escalate_after_seconds=device_cfg["escalate_after_seconds"], events=self.events)
         self.executor = Executor(JobContext(root=self.root, gateway=self.gateway,
-                                            supervisor=self.supervisor, events=self.events))
+                                            supervisor=self.supervisor, events=self.events,
+                                            store=self.store))
         # Этап 2: декларативный skill-движок поверх очереди
         vision_cfg = self.config.get("vision") or {}
         self.vision = VisionLocator(

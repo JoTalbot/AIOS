@@ -133,6 +133,8 @@ class BrainAPI:
                         return self._send(201, {"status": "ok", "job": job})
                     if len(segments) == 3 and segments[0] == "jobs" and segments[2] == "cancel":
                         return self._send(200, daemon.store.cancel(int(segments[1])))
+                    if len(segments) == 3 and segments[0] == "jobs" and segments[2] == "confirm":
+                        return self._send(200, daemon.store.confirm_job(int(segments[1])))
                     if segments == ["device", "connect"]:
                         job = daemon.store.enqueue("device.connect", {}, priority=90,
                                                    dedup_key="manual-device-connect")

@@ -47,7 +47,7 @@ APP_LABELS = {
     "com.eway": "EasyWay",
 }
 
-ACTION_TYPES = {"telegram", "enqueue", "event"}
+ACTION_TYPES = {"telegram", "enqueue", "event", "llm_enqueue"}
 MAX_SEEN = 500
 
 
@@ -83,10 +83,10 @@ def _validate_rule(data: Any, path: Path) -> dict:
     action = data.get("action") or {}
     if action.get("type") not in ACTION_TYPES:
         raise RuleError(f"action.type должен быть одним из {sorted(ACTION_TYPES)}")
-    if action.get("type") == "enqueue":
+    if action.get("type") in ("enqueue", "llm_enqueue"):
         job = action.get("job") or {}
         if not isinstance(job, dict) or not job.get("kind"):
-            raise RuleError("enqueue: нужен job.kind")
+            raise RuleError(f"{action['type']}: нужен job.kind")
     autonomy = str(data.get("autonomy") or "alert_only")
     if autonomy not in ("alert_only", "draft", "auto"):
         raise RuleError("autonomy: alert_only | draft | auto")
@@ -110,6 +110,7 @@ class ReactionEngine:
                  state_path: Path | str | None = None,
                  env: dict | None = None,
                  sender: Callable[[str], dict] | None = None,
+                 chat: Callable | None = None,
                  now_fn: Callable[[], Any] = utc_now):
         self.root = Path(root)
         self.gateway = gateway
@@ -120,6 +121,7 @@ class ReactionEngine:
                            else self.root / "data" / "android_gateway" / "reactions_state.json")
         self.env = env or {}
         self._sender = sender
+        self._chat = chat  # в тестах подменяется; в проде — LLMBalancer (лениво)
         self._now = now_fn
         self._rules: list[dict] | None = None
         self.load_errors: list[dict] = []
@@ -245,9 +247,10 @@ class ReactionEngine:
         action = rule["action"]
         ctx = self._ctx(item, masked_title, masked_text)
         kind = action["type"]
-        fired_at = iso(self._now())
         self._event("reaction_fired", {"rule": rule["id"], "type": kind,
                                        "package": str(item.get("package") or "")[:60]})
+        if kind == "llm_enqueue":
+            return self._fire_llm_enqueue(state, rule, item, masked_title, masked_text)
         if kind == "telegram":
             text = str(self._render(str(action.get("template") or "{label}: {text}"), ctx))
             result = self._telegram(text)
@@ -271,6 +274,69 @@ class ReactionEngine:
         self._event(str(action.get("name") or "reaction_event"),
                     {"rule": rule["id"], "package": str(item.get("package") or "")[:60]})
         return {"rule": rule["id"], "type": "event", "ok": True}
+
+    # ------------------------------------------------------------ llm draft
+
+    def _llm_draft(self, prompt: str) -> dict:
+        """Генерирует черновик через LLMBalancer (в тестах — через подменённый chat)."""
+        chat = self._chat
+        if chat is None:
+            try:
+                from aios_core.phone_brain.planner import _balancer_chat
+                chat = _balancer_chat()
+            except Exception as exc:
+                return {"status": "error", "error": str(exc)[:160]}
+        try:
+            text = str(chat([{"role": "user", "content": prompt}],
+                            max_tokens=220, temperature=0.4, task_type="reply") or "")
+            text = text.strip().strip('"').strip()
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)[:160]}
+        if not text:
+            return {"status": "error", "error": "пустой ответ LLM"}
+        return {"status": "ok", "draft": text[:500]}
+
+    def _fire_llm_enqueue(self, state: dict, rule: dict, item: dict,
+                          masked_title: str, masked_text: str) -> dict:
+        """LLM-черновик → задача в очередь (+Telegram-уведомление с id для одобрения)."""
+        action = rule["action"]
+        if self.store is None:
+            return {"rule": rule["id"], "type": "llm_enqueue", "ok": False,
+                    "error": "store недоступен"}
+        ctx = self._ctx(item, masked_title, masked_text)
+        prompt = str(self._render(str(action.get("prompt") or "{text}"), ctx))
+        drafted = self._llm_draft(prompt)
+        if drafted.get("status") != "ok":
+            self._event("llm_draft_failed", {"rule": rule["id"],
+                                             "error": str(drafted.get("error"))[:120]})
+            return {"rule": rule["id"], "type": "llm_enqueue", "ok": False,
+                    "error": str(drafted.get("error"))[:160]}
+        draft_ctx = dict(ctx)
+        draft_ctx["draft"] = drafted["draft"]  # для payload телефона — без HTML-экранирования
+        job_spec = action.get("job") or {}
+        payload = self._render(job_spec.get("payload") or {}, draft_ctx)
+        if not isinstance(payload, dict):
+            payload = {}
+        if rule["autonomy"] == "auto":
+            payload["confirm"] = True
+        job = self.store.enqueue(str(job_spec.get("kind") or ""), payload,
+                                 priority=int(job_spec.get("priority") or 60),
+                                 dedup_key=(f"react/{rule['id']}/" + _event_id(item))
+                                 if job_spec.get("dedup", True) else None)
+        if job.get("status") == "error":
+            return {"rule": rule["id"], "type": "llm_enqueue", "ok": False,
+                    "error": job.get("error")}
+        self._event("llm_draft_ready", {"rule": rule["id"], "job_id": job.get("id"),
+                                        "autonomy": rule["autonomy"]})
+        if action.get("notify", True):
+            note = (f"✉️ <b>Черновик #{job.get('id')}</b> ({ctx['label']})\n"
+                    f"{html.escape(drafted['draft'][:400], quote=False)}\n\n"
+                    + ("🟢 Автономия auto — выполнится сам."
+                       if rule["autonomy"] == "auto" else
+                       f"Подтвердить отправку: <code>confirm {job.get('id')}</code>"))
+            self._telegram(note)
+        return {"rule": rule["id"], "type": "llm_enqueue", "ok": True,
+                "job_id": job.get("id"), "autonomy": rule["autonomy"]}
 
     def _event(self, event_type: str, data: dict) -> None:
         if self.events is not None:

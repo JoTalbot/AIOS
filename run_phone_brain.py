@@ -6,6 +6,7 @@
     list [--status S] [-n]  последние задачи
     show ID                 детали задачи
     cancel ID               отменить задачу в очереди
+    confirm ID              подтвердить черновик (need_confirm → в работу)
     status                  health демона (API; офлайн — из файлов состояния)
     kinds                   типы задач и их гейты
     metrics                 метрики очереди и счётчики демона
@@ -102,6 +103,13 @@ def cmd_cancel(args: argparse.Namespace) -> int:
         return _print(_store().cancel(args.id))
 
 
+def cmd_confirm(args: argparse.Namespace) -> int:
+    try:
+        return _print(_api("POST", f"/jobs/{args.id}/confirm", {}))
+    except (urllib.error.URLError, OSError):
+        return _print(_store().confirm_job(args.id))
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     try:
         return _print(_api("GET", "/health"))
@@ -166,6 +174,10 @@ def main() -> int:
     cancel = sub.add_parser("cancel", help="отменить задачу")
     cancel.add_argument("id", type=int)
     cancel.set_defaults(func=cmd_cancel)
+
+    confirm = sub.add_parser("confirm", help="подтвердить черновик (need_confirm → в работу)")
+    confirm.add_argument("id", type=int)
+    confirm.set_defaults(func=cmd_confirm)
 
     sub.add_parser("status", help="health демона").set_defaults(func=cmd_status)
     sub.add_parser("kinds", help="типы задач").set_defaults(func=cmd_kinds)
