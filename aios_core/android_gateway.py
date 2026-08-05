@@ -537,6 +537,15 @@ class AndroidGateway:
             return {"status": "need_confirm", "action": action}
         return None
 
+    def force_stop(self, package: str) -> dict:
+        """Останавливает приложение (для гарантированного холодного старта)."""
+        if not self.status().get("connected"):
+            return {"status": "offline"}
+        result = self._run(["shell", "am", "force-stop", package], timeout=15)
+        if result.returncode != 0:
+            return {"status": "error", "error": (result.stderr or result.stdout or "")[:200]}
+        return {"status": "ok", "package": package}
+
     def open_app(self, package: str, confirm: bool = False) -> dict:
         pending = self._needs_confirm(confirm, "android_open_app")
         if pending:
