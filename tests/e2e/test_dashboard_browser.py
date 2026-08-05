@@ -12,7 +12,7 @@ playwright = pytest.importorskip("playwright.sync_api")
 @pytest.mark.e2e
 @pytest.mark.timeout(180)
 def test_dashboard_overview_and_knowledge_graph() -> None:
-    url = os.getenv("AIOS_DASHBOARD_URL", "http://127.0.0.1:8090/crm")
+    url = os.getenv("AIOS_DASHBOARD_URL", "http://127.0.0.1:8090")
     artifact_dir = Path(os.getenv("AIOS_E2E_ARTIFACT_DIR", "."))
     artifact_dir.mkdir(parents=True, exist_ok=True)
     with playwright.sync_playwright() as engine:
