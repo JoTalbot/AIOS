@@ -232,6 +232,16 @@ def create_ad(part: str, confirm: bool, photo: str | None = None) -> dict:
     gen = generate(part)
     if gen.get("status") != "ok":
         return gen
+    if not photo:
+        # фото из склада, если позиция сфоткана (фотокаталог)
+        try:
+            inv = json.loads((ROOT / "data" / "inventory.json").read_text(encoding="utf-8"))
+            for it in inv if isinstance(inv, list) else []:
+                if str(it.get("name") or "").strip().casefold() == part.strip().casefold() and it.get("photo"):
+                    photo = str(it["photo"])
+                    break
+        except Exception:
+            pass
     if not confirm:
         return {**gen, "status": "need_confirm", "action": "olx_create"}
     try:
