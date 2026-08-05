@@ -90,6 +90,18 @@ def build_report() -> str:
     except Exception:
         pass
 
+    # телефон
+    try:
+        health = json.loads((ROOT / "data" / "android_gateway" / "health.json").read_text(encoding="utf-8"))
+        battery = health.get("battery")
+        connected = bool(health.get("connected"))
+        if isinstance(battery, int):
+            warn = " ⚠️ поставьте на зарядку!" if battery < 20 else ""
+            lines.append(f"\n📱 <b>Телефон:</b> "
+                         f"{'онлайн' if connected else 'ОФЛАЙН'} · батарея {battery}%{warn}")
+    except Exception:
+        pass
+
     return "\n".join(lines)
 
 
