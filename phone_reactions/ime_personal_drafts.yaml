@@ -1,0 +1,21 @@
+# Личные контакты iMe: черновик ответа на ЛЮБОЕ текстовое сообщение.
+# Стиль подтягивается из data/contact_styles.json ([PRIVATE_CONTACT] — дружески с сарказмом).
+id: ime_personal_drafts
+title: "💬 Личный черновик iMe"
+match:
+  package: [com.iMe.android]
+  title_regex: "([PRIVATE_CONTACT])"
+  text_regex: "[а-яa-z0-9]{3,}"
+action:
+  type: llm_enqueue
+  prompt: "Личная переписка с {title}. Собеседник написал: «{text}». Составь короткий (1-2 предложения) тёплый личный ответ на русском от имени владельца. Без деловых штампов. Только текст ответа."
+  job:
+    kind: skill.run
+    payload:
+      skill: ime_send_draft
+      params:
+        contact: "{title}"
+        text: "{draft}"
+  notify: true
+autonomy: draft
+cooldown_seconds: 1800
