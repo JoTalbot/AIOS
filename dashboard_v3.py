@@ -379,7 +379,9 @@ def build() -> None:
             ui.label("Нет операций")
 
     # CRM публикуется через защищённый nginx-префикс /crm/.
-    ui.run(host="127.0.0.1", port=8090, reload=False, show=False, root_path="/crm")
+    # Префикс /crm обеспечивает nginx (strip + auth); приложение работает без root_path,
+    # а его статика и ws проксируются nginx-локациями /_nicegui/ и /_nicegui_ws/.
+    ui.run(host="127.0.0.1", port=8090, reload=False, show=False)
 
 
 if __name__ == "__main__":
