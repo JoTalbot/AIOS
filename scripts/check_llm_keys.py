@@ -41,8 +41,14 @@ def check_key(prov_name: str, base_url: str, key: str, model: str) -> tuple[bool
         if r.status_code == 200:
             try:
                 data = r.json()
-                if isinstance(data, dict) and "error" in data:
-                    return False, f"HTTP 200 но error: {str(data['error'])[:80]}"
+                if isinstance(data, dict):
+                    if "error" in data:
+                        return False, f"HTTP 200 но error: {str(data['error'])[:80]}"
+                    # soft-ошибки (ZAI и подобные): HTTP 200, но code>=400/success=false
+                    if data.get("success") is False or (
+                            isinstance(data.get("code"), int) and data["code"] >= 400):
+                        return False, (f"HTTP 200 но soft-error: code={data.get('code')} "
+                                       f"{str(data.get('msg') or data.get('message'))[:60]}")
             except ValueError:
                 pass
             return True, f"OK ({dt:.1f}s)"
