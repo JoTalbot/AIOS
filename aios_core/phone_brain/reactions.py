@@ -278,6 +278,15 @@ class ReactionEngine:
 
     # ------------------------------------------------------------ llm draft
 
+    def _contact_style(self, contact: str) -> str:
+        """Персональный стиль общения с конкретным контактом (data/contact_styles.json)."""
+        try:
+            d = json.loads((self.root / "data" / "contact_styles.json").read_text(encoding="utf-8"))
+            s = str(d.get(str(contact or "").strip()) or "")
+            return (" Стиль для этого контакта: " + s + ".") if s else ""
+        except Exception:
+            return ""
+
     def _style_hint(self) -> str:
         """Память стиля: решения владельца по прошлым черновикам."""
         try:
@@ -352,6 +361,7 @@ class ReactionEngine:
                     "error": "store недоступен"}
         ctx = self._ctx(item, masked_title, masked_text)
         prompt = str(self._render(str(action.get("prompt") or "{text}"), ctx))
+        prompt = prompt + self._contact_style(masked_title)
         drafted = self._llm_draft(prompt)
         if drafted.get("status") != "ok":
             self._event("llm_draft_failed", {"rule": rule["id"],
