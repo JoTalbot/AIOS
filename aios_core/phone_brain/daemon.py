@@ -42,7 +42,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "device": {"min_interval": 30, "max_interval": 900, "escalate_after_seconds": 600},
     "vision": {"enabled": True, "gemini_model": "gemini-2.0-flash",
                "mistral_model": "pixtral-12b-2409",
-               "openrouter_model": "google/gemini-2.0-flash-001"},
+               "openrouter_model": "google/gemini-2.0-flash-001",
+               "ollama_model": "qwen2.5vl:3b",
+               "ollama_base_url": "http://127.0.0.1:11434"},
     "reactions": {"enabled": True, "interval": 30},
 }
 
@@ -123,7 +125,9 @@ class PhoneBrainDaemon:
             enabled=bool(vision_cfg.get("enabled", True)),
             gemini_model=str(vision_cfg.get("gemini_model") or "gemini-2.0-flash"),
             mistral_model=str(vision_cfg.get("mistral_model") or "pixtral-12b-2409"),
-            openrouter_model=str(vision_cfg.get("openrouter_model") or "google/gemini-2.0-flash-001"))
+            openrouter_model=str(vision_cfg.get("openrouter_model") or "google/gemini-2.0-flash-001"),
+            ollama_model=str(vision_cfg.get("ollama_model") or "qwen2.5vl:3b"),
+            ollama_base_url=str(vision_cfg.get("ollama_base_url") or "http://127.0.0.1:11434"))
         self.skills = SkillEngine(self.root, gateway=self.gateway, events=self.events,
                                   vision=self.vision)
         for handler in skill_handlers(self.skills):
