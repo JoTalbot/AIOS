@@ -26,6 +26,16 @@ _PROMPT = (
 )
 
 
+def _png_size(data: bytes) -> tuple[int, int] | None:
+    """Размеры PNG из заголовка (без зависимостей); None для других форматов."""
+    if len(data) > 24 and data[:8] == b"\x89PNG\r\n\x1a\n":
+        width = int.from_bytes(data[16:20], "big")
+        height = int.from_bytes(data[20:24], "big")
+        if 0 < width <= 8000 and 0 < height <= 8000:
+            return width, height
+    return None
+
+
 def _extract_json(text: str) -> dict | None:
     """Первый сбалансированный JSON-объект из ответа модели."""
     start = str(text or "").find("{")
@@ -58,6 +68,25 @@ def _runtime_keys() -> dict[str, list[str]]:
         base = os.environ.get(env_key, "")
         if base and base not in keys[provider]:
             keys[provider].append(base)
+    try:
+        env_file = Path(__file__).resolve().parents[2] / ".env"
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            name, value = line.split("=", 1)
+            name = name.strip()
+            value = value.strip().strip('"').strip("'")
+            if name == "GEMINI_API_KEY" or name.startswith("GEMINI_API_KEY_"):
+                provider = "gemini"
+            elif name == "OPENROUTER_API_KEY" or name.startswith("OPENROUTER_API_KEY_"):
+                provider = "openrouter"
+            else:
+                continue
+            if value and value not in keys[provider]:
+                keys[provider].append(value)
+    except OSError:
+        pass
     try:
         path = Path(__file__).resolve().parents[2] / "data" / ".llm_keys.json"
         runtime = json.loads(path.read_text(encoding="utf-8"))
@@ -132,7 +161,10 @@ class VisionLocator:
             return None
 
     def _ask_openrouter(self, key: str, image_b64: str, hint: str) -> dict | None:
-        payload = {"model": self.openrouter_model, "messages": [{"role": "user", "content": [
+        # max_tokens обязателен: без него OpenRouter резервирует весь контекст
+        # модели и отвечает 402 на аккаунтах с небольшим балансом.
+        payload = {"model": self.openrouter_model, "max_tokens": 120,
+                   "messages": [{"role": "user", "content": [
             {"type": "text", "text": _PROMPT.format(hint=hint)},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}]}]}
         try:
@@ -159,6 +191,7 @@ class VisionLocator:
         except OSError as exc:
             return {"status": "error", "error": f"screenshot: {exc}"[:160]}
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
+        frame_size = _png_size(image_bytes)  # реальные размеры кадра (если PNG)
         if self._providers_override is not None:
             providers = self._providers_override
         else:
@@ -174,7 +207,11 @@ class VisionLocator:
                     x, y = int(answer["x"]), int(answer["y"])
                 except (KeyError, TypeError, ValueError):
                     continue
-                if x < 0 or y < 0 or x > 4000 * scale or y > 8000 * scale:
+                if frame_size is not None:
+                    max_x, max_y = frame_size[0] / scale, frame_size[1] / scale
+                else:
+                    max_x, max_y = 4000 * scale, 8000 * scale
+                if x < 0 or y < 0 or x > max_x or y > max_y:
                     continue
                 return {"status": "ok", "x": int(x * scale), "y": int(y * scale), "provider": provider}
             return {"status": "error", "error": "элемент не виден на экране", "provider": provider}
