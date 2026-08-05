@@ -278,8 +278,26 @@ class ReactionEngine:
 
     # ------------------------------------------------------------ llm draft
 
+    def _style_hint(self) -> str:
+        """Память стиля: решения владельца по прошлым черновикам."""
+        try:
+            data = json.loads((self.root / "data" / "draft_feedback.json").read_text(encoding="utf-8"))
+        except Exception:
+            return ""
+        if len(data) < 3:
+            return ""
+        canc = sum(1 for d in data if d.get("decision") == "cancelled")
+        conf = sum(1 for d in data if d.get("decision") == "confirmed")
+        if canc > conf:
+            return (" Стиль: владелец отменял часть черновиков — пиши короче и конкретнее, "
+                    "без лишних реверансов, сразу по сути.")
+        if conf >= 3:
+            return " Стиль: владелец подтверждает черновики — держи текущий тон и структуру."
+        return ""
+
     def _llm_draft(self, prompt: str) -> dict:
         """Генерирует черновик через LLMBalancer (в тестах — через подменённый chat)."""
+        prompt = prompt + self._style_hint()
         chat = self._chat
         if chat is None:
             try:
