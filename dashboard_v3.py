@@ -379,6 +379,23 @@ def build() -> None:
             ui.label("Нет операций")
 
     # CRM публикуется через защищённый nginx-префикс /crm/.
+    # фотокаталог склада
+    try:
+        inv = json.loads((ROOT / "data" / "inventory.json").read_text(encoding="utf-8"))
+        with_photos = [i for i in inv if isinstance(i, dict) and i.get("photo")
+                       and Path(str(i["photo"])).exists()]
+        if with_photos:
+            with ui.card().classes("w-full"):
+                ui.label("📦 Склад — фотокаталог").classes("text-lg font-bold")
+                with ui.row().classes("flex-wrap items-start"):
+                    for i in with_photos:
+                        with ui.card().style("width: 230px"):
+                            ui.image(str(i["photo"])).style("width: 100%; border-radius: 8px")
+                            ui.label(str(i.get("name") or "")).classes("text-sm font-bold")
+                            ui.label(f"{int(i.get('price') or 0)} грн · {int(i.get('qty') or 0)} шт").classes("text-xs")
+    except Exception:
+        pass
+
     # Префикс /crm обеспечивает nginx (strip + auth); приложение работает без root_path,
     # а его статика и ws проксируются nginx-локациями /_nicegui/ и /_nicegui_ws/.
     ui.run(host="127.0.0.1", port=8090, reload=False, show=False)
