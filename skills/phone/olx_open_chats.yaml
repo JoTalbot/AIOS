@@ -10,6 +10,7 @@ steps:
   - id: open_app
     do: app.open
     package: ua.slando
+    fresh: true            # холодный старт: не продолжать открытую сессию
 
   - id: open_messages_tab
     do: ui.tap

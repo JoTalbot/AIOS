@@ -10,6 +10,7 @@ steps:
   - id: open_app
     do: app.open
     package: com.iMe.android
+    fresh: true            # холодный старт: не продолжать открытую сессию
 
   - id: open_search
     do: ui.tap
