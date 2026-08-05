@@ -57,7 +57,7 @@ where = ["."]
 pythonpath = ["."]
 asyncio_mode = "strict"
 timeout = 30
-addopts = "-q --tb=short"
+addopts = "-q --tb=short -m 'not e2e'"
 markers = [
     "slow: marks tests as slow (deselect with '-m not slow')",
     "e2e: end-to-end integration tests",

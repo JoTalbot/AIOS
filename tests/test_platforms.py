@@ -1,5 +1,7 @@
 """Tests for Platform Adapters."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from aios_core.platforms.instagram_adapter import InstagramAdapter
@@ -34,18 +36,31 @@ def test_missing_adapter():
         registry.get_adapter("olx")
 
 
+def _offline_olx(monkeypatch, adapter):
+    """Токен предустановлен, сеть замокана — тесты без живых запросов."""
+    adapter.access_token = "test-token"
+    adapter._token_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+
+    async def fake_request(method, url, json_data=None, **kwargs):
+        return {"data": []}
+
+    monkeypatch.setattr(adapter, "_make_request", fake_request)
+
+
 @pytest.mark.asyncio
-async def test_olx_adapter_receive():
+async def test_olx_adapter_receive(monkeypatch):
     """OLX adapter может получать сообщения (заглушка)."""
     adapter = OLXAdapter({"client_id": "test"})
+    _offline_olx(monkeypatch, adapter)
     messages = await adapter.receive_messages()
     assert isinstance(messages, list)
 
 
 @pytest.mark.asyncio
-async def test_olx_adapter_send():
+async def test_olx_adapter_send(monkeypatch):
     """OLX adapter может отправлять сообщения."""
     adapter = OLXAdapter({"client_id": "test"})
+    _offline_olx(monkeypatch, adapter)
     result = await adapter.send_message("user_123", "Тестовое сообщение")
     assert result.platform == "olx"
     assert result.recipient_id == "user_123"
@@ -53,9 +68,18 @@ async def test_olx_adapter_send():
 
 
 @pytest.mark.asyncio
-async def test_instagram_adapter_send():
+async def test_instagram_adapter_send(monkeypatch):
     """Instagram adapter может отправлять сообщения."""
     adapter = InstagramAdapter({"access_token": "test"})
+
+    class _FakeResp:
+        def json(self):
+            return {"id": "msg_1"}
+
+    async def fake_request(method=None, url=None, **kwargs):
+        return _FakeResp()
+
+    monkeypatch.setattr(adapter, "_make_request", fake_request)
     result = await adapter.send_message("user_456", "Привет!")
     assert result.platform == "instagram"
     assert result.recipient_id == "user_456"

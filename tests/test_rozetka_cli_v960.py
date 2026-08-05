@@ -132,11 +132,20 @@ def test_rozetka_favorites_list():
     assert len(all_fps) == 2
 
 
+def _mock_adb():
+    """ADB-заглушка: автологин тестируется без устройства."""
+    from types import SimpleNamespace
+
+    # no-op: check_session сам безопасно читает файл, если он есть
+    return SimpleNamespace(open_app=lambda *a, **k: None,
+                           dump_ui=lambda name: None)
+
+
 def test_rozetka_auto_login_check():
     """CLI auto-login check returns session status."""
     from aios_core.modules.rozetka import RozetkaAutoLogin
 
-    auto = RozetkaAutoLogin()
+    auto = RozetkaAutoLogin(adb=_mock_adb())
     result = auto.check_session()
     assert result["platform"] == "rozetka"
     assert "login_state" in result
@@ -146,7 +155,7 @@ def test_rozetka_auto_login_attempt():
     """CLI auto-login attempt returns LoginResult."""
     from aios_core.modules.rozetka import RozetkaAutoLogin
 
-    auto = RozetkaAutoLogin()
+    auto = RozetkaAutoLogin(adb=_mock_adb())
     result = auto.attempt_login(
         email="test@test.com",
         password="pass",

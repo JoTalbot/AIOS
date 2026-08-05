@@ -160,7 +160,7 @@ def test_extract_json() -> None:
 
 
 def test_vision_locate(root: Path) -> None:
-    def ask(key: str, b64: str, hint: str) -> dict:
+    def ask(key: str, b64: str, hint: str, mime: str = "image/jpeg") -> dict:
         assert b64  # картинка дошла в base64
         return {"found": True, "x": 120, "y": 340}
 
@@ -170,9 +170,9 @@ def test_vision_locate(root: Path) -> None:
 
 
 def test_vision_not_found_and_out_of_bounds(root: Path) -> None:
-    locator = VisionLocator(providers=[("fake", lambda k, b, h: {"found": False}, "k")])
+    locator = VisionLocator(providers=[("fake", lambda k, b, h, m="image/jpeg": {"found": False}, "k")])
     assert locator.locate(root / "shot.png", "x")["status"] == "error"
-    wild = VisionLocator(providers=[("fake", lambda k, b, h: {"found": True, "x": 99999, "y": 1}, "k")])
+    wild = VisionLocator(providers=[("fake", lambda k, b, h, m="image/jpeg": {"found": True, "x": 99999, "y": 1}, "k")])
     assert "недоступны" in wild.locate(root / "shot.png", "x")["error"]
 
 

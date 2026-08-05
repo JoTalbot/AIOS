@@ -31,8 +31,17 @@ def test_register_all_platforms():
 
 
 @pytest.mark.asyncio
-async def test_prom_send():
+async def test_prom_send(monkeypatch):
     adapter = PromAdapter()
+
+    class _FakeResp:
+        def json(self):
+            return {"message_id": "prom_1"}
+
+    async def fake_request(method, url, **kwargs):
+        return _FakeResp()
+
+    monkeypatch.setattr(adapter, "_make_request", fake_request)
     result = await adapter.send_message("user_1", "Тест")
     assert result.platform == "prom"
 
