@@ -41,6 +41,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
               "default_max_attempts": 3, "retention_days": 7, "defer_limit": 20},
     "device": {"min_interval": 30, "max_interval": 900, "escalate_after_seconds": 600},
     "vision": {"enabled": True, "gemini_model": "gemini-2.0-flash",
+               "mistral_model": "pixtral-12b-2409",
                "openrouter_model": "google/gemini-2.0-flash-001"},
     "reactions": {"enabled": True, "interval": 30},
 }
@@ -121,6 +122,7 @@ class PhoneBrainDaemon:
         self.vision = VisionLocator(
             enabled=bool(vision_cfg.get("enabled", True)),
             gemini_model=str(vision_cfg.get("gemini_model") or "gemini-2.0-flash"),
+            mistral_model=str(vision_cfg.get("mistral_model") or "pixtral-12b-2409"),
             openrouter_model=str(vision_cfg.get("openrouter_model") or "google/gemini-2.0-flash-001"))
         self.skills = SkillEngine(self.root, gateway=self.gateway, events=self.events,
                                   vision=self.vision)

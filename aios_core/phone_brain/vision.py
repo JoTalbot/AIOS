@@ -26,6 +26,13 @@ _PROMPT = (
 )
 
 
+def _mime(data: bytes) -> str:
+    """Реальный mime по сигнатуре (скриншоты adb — PNG; даунскейл без cv2 его сохраняет)."""
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    return "image/jpeg"
+
+
 def _png_size(data: bytes) -> tuple[int, int] | None:
     """Размеры PNG из заголовка (без зависимостей); None для других форматов."""
     if len(data) > 24 and data[:8] == b"\x89PNG\r\n\x1a\n":
@@ -59,8 +66,9 @@ def _extract_json(text: str) -> dict | None:
 
 def _runtime_keys() -> dict[str, list[str]]:
     """Ключи провайдеров: env, затем data/.llm_keys.json (схема llm_balancer)."""
-    keys: dict[str, list[str]] = {"gemini": [], "openrouter": []}
-    for env_key, provider in (("GEMINI_API_KEY", "gemini"), ("OPENROUTER_API_KEY", "openrouter")):
+    keys: dict[str, list[str]] = {"gemini": [], "mistral": [], "openrouter": []}
+    for env_key, provider in (("GEMINI_API_KEY", "gemini"), ("MISTRAL_API_KEY", "mistral"),
+                              ("OPENROUTER_API_KEY", "openrouter")):
         for index in range(1, 10):
             value = os.environ.get(f"{env_key}_{index}", "")
             if value and value not in keys[provider]:
@@ -79,6 +87,8 @@ def _runtime_keys() -> dict[str, list[str]]:
             value = value.strip().strip('"').strip("'")
             if name == "GEMINI_API_KEY" or name.startswith("GEMINI_API_KEY_"):
                 provider = "gemini"
+            elif name == "MISTRAL_API_KEY" or name.startswith("MISTRAL_API_KEY_"):
+                provider = "mistral"
             elif name == "OPENROUTER_API_KEY" or name.startswith("OPENROUTER_API_KEY_"):
                 provider = "openrouter"
             else:
@@ -103,10 +113,12 @@ class VisionLocator:
     """Находит элемент на скриншоте по текстовому описанию."""
 
     def __init__(self, *, gemini_model: str = "gemini-2.0-flash",
+                 mistral_model: str = "pixtral-12b-2409",
                  openrouter_model: str = "google/gemini-2.0-flash-001",
                  max_width: int = 720, timeout: int = 60, enabled: bool = True,
                  providers: list[tuple[str, Any, str]] | None = None):
         self.gemini_model = gemini_model
+        self.mistral_model = mistral_model
         self.openrouter_model = openrouter_model
         self.max_width = max(240, int(max_width))
         self.timeout = timeout
@@ -147,12 +159,12 @@ class VisionLocator:
             data = json.loads(response.read().decode("utf-8"))
         return data if isinstance(data, dict) else {}
 
-    def _ask_gemini(self, key: str, image_b64: str, hint: str) -> dict | None:
+    def _ask_gemini(self, key: str, image_b64: str, hint: str, mime: str = "image/jpeg") -> dict | None:
         url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
                f"{self.gemini_model}:generateContent?key={key}")
         payload = {"contents": [{"parts": [
             {"text": _PROMPT.format(hint=hint)},
-            {"inline_data": {"mime_type": "image/jpeg", "data": image_b64}}]}]}
+            {"inline_data": {"mime_type": mime, "data": image_b64}}]}]}
         try:
             data = self._post_json(url, payload, {})
             text = ((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or [{}]
@@ -160,13 +172,30 @@ class VisionLocator:
         except (urllib.error.URLError, OSError, ValueError):
             return None
 
-    def _ask_openrouter(self, key: str, image_b64: str, hint: str) -> dict | None:
-        # max_tokens обязателен: без него OpenRouter резервирует весь контекст
-        # модели и отвечает 402 на аккаунтах с небольшим балансом.
-        payload = {"model": self.openrouter_model, "max_tokens": 60,
+    def _ask_mistral(self, key: str, image_b64: str, hint: str, mime: str = "image/jpeg") -> dict | None:
+        # response_format обязателен: без него pixtral уходит в простыню текста.
+        payload = {"model": self.mistral_model, "max_tokens": 90, "temperature": 0.0,
+                   "response_format": {"type": "json_object"},
                    "messages": [{"role": "user", "content": [
             {"type": "text", "text": _PROMPT.format(hint=hint)},
-            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}]}]}
+            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{image_b64}"}}]}]}
+        try:
+            data = self._post_json("https://api.mistral.ai/v1/chat/completions", payload,
+                                   {"Authorization": f"Bearer {key}"})
+            text = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+            if isinstance(text, list):
+                text = " ".join(str(part.get("text") or "") for part in text if isinstance(part, dict))
+            return _extract_json(str(text))
+        except (urllib.error.URLError, OSError, ValueError):
+            return None
+
+    def _ask_openrouter(self, key: str, image_b64: str, hint: str, mime: str = "image/jpeg") -> dict | None:
+        # max_tokens обязателен: без него OpenRouter резервирует весь контекст
+        # модели и отвечает 402 на аккаунтах с небольшим балансом.
+        payload = {"model": self.openrouter_model, "max_tokens": 60, "temperature": 0.0,
+                   "messages": [{"role": "user", "content": [
+            {"type": "text", "text": _PROMPT.format(hint=hint)},
+            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{image_b64}"}}]}]}
         try:
             data = self._post_json("https://openrouter.ai/api/v1/chat/completions", payload,
                                    {"Authorization": f"Bearer {key}"})
@@ -191,15 +220,17 @@ class VisionLocator:
         except OSError as exc:
             return {"status": "error", "error": f"screenshot: {exc}"[:160]}
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
+        mime = _mime(image_bytes)
         frame_size = _png_size(image_bytes)  # реальные размеры кадра (если PNG)
         if self._providers_override is not None:
             providers = self._providers_override
         else:
             keys = _runtime_keys()
             providers = ([("gemini", self._ask_gemini, key) for key in keys["gemini"]]
+                         + [("mistral", self._ask_mistral, key) for key in keys["mistral"]]
                          + [("openrouter", self._ask_openrouter, key) for key in keys["openrouter"]])
         for provider, ask, key in providers:
-            answer = ask(key, image_b64, hint)
+            answer = ask(key, image_b64, hint, mime)
             if not answer:
                 continue
             if answer.get("found") is True:
