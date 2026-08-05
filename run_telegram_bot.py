@@ -7136,6 +7136,16 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
     except Exception:
         pass
 
+    _sys_for_llm = system
+    if _llm_mode != "gemini":
+        try:
+            from aios_core.system_knowledge import get_system_guide as _gsg2
+            _guide_sec = "\n\n=== ВОЗМОЖНОСТИ СИСТЕМЫ (для подсказок пользователю) ===\n" + _gsg2(prompt_mode=True)
+            _sys_for_llm = system + _guide_sec
+            messages[0] = {"role": "system", "content": _sys_for_llm}
+        except Exception:
+            pass
+
     for iteration in range(4):
         response = None
         if _llm_mode == "gemini":
@@ -7151,7 +7161,7 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
                 response = _balancer.chat(
                     messages[1:],
                     model=_smart_model(),
-                    system=system,
+                    system=_sys_for_llm,
                     max_tokens=2000,
                     temperature=0.3,
                     task_type="chat",
