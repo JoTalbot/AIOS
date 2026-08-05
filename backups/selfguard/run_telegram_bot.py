@@ -614,7 +614,8 @@ def cmd_help() -> str:
         "  /google — быстрые команды Google (почта, календарь, диск)\n"
         "  /instagram — быстрые команды Instagram (профиль, посты)\n"
         "  /llm_mode [auto|gemini] — режим LLM в чате (балансер / Gemini Web)\n"
-        "  /cmd &lt;команда&gt; — выполнить команду на сервере (root, /root/AIOS)\n\n"
+        "  /cmd &lt;команда&gt; — выполнить команду на сервере (root, /root/AIOS)\n"
+        "  /skills — возможности системы (скилы, модули, адаптеры, команды)\n\n"
         "<i>Просто напишите боту обычным текстом, например:</i>\n"
         "  «проверь мою почту» · «сколько непрочитанных» · «кто я в гугле»\n"
         "  «покажи календарь» · «покажи мой инстаграм» · «мои посты» · «отправь письмо ...»\n\n"
@@ -6977,6 +6978,28 @@ def _cmd_llm_mode(args: str, chat_id: int) -> str:
     )
 
 
+def _cmd_skills(api, chat_id: int) -> str:
+    """Полный список возможностей системы (/skills)."""
+    try:
+        from aios_core.system_knowledge import get_system_guide
+        text = get_system_guide(prompt_mode=False)
+    except Exception as e:
+        return "❌ Ошибка: " + str(e)[:200]
+    if not text:
+        return "Справка пуста."
+    # Telegram лимит ~4000 символов — отправляем по частям
+    for i in range(0, len(text), 3800):
+        chunk = text[i:i + 3800]
+        try:
+            api.send_message(chat_id, chunk)
+        except Exception:
+            try:
+                api.send_message(chat_id, chunk, parse_mode="")
+            except Exception:
+                pass
+    return ""
+
+
 def _cmd_console(args: str, chat_id: int) -> str:
     """Консольный доступ: /cmd <команда> или /cmd <запрос>.
 
@@ -7776,6 +7799,8 @@ def run_bot(token: str) -> None:
                     reply = _cmd_llm_mode(args, chat_id)
                 elif cmd == "/cmd":
                     reply = _cmd_console(args, chat_id)
+                elif cmd == "/skills":
+                    reply = _cmd_skills(api, chat_id)
                 elif cmd == "/code":
                     reply = cmd_code_generate(args)
                 elif cmd == "/review":

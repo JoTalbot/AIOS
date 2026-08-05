@@ -297,12 +297,38 @@ async def _ask_gemini_async(prompt: str, timeout: int, cdp_url: str) -> str:
 # Публичный синхронный API (с глобальным замком — один общий Chrome)
 # ---------------------------------------------------------------------------
 
+_LOCK_FILE = Path(__file__).resolve().parents[1] / "data" / ".gemini_web.lock"
+
+
 def gemini_web_ask(prompt: str, timeout: int = 240, cdp_url: str = "") -> str:
-    """Синхронно получить ответ Gemini Web. Сериализовано замком."""
+    """Синхронно получить ответ Gemini Web.
+
+    Сериализовано потоковым замком (внутри процесса) и файловым локом
+    (между процессами — бот и CLI/скрипты не конфликтуют за вкладки).
+    """
     url = cdp_url or os.environ.get("AIOS_CHROME_CDP") or _CDP_DEFAULT
     with _lock:
         import asyncio
-        return asyncio.run(_ask_gemini_async(prompt, timeout, url))
+        import fcntl
+        try:
+            _LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+            _lf = open(_LOCK_FILE, "w")
+        except Exception:
+            _lf = None
+        if _lf is not None:
+            try:
+                fcntl.flock(_lf, fcntl.LOCK_EX)  # межпроцессный замок (ждём)
+            except Exception:
+                pass
+        try:
+            return asyncio.run(_ask_gemini_async(prompt, timeout, url))
+        finally:
+            if _lf is not None:
+                try:
+                    fcntl.flock(_lf, fcntl.LOCK_UN)
+                    _lf.close()
+                except Exception:
+                    pass
 
 
 def gemini_web_status(cdp_url: str = "") -> dict[str, Any]:
