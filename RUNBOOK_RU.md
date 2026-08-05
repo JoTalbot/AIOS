@@ -319,3 +319,20 @@ push, `--force-snapshot`, старт сервиса.
   (вкладка «Чат» в текущем UI). send_draft вживую не гоняются — реальная отправка,
   только явное подтверждение владельца.
 - Планировщик не предлагает скиллы неустановленных приложений.
+
+### Companion: сборка и деплой (2026-08-05)
+- Исходники: `android_companion/` (Java). Сборка: `ANDROID_HOME=/opt/android-sdk
+  /opt/aios/gradle/gradle-8.10.2/bin/gradle assembleDebug --no-daemon`
+  (из `android_companion/`). APK: `app/build/outputs/apk/debug/app-debug.apk`.
+- Установка: `adb install -r <apk>`. После установки **обязательно**:
+  1) `am start-foreground-service ua.aios.companion/.CompanionService` (HTTP может не подняться сам);
+  2) перетыкнуть accessibility: `settings put secure enabled_accessibility_services`
+  (убрать и вернуть `ua.aios.companion/ua.aios.companion.AIOSAccessibilityService:...`)
+  — иначе система держит кэш метаданных сервиса (флаги/версия).
+  3) После смены accessibility-флагов в XML иногда требуется **ребут телефона**.
+- resource-id в снапшотах появились только с v0.2.0 (`flagReportViewIds`).
+- BootReceiver сам поднимает Companion после ребута (если в prefs есть token).
+
+### fail2ban (2026-08-05)
+- Установлен, jail `[sshd]`: maxretry 5 / findtime 600 / bantime 3600,
+  конфиг `/etc/fail2ban/jail.local`. Статус: `fail2ban-client status sshd`.

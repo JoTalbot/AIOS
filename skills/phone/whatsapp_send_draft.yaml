@@ -17,8 +17,8 @@ steps:
     do: ui.wait
     timeout: 8
     selectors:
-      - {desc_contains: "Поиск"}
       - {resource: "com.whatsapp:id/bottom_nav"}
+      - {desc_contains: "Поиск"}
       - {text: "Чаты"}
 
   - id: open_search
@@ -27,8 +27,8 @@ steps:
     heal: true
     heal_hint: "the search icon (magnifying glass) in the top app bar of the WhatsApp chats screen"
     selectors:
-      - {desc_contains: "Поиск"}
       - {resource: "com.whatsapp:id/search_bar_inner_layout"}
+      - {desc_contains: "Поиск"}
       - {resource: "com.whatsapp:id/menuitem_search"}
 
   - id: type_contact
