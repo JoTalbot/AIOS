@@ -61,6 +61,46 @@ def recognize(photo_path: str) -> dict:
         "\"price\": число, \"compatible\": \"...\", \"notes\": \"краткие заметки\"}. По-русски."
     )
 
+    def _mistral_describe() -> dict | None:
+        """Fallback: Mistral Pixtral, когда Gemini в квоте."""
+        import urllib.error
+        keys = []
+        try:
+            keys = list(json.loads((ROOT / "data" / ".llm_keys.json").read_text(encoding="utf-8")).get("mistral") or [])
+        except Exception:
+            pass
+        for i in range(1, 5):
+            v = _env(f"MISTRAL_API_KEY_{i}")
+            if v and v not in keys:
+                keys.append(v)
+        v = _env("MISTRAL_API_KEY")
+        if v and v not in keys:
+            keys.append(v)
+        for key in keys:
+            payload = {"model": "pixtral-12b-2409", "max_tokens": 400, "temperature": 0,
+                       "messages": [{"role": "user", "content": [
+                           {"type": "text", "text": prompt},
+                           {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{data_b64}"}}]}]}
+            req = urllib.request.Request("https://api.mistral.ai/v1/chat/completions",
+                                         data=json.dumps(payload).encode(),
+                                         headers={"Content-Type": "application/json",
+                                                  "Authorization": f"Bearer {key}"})
+            try:
+                with urllib.request.urlopen(req, timeout=90) as resp:
+                    out = json.loads(resp.read())
+                txt = (out.get("choices") or [{}])[0].get("message", {}).get("content", "")
+                if isinstance(txt, list):
+                    txt = " ".join(x.get("text", "") for x in txt if isinstance(x, dict))
+                start = txt.find("{")
+                end = txt.rfind("}") + 1
+                if start >= 0 and end > start:
+                    d = json.loads(txt[start:end])
+                    d.setdefault("part", "не определено")
+                    return {"status": "ok", **d, "photo": photo_path, "provider": "mistral"}
+            except (urllib.error.URLError, OSError, ValueError):
+                continue
+        return None
+
     for model in ("gemini-2.5-flash", "gemini-2.0-flash"):
         for key in _gemini_keys():
             try:
@@ -93,6 +133,12 @@ def recognize(photo_path: str) -> dict:
                 print(f"  [PHOTO-REC] {model} err: {str(e)[:100]}")
                 continue
     return {"status": "error", "error": "Gemini недоступен"}
+
+
+    mres = _mistral_describe()
+    if mres:
+        return mres
+    return {"status": "error", "error": "vision-провайдеры недоступны"}
 
 
 def main() -> None:
