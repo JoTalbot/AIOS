@@ -344,6 +344,17 @@ INSTAGRAM_MENU_KEYBOARD = {
     "one_time_keyboard": False,
 }
 
+BOT_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "📊 Статус бота"}, {"text": "⏸️ Пауза"}],
+        [{"text": "▶️ Старт"}, {"text": "🔄 Рестарт"}, {"text": "⏹️ Стоп"}],
+        [{"text": "🌐 Gemini Web"}, {"text": "🔄 Балансер"}],
+        [{"text": "◀️ Меню"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
 
 
 @_safe
@@ -600,7 +611,8 @@ def cmd_help() -> str:
         "  /olx_analytics &lt;запрос&gt; — AI-аналитика цен\n"
         "  /accounts — управление Google и Instagram аккаунтами\n"
         "  /google — быстрые команды Google (почта, календарь, диск)\n"
-        "  /instagram — быстрые команды Instagram (профиль, посты)\n\n"
+        "  /instagram — быстрые команды Instagram (профиль, посты)\n"
+        "  /llm_mode [auto|gemini] — режим LLM в чате (балансер / Gemini Web)\n\n"
         "<i>Просто напишите боту обычным текстом, например:</i>\n"
         "  «проверь мою почту» · «сколько непрочитанных» · «кто я в гугле»\n"
         "  «покажи календарь» · «покажи мой инстаграм» · «мои посты» · «отправь письмо ...»\n\n"
@@ -6593,6 +6605,28 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
         except Exception as e:
             reply = chr(10060) + " " + str(e)
         keyboard = BOT_MENU_KEYBOARD
+    elif data == "bot_llm_gemini":
+        try:
+            from aios_core.llm_gemini_web import gemini_web_status, set_llm_mode
+            st = gemini_web_status()
+            set_llm_mode(chat_id, "gemini")
+            if not st.get("chrome"):
+                reply = "❌ <b>Gemini Web недоступен:</b> Chrome (CDP :9222) не найден.\nПроверьте: systemctl status aios-chrome-vnc"
+            elif not st.get("logged_in"):
+                reply = "⚠️ <b>Режим переключён на Gemini Web</b>, но Google-сессия не активна.\nВойдите в аккаунт в профиле chrome_twin (VNC :1) и повторите."
+            else:
+                reply = "🌐 <b>Режим LLM: Gemini Web</b>\n\nОтветы в этом чате идут через gemini.google.com (ваш профиль, временный чат)."
+            keyboard = BOT_MENU_KEYBOARD
+        except Exception as e:
+            reply = "❌ " + str(e)[:200]
+    elif data == "bot_llm_auto":
+        try:
+            from aios_core.llm_gemini_web import set_llm_mode
+            set_llm_mode(chat_id, "auto")
+            reply = "🔄 <b>Режим LLM: балансер</b>\n\nОбычный мульти-провайдерный LLM (groq/mistral/zai/... + Ollama)."
+            keyboard = BOT_MENU_KEYBOARD
+        except Exception as e:
+            reply = "❌ " + str(e)[:200]
 
     if reply:
         try:
@@ -6916,8 +6950,33 @@ def _llm_status() -> str:
         return chr(10060) + " " + str(e)
 
 
+def _cmd_llm_mode(args: str, chat_id: int) -> str:
+    """Переключение режима LLM в чате: auto (балансер) / gemini (Gemini Web в браузере)."""
+    from aios_core.llm_gemini_web import gemini_web_status, get_llm_mode, set_llm_mode
+    mode = (args or "").strip().lower()
+    if mode in ("auto", "balancer", "default", "standard", "obichny", "обычный"):
+        set_llm_mode(chat_id, "auto")
+        return "🔄 <b>Режим LLM в чате:</b> авто (балансер).\n\nОбычный мульти-провайдерный LLM через llm_balancer."
+    if mode in ("gemini", "web", "gw", "gemini_web", "gweb"):
+        st = gemini_web_status()
+        extra = ""
+        if not st.get("chrome"):
+            extra = "\n\n❌ Chrome (CDP :9222) не найден — Gemini Web работать не будет. Проверь: systemctl status aios-chrome-vnc"
+        elif not st.get("logged_in"):
+            extra = "\n\n⚠️ Открылась страница входа Google — войдите в аккаунт в профиле chrome_twin (VNC :1), затем повторите."
+        set_llm_mode(chat_id, "gemini")
+        return "🌐 <b>Режим LLM в чате:</b> Gemini Web (браузер).\n\nОтветы идут через gemini.google.com из вашего профиля." + extra
+    current = "🌐 Gemini Web (браузер)" if get_llm_mode(chat_id) == "gemini" else "🔄 авто (балансер)"
+    return (
+        "🤖 <b>Режим LLM в этом чате:</b> " + current + "\n\n"
+        "Сменить:\n"
+        "  /llm_mode auto — обычный LLM (балансер провайдеров)\n"
+        "  /llm_mode gemini — Gemini Web в браузере (gemini.google.com)"
+    )
+
+
 def _llm_chat(chat_id: int, user_text: str) -> str:
-    """LLM chat with root system access. Uses tool-calling pattern."""
+    """LLM chat with root system access. Uses tool-calling pattern.""" 
     import json as _json, urllib.request as _urllib, os as _os
     import subprocess as _sp, re as _re
 
@@ -6998,9 +7057,24 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
             endpoints.append(("https://openrouter.ai/api/v1/chat/completions", _ork, "mistralai/mistral-small-3.2-24b-instruct"))
 
     # Tool loop: up to 3 command iterations
+    _llm_mode = "auto"
+    try:
+        from aios_core.llm_gemini_web import get_llm_mode as _get_llm_mode
+        _llm_mode = _get_llm_mode(chat_id)
+    except Exception:
+        pass
+
     for iteration in range(4):
         response = None
-        if _balancer is not None:
+        if _llm_mode == "gemini":
+            try:
+                from aios_core.llm_gemini_web import build_gemini_prompt as _bgp
+                from aios_core.llm_gemini_web import gemini_web_ask as _gwa
+                response = _gwa(_bgp(system, messages), timeout=240)
+                print(f"  [LLM] gemini_web response ({len(response or '')} chars)")
+            except Exception as _gwe:
+                print(f"  [LLM] gemini_web failed: {_gwe}")
+        if not response and _balancer is not None:
             try:
                 response = _balancer.chat(
                     messages[1:],
@@ -7167,6 +7241,8 @@ BUTTON_ACTIONS = {
     "🔄 Рестарт": "bot_restart",
     "⏹️ Стоп": "bot_stop",
     "📊 Статус бота": "bot_status",
+    "🌐 Gemini Web": "bot_llm_gemini",
+    "🔄 Балансер": "bot_llm_auto",
     "❤️ Health": "system_health",
     "💾 Backup": "last_backup",
     "🚨 Alerts": "alert_history",
@@ -7623,6 +7699,8 @@ def run_bot(token: str) -> None:
                     keyboard = CODER_MENU_KEYBOARD
                 elif cmd == "/llm_status":
                     reply = _llm_status()
+                elif cmd in ("/llm_mode", "/gemini"):
+                    reply = _cmd_llm_mode(args, chat_id)
                 elif cmd == "/code":
                     reply = cmd_code_generate(args)
                 elif cmd == "/review":
