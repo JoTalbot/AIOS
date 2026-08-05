@@ -112,6 +112,18 @@ def build() -> str:
         else:
             lines.append("💰 Вчера операций не было")
 
+    # цены против рынка OLX
+    try:
+        import run_price_recommend as rpr
+        rows = rpr.report().get("rows") or []
+        priced = [r for r in rows if r.get("n", 0) >= 5]
+        if priced:
+            lines.append("🏷 Цены vs рынок:")
+            for r in priced[:4]:
+                lines.append(f"• {r['name']}: наша {r['our_price']:.0f} грн — {r['verdict']}")
+    except Exception:
+        pass
+
     # напоминания на сегодня
     rem = _read(ROOT / "data" / "reminders.json", [])
     today = now.strftime("%Y-%m-%d")
