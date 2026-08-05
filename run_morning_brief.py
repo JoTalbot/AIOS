@@ -171,6 +171,30 @@ def build() -> str:
         else:
             lines.append("💰 Вчера операций не было")
 
+    # карты: сроки действия (напоминание)
+    try:
+        vault = _read(ROOT / "data" / ".cards_vault.json", {})
+        cards = [c for b in (vault.get("banks") or []) for c in (b.get("cards") or [])]
+        exps = [(c.get("number_masked") or "?", c.get("exp") or "?") for c in cards if c.get("exp")]
+        if exps:
+            import datetime as _dt
+            warn = []
+            now = _dt.datetime.now()
+            for mask, exp in exps:
+                try:
+                    mm, yy = exp.split("/")
+                    end = _dt.datetime(2000 + int(yy), int(mm), 28)
+                    if (end - now).days < 60:
+                        warn.append(f"{mask} истекает {exp}!")
+                except Exception:
+                    pass
+            line = "💳 Карты: " + ", ".join(f"{m} ({e})" for m, e in exps)
+            if warn:
+                line += " ⚠️ " + " ".join(warn)
+            lines.append(line)
+    except Exception:
+        pass
+
     # A-Bank с телефона (справочно)
     ab = _abank_phone()
     if ab.get("balances") or ab.get("ops"):
