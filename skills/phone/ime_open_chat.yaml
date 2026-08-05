@@ -21,9 +21,23 @@ steps:
       - {desc_contains: "Поиск"}
       - {resource: "com.iMe.android:id/menu_search"}
 
+  - id: open_search
+    do: ui.tap
+    timeout: 8
+    heal: true
+    heal_hint: "the search bar or search icon at the top of the iMe chats list"
+    selectors:
+      - {resource: "com.iMe.android:id/menu_search"}
+      - {desc_contains: "Поиск чатов"}
+      - {desc_contains: "Поиск"}
+
+  - id: type_contact
+    do: ui.type
+    text: "${contact}"
+
   - id: open_result
     do: ui.tap
-    timeout: 7
+    timeout: 14
     heal: true
     heal_hint: "the chat search result row titled ${contact}"
     selectors:
