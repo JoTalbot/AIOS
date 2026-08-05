@@ -58,6 +58,7 @@ def _smart_model() -> str:
 
 sys.path.insert(0, str(PROJECT_ROOT))
 
+
 _env_path = PROJECT_ROOT / ".env"
 if _env_path.exists():
     for _line in _env_path.read_text(encoding="utf-8").splitlines():
@@ -3642,7 +3643,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 "мои посты", "профиль инстаграм", "мой instagram", "сторис", "story",
                 "лайк", "like", "подпиш", "отпиш", "подпис", "отпис", "follow",
                 "unfollow", "истори", "директ", "direct", "сообщен", "переписк", "личн",
-                "чат")
+                "чат в инстаграм", "чаты в инстаграм", "чаты директ", "чаты в директ")
     g_words = ("почт", "gmail", "email", "письм", "календар", "calendar", "диск",
                "drive", "гугл", "google", "юху", "аккаунт гугл", "google аккаунт",
                "непрочитан", "кто я", "google", "событ", "расписан", "документ",
@@ -6976,7 +6977,7 @@ def _cmd_llm_mode(args: str, chat_id: int) -> str:
 
 
 def _llm_chat(chat_id: int, user_text: str) -> str:
-    """LLM chat with root system access. Uses tool-calling pattern.""" 
+    """LLM chat with root system access. Uses tool-calling pattern."""
     import json as _json, urllib.request as _urllib, os as _os
     import subprocess as _sp, re as _re
 
@@ -7455,7 +7456,13 @@ def run_bot(token: str) -> None:
                             pass
 
                     # --- AIOS Autonomy: исполнение бизнес-команд владельца (опт-ин) ---
-                    if os.environ.get("AIOS_AUTONOMY_HOOK") == "1":
+                    _skip_autonomy = False
+                    try:
+                        from aios_core.llm_gemini_web import get_llm_mode as _glm2
+                        _skip_autonomy = _glm2(chat_id) == "gemini"
+                    except Exception:
+                        pass
+                    if os.environ.get("AIOS_AUTONOMY_HOOK") == "1" and not _skip_autonomy:
                         try:
                             if "_auto_core" not in globals():
                                 from aios_core.autonomy import AutonomyCore as _AutoCore
