@@ -379,6 +379,39 @@ def build() -> None:
             ui.label("Нет операций")
 
     # CRM публикуется через защищённый nginx-префикс /crm/.
+    # финансы: 30 дней + график по дням
+    try:
+        fin = json.loads((ROOT / "data" / "finance.json").read_text(encoding="utf-8"))
+        from datetime import timedelta as _td
+        days = {}
+        for x in fin if isinstance(fin, list) else []:
+            d = str(x.get("date") or "")[:10]
+            if not d:
+                continue
+            cur = days.setdefault(d, {"sale": 0.0, "expense": 0.0})
+            cur[x.get("kind") or "expense"] += float(x.get("amount") or 0)
+        keys = sorted(days.keys())[-14:]
+        sales30 = sum(v["sale"] for v in days.values())
+        exp30 = sum(v["expense"] for v in days.values())
+        with ui.card().classes("w-full"):
+            ui.label(f"💰 Финансы 30д: продажи {sales30:.0f} · расходы {exp30:.0f} · "
+                     f"прибыль {sales30 - exp30:.0f} грн").classes("text-lg font-bold")
+            if keys:
+                ui.echart({
+                    "tooltip": {"trigger": "axis"},
+                    "legend": {"data": ["Продажи", "Расходы"]},
+                    "xAxis": {"type": "category", "data": [k[5:] for k in keys]},
+                    "yAxis": {"type": "value"},
+                    "series": [
+                        {"name": "Продажи", "type": "bar",
+                         "data": [round(days[k]["sale"]) for k in keys]},
+                        {"name": "Расходы", "type": "bar",
+                         "data": [round(days[k]["expense"]) for k in keys]},
+                    ],
+                }).classes("w-full").style("height: 220px")
+    except Exception:
+        pass
+
     # фотокаталог склада
     try:
         inv = json.loads((ROOT / "data" / "inventory.json").read_text(encoding="utf-8"))
