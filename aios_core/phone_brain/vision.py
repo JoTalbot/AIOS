@@ -115,11 +115,15 @@ class VisionLocator:
     def __init__(self, *, gemini_model: str = "gemini-2.0-flash",
                  mistral_model: str = "pixtral-12b-2409",
                  openrouter_model: str = "google/gemini-2.0-flash-001",
+                 ollama_model: str = "qwen2.5vl:3b",
+                 ollama_base_url: str = "http://127.0.0.1:11434",
                  max_width: int = 720, timeout: int = 60, enabled: bool = True,
                  providers: list[tuple[str, Any, str]] | None = None):
         self.gemini_model = gemini_model
         self.mistral_model = mistral_model
         self.openrouter_model = openrouter_model
+        self.ollama_model = ollama_model
+        self.ollama_base_url = str(ollama_base_url or "http://127.0.0.1:11434").rstrip("/")
         self.max_width = max(240, int(max_width))
         self.timeout = timeout
         self.enabled = enabled
@@ -151,11 +155,12 @@ class VisionLocator:
         except Exception:
             return raw, 1.0
 
-    def _post_json(self, url: str, payload: dict, headers: dict) -> dict:
+    def _post_json(self, url: str, payload: dict, headers: dict,
+                   timeout: int | None = None) -> dict:
         request = urllib.request.Request(
             url, data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json", **headers})
-        with urllib.request.urlopen(request, timeout=self.timeout) as response:
+        with urllib.request.urlopen(request, timeout=timeout or self.timeout) as response:
             data = json.loads(response.read().decode("utf-8"))
         return data if isinstance(data, dict) else {}
 
@@ -206,6 +211,23 @@ class VisionLocator:
         except (urllib.error.URLError, OSError, ValueError):
             return None
 
+    def _ask_ollama(self, key: str, image_b64: str, hint: str, mime: str = "image/jpeg") -> dict | None:
+        """Локальная VLM через Ollama: полная автономия от облачных ключей."""
+        # keep_alive 30m: после первого (медленного) прогона модель остаётся
+        # в памяти; неиспользуемая — выгружается.
+        payload = {"model": self.ollama_model, "stream": False, "format": "json",
+                   "keep_alive": "30m",
+                   "options": {"temperature": 0, "num_ctx": 4096},
+                   "messages": [{"role": "user",
+                                 "content": _PROMPT.format(hint=hint),
+                                 "images": [image_b64]}]}
+        try:
+            data = self._post_json(self.ollama_base_url + "/api/chat", payload, {}, timeout=300)
+            text = (data.get("message") or {}).get("content") or ""
+            return _extract_json(str(text))
+        except (urllib.error.URLError, OSError, ValueError):
+            return None
+
     # ------------------------------------------------------------ public
 
     def locate(self, image_path: Path | str, hint: str) -> dict:
@@ -228,7 +250,8 @@ class VisionLocator:
             keys = _runtime_keys()
             providers = ([("gemini", self._ask_gemini, key) for key in keys["gemini"]]
                          + [("mistral", self._ask_mistral, key) for key in keys["mistral"]]
-                         + [("openrouter", self._ask_openrouter, key) for key in keys["openrouter"]])
+                         + [("openrouter", self._ask_openrouter, key) for key in keys["openrouter"]]
+                         + [("ollama", self._ask_ollama, "")])
         for provider, ask, key in providers:
             answer = ask(key, image_b64, hint, mime)
             if not answer:
