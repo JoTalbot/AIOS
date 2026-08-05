@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -71,8 +72,30 @@ def _llm(prompt: str) -> str:
     return ""
 
 
+def _inventory_price(part: str) -> float | None:
+    """Цена детали из склада (data/inventory.json), если она там есть."""
+    try:
+        items = json.loads((ROOT / "data" / "inventory.json").read_text(encoding="utf-8"))
+        for it in items if isinstance(items, list) else []:
+            if str(it.get("name") or "").strip().casefold() == part.strip().casefold():
+                price = it.get("price")
+                if isinstance(price, (int, float)) and price > 0:
+                    return float(price)
+    except Exception:
+        return None
+    return None
+
+
+def _strip_price_mentions(text: str) -> str:
+    """Убирает из описания упоминания цены/грн (цена живёт только в поле price)."""
+    sentences = re.split(r"(?<=[.!?])\s+", str(text or "").strip())
+    kept = [s for s in sentences if not re.search(r"\d[\d\s]{2,}(грн|uah|₴)|цена|стоимость", s, re.IGNORECASE)]
+    return " ".join(kept).strip()
+
+
 def generate(part: str) -> dict:
     """Сгенерировать объявление из короткого названия детали."""
+    inv_price = _inventory_price(part)
     prompt = (
         "Напиши объявление для OLX (Украина) про автозапчасть с авторазборки (б/у, рабочая). "
         "Верни ТОЛЬКО JSON без пояснений: "
@@ -84,7 +107,10 @@ def generate(part: str) -> dict:
         "Цена — ТОЛЬКО в поле price числом, НИКОГДА не упоминай цену в description и title. "
         "Не используй слово «распродажа», «акция», «100%» и прочие кликбейт-приёмы. "
         "Если пользователь указал цену в запросе — используй её. "
-        f"Деталь: {part}"
+        + (f"ПРОДАЖНАЯ ЦЕНА ФИКСИРОВАНА СКЛАДОМ: {int(inv_price)} грн. "
+             f"В поле price запиши ровно {int(inv_price)}; нигде в тексте цену не упоминай. "
+           if inv_price else "")
+        + f"Деталь: {part}"
     )
     resp = _llm(prompt)
     try:
@@ -94,6 +120,9 @@ def generate(part: str) -> dict:
         d.setdefault("title", part[:60])
         d.setdefault("description", "")
         d.setdefault("price", "")
+        if inv_price:
+            d["price"] = str(int(inv_price))
+        d["description"] = _strip_price_mentions(d.get("description"))
         # OLX требует заголовок минимум 16 символов
         if len(str(d.get("title") or "").strip()) < 16:
             d["title"] = (str(d.get("title") or "").strip() + " — б/у з авторазборки")[:60]
@@ -108,8 +137,8 @@ def generate(part: str) -> dict:
             if m:
                 d["price"] = m.group(1)
         return {"status": "ok", **d, "part": part}
-    except Exception:
-        return {"status": "error", "error": "Не удалось сгенерировать (LLM)", "part": part}
+    except Exception as exc:
+        return {"status": "error", "error": f"Не удалось сгенерировать (LLM): {exc}", "part": part}
 
 
 def generate_many(parts: list[str]) -> dict:
