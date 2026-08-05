@@ -62,11 +62,30 @@ def _send(text: str) -> bool:
 def check(alert: bool = False, bootstrap: bool = False, inventory_factory=PhoneInventory) -> dict:
     report = inventory_factory(ROOT).record()
     state = _read(STATE, {})
+    # Офлайн/онлайн телефона: алерт только по факту смены состояния.
+    health = _read(ROOT / "data" / "android_gateway" / "health.json", {})
+    phone_connected = bool(health.get("connected"))
+    prev_connected = state.get("phone_connected")  # None при первом прогоне
+    phone_alert_text = ""
+    if prev_connected is True and not phone_connected:
+        phone_alert_text = (
+            "📵 <b>Телефон офлайн</b>\n"
+            f"Устройство: {health.get('serial') or 'н/д'}\n"
+            "ADB и Companion не отвечают. Проверьте Companion и сеть телефона.\n"
+            "<i>Содержимое телефона не передавалось.</i>")
+    elif prev_connected is False and phone_connected:
+        phone_alert_text = "📱 <b>Телефон снова онлайн</b>\nADB и Companion доступны."
     app_changes = list(report.get("availability_drift") or [])
     version_changes = list(report.get("version_drift") or [])
     stale = int(report.get("calibrations_stale") or 0)
     changed = bool(app_changes or version_changes or stale)
     sent = False
+    if alert and phone_alert_text and not bootstrap:
+        try:
+            _send(phone_alert_text)
+            sent = True
+        except Exception:
+            pass
     if alert and changed and not bootstrap:
         sent = _send(
             "📦 <b>Изменение инвентаря телефона</b>\n"
@@ -79,6 +98,7 @@ def check(alert: bool = False, bootstrap: bool = False, inventory_factory=PhoneI
         "checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "availability_drift": app_changes, "version_drift": version_changes,
         "calibrations_stale": stale, "sent": sent, "bootstrap": bool(bootstrap),
+        "phone_connected": phone_connected,
     })
     return {"status": "ok", "app_changes": len(app_changes), "version_changes": len(version_changes), "stale": stale, "sent": sent}
 
