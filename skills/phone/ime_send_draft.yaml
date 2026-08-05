@@ -12,20 +12,6 @@ steps:
     package: com.iMe.android
     fresh: true            # холодный старт: не продолжать открытую сессию
 
-  - id: open_search
-    do: ui.tap
-    timeout: 8
-    heal: true
-    heal_hint: "the search icon (magnifying glass) in the Telegram-style main chats screen of the iMe app"
-    selectors:
-      - {resource: "com.iMe.android:id/menu_search"}
-      - {desc_contains: "Поиск"}
-      - {desc_contains: "Search"}
-
-  - id: type_contact
-    do: ui.type
-    text: "${contact}"
-
   - id: open_result
     do: ui.tap
     timeout: 7
