@@ -46,6 +46,10 @@ DEFAULT_APP_PROFILES = {
         "title": "EasyWay", "packages": ["com.eway"],
         "mode": "маршруты и транспорт, без фоновой геолокации", "sensitive": True,
     },
+    "olx": {
+        "title": "OLX", "packages": ["ua.slando"],
+        "mode": "просмотр чатов и черновики с подтверждением", "sensitive": False,
+    },
 }
 
 

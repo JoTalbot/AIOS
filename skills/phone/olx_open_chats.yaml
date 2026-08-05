@@ -18,8 +18,8 @@ steps:
     heal: true
     heal_hint: "the Messages / chats tab in the bottom navigation bar of the OLX app"
     selectors:
+      - {text: "Чат"}
+      - {desc_contains: "Чат"}
       - {desc_contains: "Повідомлення"}
       - {desc_contains: "Сообщения"}
-      - {desc_contains: "Messages"}
       - {text: "Повідомлення"}
-      - {text: "Сообщения"}
