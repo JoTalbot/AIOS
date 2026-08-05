@@ -336,3 +336,12 @@ push, `--force-snapshot`, старт сервиса.
 ### fail2ban (2026-08-05)
 - Установлен, jail `[sshd]`: maxretry 5 / findtime 600 / bantime 3600,
   конфиг `/etc/fail2ban/jail.local`. Статус: `fail2ban-client status sshd`.
+
+### Публикация dashboard_v3 и батарея (2026-08-05, добавление)
+- Приложение **без root_path**; префикс /crm обеспечивает nginx:
+  `location /crm/` (auth_basic + Cloudflare Access) со strip'ом префикса →
+  127.0.0.1:8090; `location /_nicegui/` и `/_nicegui_ws/` проксируют статику
+  и websocket NiceGUI. Бэкап конфига: backups/nginx_api.autosklo.org.ua.bak.
+- Тяжёлый phone-снапшот дашборда — в фоновом кэше (60 с), event loop не блокируется.
+- `aios-phone-battery-alert.timer` (5 мин): батарея <20% и не заряжается →
+  TG-алерт, кулдаун 1 ч. Скрипт run_phone_battery_alert.py, лог logs/battery_alert.log.
