@@ -162,6 +162,9 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                 m3 = re.search(r"з (\d+) оголошень", body, re.IGNORECASE)
                 if m3:
                     ads_count = int(m3.group(1))
+            # Пустой кабинет: страница «Ваші оголошення» без счётчика = 0 активных.
+            if ads_count is None and re.search(r"Ваші оголошення|Ваши объявления", body, re.IGNORECASE):
+                ads_count = 0
             # баланс
             balance = None
             m2 = re.search(r"рахунок[^\d]*(\d[\d\s.,]*)\s*грн", body, re.IGNORECASE)
