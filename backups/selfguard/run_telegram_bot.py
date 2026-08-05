@@ -7123,6 +7123,24 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
                 break
         if cmd_match and iteration < 3:
             cmd = cmd_match.group(1).strip()
+            # Защита от плейсхолдерных/бессмысленных команд, которые модель иногда
+            # шлёт как пример («ls ...», «cd <путь>», пустая команда) — не выполняем,
+            # считаем ответ финальным и вырезаем теги.
+            _cmd_low = cmd.lower()
+            _placeholder_cmd = (
+                not cmd
+                or "..." in cmd
+                or "<" in cmd or ">" in cmd
+                or set(cmd) <= set(". ")
+                or _cmd_low.startswith(("ls ...", "cd ...", "rm ...", "cat ...", "echo ..."))
+            )
+            if _placeholder_cmd:
+                _chat_history[chat_id].append({"role": "assistant", "content": response})
+                _clean_pc = _re.sub(r"<cmd>.*?</cmd>", "", response, flags=_re.DOTALL)
+                _clean_pc = _re.sub(r"```cmd\n.*?```", "", _clean_pc, flags=_re.DOTALL)
+                _clean_pc = _re.sub(r"\[cmd\].*?\[/cmd\]", "", _clean_pc, flags=_re.DOTALL)
+                _clean_pc = _clean_pc.strip()
+                return _clean_pc if _clean_pc else response
             # Execute command
             try:
                 result = _sp.run(
