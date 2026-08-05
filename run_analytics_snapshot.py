@@ -20,6 +20,44 @@ sys.path.insert(0, str(ROOT))
 STATE = ROOT / "data" / "analytics_state.json"
 
 
+def _instagram_phone() -> dict:
+    """Метрики Instagram из мобильного приложения на телефоне G1 (fallback,
+    когда браузерная сессия недоступна). Читает только свой профиль."""
+    import re as _re
+    import time as _time
+    try:
+        from aios_core.android_gateway import AndroidGateway
+        gw = AndroidGateway(ROOT)
+        if gw.open_app("com.instagram.android", confirm=True).get("status") != "ok":
+            return {}
+        _time.sleep(5)
+
+        def nodes():
+            return gw.ui_snapshot(confirm=True, include_text=True).get("nodes") or []
+
+        def find(pred):
+            return next((n for n in nodes() if pred(n)), None)
+
+        prof = find(lambda n: (n.get("description") or "") in ("Профиль", "Профіль", "Profile")
+                    or (n.get("text") or "") in ("Профиль", "Профіль"))
+        if prof:
+            b = prof["bounds"]
+            gw.tap((b[0] + b[2]) // 2, (b[1] + b[3]) // 2, confirm=True)
+            _time.sleep(4)
+        out = {}
+        for n in nodes():
+            blob = (n.get("text") or "") + " " + (n.get("description") or "")
+            m = _re.search(r"(\d[\d\s]{0,6})\s*подписчики", blob, _re.IGNORECASE)
+            if m:
+                out["instagram_followers"] = int(m.group(1).replace(" ", ""))
+            m = _re.search(r"(\d[\d\s]{0,6})\s*подписки", blob, _re.IGNORECASE)
+            if m:
+                out["instagram_following"] = int(m.group(1).replace(" ", ""))
+        return out
+    except Exception:
+        return {}
+
+
 def _run_ac(args, timeout=170) -> dict:
     py = "/opt/aios/.venv/bin/python"
     needs_x = True
@@ -45,7 +83,7 @@ def collect() -> dict:
     today = datetime.now().strftime("%Y-%m-%d")
     metrics = {"date": today}
 
-    # Instagram
+    # Instagram: сначала браузерная сессия, fallback — приложение на телефоне
     try:
         ig = _run_ac(["instagram", "profile"])
         if ig.get("status") == "ok":
@@ -54,6 +92,8 @@ def collect() -> dict:
             metrics["instagram_following"] = p.get("following")
     except Exception:
         pass
+    if metrics.get("instagram_followers") is None:
+        metrics.update(_instagram_phone())
 
     # TikTok
     try:
