@@ -11,14 +11,15 @@ steps:
   - id: open_app
     do: app.open
     package: com.whatsapp
+    fresh: true            # холодный старт: не продолжать открытую сессию
 
   - id: wait_home
     do: ui.wait
     timeout: 8
     selectors:
-      - {resource: "com.whatsapp:id/conversations_row"}
+      - {desc_contains: "Поиск"}
+      - {resource: "com.whatsapp:id/bottom_nav"}
       - {text: "Чаты"}
-      - {text: "Chats"}
 
   - id: open_search
     do: ui.tap
@@ -26,9 +27,9 @@ steps:
     heal: true
     heal_hint: "the search icon (magnifying glass) in the top app bar of the WhatsApp chats screen"
     selectors:
-      - {resource: "com.whatsapp:id/menuitem_search"}
       - {desc_contains: "Поиск"}
-      - {desc_contains: "Search"}
+      - {resource: "com.whatsapp:id/search_bar_inner_layout"}
+      - {resource: "com.whatsapp:id/menuitem_search"}
 
   - id: type_contact
     do: ui.type
