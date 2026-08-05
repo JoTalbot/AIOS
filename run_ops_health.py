@@ -72,6 +72,36 @@ def _android_probe() -> dict:
                 "reconnect_status": "error", "action": "phone_vpn_or_companion_needed"}
 
 
+def _olx_probe() -> dict:
+    """Бизнес-канал OLX: жива ли twin-сессия и на месте ли наши объявления."""
+    try:
+        pub = json.loads((ROOT / "data" / "olx_published.json").read_text(encoding="utf-8"))
+    except Exception:
+        pub = []
+    if not pub:
+        return {}
+    try:
+        import asyncio
+        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+        a = OLXChromeTwinAdapter(config={"olx_login": _env("OLX_LOGIN") or "959052288"})
+
+        async def run():
+            ok = await a.health_check()
+            ads = []
+            if ok:
+                ads = await a.list_my_ads(limit=30)
+            return ok, ads
+
+        ok, ads = asyncio.run(run())
+        ids = {str(x.get("ad_id") or x.get("id") or "") for x in ads}
+        titles = {str(x.get("title") or "") for x in ads}
+        missing = any(str(x.get("ad_id") or "") not in ids
+                      and str(x.get("title") or "") not in titles for x in pub)
+        return {"dead": not ok, "ad_missing": bool(ok and missing)}
+    except Exception:
+        return {}
+
+
 def collect(service_probe=_service_active, android_probe=None) -> dict:
     issues: list[str] = []
     warnings: list[str] = []
@@ -107,6 +137,11 @@ def collect(service_probe=_service_active, android_probe=None) -> dict:
         mode = _mode(path)
         if mode is not None and mode > 0o600:
             issues.append(f"permissions:{label}:{mode:o}")
+    olx = _olx_probe()
+    if olx.get("dead"):
+        issues.append("olx:twin_dead")
+    if olx.get("ad_missing"):
+        warnings.append("olx:объявление не найдено в моих")
     android = (android_probe or _android_probe)()
     if android.get("registered"):
         if not android.get("adb_connected"):
