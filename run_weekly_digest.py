@@ -108,6 +108,28 @@ def build() -> str:
     except Exception:
         pass
 
+    # сводка уведомлений мессенджеров за неделю
+    try:
+        notes = json.loads((ROOT / "data" / "android_gateway" / "notifications.json").read_text(encoding="utf-8"))
+        since = (datetime.now() - timedelta(days=7)).isoformat()
+        per_app = {}
+        contacts = {}
+        for n in notes if isinstance(notes, list) else []:
+            if str(n.get("collected_at") or "") >= since:
+                app = str(n.get("app") or "?")
+                per_app[app] = per_app.get(app, 0) + 1
+                t = str(n.get("title") or "").strip()
+                if t and app in ("iMe Messenger", "WhatsApp"):
+                    contacts[t] = contacts.get(t, 0) + 1
+        if per_app:
+            lines.append("\n💬 Уведомления за неделю: " +
+                         ", ".join(f"{k}: {v}" for k, v in sorted(per_app.items(), key=lambda kv: -kv[1])))
+            top = sorted(contacts.items(), key=lambda kv: -kv[1])[:3]
+            if top:
+                lines.append("Чаще всего писали: " + ", ".join(f"{k} ({v})" for k, v in top))
+    except Exception:
+        pass
+
     return "\n".join(lines)
 
 

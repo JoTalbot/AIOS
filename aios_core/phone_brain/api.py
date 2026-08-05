@@ -132,8 +132,10 @@ class BrainAPI:
                             dedup_key=body.get("dedup_key"))
                         return self._send(201, {"status": "ok", "job": job})
                     if len(segments) == 3 and segments[0] == "jobs" and segments[2] == "cancel":
+                        _draft_feedback(daemon.store, int(segments[1]), "cancelled")
                         return self._send(200, daemon.store.cancel(int(segments[1])))
                     if len(segments) == 3 and segments[0] == "jobs" and segments[2] == "confirm":
+                        _draft_feedback(daemon.store, int(segments[1]), "confirmed")
                         return self._send(200, daemon.store.confirm_job(int(segments[1])))
                     if segments == ["device", "connect"]:
                         job = daemon.store.enqueue("device.connect", {}, priority=90,
@@ -144,5 +146,29 @@ class BrainAPI:
                     return self._send(400, {"status": "error", "error": "invalid id"})
                 except Exception as exc:  # noqa: BLE001
                     return self._send(500, {"status": "error", "error": str(exc)[:200]})
+
+
+
+def _draft_feedback(store, job_id: int, decision: str) -> None:
+    """Решение владельца по черновику → сигнал для обучения стиля ответов."""
+    try:
+        job = store.get(job_id) or {}
+        skill = str((job.get("payload") or {}).get("skill") or "")
+        if not (skill.endswith("_send_draft") or skill == "olx_reply_draft"):
+            return
+        import json as _json
+        from datetime import datetime as _dt
+        fp = Path(__file__).resolve().parents[2] / "data" / "draft_feedback.json"
+        data = []
+        try:
+            data = _json.loads(fp.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        data.append({"skill": skill, "decision": decision,
+                     "draft": str((job.get("payload") or {}).get("params", {}).get("text") or "")[:300],
+                     "at": _dt.now().isoformat(timespec="seconds")})
+        fp.write_text(_json.dumps(data[-200:], ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception:
+        pass
 
         return APIHandler
