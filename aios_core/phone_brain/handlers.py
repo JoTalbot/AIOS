@@ -269,7 +269,25 @@ def _h_gateway_cli(payload: dict, ctx: JobContext) -> dict:
             "command": command, "output": parsed if isinstance(parsed, dict) else {}}
 
 
+def _h_finance_book(payload: dict, ctx) -> dict:
+    """Запись операции в финансы (data/finance.json) — только с подтверждения владельца."""
+    import run_finance
+    kind = str(payload.get("kind") or "sale")
+    try:
+        amount = float(payload.get("amount") or 0)
+    except (TypeError, ValueError):
+        return {"status": "error", "error": "некорректная сумма"}
+    desc = str(payload.get("desc") or "")[:200]
+    result = run_finance.add(kind, amount, desc)
+    if not isinstance(result, dict):
+        return {"status": "error", "error": str(result)[:200]}
+    return {"status": "ok", "kind": kind, "amount": amount, "desc": desc}
+
+
 BUILTIN_HANDLERS: list[Handler] = [
+    Handler("finance.book", _h_finance_book, timeout=30, needs_device=False,
+            confirm_action="finance_book",
+            description="Провести финансовую операцию (черновик из банковского SMS)"),
     Handler("device.connect", _h_device_connect, timeout=90, needs_device=False,
             description="Переподключить ADB к телефону и проверить соединение"),
     Handler("device.status", _h_device_status, timeout=45, needs_device=False,
