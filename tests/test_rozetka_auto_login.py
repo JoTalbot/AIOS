@@ -30,14 +30,14 @@ def test_login_result_defaults():
 
 def test_detect_login_screen_empty():
     """Empty XML dump returns NOT_STARTED."""
-    auto = RozetkaAutoLogin()
+    auto = RozetkaAutoLogin(adb=_mock_adb())
     state = auto.detect_login_screen("")
     assert state == LoginState.NOT_STARTED
 
 
 def test_detect_login_screen_with_markers():
     """XML with login markers returns LOGIN_SCREEN_FOUND."""
-    auto = RozetkaAutoLogin()
+    auto = RozetkaAutoLogin(adb=_mock_adb())
     xml = '<node resource-id="login_button" text="Увійти" />'
     state = auto.detect_login_screen(xml)
     assert state == LoginState.LOGIN_SCREEN_FOUND
@@ -45,7 +45,7 @@ def test_detect_login_screen_with_markers():
 
 def test_detect_login_screen_already_logged_in():
     """XML with profile but no login markers returns LOGIN_SUCCESS."""
-    auto = RozetkaAutoLogin()
+    auto = RozetkaAutoLogin(adb=_mock_adb())
     xml = '<node resource-id="profile_section" text="Мій профіль" />'
     state = auto.detect_login_screen(xml)
     assert state == LoginState.LOGIN_SUCCESS
@@ -53,15 +53,22 @@ def test_detect_login_screen_already_logged_in():
 
 def test_detect_login_screen_no_markers():
     """XML without login markers returns APP_OPENED."""
-    auto = RozetkaAutoLogin()
+    auto = RozetkaAutoLogin(adb=_mock_adb())
     xml = '<node resource-id="product_list" text="Товари" />'
     state = auto.detect_login_screen(xml)
     assert state == LoginState.APP_OPENED
 
 
+def _mock_adb():
+    from types import SimpleNamespace
+
+    return SimpleNamespace(open_app=lambda *a, **k: None,
+                           dump_ui=lambda name: None)
+
+
 def test_attempt_login_no_credentials():
     """Attempt login without credentials returns appropriate message."""
-    auto = RozetkaAutoLogin()
+    auto = RozetkaAutoLogin(adb=_mock_adb())
     result = auto.attempt_login(
         email=None,
         password=None,
@@ -72,7 +79,7 @@ def test_attempt_login_no_credentials():
 
 def test_attempt_login_with_captcha():
     """Login attempt with captcha returns CAPTCHA_REQUIRED."""
-    auto = RozetkaAutoLogin()
+    auto = RozetkaAutoLogin(adb=_mock_adb())
     xml = '<node resource-id="login_button" /><node resource-id="captcha_image" />'
     result = auto.attempt_login(email="test@test.com", password="pass", xml_dump=xml)
     assert result.state == LoginState.CAPTCHA_REQUIRED
@@ -81,7 +88,7 @@ def test_attempt_login_with_captcha():
 
 def test_attempt_login_with_2fa():
     """Login attempt with 2FA returns TWO_FA_REQUIRED."""
-    auto = RozetkaAutoLogin()
+    auto = RozetkaAutoLogin(adb=_mock_adb())
     xml = '<node resource-id="login_button" /><node resource-id="otp_input" />'
     result = auto.attempt_login(email="test@test.com", password="pass", xml_dump=xml)
     assert result.state == LoginState.TWO_FA_REQUIRED

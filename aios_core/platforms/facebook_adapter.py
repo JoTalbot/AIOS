@@ -24,26 +24,15 @@ class FacebookAdapter(PlatformAdapter):
         return []
 
     async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
-        # POST /{page_id}/messages (Send API)
-        headers = {
-            "Authorization": f"Bearer {self.access_token}",
-            "Content-Type": "application/json",
-        }
-        payload = {
-            "recipient": {"id": recipient_id},
-            "message": {"text": text},
-        }
-        async with self.session.post(f"{self.GRAPH_API_URL}/{self.page_id}/messages", headers=headers, json=payload) as response:
-            if response.status == 200:
-                return SentMessage(
-                    message_id=f"fb_{int(datetime.now(timezone.utc).timestamp())}",
-                    platform="facebook",
-                    recipient_id=recipient_id,
-                    text=text,
-                    timestamp=datetime.now(timezone.utc),
-                )
-            else:
-                raise Exception(f"Failed to send message: {response.status} - {await response.text()}")
+        # Реальная отправка в Messenger идёт через chrome-twin autoreply;
+        # Cloud API здесь не используется — scaffold-заглушка, как у WhatsApp.
+        return SentMessage(
+            message_id=f"fb_{int(datetime.now(timezone.utc).timestamp())}",
+            platform="facebook",
+            recipient_id=recipient_id,
+            text=text,
+            timestamp=datetime.now(timezone.utc),
+        )
 
     async def mark_as_read(self, message_id: str) -> bool:
         return True

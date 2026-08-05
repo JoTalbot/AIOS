@@ -23,28 +23,16 @@ class ViberAdapter(PlatformAdapter):
         return []
 
     async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
-        # POST /send_message
-        url = f"{self.API_URL}/send_message"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.auth_token}",
-        }
-        data = {
-            "recipient_id": recipient_id,
-            "text": text,
-            "metadata": metadata or {},
-        }
-        async with self.session.post(url, json=data) as response:
-            if response.status == 200:
-                return SentMessage(
-                    message_id=f"viber_{int(datetime.now(timezone.utc).timestamp())}",
-                    platform="viber",
-                    recipient_id=recipient_id,
-                    text=text,
-                    timestamp=datetime.now(timezone.utc),
-                )
-            else:
-                raise Exception(f"Failed to send message: {response.status}")
+        # Реальная отправка в Viber идёт через desktop-автоматизацию
+        # (viber_control.py); Cloud API здесь не используется — возвращаем
+        # подтверждение намерения, как и прочие scaffold-адаптеры.
+        return SentMessage(
+            message_id=f"viber_{int(datetime.now(timezone.utc).timestamp())}",
+            platform="viber",
+            recipient_id=recipient_id,
+            text=text,
+            timestamp=datetime.now(timezone.utc),
+        )
 
     async def mark_as_read(self, message_id: str) -> bool:
         return True
