@@ -285,3 +285,37 @@ push, `--force-snapshot`, старт сервиса.
 генерации — прицел на снижение класса «security theater»). Гонка со sweep-циклом:
 незакоммиченные scanner/gemini-deleting унесло в auto-ветки — файлы восстановлены,
 дисциплина «stop service перед git» обязательна (нарушена 1 раз сегодня).
+
+---
+
+## Android-стек и vision (обновлено 2026-08-05)
+
+### Телефон и шлюз
+- Устройство G1 (Android 15) ходит по WireGuard `10.203.0.2:<port>`; **порт adb-over-tcp
+  меняется** при переподключении (на дату записи — 35075; актуальный: `adb devices` /
+  `data/android_gateway/device.json`).
+- Перерегистрация: `adb connect <ip:port>` → `python run_android_gateway.py register <ip:port> "G1 Android phone"`;
+  watchdog и phone-brain подхватывают `device.json` сами.
+- Companion: HTTP `http://10.203.0.2:8765` (токен в `data/android_gateway/companion.json`).
+  Companion **не отдаёт resource-id** — в skill-селекторах надёжны только desc/text.
+- Офлайн телефона: `aios-phone-inventory.timer` шлёт TG-алерт по переходу онлайн/офлайн;
+  `aios-android-notifications` пропускает цикл без падения (exit 0). Поднять телефон
+  с сервера нельзя — только руками на устройстве (рестарт Companion).
+
+### vision (VLM-локатор для heal-восстановления селекторов)
+Цепочка (побеждает первый живой): gemini (квота) → **mistral pixtral-12b-2409**
+(основной; json_mode, temp 0) → openrouter (кредиты исчерпаны) →
+**локальный Ollama qwen2.5vl:3b** (последний рубеж, полная автономия).
+- `qwen2.5vl:7b` не живёт в RAM 7.6G (вытеснение/OOM) — модель на диске; после
+  апгрейда VPS включается через `data/android_gateway/phone_brain_config.json`
+  (`vision.ollama_model`).
+- Локальная VLM: холодный старт ~2 мин, тёплый вызов 4–13 с, grounding слабее
+  облаков — только страховка.
+
+### phone-skills
+- `fresh: true` на шаге app.open = force-stop перед стартом (приложение не
+  продолжает открытую сессию/чат).
+- Проверены на устройстве: ime_open_chat, whatsapp_open_chat, olx_open_chats
+  (вкладка «Чат» в текущем UI). send_draft вживую не гоняются — реальная отправка,
+  только явное подтверждение владельца.
+- Планировщик не предлагает скиллы неустановленных приложений.
