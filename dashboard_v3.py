@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -127,6 +129,28 @@ def _phone_operations() -> dict:
         return PhoneControlCenter(ROOT).snapshot()
     except Exception:
         return {"status": "error", "issues": ["unavailable"]}
+
+
+# Тяжёлый phone-снапшот (HTTP к companion + adb-подпроцессы) НЕ должен
+# блокировать event loop NiceGUI: считаем в фоновом потоке, страница читает кэш.
+_HEAVY_CACHE: dict = {"ts": 0.0, "data": None}
+
+
+def _heavy_snapshot() -> dict:
+    return _HEAVY_CACHE["data"] or {"status": "warming", "issues": []}
+
+
+def _warm_loop() -> None:
+    while True:
+        try:
+            _HEAVY_CACHE["data"] = _phone_operations()
+        except Exception:
+            _HEAVY_CACHE["data"] = {"status": "error", "issues": ["unavailable"]}
+        _HEAVY_CACHE["ts"] = time.monotonic()
+        time.sleep(60)
+
+
+threading.Thread(target=_warm_loop, daemon=True, name="dash-heavy-cache").start()
 
 
 def _customer_crm() -> dict:
@@ -275,7 +299,7 @@ def build() -> None:
             ).classes("text-xs text-gray-500")
 
     # Сводный безопасный центр управления телефоном.
-    phone_ops = _phone_operations()
+    phone_ops = _heavy_snapshot()
     with ui.card().classes("w-full border-l-4 border-cyan-600"):
         ui.label("🛠 Центр управления телефоном").classes("text-lg font-bold")
         state = "✅ стабильно" if phone_ops.get("status") == "ok" else "⚠️ требуется внимание"
