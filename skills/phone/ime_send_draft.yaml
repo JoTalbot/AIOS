@@ -12,6 +12,11 @@ steps:
     package: com.iMe.android
     fresh: true            # холодный старт: не продолжать открытую сессию
 
+  - id: dismiss_promo
+    do: ui.key
+    keycode: KEYCODE_BACK   # закрыть промо-шаттер «Подарить Premium» после старта
+    optional: true
+
   - id: open_search
     do: ui.tap
     timeout: 8
