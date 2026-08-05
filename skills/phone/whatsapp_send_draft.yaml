@@ -41,6 +41,7 @@ steps:
     heal: true
     heal_hint: "the chat search result row titled ${contact}"
     selectors:
+      - {resource: "com.whatsapp:id/conversations_row_contact_name"}
       - {text: "${contact}"}
       - {text_contains: "${contact}"}
 
