@@ -33,6 +33,22 @@ groups:
           summary: "Outbox backlog"
           description: "{{ $labels.platform }} has {{ $value }} pending outbox entries"
 
+      - alert: PhoneOffline
+        expr: aios_phone_online == 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Телефон G1 офлайн"
+          description: "adb/companion недоступны >5 минут — проверьте телефон/WireGuard"
+
+      - alert: PhoneBatteryLow
+        expr: aios_phone_online == 1 and aios_phone_battery_percent < 20
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Батарея телефона <20%"
+          description: "G1 на {{  }}% и, вероятно, не на зарядке"
+
       - alert: NoCardsCollected
         expr: rate(aios_cards_collected[30m]) == 0
         for: 30m
