@@ -9,6 +9,7 @@ from __future__ import annotations
 import html
 import json
 import os
+import re
 import sqlite3
 import statistics
 import urllib.request
@@ -46,6 +47,13 @@ def _tg(text: str) -> bool:
         return False
 
 
+DONOR_RE = re.compile(
+    r"(розбор|разбор|rozbork|донор|по запчасти|під розбор|на розбор|целиком|цевий|"
+    r"продам (авто|машину|ваз|газель)|куплю авто|на запчастини|на запчасти)",
+    re.IGNORECASE)
+VAZGAZ_RE = re.compile(r"(ваз|vaz|лада|lada|газел|gazel|газ )", re.IGNORECASE)
+
+
 def run(dry: bool = False) -> dict:
     con = sqlite3.connect(DB)
     by: dict[str, list[float]] = {}
@@ -76,9 +84,12 @@ def run(dry: bool = False) -> dict:
         state["sent_today"] = 0
     quota = max(0, 3 - int(state.get("sent_today") or 0))
     STATE.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+    donors = [d for d in deals if DONOR_RE.search(d["title"] or "") and VAZGAZ_RE.search(d["title"] or "")]
+    parts = [d for d in deals if d not in donors]
     sent = 0
-    for d in deals[:quota]:
-        msg = (f"🔥 <b>Выгодный лот</b> [{d['query']}]: {d['price']:.0f} грн "
+    for d in (donors[:quota] or parts[:quota]):
+        kind = "🚙 <b>ДОНОР под разбор</b>" if d in donors else "🔥 <b>Выгодный лот</b>"
+        msg = (f"{kind} [{d['query']}]: {d['price']:.0f} грн "
                f"(медиана {d['median']:.0f})\n{d['title'][:80]}\n{d['url']}")
         if dry:
             print("DRY:", msg.replace("\n", " | ")[:160])
