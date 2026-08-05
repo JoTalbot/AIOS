@@ -368,3 +368,12 @@ push, `--force-snapshot`, старт сервиса.
   распознавание run_photo_recognition.py (Gemini → Mistral-fallback),
   секция «📦 Склад — фотокаталог» в dashboard_v3; run_olx_ad_gen create
   автоподставляет фото позиции склада.
+
+### Дополнения 06.08.2026
+- Коллектор OLX: добавлены ниши «капот/фара шкода октавия», «фара bmw x5» —
+  рыночные вердикты теперь и по нашим деталям.
+- ops-health: probe twin-сессий OLX (каждый прогон) и FB/IG (кэш 30 мин);
+  issue при отвале: olx:twin_dead, session:facebook_dead, session:instagram_dead.
+- disk-cleanup: ротация data/android_gateway/screenshots (старше 7 дней).
+- Grafana: дашборд «AIOS Phone G1» (online/companion/батарея, 24ч).
+- NP API проверен (ключ живой) — ТТН по команде владельца.

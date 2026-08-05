@@ -66,6 +66,20 @@ def clean() -> dict:
             except Exception:
                 pass
 
+    # скриншоты телефона старше 7 дней
+    shots = ROOT / "data" / "android_gateway" / "screenshots"
+    if shots.exists():
+        for f in shots.glob("*.png"):
+            try:
+                mtime = datetime.fromtimestamp(f.stat().st_mtime)
+                if (now - mtime).days >= 7:
+                    size = f.stat().st_size
+                    f.unlink()
+                    freed += size
+                    details.append(f"скриншот {f.name}: {size // 1024}KB")
+            except Exception:
+                pass
+
     return {"status": "ok", "freed_kb": freed // 1024, "details": details}
 
 
