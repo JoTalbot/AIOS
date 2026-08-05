@@ -72,6 +72,50 @@ def _android_probe() -> dict:
                 "reconnect_status": "error", "action": "phone_vpn_or_companion_needed"}
 
 
+def _sessions_probe() -> dict:
+    """FB/IG twin-сессии; кэш 30 минут, чтобы не гонять браузеры каждый прогон."""
+    from datetime import datetime as _dt, timezone as _tz
+    st_p = ROOT / "data" / "ops_session_probe.json"
+    try:
+        st = json.loads(st_p.read_text(encoding="utf-8"))
+    except Exception:
+        st = {}
+    last = str(st.get("ts") or "")
+    fresh = False
+    if last:
+        try:
+            fresh = (_dt.now(_tz.utc) - _dt.fromisoformat(last)).total_seconds() < 1800
+        except ValueError:
+            fresh = False
+    if fresh:
+        return st.get("results") or {}
+    results = {}
+    try:
+        import asyncio
+        from aios_core.platforms.facebook_chrome_twin_adapter import FacebookChromeTwinAdapter
+        from aios_core.platforms.instagram_chrome_twin_adapter import InstagramChromeTwinAdapter
+
+        async def run():
+            out = {}
+            for name, cls in (("facebook", FacebookChromeTwinAdapter),
+                              ("instagram", InstagramChromeTwinAdapter)):
+                try:
+                    out[name] = bool(await asyncio.wait_for(cls().health_check(), timeout=60))
+                except Exception:
+                    out[name] = False
+            return out
+
+        results = asyncio.run(run())
+    except Exception:
+        results = {}
+    try:
+        st_p.write_text(json.dumps({"ts": _dt.now(_tz.utc).isoformat(),
+                                    "results": results}, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+    return results
+
+
 def _olx_probe() -> dict:
     """Бизнес-канал OLX: жива ли twin-сессия и на месте ли наши объявления."""
     try:
@@ -137,6 +181,9 @@ def collect(service_probe=_service_active, android_probe=None) -> dict:
         mode = _mode(path)
         if mode is not None and mode > 0o600:
             issues.append(f"permissions:{label}:{mode:o}")
+    for name, ok in (_sessions_probe() or {}).items():
+        if not ok:
+            issues.append(f"session:{name}_dead")
     olx = _olx_probe()
     if olx.get("dead"):
         issues.append("olx:twin_dead")
