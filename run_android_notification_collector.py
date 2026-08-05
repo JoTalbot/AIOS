@@ -127,6 +127,10 @@ def main() -> int:
     command = sys.argv[1] if len(sys.argv) > 1 else "collect"
     result = collect() if command == "collect" else mark_read() if command == "mark-read" else {"status": "error", "error": "collect|mark-read"}
     print(json.dumps(result, ensure_ascii=False))
+    # Офлайн/ненастроенный телефон — штатный пропуск цикла, а не ошибка:
+    # watchdog шлюза и инвентарь-алерты уже сообщают о недоступности устройства.
+    if result.get("status") in ("offline", "unconfigured"):
+        return 0
     return 0 if result.get("status") == "ok" else 1
 
 
