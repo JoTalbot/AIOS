@@ -163,7 +163,7 @@ class VisionLocator:
     def _ask_openrouter(self, key: str, image_b64: str, hint: str) -> dict | None:
         # max_tokens обязателен: без него OpenRouter резервирует весь контекст
         # модели и отвечает 402 на аккаунтах с небольшим балансом.
-        payload = {"model": self.openrouter_model, "max_tokens": 120,
+        payload = {"model": self.openrouter_model, "max_tokens": 60,
                    "messages": [{"role": "user", "content": [
             {"type": "text", "text": _PROMPT.format(hint=hint)},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}]}]}

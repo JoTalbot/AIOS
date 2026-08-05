@@ -80,9 +80,20 @@ class PhonePlanner:
 
     def _catalog(self) -> list[dict]:
         catalog = []
+        available_apps = None
+        gateway = getattr(self.engine, "gateway", None)
+        if gateway is not None:
+            try:
+                profiles = gateway.app_profiles().get("profiles") or []
+                available_apps = {str(p.get("id")) for p in profiles if p.get("available")}
+            except Exception:
+                available_apps = None
         for skill in self.engine.list():
             if not skill.get("id"):
                 continue  # битые skill-файлы в планировщик не попадают
+            # Скилл для неустановленного приложения заведомо невыполним.
+            if available_apps is not None and str(skill.get("app") or "") not in available_apps:
+                continue
             full = self.engine.get(skill["id"]) or {}
             catalog.append({"id": skill["id"], "title": skill["title"],
                             "app": skill["app"], "params": full.get("params") or [],
