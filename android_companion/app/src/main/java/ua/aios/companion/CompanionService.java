@@ -246,6 +246,7 @@ public class CompanionService extends Service {
     private JSONObject health() throws Exception {
         JSONObject result = battery();
         result.put("status", "ok");
+        try { result.put("version", getPackageManager().getPackageInfo(getPackageName(), 0).versionName); } catch (Exception e) { result.put("version", ""); }
         result.put("model", Build.MODEL);
         result.put("android", Build.VERSION.RELEASE);
         result.put("sdk", Build.VERSION.SDK_INT);
