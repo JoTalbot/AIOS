@@ -203,6 +203,17 @@ def build() -> str:
             line += "\nпоследние операции: " + "; ".join(ab["ops"])
         lines.append(line)
 
+    # рынок ВАЗ/ГАЗель за сутки
+    try:
+        import run_market_digest as rmd
+        rmd.save()
+        tl = rmd.trend_lines()
+        if tl:
+            lines.append("🚗 Рынок ВАЗ/ГАЗель (медианы):")
+            lines.extend(tl[:6])
+    except Exception:
+        pass
+
     # цены против рынка OLX
     try:
         import run_price_recommend as rpr
