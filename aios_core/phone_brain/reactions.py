@@ -295,6 +295,34 @@ class ReactionEngine:
             return " Стиль: владелец подтверждает черновики — держи текущий тон и структуру."
         return ""
 
+    def _guardrail(self, draft: str) -> list:
+        """Безопасность черновика: обещания цены против склада, личные данные."""
+        import re as _re
+        warns = []
+        try:
+            inv = json.loads((self.root / "data" / "inventory.json").read_text(encoding="utf-8"))
+        except Exception:
+            inv = []
+        low = (draft or "").lower()
+        for m in _re.finditer(r"(\d[\d\s]{2,6})\s*(?:грн|uah)", draft or "", _re.IGNORECASE):
+            try:
+                val = float(m.group(1).replace(" ", ""))
+            except ValueError:
+                continue
+            for it in inv if isinstance(inv, list) else []:
+                name = str(it.get("name") or "")
+                words = [w for w in _re.split(r"[^a-zа-яєіїґ0-9]+", name.lower()) if len(w) >= 4]
+                if words and all(w in low for w in words[:2]):
+                    price = float(it.get("price") or 0)
+                    if price and val < price * 0.85:
+                        warns.append(f"⚠️ черновик обещает {val:.0f} грн, "
+                                     f"а в складе «{name}» — {price:.0f} грн: проверьте цену")
+        if _re.search(r"\b(?:\d[ -]?){12,19}\b", draft or ""):
+            warns.append("⚠️ в тексте похоже на номер карты")
+        if _re.search(r"\+?\d{10,13}", (draft or "").replace(" ", "").replace("-", "")):
+            warns.append("⚠️ в тексте похоже на номер телефона")
+        return warns[:3]
+
     def _llm_draft(self, prompt: str) -> dict:
         """Генерирует черновик через LLMBalancer (в тестах — через подменённый chat)."""
         prompt = prompt + self._style_hint()
@@ -330,6 +358,7 @@ class ReactionEngine:
                                              "error": str(drafted.get("error"))[:120]})
             return {"rule": rule["id"], "type": "llm_enqueue", "ok": False,
                     "error": str(drafted.get("error"))[:160]}
+        warns = self._guardrail(drafted["draft"])
         draft_ctx = dict(ctx)
         draft_ctx["draft"] = drafted["draft"]  # для payload телефона — без HTML-экранирования
         job_spec = action.get("job") or {}
@@ -338,6 +367,8 @@ class ReactionEngine:
             payload = {}
         if rule["autonomy"] == "auto":
             payload["confirm"] = True
+        if warns:
+            payload["warnings"] = warns
         job = self.store.enqueue(str(job_spec.get("kind") or ""), payload,
                                  priority=int(job_spec.get("priority") or 60),
                                  dedup_key=(f"react/{rule['id']}/" + _event_id(item))
@@ -350,6 +381,7 @@ class ReactionEngine:
         if action.get("notify", True):
             note = (f"✉️ <b>Черновик #{job.get('id')}</b> ({ctx['label']})\n"
                     f"{html.escape(drafted['draft'][:400], quote=False)}\n\n"
+                    + ("\n".join(html.escape(w, quote=False) for w in warns) + "\n" if warns else "")
                     + ("🟢 Автономия auto — выполнится сам."
                        if rule["autonomy"] == "auto" else
                        f"Подтвердить отправку: <code>confirm {job.get('id')}</code>"))
