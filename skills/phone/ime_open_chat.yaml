@@ -12,6 +12,11 @@ steps:
     package: com.iMe.android
     fresh: true            # не продолжать открытую сессию (чат), стартовать с главного экрана
 
+  - id: dismiss_promo
+    do: ui.key
+    keycode: KEYCODE_BACK   # закрыть промо-шаттер «Подарить Premium» после старта
+    optional: true
+
   - id: wait_home
     do: ui.wait
     timeout: 12
