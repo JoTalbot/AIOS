@@ -10,10 +10,11 @@ steps:
   - id: open_app
     do: app.open
     package: com.iMe.android
+    fresh: true            # не продолжать открытую сессию (чат), стартовать с главного экрана
 
   - id: wait_home
     do: ui.wait
-    timeout: 8
+    timeout: 12
     optional: true          # холодный старт может показать splash
     selectors:
       - {desc_contains: "Search"}

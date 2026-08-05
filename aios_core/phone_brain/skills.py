@@ -323,8 +323,13 @@ class SkillEngine:
         while True:
             snapshot = self._snapshot()
             if snapshot.get("status") != "ok":
-                return {"ok": False, "code": "ui_unavailable",
-                        "error": str(snapshot.get("error") or "UI недоступен")[:200]}
+                # UI может быть временно недоступен (холодный старт приложения,
+                # splash) — ждём до дедлайна, а не сдаёмся сразу.
+                if time.monotonic() >= deadline:
+                    return {"ok": False, "code": "ui_unavailable",
+                            "error": str(snapshot.get("error") or "UI недоступен")[:200]}
+                time.sleep(self.poll_interval)
+                continue
             # Ранее восстановленная VLM точка имеет приоритет над цепочкой.
             if learned and isinstance(learned.get("center"), list):
                 node = self._find_by_learned(snapshot, learned["center"])
@@ -365,6 +370,13 @@ class SkillEngine:
             reference = str(step.get("package") or step.get("profile") or "").strip()
             if not reference:
                 return {"ok": False, "code": "invalid_skill", "error": "шаг app.open: нет package/profile"}
+            if step.get("fresh"):
+                # Холодный старт: приложение откроется на домашнем экране,
+                # а не продолжит последнюю сессию (например, открытый чат).
+                package = gateway.resolve_package(reference)
+                if package:
+                    gateway.force_stop(package)
+                    time.sleep(0.5)
             result = gateway.open_profile(reference, confirm=True)
             if result.get("status") == "ok":
                 return {"ok": True}
