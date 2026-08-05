@@ -345,3 +345,12 @@ push, `--force-snapshot`, старт сервиса.
 - Тяжёлый phone-снапшот дашборда — в фоновом кэше (60 с), event loop не блокируется.
 - `aios-phone-battery-alert.timer` (5 мин): батарея <20% и не заряжается →
   TG-алерт, кулдаун 1 ч. Скрипт run_phone_battery_alert.py, лог logs/battery_alert.log.
+
+### OLX-ответы через телефон (2026-08-05)
+- HTTP-путь автоответа мёртв (CloudFront-защита OLX); рабочий контур — телефон:
+  реакция `phone_reactions/olx_client_llm_draft.yaml` (ua.slando, autonomy: draft)
+  → LLM-черновик → job `skill.run olx_reply_draft` в need_confirm → владелец
+  «подтверди N» в TG → отправка из приложения OLX. Без подтверждения ничего не уходит.
+- Скилл `skills/phone/olx_reply_draft.yaml`: fresh-старт → «Чат» → строка
+  контакта → поле «Напишите сообщение» → ввод → heal-тап по кнопке отправки.
+- Синтетический прогон реакции+LLM+очереди проверен (черновик качественный).
