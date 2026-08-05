@@ -613,7 +613,8 @@ def cmd_help() -> str:
         "  /accounts — управление Google и Instagram аккаунтами\n"
         "  /google — быстрые команды Google (почта, календарь, диск)\n"
         "  /instagram — быстрые команды Instagram (профиль, посты)\n"
-        "  /llm_mode [auto|gemini] — режим LLM в чате (балансер / Gemini Web)\n\n"
+        "  /llm_mode [auto|gemini] — режим LLM в чате (балансер / Gemini Web)\n"
+        "  /cmd &lt;команда&gt; — выполнить команду на сервере (root, /root/AIOS)\n\n"
         "<i>Просто напишите боту обычным текстом, например:</i>\n"
         "  «проверь мою почту» · «сколько непрочитанных» · «кто я в гугле»\n"
         "  «покажи календарь» · «покажи мой инстаграм» · «мои посты» · «отправь письмо ...»\n\n"
@@ -6976,8 +6977,55 @@ def _cmd_llm_mode(args: str, chat_id: int) -> str:
     )
 
 
-def _llm_chat(chat_id: int, user_text: str) -> str:
-    """LLM chat with root system access. Uses tool-calling pattern."""
+def _cmd_console(args: str, chat_id: int) -> str:
+    """Консольный доступ: /cmd <команда> или /cmd <запрос>.
+
+    /cmd <shell-команда> — выполняется напрямую (root, /root/AIOS).
+    /cmd <запрос на русском> — LLM решает, какую команду выполнить
+    (для этого разрешены теги <cmd>).
+    """
+    import re as _re_cmd
+    import subprocess as _sp_cmd
+    text = (args or "").strip()
+    if not text:
+        return (
+            "🖥 <b>Консольный доступ</b>\n\n"
+            "Использование:\n"
+            "  /cmd ls -la — напрямую выполнить команду\n"
+            "  /cmd покажи логи бота — LLM подберёт команду\n\n"
+            "Команды выполняются от root на сервере (/root/AIOS)."
+        )
+    _has_cyr = bool(_re_cmd.search(r"[а-яА-ЯёЁіїєґІЇЄҐ]", text))
+    if not _has_cyr:
+        # прямая shell-команда
+        _low = text.lower()
+        if any(_low.startswith(d) for d in (
+                "rm -rf /", "mkfs", "dd if=", ":(){", "shutdown",
+                "reboot", "poweroff", "halt", "init 0", "init 6")):
+            return ("❌ Команда заблокирована как потенциально деструктивная.\n\n"
+                    "Выполните её вручную по SSH.")
+        try:
+            result = _sp_cmd.run(text, shell=True, capture_output=True, text=True,
+                                 timeout=30, cwd="/root/AIOS")
+            output = result.stdout + result.stderr
+            if not output.strip():
+                output = "(no output, exit code: " + str(result.returncode) + ")"
+            if len(output) > 3000:
+                output = output[:3000] + "\n... (truncated)"
+            return "$ " + text + "\n\n```\n" + output + "\n```"
+        except _sp_cmd.TimeoutExpired:
+            return "⏱ Команда превысила лимит (30 сек)."
+        except Exception as e:
+            return "❌ " + str(e)[:200]
+    # запрос на русском — LLM с разрешением на выполнение <cmd>
+    return _llm_chat(chat_id, text, allow_cmd=True)
+
+
+def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
+    """LLM chat with root system access. Uses tool-calling pattern.
+
+    allow_cmd=True — разрешено выполнять <cmd> (только из /cmd).
+    """
     import json as _json, urllib.request as _urllib, os as _os
     import subprocess as _sp, re as _re
 
@@ -7121,7 +7169,7 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
             if _m:
                 cmd_match = _m
                 break
-        if cmd_match and iteration < 3:
+        if cmd_match and iteration < 3 and allow_cmd:
             cmd = cmd_match.group(1).strip()
             # Защита от плейсхолдерных/бессмысленных команд, которые модель иногда
             # шлёт как пример («ls ...», «cd <путь>», пустая команда) — не выполняем,
@@ -7726,6 +7774,8 @@ def run_bot(token: str) -> None:
                     reply = _llm_status()
                 elif cmd in ("/llm_mode", "/gemini"):
                     reply = _cmd_llm_mode(args, chat_id)
+                elif cmd == "/cmd":
+                    reply = _cmd_console(args, chat_id)
                 elif cmd == "/code":
                     reply = cmd_code_generate(args)
                 elif cmd == "/review":
