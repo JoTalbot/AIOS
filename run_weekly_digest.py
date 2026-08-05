@@ -130,6 +130,38 @@ def build() -> str:
     except Exception:
         pass
 
+    # скорость реакции за неделю
+    try:
+        notes = json.loads((ROOT / "data" / "android_gateway" / "notifications.json").read_text(encoding="utf-8"))
+        since = (datetime.now() - timedelta(days=7)).isoformat()
+        incoming = sum(1 for n in notes if isinstance(n, dict)
+                       and str(n.get("package") or "") in
+                       ("com.iMe.android", "com.whatsapp", "ua.slando")
+                       and str(n.get("collected_at") or "") >= since)
+        drafts = confirmed = cancelled = 0
+        evp = ROOT / "data" / "android_gateway" / "phone_brain_events.jsonl"
+        if evp.exists():
+            for ln in evp.read_text(encoding="utf-8").splitlines():
+                try:
+                    e = json.loads(ln)
+                except Exception:
+                    continue
+                if str(e.get("at") or "") >= since and e.get("type") == "llm_draft_ready":
+                    drafts += 1
+        con = sqlite3.connect(QUEUE)
+        for s, c in con.execute("select status, count(*) from jobs "
+                                "where kind='skill.run' group by status"):
+            if s == "done":
+                confirmed += c
+            elif s == "cancelled":
+                cancelled += c
+        if incoming:
+            lines.append(f"\n⚡ Реакция за неделю: входящих {incoming}, "
+                         f"черновиков {drafts} ({int(drafts / incoming * 100)}%), "
+                         f"подтверждено {confirmed}, отменено {cancelled}")
+    except Exception:
+        pass
+
     return "\n".join(lines)
 
 
