@@ -1,0 +1,54 @@
+# OLX: открыть чат с контактом и отправить подготовленный ответ.
+# Используется ТОЛЬКО через очередь с подтверждением владельца (autonomy: draft).
+id: olx_reply_draft
+title: "OLX: ответ в чат (черновик с подтверждением)"
+app: olx
+params: [contact, text]
+confirm: true
+sensitive: false
+steps:
+  - id: open_app
+    do: app.open
+    package: ua.slando
+    fresh: true            # не продолжать открытую сессию
+
+  - id: open_chats_tab
+    do: ui.tap
+    timeout: 8
+    heal: true
+    heal_hint: "the Chats tab in the bottom navigation bar of the OLX app"
+    selectors:
+      - {text: "Чат"}
+      - {desc_contains: "Чат"}
+
+  - id: open_chat
+    do: ui.tap
+    timeout: 8
+    heal: true
+    heal_hint: "the chat list row titled ${contact}"
+    selectors:
+      - {text: "${contact}"}
+      - {text_contains: "${contact}"}
+
+  - id: focus_input
+    do: ui.tap
+    timeout: 8
+    heal: true
+    heal_hint: "the message input field at the bottom of the chat"
+    selectors:
+      - {text_contains: "Напишите сообщение"}
+      - {text_contains: "Напишіть повідомлення"}
+      - {bounds: [231, 1163, 555, 1235]}
+
+  - id: type_message
+    do: ui.type
+    text: "${text}"
+
+  - id: tap_send
+    do: ui.tap
+    timeout: 6
+    heal: true
+    heal_hint: "the round send button next to the message input field"
+    selectors:
+      - {desc_contains: "Отправить"}
+      - {desc_contains: "Надіслати"}

@@ -1,0 +1,20 @@
+# Клиентские сообщения OLX на телефоне → LLM-черновик → need_confirm → одобрение владельцем.
+# Заменяет alert-only правило olx_message_alert (notify: true покрывает алерт).
+id: olx_client_llm_draft
+title: "🛒 LLM-черновик ответа клиенту OLX"
+match:
+  package: [ua.slando]
+  text_regex: "(написав|написала|повідомлен|сообщени|новое сообщение)"
+action:
+  type: llm_enqueue
+  prompt: "Ты — вежливый менеджер магазина авторазбора. Сообщение клиента OLX: «{text}». Составь короткий (до 60 слов) деловой ответ на русском: поздоровайся, ответь по сути или задай один уточняющий вопрос (модель, год, комплектность, доставка), предложи следующий шаг. Без эмодзи. Только текст ответа."
+  job:
+    kind: skill.run
+    payload:
+      skill: olx_reply_draft
+      params:
+        contact: "{title}"
+        text: "{draft}"
+  notify: true
+autonomy: draft
+cooldown_seconds: 600
