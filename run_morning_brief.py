@@ -54,6 +54,65 @@ def _read(path: Path, default):
         return default
 
 
+def _abank_phone() -> dict:
+    """Балансы и последние операции A-Bank с телефона (справочно, без записи в финансы)."""
+    import json as _j
+    import re as _re
+    import time as _t
+    try:
+        from aios_core.android_gateway import AndroidGateway
+        gw = AndroidGateway(ROOT)
+        if gw.open_app("ua.com.abank", confirm=True).get("status") != "ok":
+            return {}
+        _t.sleep(5)
+
+        def nodes():
+            return gw.ui_snapshot(confirm=True, include_text=True).get("nodes") or []
+
+        def find(pred):
+            return next((n for n in nodes() if pred(n)), None)
+
+        def tap(n):
+            b = n["bounds"]
+            gw.tap((b[0] + b[2]) // 2, (b[1] + b[3]) // 2, confirm=True)
+
+        cancel = find(lambda n: (n.get("text") or "") in ("Скасувати", "Отмена"))
+        if cancel:
+            tap(cancel)
+            _t.sleep(3)
+        try:
+            pins = _j.loads((ROOT / "data" / ".device_pins.json").read_text(encoding="utf-8")).get("app_unlock_pins") or []
+        except Exception:
+            pins = []
+        for pin in pins:
+            if not find(lambda n: (n.get("text") or "") == "Код для входу"):
+                break
+            for ch in str(pin):
+                d = find(lambda n, c=ch: (n.get("text") or "").strip() == c)
+                if d:
+                    tap(d)
+                    _t.sleep(0.4)
+            _t.sleep(5)
+        texts = [(n.get("text") or "").strip().replace("\n", " ")
+                 for n in nodes() if (n.get("text") or "").strip()]
+        amt_re = _re.compile(r"^-?[\d\s]{0,7}\d\.\d{2}\s?₴$")
+        # маркер делит экран: до — балансы карт, после — лента операций
+        idx = next((i for i, t in enumerate(texts) if t.startswith("Перекази")), len(texts))
+        before, after = texts[:idx], texts[idx:]
+        balances = [t for t in before if amt_re.match(t)][:4]
+        ops = []
+        for i, t in enumerate(after):
+            if amt_re.match(t) and i > 0:
+                desc = after[i - 1]
+                if desc and "ліміт" not in desc and "власні" not in desc and not amt_re.match(desc):
+                    ops.append(f"{t} — {desc}")
+        # не оставляем банковский экран открытым
+        gw.key("KEYCODE_HOME", confirm=True)
+        return {"balances": balances, "ops": ops[:4]}
+    except Exception:
+        return {}
+
+
 def build() -> str:
     now = datetime.now()
     lines = [f"☀️ <b>Утренний брифинг</b> — {now.strftime('%d.%m.%Y')}"]
@@ -111,6 +170,14 @@ def build() -> str:
             lines.append(f"💰 Вчера: продажи {sales} грн, расходы {exp} грн")
         else:
             lines.append("💰 Вчера операций не было")
+
+    # A-Bank с телефона (справочно)
+    ab = _abank_phone()
+    if ab.get("balances") or ab.get("ops"):
+        line = "💳 A-Bank: " + ", ".join(ab.get("balances") or [])
+        if ab.get("ops"):
+            line += "\nпоследние операции: " + "; ".join(ab["ops"])
+        lines.append(line)
 
     # цены против рынка OLX
     try:
