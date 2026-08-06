@@ -245,6 +245,11 @@ def register_routes(api) -> list:
         Route("/api/v1/phone/uklon/route-drafts/{draft_id}/cancel", api._uklon_route_draft_cancel, methods=["POST"]),
         Route("/api/v1/phone/uklon/route-drafts/{draft_id}", api._uklon_route_draft_get, methods=["GET"]),
         Route("/api/v1/phone/uklon/route-drafts/{draft_id}", api._uklon_route_draft_delete, methods=["DELETE"]),
+        # A-Банк / personal finance: read-only capabilities and local imports.
+        Route("/api/v1/banking/abank/status", api._abank_banking_status, methods=["GET"]),
+        Route("/api/v1/banking/consent", api._abank_banking_consent, methods=["GET"]),
+        Route("/api/v1/banking/transactions", api._abank_banking_transactions, methods=["GET"]),
+        Route("/api/v1/banking/import", api._abank_banking_import, methods=["POST"]),
         Route("/api/v1/android/devices", api._android_devices, methods=["GET"]),
         Route("/api/v1/android/predictive", api._android_predictive, methods=["GET"]),
         Route(
