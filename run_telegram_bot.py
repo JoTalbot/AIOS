@@ -1358,6 +1358,10 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
                     continue
                 title = str(event.get("title") or event.get("app") or "Телефон")
                 app = str(event.get("app") or "Android")
+                _t_title = title.lower()
+                if "aios" in _t_title or "выгодный лот" in _t_title or "донор под разбор" in _t_title \
+                        or "брифинг" in _t_title or "отчёт" in _t_title or "черновик" in _t_title:
+                    continue  # служебные уведомления от самого AIOS — не в инбокс
                 items.append({
                     "channel": "android",
                     "ref": str(event.get("id") or ""),
@@ -1372,9 +1376,8 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
         except Exception:
             pass
 
-    # 6) Viber Desktop — только по явному запросу («инбокс вайбер»),
-    # т.к. OCR-распознавание имён ненадёжно (кириллица искажается).
-    if _want("viber") and not unread_only and "viber" in (filters.get("channels") or []):
+    # 6) Viber Desktop — реальные контакты (OCR-фильтр в viber_control.chats).
+    if _want("viber") and not unread_only:
         try:
             vb = _run_account_control(["viber", "chats"])
             if vb.get("status") == "ok" and vb.get("chats"):
