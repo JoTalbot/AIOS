@@ -4,6 +4,7 @@ echo "🌌 Запуск AIOS REST API (dashboard + full API)..."
 # 1. Запускаем полный REST API (все роуты: stats, services, devices, ...) на 8000
 #    auth_required=False + api_keys={}: внутри закрытой docker-сети (dashboard/mcp/autopilot)
 echo "🚀 Поднятие REST API на 0.0.0.0:8000..."
+AIOS_API_AUTH_REQUIRED="${AIOS_API_AUTH_REQUIRED:-0}"
 PYTHONPATH=/app python3 -c "
 import sys, os
 sys.path.insert(0, '/app')
@@ -13,8 +14,8 @@ app = create_app(
     db_path=os.environ.get('AIOS_MAIN_DB', '/app/data/aios.sqlite'),
     constitution_dir='/app/docs/constitution',
     policies_dir='/app/policies',
-    auth_required=False,
-    api_keys={},
+    auth_required=os.environ.get('AIOS_API_AUTH_REQUIRED', '0').strip().lower() in {'1', 'true', 'yes', 'on'},
+    api_keys=None,
 )
 uvicorn.run(app, host='0.0.0.0', port=8000, log_level='info')
 " &

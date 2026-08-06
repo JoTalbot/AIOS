@@ -183,6 +183,7 @@ class AppCalibrationStore:
         all_items = _read(self.path, {})
         if not isinstance(all_items, dict):
             all_items = {}
+        previous = all_items.get(str(profile)) if isinstance(all_items.get(str(profile)), dict) else {}
         item = {
             "package": str(package),
             "checked_at": _iso(),
@@ -191,6 +192,25 @@ class AppCalibrationStore:
             "clickable": max(0, int(clickable)),
             "selectors": {str(key): bool(value) for key, value in selectors.items()},
         }
+        # Keep separately recorded manual/Vision workflow evidence across a
+        # fresh structural calibration. It is intentionally not inferred from
+        # a home-screen dump, because multi-stop controls are only visible
+        # after a route is staged.
+        if previous.get("capabilities"):
+            item["capabilities"] = previous["capabilities"]
+        all_items[str(profile)] = item
+        _write(self.path, all_items)
+        return item
+
+    def record_capabilities(self, profile: str, capabilities: dict[str, object]) -> dict:
+        """Persist explicit operator/Vision evidence separately from selectors."""
+        all_items = _read(self.path, {})
+        if not isinstance(all_items, dict):
+            all_items = {}
+        item = all_items.get(str(profile))
+        if not isinstance(item, dict):
+            item = {}
+        item["capabilities"] = capabilities
         all_items[str(profile)] = item
         _write(self.path, all_items)
         return item
@@ -777,6 +797,13 @@ class PhoneAppMonitor(ActiveAppAdapter):
         if calibration.get("package") == self.package:
             base["ui_calibrated"] = True
             base["route_controls"] = dict(calibration.get("selectors") or {})
+            capabilities = calibration.get("capabilities") or {}
+            if isinstance(capabilities, dict):
+                base["route_capabilities"] = {
+                    str(key): value
+                    for key, value in capabilities.items()
+                    if key not in {"evidence", "verified_at"}
+                }
         return base
 
 
@@ -810,6 +837,64 @@ class UklonPhoneAdapter(PhoneAppMonitor):
         # address controls; a shorter generic UI wait would cache splash data.
         return super().calibrate(confirm=confirm, wait_seconds=wait_seconds)
 
+    def select_visible_suggestion(self, query: str, confirm: bool = False) -> dict:
+        """Select exactly one visible address suggestion; never press booking controls.
+
+        The caller supplies an approved search phrase. The method refuses zero
+        or multiple matches instead of guessing, which is important for routes
+        with several stops and repeated/similar addresses.
+        """
+        needle = _fold(query)
+        if not needle:
+            return {"status": "error", "error": "Пустой запрос подсказки"}
+        if not confirm:
+            return {"status": "need_confirm", "action": "uklon_select_visible_suggestion"}
+        snapshot = self._active_ui(include_text=True)
+        if snapshot.get("status") != "ok":
+            return snapshot
+        matches: dict[tuple[int, int, int, int], dict] = {}
+        for node in snapshot.get("nodes") or []:
+            text = _fold(node.get("text"))
+            description = _fold(node.get("description"))
+            if needle not in text and needle not in description:
+                continue
+            target = self._click_target(snapshot.get("nodes") or [], node) or (node if node.get("clickable") else None)
+            bounds = _bounds(target or {})
+            if target and bounds:
+                matches[bounds] = target
+        if not matches:
+            return {"status": "error", "error": "Однозначная подсказка адреса не найдена"}
+        if len(matches) > 1:
+            return {"status": "error", "error": f"Найдено несколько подсказок адреса: {len(matches)}; выбор остановлен"}
+        tapped = self._tap_node(next(iter(matches.values())))
+        if tapped.get("status") != "ok":
+            return tapped
+        self._audit("uklon_suggestion", "selected")
+        return {"status": "suggestion_selected", "booking": "not_created"}
+
+    def record_vision_capabilities(self, confirm: bool = False) -> dict:
+        """Record explicitly verified safe Passenger workflow capabilities.
+
+        This command does not open the app, read screen text or perform phone
+        actions. It records only the results of a completed operator/Vision
+        review; it never marks the booking/ordering step as automated.
+        """
+        if not confirm:
+            return {"status": "need_confirm", "action": "uklon_record_vision_capabilities"}
+        capabilities = {
+            "alternate_pickup": True,
+            "multi_stop_add": True,
+            "multi_stop_delete": True,
+            "multi_stop_reorder": True,
+            "route_recalculation": True,
+            "booking_automation": False,
+            "evidence": "manual_vision_review",
+            "verified_at": _iso(),
+        }
+        record = self.calibrations.record_capabilities(self.profile, capabilities)
+        self._audit("app_vision_capabilities", "recorded")
+        return {"status": "capabilities_recorded", "profile": self.profile, "capabilities": record.get("capabilities", {})}
+
     def open_driver(self, confirm: bool = False) -> dict:
         if not confirm:
             return {"status": "need_confirm", "action": "android_open_app", "package": self.driver_package}
@@ -821,13 +906,86 @@ class UklonPhoneAdapter(PhoneAppMonitor):
             result["title"] = "Uklon Driver"
         return result
 
-    def stage_route(self, pickup: str, destination: str, confirm: bool = False) -> dict:
-        """Store a private route draft and verify Passenger controls. No order is created."""
-        start, end = " ".join(str(pickup or "").split()), " ".join(str(destination or "").split())
+    MAX_ROUTE_DESTINATIONS = 8
+
+    @staticmethod
+    def _clean_route_address(value: object) -> str:
+        return " ".join(str(value or "").split())
+
+    @classmethod
+    def _clean_route_stops(cls, stops: Iterable[str] | str | None) -> list[str]:
+        if stops is None:
+            return []
+        values = [stops] if isinstance(stops, str) else list(stops)
+        return [cleaned for value in values if (cleaned := cls._clean_route_address(value))]
+
+    @classmethod
+    def _route_data(cls, pickup: object, destination: object, stops: Iterable[str] | str | None = None) -> tuple[dict | None, str | None]:
+        start = cls._clean_route_address(pickup)
+        via = cls._clean_route_stops(stops)
+        # A list/tuple passed as the legacy destination argument is treated as
+        # an ordered destination sequence: all but the last point are stops.
+        if isinstance(destination, (list, tuple)):
+            points = [cls._clean_route_address(item) for item in destination]
+            points = [point for point in points if point]
+            if not via:
+                via = points[:-1]
+            end = points[-1] if points else ""
+        else:
+            end = cls._clean_route_address(destination)
         if not end:
-            return {"status": "error", "error": "Укажите пункт назначения"}
+            return None, "Укажите пункт назначения"
+        if len(via) + 1 > cls.MAX_ROUTE_DESTINATIONS:
+            return None, f"Слишком много пунктов назначения: максимум {cls.MAX_ROUTE_DESTINATIONS}"
+        points = [*via, end]
+        return {
+            "pickup": start,
+            "stops": [{"order": index, "address": value} for index, value in enumerate(via, start=1)],
+            # Keep destination for backwards compatibility with existing bot drafts.
+            "destination": end,
+            "final_destination": end,
+            "route_points": points,
+            "destination_count": len(points),
+        }, None
+
+    @classmethod
+    def build_route_data(
+        cls,
+        pickup: str,
+        destination: str | Iterable[str],
+        stops: Iterable[str] | str | None = None,
+    ) -> tuple[dict | None, str | None]:
+        """Normalize a route for integrations without touching the phone."""
+        return cls._route_data(pickup, destination, stops)
+
+    def stage_route(
+        self,
+        pickup: str,
+        destination: str | Iterable[str],
+        confirm: bool = False,
+        *,
+        stops: Iterable[str] | str | None = None,
+    ) -> dict:
+        """Store an ordered, private route draft; never selects a place or books a ride.
+
+        ``destination`` remains the final point for backwards compatibility.
+        ``stops`` contains zero or more intermediate points in travel order.
+        A list/tuple passed as ``destination`` is also accepted as a compact
+        ordered sequence where the last item is the final destination.
+        """
+        data, error = self._route_data(pickup, destination, stops)
+        if error:
+            return {"status": "error", "error": error}
+        assert data is not None
         if not confirm:
-            return {"status": "need_confirm", "action": "uklon_stage_route", "has_pickup": bool(start), "has_destination": True}
+            return {
+                "status": "need_confirm",
+                "action": "uklon_stage_route",
+                "has_pickup": bool(data["pickup"]),
+                "has_destination": True,
+                "destination_count": data["destination_count"],
+                "stop_count": len(data["stops"]),
+            }
         opened = self.open(confirm=True)
         if opened.get("status") != "ok":
             return opened
@@ -836,28 +994,47 @@ class UklonPhoneAdapter(PhoneAppMonitor):
             return snapshot
         self._save_calibration(snapshot, selectors)
         # Do not guess address suggestions or touch a booking control. Selecting
-        # a place and creating a ride remain deliberate follow-up actions.
-        draft = self.store.create("route_draft", self.package, {"pickup": start, "destination": end}, ttl_seconds=600)
+        # places and creating a ride remain deliberate follow-up actions.
+        draft = self.store.create("route_draft", self.package, data, ttl_seconds=600)
         self._audit("uklon_route", "staged")
         return {
             "status": "route_staged", "route_id": draft["id"], "expires_at": draft["expires_at"],
             "booking": "not_created", "controls": selectors,
+            "destination_count": data["destination_count"], "stop_count": len(data["stops"]),
         }
 
+    @staticmethod
+    def _parse_route_field(field: object) -> tuple[str, str, int | None] | None:
+        key = "".join(str(field or "").casefold().split())
+        if key == "pickup":
+            return "pickup", "pickup", None
+        if key in {"destination", "finaldestination", "final"}:
+            return "destination", "destination", None
+        match = re.fullmatch(r"(?:stop|via|waypoint)(?:[:_\-]?)([1-9][0-9]*)", key)
+        if match:
+            index = int(match.group(1))
+            return f"stop_{index}", "stop", index
+        return None
+
     def prepare_address_query(self, route_id: str, field: str, confirm: bool = False) -> dict:
-        """Type one approved route query, but never choose a suggestion or order a ride."""
+        """Type one approved pickup/stop/final query; never choose or order."""
         draft = self.store.get(route_id, kind="route_draft", package=self.package)
         if not draft:
             return {"status": "expired", "error": "Черновик маршрута не найден или истёк"}
-        key = str(field or "").casefold()
-        mapping = {
-            "pickup": ("pickup", self.pickup_resource),
-            "destination": ("destination", self.destination_resource),
-        }
-        if key not in mapping:
-            return {"status": "error", "error": "Поле маршрута должно быть pickup или destination"}
-        data_key, resource = mapping[key]
-        value = str((draft.get("data") or {}).get(data_key) or "").strip()
+        parsed = self._parse_route_field(field)
+        if not parsed:
+            return {"status": "error", "error": "Поле должно быть pickup, destination или stop_N"}
+        key, data_key, index = parsed
+        data = draft.get("data") or {}
+        resource = self.pickup_resource if data_key == "pickup" else self.destination_resource
+        if data_key == "pickup":
+            value = self._clean_route_address(data.get("pickup"))
+        elif data_key == "destination":
+            value = self._clean_route_address(data.get("final_destination") or data.get("destination"))
+        else:
+            stops = data.get("stops") or []
+            item = stops[index - 1] if index and index <= len(stops) else None
+            value = self._clean_route_address(item.get("address") if isinstance(item, dict) else item)
         if not value:
             return {"status": "error", "error": "Для этого поля нет поискового запроса"}
         if not confirm:
