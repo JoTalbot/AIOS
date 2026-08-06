@@ -2277,12 +2277,12 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             ]
             for opp in data.get("all_opportunities", []):
                 lines.append(f"• <b>{opp.get('network')}</b> ({opp.get('protocol')}): <b>{opp.get('apy_pct')}% APY</b> [{opp.get('asset')}]")
-                
+
             lines.append(f"\n💰 Доступно излишков казначейства: <b>${data.get('available_excess_capital_usd', 0.0):.2f} USD</b>")
             lines.append(f"📈 Прогнозный доход: <b>+${data.get('estimated_annual_yield_usd', 0.0):.2f}/год</b>")
             if data.get("rebalance_action_required"):
                 lines.append("\n🟢 <i>Рекомендуется направить свободный капитал в пул Base Compound V3.</i>")
-                
+
             api.send_message(chat_id, "\n".join(lines))
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка анализа ликвидности: {e}")
@@ -2318,7 +2318,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                            capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
             import json as _j_tr
             data = _j_tr.loads(r.stdout.split("===")[-1].strip() if "===" in r.stdout else r.stdout)
-            
+
             lines = ["📈 <b>AIOS Quant Radar & Paper Trading:</b>\n"]
             for sig in data.get("binance_signals", []):
                 sym = sig.get("symbol")
@@ -2327,13 +2327,13 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                 rsi = sig.get("rsi")
                 icon = "🟢" if "BUY" in signal else ("🔴" if "SELL" in signal else "⚪")
                 lines.append(f"{icon} <b>{sym}</b>: ${price:.2f} | <b>{signal}</b> (RSI: {rsi})")
-                
+
             lines.append("\n💼 <b>Портфель Binance:</b>")
             summary = data.get("binance_trading_results", [{}])[0].get("portfolio_summary", {})
             lines.append(f"• Баланс кэша: <b>${summary.get('cash_usd', 0.0):.2f} USD</b>")
             lines.append(f"• Реализованный PnL: <b>${summary.get('realized_pnl_usd', 0.0):.2f} USD</b>")
             lines.append(f"• Винрейт: <b>{summary.get('win_rate_pct', 0.0)}%</b> | Позиций: <b>{summary.get('open_positions', 0)}</b>")
-            
+
             api.send_message(chat_id, "\n".join(lines))
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка трейдинга: {e}")
@@ -2427,7 +2427,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ Ошибка Новой Почты: {e}")
         return True
 
-    
+
     # 1. Запрос баланса и аудита
     if any(phrase in t for phrase in ("казначейство", "баланс казначейства", "резерв системы", "аудит казначейства")):
         from aios_core.treasury_manager import AIOSTreasuryManager
@@ -2446,7 +2446,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                 lines.append(f"🟢 Рекомендуется реинвестировать излишки в DeFi!\\nДля запуска напишите: <code>реинвестируй {int(audit['excess_funds_available_usd'])}</code>")
             else:
                 lines.append("ℹ️ Свободных средств пока недостаточно для реинвестирования (нужно > $10).")
-                
+
             api.send_message(chat_id, "\n".join(lines))
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка аудита казначейства: {e}")
@@ -2459,9 +2459,9 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
         if amount < 1.0:
             api.send_message(chat_id, "❌ Минимальная сумма для реинвестирования — $1.00 USD.")
             return True
-            
+
         api.send_message(chat_id, f"📡 <b>Инициирован On-Chain депозит в Aave V3: ${amount:.2f} USDT...</b>\\n\\nПроверяю балансы, выполняю Approve и Supply на Polygon...")
-        
+
         from aios_core.treasury_manager import AIOSTreasuryManager
         manager = AIOSTreasuryManager()
         try:
@@ -2470,7 +2470,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             if audit["system_budget_usd"] < amount:
                 api.send_message(chat_id, f"❌ Недостаточно средств в бюджете системы: доступно ${audit['system_budget_usd']:.2f}, затребовано ${amount:.2f}.")
                 return True
-                
+
             # Запуск On-Chain транзакции!
             res = manager.execute_aave_reinvestment(amount)
             if res.get("status") == "success":
@@ -2485,7 +2485,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                 api.send_message(chat_id, f"❌ Ошибка реинвестирования: {res.get('error')}")
         except Exception as e:
             api.send_message(chat_id, f"❌ Критическая ошибка Web3: {e}")
-            
+
         return True
 
     # 3. Команда вывода из Aave
@@ -2495,9 +2495,9 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
         if amount < 1.0:
             api.send_message(chat_id, "❌ Минимальная сумма для вывода — $1.00 USD.")
             return True
-            
+
         api.send_message(chat_id, f"📡 <b>Инициирован вывод из Aave V3: ${amount:.2f} USDT...</b>\\n\\nВывожу стейблкоины на горячий кошелек системы на Polygon...")
-        
+
         from aios_core.treasury_manager import AIOSTreasuryManager
         manager = AIOSTreasuryManager()
         try:
@@ -2506,7 +2506,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             if audit["active_aave_deposit_usd"] < amount:
                 api.send_message(chat_id, f"❌ Недостаточно средств на депозите Aave V3: доступно ${audit['active_aave_deposit_usd']:.2f}, затребовано ${amount:.2f}.")
                 return True
-                
+
             # Запуск On-Chain транзакции!
             res = manager.execute_aave_withdrawal(amount)
             if res.get("status") == "success":
@@ -2519,7 +2519,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                 api.send_message(chat_id, f"❌ Ошибка вывода: {res.get('error')}")
         except Exception as e:
             api.send_message(chat_id, f"❌ Критическая ошибка Web3: {e}")
-            
+
         return True
 
     # 4. Запрос Excel отчета
@@ -2581,9 +2581,9 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
     if buy_order:
         pair = buy_order.group(1).upper()
         volume = float(buy_order.group(2))
-        
+
         api.send_message(chat_id, f"🚀 <b>Исполняю реальный ордер ПОКУПКИ на Kraken: {volume} {pair}...</b>")
-        
+
         from aios_core.kraken_client import AIOSKrakenClient
         client = AIOSKrakenClient()
         try:
@@ -2606,9 +2606,9 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
     if sell_order:
         pair = sell_order.group(1).upper()
         volume = float(sell_order.group(2))
-        
+
         api.send_message(chat_id, f"🚀 <b>Исполняю реальный ордер ПРОДАЖИ на Kraken: {volume} {pair}...</b>")
-        
+
         from aios_core.kraken_client import AIOSKrakenClient
         client = AIOSKrakenClient()
         try:
@@ -2643,7 +2643,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                 )
                 if p["error"]:
                     lines.append(f"  • Ошибка: <i>{p['error']}</i>")
-                    
+
             api.send_message(chat_id, "\n\n".join(lines))
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка DevOps-мониторинга: {e}")
@@ -2654,7 +2654,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
     if fiat_order:
         amount_usdt = float(fiat_order.group(1))
         card_number = fiat_order.group(2)
-        
+
         api.send_message(chat_id, f"📡 <b>Запрашиваю курс обмена и создаю инвойс...</b>")
         from aios_core.fiat_dispatcher import AIOSFiatDispatcher
         dispatcher = AIOSFiatDispatcher()
@@ -2662,7 +2662,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             rate_info = dispatcher.get_fiat_exchange_rate(amount_usdt)
             expected_uah = rate_info["expected_amount_uah"]
             rate = rate_info["estimated_rate"]
-            
+
             alert_state_file = PROJECT_ROOT / "data" / "fiat_withdrawal_pending.json"
             alert_state_file.write_text(json.dumps({
                 "amount_usdt": amount_usdt,
@@ -2670,7 +2670,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                 "expected_uah": expected_uah,
                 "timestamp": time.time()
             }), encoding="utf-8")
-            
+
             txt = f"📡 <b>Курс обмена зафиксирован!</b>\\n\\n"
             txt += f"• Курс: <b>1 USDT = {rate:.2f} UAH</b>\\n"
             txt += f"• Вы получите: <b>{expected_uah:.2f} UAH</b>\\n"
@@ -2687,14 +2687,14 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
         if not pending_file.exists():
             api.send_message(chat_id, "❌ Нет активных запросов на вывод средств на карту.")
             return True
-            
+
         try:
             pend_data = json.loads(pending_file.read_text(encoding="utf-8"))
             amount_usdt = float(pend_data["amount_usdt"])
             card_number = pend_data["card_number"]
-            
+
             api.send_message(chat_id, f"🚀 <b>Исполняю On-Chain перевод ${amount_usdt:.2f} USDT на обменный адрес...</b>")
-            
+
             from aios_core.fiat_dispatcher import AIOSFiatDispatcher
             dispatcher = AIOSFiatDispatcher()
             res = dispatcher.execute_fiat_withdrawal(amount_usdt, card_number, confirm=True)
@@ -2744,7 +2744,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             if not tb_info:
                 api.send_message(chat_id, "❌ Нет активных сбоев для авто-исправления.")
                 return True
-                
+
             api.send_message(chat_id, f"🛠 <b>Запуск ИИ-исправления сбойного файла {Path(tb_info['file_path']).name}...</b>")
             res = healer.apply_ai_fix(tb_info)
             if res.get("status") == "success":
@@ -2758,7 +2758,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
         except Exception as e:
             api.send_message(chat_id, f"❌ Критическая ошибка ИИ-восстановления: {e}")
         return True
-        
+
     return False
 
 
@@ -2771,7 +2771,7 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
     """
     import re as _re3
     t = " ".join(str(text or "").casefold().split())
-    
+
     # 1. Обработка подтверждения оплаты
     approve = _re3.match(r"^(?:подтверди\s+фриланс|подтвердить\s+фриланс|confirm\s+freelance)\s+(\S+)", t)
     if approve:
@@ -2780,57 +2780,57 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
         if not tasks_file.exists():
             api.send_message(chat_id, "⚠️ Файл задач фриланса не найден.")
             return True
-            
+
         try:
             tasks = json.loads(tasks_file.read_text(encoding="utf-8"))
         except Exception as e:
             api.send_message(chat_id, f"⚠️ Ошибка чтения файла задач: {e}")
             return True
-            
+
         target_task = None
         for task in tasks:
             if task.get("id") == task_id:
                 target_task = task
                 break
-                
+
         if not target_task:
             api.send_message(chat_id, f"❌ Задача с ID <code>{task_id}</code> не найдена.")
             return True
-            
+
         if target_task.get("status") == "PAID":
             api.send_message(chat_id, f"ℹ️ Оплата по задаче <code>{task_id}</code> уже была зачислена ранее.")
             return True
-            
+
         # Зачисляем реальный доход в кошелек системы
         from aios_core.crypto_wallet import AIOSWalletManager
         wallet = AIOSWalletManager(str(PROJECT_ROOT / "data"))
-        
+
         try:
             budget = float(target_task.get("budget_usd", 0.0))
             source = f"Freelance:{target_task.get('source', 'unknown')}"
-            
+
             # Начисляем и делим на 4 кошелька
             wallet.record_income(
                 amount_usd=budget,
                 source=source,
                 task_id=task_id
             )
-            
+
             # Меняем статус на PAID
             target_task["status"] = "PAID"
             tasks_file.write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
-            
+
             # Составляем сообщение без f-string с literal newlines
             txt = "✅ <b>Оплата фриланса зачислена!</b>\\n\\n"
             txt += "ID: <code>" + task_id + "</code>\\n"
             txt += "Задача: <i>" + str(target_task.get('title', '')) + "</i>\\n"
             txt += "Сумма: <b>$" + f"{budget:.2f}" + " USD</b>\\n\\n"
             txt += "Бюджет распределен по 25% ($" + f"{budget*0.25:.2f}" + " каждому): Разработчик, Инвестор, Персонал, Система."
-            
+
             api.send_message(chat_id, txt)
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка при фиксации оплаты: {e}")
-            
+
         return True
 
     # 2. Обработка просмотра списка
@@ -2839,18 +2839,18 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
         if not tasks_file.exists():
             api.send_message(chat_id, "📭 Фриланс-задач нет.")
             return True
-            
+
         try:
             tasks = json.loads(tasks_file.read_text(encoding="utf-8"))
         except Exception:
             api.send_message(chat_id, "⚠️ Ошибка чтения файла задач.")
             return True
-            
+
         pending = [t for t in tasks if t.get("status") == "BID_SUBMITTED"]
         if not pending:
             api.send_message(chat_id, "📭 Нет фриланс-задач, ожидающих подтверждения оплаты.")
             return True
-            
+
         lines = [f"📋 <b>Фриланс-задачи в работе (ожидают оплаты): {len(pending)}</b>"]
         for task in pending[-15:]:
             lines.append(
@@ -2871,23 +2871,23 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
         if not tasks_file.exists():
             api.send_message(chat_id, "⚠️ Файл задач фриланса не найден.")
             return True
-            
+
         try:
             tasks = json.loads(tasks_file.read_text(encoding="utf-8"))
         except Exception:
             api.send_message(chat_id, "⚠️ Ошибка чтения файла задач.")
             return True
-            
+
         target_task = None
         for task in tasks:
             if task.get("id") == task_id:
                 target_task = task
                 break
-                
+
         if not target_task:
             api.send_message(chat_id, f"❌ Задача с ID <code>{task_id}</code> не найдена.")
             return True
-            
+
         api.send_message(chat_id, "📊 <b>Генерирую интерактивный счет для задачи...</b>")
         from aios_core.invoice_generator import AIOSInvoiceGenerator
         invoicer = AIOSInvoiceGenerator(str(PROJECT_ROOT / "data"))
@@ -2902,7 +2902,7 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка выписки счета: {e}")
         return True
-        
+
     return False
 
 def _handle_phone_brain_intent(api, chat_id: int, text: str) -> bool:

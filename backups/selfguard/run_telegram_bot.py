@@ -260,14 +260,10 @@ def cmd_start() -> str:
 
 MAIN_MENU_KEYBOARD = {
     "keyboard": [
-        [{"text": "🧠 Кодер"}, {"text": "📊 Статистика"}],
-        [{"text": "🛒 OLX"}, {"text": "📱 Платформы"}],
-        [{"text": "📲 Телефон"}, {"text": "🌐 Аккаунты"}],
-        [{"text": "🖥 Сервер"}],
-        [{"text": "🐳 Docker"}, {"text": "❤️ Health"}],
-        [{"text": "💾 Backup"}, {"text": "🚨 Alerts"}],
-        [{"text": "🔑 API Ключи"}, {"text": "📋 Логи"}],
-        [{"text": "🤖 Бот"}, {"text": "❓ Помощь"}],
+        [{"text": "💰 Казначейство"}, {"text": "📈 Трейдинг"}],
+        [{"text": "🛒 Склад & OLX"}, {"text": "📦 Новая Почта"}],
+        [{"text": "🌐 Веб-каталог"}, {"text": "📲 Телефон & Банки"}],
+        [{"text": "🛡 SRE Статус"}, {"text": "❓ Помощь"}],
     ],
     "resize_keyboard": True,
     "one_time_keyboard": False,
@@ -2262,7 +2258,176 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
     """
     import re as _re4
     t = " ".join(str(text or "").casefold().split())
-    
+
+    # Смарт-маршрутизатор ликвидности (v19.0.0)
+    if any(phrase in t for phrase in ("ликвидность", "смарт ликвидность", "маршрутизатор", "доходность сетей", "кросс-чейн")):
+        api.send_message(chat_id, "🌐 <b>Запрашиваю мульти-чейн анализ доходностей DeFi...</b>")
+        import subprocess as _sp_lr
+        try:
+            r = _sp_lr.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_smart_liquidity_router.py")],
+                           capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            import json as _j_lr
+            data = _j_lr.loads(r.stdout)
+            best = data.get("best_yield_strategy", {})
+            lines = [
+                "🌐 <b>AIOS Smart Liquidity Router (v19.0.0):</b>\n",
+                f"🥇 <b>Лучшая стратегия:</b> {best.get('protocol')} на <b>{best.get('network')}</b> ({best.get('asset')})",
+                f"• Доходность: <b>{best.get('apy_pct')}% APY</b>\n",
+                "📊 <b>Все доступные пулы:</b>"
+            ]
+            for opp in data.get("all_opportunities", []):
+                lines.append(f"• <b>{opp.get('network')}</b> ({opp.get('protocol')}): <b>{opp.get('apy_pct')}% APY</b> [{opp.get('asset')}]")
+
+            lines.append(f"\n💰 Доступно излишков казначейства: <b>${data.get('available_excess_capital_usd', 0.0):.2f} USD</b>")
+            lines.append(f"📈 Прогнозный доход: <b>+${data.get('estimated_annual_yield_usd', 0.0):.2f}/год</b>")
+            if data.get("rebalance_action_required"):
+                lines.append("\n🟢 <i>Рекомендуется направить свободный капитал в пул Base Compound V3.</i>")
+
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка анализа ликвидности: {e}")
+        return True
+
+    # Сканер арбитража DEX & CEX
+    if any(phrase in t for phrase in ("арбитраж", "спред", "dex арбитраж", "разница цен")):
+        api.send_message(chat_id, "🔎 <b>Сканирую спреды и арбитражные возможности...</b>")
+        import subprocess as _sp_arb
+        try:
+            r = _sp_arb.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_dex_arbitrage_scanner.py")],
+                            capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            import json as _j_arb
+            data = _j_arb.loads(r.stdout)
+            lines = ["📊 <b>AIOS DEX/CEX Arbitrage Radar:</b>\n"]
+            for opp in data.get("opportunities", []):
+                lines.append(
+                    f"• <b>{opp.get('pair')}</b> ({opp.get('exchange')}):\n"
+                    f"  Bid: ${opp.get('bid'):.2f} | Ask: ${opp.get('ask'):.2f}\n"
+                    f"  Спред: <b>${opp.get('spread_usd')}</b> ({opp.get('spread_pct')}%) — 🟢 {opp.get('opportunity')}"
+                )
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка сканера арбитража: {e}")
+        return True
+
+    # Трейдинг и котировки
+    if any(phrase in t for phrase in ("трейдинг", "сигналы", "квант", "торговля", "paper trading")):
+        api.send_message(chat_id, "📈 <b>Запрашиваю количественный анализ и сигналы рынка...</b>")
+        import subprocess as _sp_tr
+        try:
+            r = _sp_tr.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_quant_trading.py")],
+                           capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+            import json as _j_tr
+            data = _j_tr.loads(r.stdout.split("===")[-1].strip() if "===" in r.stdout else r.stdout)
+
+            lines = ["📈 <b>AIOS Quant Radar & Paper Trading:</b>\n"]
+            for sig in data.get("binance_signals", []):
+                sym = sig.get("symbol")
+                signal = sig.get("signal")
+                price = sig.get("current_price")
+                rsi = sig.get("rsi")
+                icon = "🟢" if "BUY" in signal else ("🔴" if "SELL" in signal else "⚪")
+                lines.append(f"{icon} <b>{sym}</b>: ${price:.2f} | <b>{signal}</b> (RSI: {rsi})")
+
+            lines.append("\n💼 <b>Портфель Binance:</b>")
+            summary = data.get("binance_trading_results", [{}])[0].get("portfolio_summary", {})
+            lines.append(f"• Баланс кэша: <b>${summary.get('cash_usd', 0.0):.2f} USD</b>")
+            lines.append(f"• Реализованный PnL: <b>${summary.get('realized_pnl_usd', 0.0):.2f} USD</b>")
+            lines.append(f"• Винрейт: <b>{summary.get('win_rate_pct', 0.0)}%</b> | Позиций: <b>{summary.get('open_positions', 0)}</b>")
+
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка трейдинга: {e}")
+        return True
+
+    # Склад & Запчасти
+    if any(phrase in t for phrase in ("склад & olx", "склад", "остатки на складе", "инвентарь")):
+        import subprocess as _sp_inv
+        try:
+            r = _sp_inv.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"), "stats"],
+                           capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            import json as _j_inv
+            data = _j_inv.loads(r.stdout)
+            lines = [
+                "🛒 <b>Склад запчастей AIOS:</b>\n",
+                f"• Всего наименований: <b>{data.get('items_count', 0)}</b>",
+                f"• Доступно деталей: <b>{data.get('available_qty', 0)} шт</b>",
+                f"• В резерве: <b>{data.get('reserved_qty', 0)} шт</b>",
+                f"• Оценочная стоимость: <b>{data.get('total_value', 0)} грн</b>\n",
+                "Для добавления детали напишите:\n<code>склад добавить <название> <цена> <кол-во></code>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка склада: {e}")
+        return True
+
+
+    # Публичный веб-каталог и витрина
+    if any(phrase in t for phrase in ("веб-каталог", "веб каталог", "каталог", "витрина", "сайт", "ссылка на склад")):
+        lines = [
+            "🌐 <b>Онлайн-каталог автозапчастей AIOS:</b>\n",
+            "🔗 <b>Ссылка для клиентов:</b>",
+            "https://api.autosklo.org.ua/parts/\n",
+            "📦 <b>Что доступно на витрине:</b>",
+            "• Авторазборка ВАЗ (Лада) 2108–2115 (от 100 грн)",
+            "• Авторазборка ГАЗель 3302, Соболь, Рута (от 200 грн)",
+            "• Радиатор охлаждения ВАЗ 2109 (950 грн)",
+            "• Рессора задняя ГАЗель 3302 5-лист. (1 800 грн)",
+            "• Генератор ВАЗ 2110 80А (1 400 грн)\n",
+            "<i>Отправьте эту ссылку клиенту для просмотра фото и быстрого заказа!</i>"
+        ]
+        api.send_message(chat_id, "\n".join(lines))
+        return True
+
+
+    # Авто-экстракция реквизитов доставки из чата клиента (AI Order Extractor)
+    if any(phrase in t for phrase in ("извлеки заказ", "парсинг доставки", "извлечь адрес", "распознай адрес", "извлеки адрес")) or ("отделение" in t and any(k in t for k in ("получатель", "тел", "г.", "город"))):
+        api.send_message(chat_id, "🤖 <b>ИИ анализирует реквизиты доставки клиента...</b>")
+        from aios_core.order_extractor import AIOSOrderExtractor
+        extractor = AIOSOrderExtractor()
+        try:
+            res = extractor.extract_delivery_details(text)
+            data = res.get("extracted_data", {})
+            lines = [
+                "📦 <b>ИИ извлек данные для Новой Почты:</b>\n",
+                f"• Товар: <b>{data.get('part_name') or 'Автозапчасть'}</b>",
+                f"• Получатель: <b>{data.get('recipient_name') or 'Не указан'}</b>",
+                f"• Телефон: <b>{data.get('phone') or 'Не указан'}</b>",
+                f"• Город: <b>{data.get('city') or 'Не указан'}</b>",
+                f"• Отделение: <b>{data.get('warehouse') or '1'}</b>",
+                f"• Оплата: <i>{data.get('payment_type') or 'наложенный платеж'}</i>\n",
+                "🚀 <b>Готовая команда создания ТТН (скопируйте и отправьте):</b>",
+                f"<code>{res.get('generated_ttn_command')}</code>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка извлечения заказа: {e}")
+        return True
+
+    # Новая Почта
+    if any(phrase in t for phrase in ("новая почта", "создать ттн", "накладная нп", "почта")):
+        import subprocess as _sp_np
+        try:
+            r = _sp_np.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_ttn.py"), "whoami"],
+                           capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            import json as _j_np
+            data = _j_np.loads(r.stdout)
+            sender = data.get("sender", {})
+            contact = sender.get("contact_desc", "Приватна особа")
+            lines = [
+                "📦 <b>Логистика Новая Почта:</b>\n",
+                f"• Отправитель API: <b>{contact}</b>",
+                "• Статус ключа: 🟢 <b>Подключен</b>\n",
+                "<b>Команды логистики:</b>",
+                "• Поиск города: <code>город Киев</code>",
+                "• Поиск отделений: <code>отделения Киев 1</code>",
+                "• Создать ТТН: <code>создай ТТН: <Деталь>, <Цена>, <ФИО>, <Телефон>, <Город>, <Отделение></code>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка Новой Почты: {e}")
+        return True
+
+
     # 1. Запрос баланса и аудита
     if any(phrase in t for phrase in ("казначейство", "баланс казначейства", "резерв системы", "аудит казначейства")):
         from aios_core.treasury_manager import AIOSTreasuryManager
@@ -2281,7 +2446,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                 lines.append(f"🟢 Рекомендуется реинвестировать излишки в DeFi!\\nДля запуска напишите: <code>реинвестируй {int(audit['excess_funds_available_usd'])}</code>")
             else:
                 lines.append("ℹ️ Свободных средств пока недостаточно для реинвестирования (нужно > $10).")
-                
+
             api.send_message(chat_id, "\n".join(lines))
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка аудита казначейства: {e}")
@@ -2294,9 +2459,9 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
         if amount < 1.0:
             api.send_message(chat_id, "❌ Минимальная сумма для реинвестирования — $1.00 USD.")
             return True
-            
+
         api.send_message(chat_id, f"📡 <b>Инициирован On-Chain депозит в Aave V3: ${amount:.2f} USDT...</b>\\n\\nПроверяю балансы, выполняю Approve и Supply на Polygon...")
-        
+
         from aios_core.treasury_manager import AIOSTreasuryManager
         manager = AIOSTreasuryManager()
         try:
@@ -2305,7 +2470,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             if audit["system_budget_usd"] < amount:
                 api.send_message(chat_id, f"❌ Недостаточно средств в бюджете системы: доступно ${audit['system_budget_usd']:.2f}, затребовано ${amount:.2f}.")
                 return True
-                
+
             # Запуск On-Chain транзакции!
             res = manager.execute_aave_reinvestment(amount)
             if res.get("status") == "success":
@@ -2320,7 +2485,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                 api.send_message(chat_id, f"❌ Ошибка реинвестирования: {res.get('error')}")
         except Exception as e:
             api.send_message(chat_id, f"❌ Критическая ошибка Web3: {e}")
-            
+
         return True
 
     # 3. Команда вывода из Aave
@@ -2330,9 +2495,9 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
         if amount < 1.0:
             api.send_message(chat_id, "❌ Минимальная сумма для вывода — $1.00 USD.")
             return True
-            
+
         api.send_message(chat_id, f"📡 <b>Инициирован вывод из Aave V3: ${amount:.2f} USDT...</b>\\n\\nВывожу стейблкоины на горячий кошелек системы на Polygon...")
-        
+
         from aios_core.treasury_manager import AIOSTreasuryManager
         manager = AIOSTreasuryManager()
         try:
@@ -2341,7 +2506,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             if audit["active_aave_deposit_usd"] < amount:
                 api.send_message(chat_id, f"❌ Недостаточно средств на депозите Aave V3: доступно ${audit['active_aave_deposit_usd']:.2f}, затребовано ${amount:.2f}.")
                 return True
-                
+
             # Запуск On-Chain транзакции!
             res = manager.execute_aave_withdrawal(amount)
             if res.get("status") == "success":
@@ -2354,7 +2519,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                 api.send_message(chat_id, f"❌ Ошибка вывода: {res.get('error')}")
         except Exception as e:
             api.send_message(chat_id, f"❌ Критическая ошибка Web3: {e}")
-            
+
         return True
 
     # 4. Запрос Excel отчета
@@ -2416,9 +2581,9 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
     if buy_order:
         pair = buy_order.group(1).upper()
         volume = float(buy_order.group(2))
-        
+
         api.send_message(chat_id, f"🚀 <b>Исполняю реальный ордер ПОКУПКИ на Kraken: {volume} {pair}...</b>")
-        
+
         from aios_core.kraken_client import AIOSKrakenClient
         client = AIOSKrakenClient()
         try:
@@ -2441,9 +2606,9 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
     if sell_order:
         pair = sell_order.group(1).upper()
         volume = float(sell_order.group(2))
-        
+
         api.send_message(chat_id, f"🚀 <b>Исполняю реальный ордер ПРОДАЖИ на Kraken: {volume} {pair}...</b>")
-        
+
         from aios_core.kraken_client import AIOSKrakenClient
         client = AIOSKrakenClient()
         try:
@@ -2478,7 +2643,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                 )
                 if p["error"]:
                     lines.append(f"  • Ошибка: <i>{p['error']}</i>")
-                    
+
             api.send_message(chat_id, "\n\n".join(lines))
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка DevOps-мониторинга: {e}")
@@ -2489,7 +2654,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
     if fiat_order:
         amount_usdt = float(fiat_order.group(1))
         card_number = fiat_order.group(2)
-        
+
         api.send_message(chat_id, f"📡 <b>Запрашиваю курс обмена и создаю инвойс...</b>")
         from aios_core.fiat_dispatcher import AIOSFiatDispatcher
         dispatcher = AIOSFiatDispatcher()
@@ -2497,7 +2662,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             rate_info = dispatcher.get_fiat_exchange_rate(amount_usdt)
             expected_uah = rate_info["expected_amount_uah"]
             rate = rate_info["estimated_rate"]
-            
+
             alert_state_file = PROJECT_ROOT / "data" / "fiat_withdrawal_pending.json"
             alert_state_file.write_text(json.dumps({
                 "amount_usdt": amount_usdt,
@@ -2505,7 +2670,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                 "expected_uah": expected_uah,
                 "timestamp": time.time()
             }), encoding="utf-8")
-            
+
             txt = f"📡 <b>Курс обмена зафиксирован!</b>\\n\\n"
             txt += f"• Курс: <b>1 USDT = {rate:.2f} UAH</b>\\n"
             txt += f"• Вы получите: <b>{expected_uah:.2f} UAH</b>\\n"
@@ -2522,14 +2687,14 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
         if not pending_file.exists():
             api.send_message(chat_id, "❌ Нет активных запросов на вывод средств на карту.")
             return True
-            
+
         try:
             pend_data = json.loads(pending_file.read_text(encoding="utf-8"))
             amount_usdt = float(pend_data["amount_usdt"])
             card_number = pend_data["card_number"]
-            
+
             api.send_message(chat_id, f"🚀 <b>Исполняю On-Chain перевод ${amount_usdt:.2f} USDT на обменный адрес...</b>")
-            
+
             from aios_core.fiat_dispatcher import AIOSFiatDispatcher
             dispatcher = AIOSFiatDispatcher()
             res = dispatcher.execute_fiat_withdrawal(amount_usdt, card_number, confirm=True)
@@ -2579,7 +2744,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             if not tb_info:
                 api.send_message(chat_id, "❌ Нет активных сбоев для авто-исправления.")
                 return True
-                
+
             api.send_message(chat_id, f"🛠 <b>Запуск ИИ-исправления сбойного файла {Path(tb_info['file_path']).name}...</b>")
             res = healer.apply_ai_fix(tb_info)
             if res.get("status") == "success":
@@ -2593,7 +2758,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
         except Exception as e:
             api.send_message(chat_id, f"❌ Критическая ошибка ИИ-восстановления: {e}")
         return True
-        
+
     return False
 
 
@@ -2606,7 +2771,7 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
     """
     import re as _re3
     t = " ".join(str(text or "").casefold().split())
-    
+
     # 1. Обработка подтверждения оплаты
     approve = _re3.match(r"^(?:подтверди\s+фриланс|подтвердить\s+фриланс|confirm\s+freelance)\s+(\S+)", t)
     if approve:
@@ -2615,57 +2780,57 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
         if not tasks_file.exists():
             api.send_message(chat_id, "⚠️ Файл задач фриланса не найден.")
             return True
-            
+
         try:
             tasks = json.loads(tasks_file.read_text(encoding="utf-8"))
         except Exception as e:
             api.send_message(chat_id, f"⚠️ Ошибка чтения файла задач: {e}")
             return True
-            
+
         target_task = None
         for task in tasks:
             if task.get("id") == task_id:
                 target_task = task
                 break
-                
+
         if not target_task:
             api.send_message(chat_id, f"❌ Задача с ID <code>{task_id}</code> не найдена.")
             return True
-            
+
         if target_task.get("status") == "PAID":
             api.send_message(chat_id, f"ℹ️ Оплата по задаче <code>{task_id}</code> уже была зачислена ранее.")
             return True
-            
+
         # Зачисляем реальный доход в кошелек системы
         from aios_core.crypto_wallet import AIOSWalletManager
         wallet = AIOSWalletManager(str(PROJECT_ROOT / "data"))
-        
+
         try:
             budget = float(target_task.get("budget_usd", 0.0))
             source = f"Freelance:{target_task.get('source', 'unknown')}"
-            
+
             # Начисляем и делим на 4 кошелька
             wallet.record_income(
                 amount_usd=budget,
                 source=source,
                 task_id=task_id
             )
-            
+
             # Меняем статус на PAID
             target_task["status"] = "PAID"
             tasks_file.write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
-            
+
             # Составляем сообщение без f-string с literal newlines
             txt = "✅ <b>Оплата фриланса зачислена!</b>\\n\\n"
             txt += "ID: <code>" + task_id + "</code>\\n"
             txt += "Задача: <i>" + str(target_task.get('title', '')) + "</i>\\n"
             txt += "Сумма: <b>$" + f"{budget:.2f}" + " USD</b>\\n\\n"
             txt += "Бюджет распределен по 25% ($" + f"{budget*0.25:.2f}" + " каждому): Разработчик, Инвестор, Персонал, Система."
-            
+
             api.send_message(chat_id, txt)
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка при фиксации оплаты: {e}")
-            
+
         return True
 
     # 2. Обработка просмотра списка
@@ -2674,18 +2839,18 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
         if not tasks_file.exists():
             api.send_message(chat_id, "📭 Фриланс-задач нет.")
             return True
-            
+
         try:
             tasks = json.loads(tasks_file.read_text(encoding="utf-8"))
         except Exception:
             api.send_message(chat_id, "⚠️ Ошибка чтения файла задач.")
             return True
-            
+
         pending = [t for t in tasks if t.get("status") == "BID_SUBMITTED"]
         if not pending:
             api.send_message(chat_id, "📭 Нет фриланс-задач, ожидающих подтверждения оплаты.")
             return True
-            
+
         lines = [f"📋 <b>Фриланс-задачи в работе (ожидают оплаты): {len(pending)}</b>"]
         for task in pending[-15:]:
             lines.append(
@@ -2706,23 +2871,23 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
         if not tasks_file.exists():
             api.send_message(chat_id, "⚠️ Файл задач фриланса не найден.")
             return True
-            
+
         try:
             tasks = json.loads(tasks_file.read_text(encoding="utf-8"))
         except Exception:
             api.send_message(chat_id, "⚠️ Ошибка чтения файла задач.")
             return True
-            
+
         target_task = None
         for task in tasks:
             if task.get("id") == task_id:
                 target_task = task
                 break
-                
+
         if not target_task:
             api.send_message(chat_id, f"❌ Задача с ID <code>{task_id}</code> не найдена.")
             return True
-            
+
         api.send_message(chat_id, "📊 <b>Генерирую интерактивный счет для задачи...</b>")
         from aios_core.invoice_generator import AIOSInvoiceGenerator
         invoicer = AIOSInvoiceGenerator(str(PROJECT_ROOT / "data"))
@@ -2737,7 +2902,7 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка выписки счета: {e}")
         return True
-        
+
     return False
 
 def _handle_phone_brain_intent(api, chat_id: int, text: str) -> bool:
@@ -3256,9 +3421,64 @@ def _send_phone_status(api, chat_id: int, adapter) -> None:
         controls = data.get("route_controls") or {}
         ready = bool(controls) and all(bool(value) for value in controls.values())
         lines.append("Интерфейс маршрута: <b>проверен</b>" if ready else "Интерфейс маршрута: <b>требует проверки</b>")
+    capabilities = data.get("route_capabilities") or {}
+    if capabilities:
+        extended = all(bool(capabilities.get(key)) for key in ("alternate_pickup", "multi_stop_add", "multi_stop_delete", "multi_stop_reorder"))
+        lines.append("Серия адресов: <b>готова</b>" if extended else "Серия адресов: <b>требует проверки</b>")
+        lines.append("Автозаказ: <b>отключён</b>")
     if not data.get("ui_ready"):
         lines.append("⚠️ Для безопасной работы с интерфейсом требуется обновить AIOS Companion.")
     api.send_message(chat_id, "\n".join(lines))
+
+
+def _uklon_route_field_allowed(field: str) -> bool:
+    value = str(field or "").casefold()
+    return value in {"pickup", "destination"} or bool(re.fullmatch(r"stop_[1-9][0-9]*", value))
+
+
+def _uklon_route_field_label(field: str) -> str:
+    value = str(field or "")
+    if value == "pickup":
+        return "точку отправления"
+    if value == "destination":
+        return "конечную точку"
+    match = re.fullmatch(r"stop_([1-9][0-9]*)", value)
+    return f"остановку №{match.group(1)}" if match else "точку маршрута"
+
+
+def _uklon_next_route_field(field: str, route: dict) -> str:
+    value = str(field or "")
+    stops = list(route.get("stops") or [])
+    if value == "pickup":
+        return "stop_1" if stops else "destination"
+    match = re.fullmatch(r"stop_([1-9][0-9]*)", value)
+    if match:
+        index = int(match.group(1))
+        return f"stop_{index + 1}" if index < len(stops) else "destination"
+    return ""
+
+
+def _parse_uklon_route_request(raw: str) -> dict | None:
+    """Parse a safe route draft request without selecting addresses or booking."""
+    match = re.search(
+        r"(?:маршрут|поездк\w*)\s+(?:uklon|уклон)\s*[:—–-]?\s*(.+)$",
+        str(raw or "").strip(),
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    payload = match.group(1).strip()
+    if payload.casefold().startswith(("до ", "в ")):
+        return {"pickup": "", "stops": [], "destination": payload.split(" ", 1)[1].strip()}
+    parts = [part.strip() for part in re.split(r"\s*(?:->|→)\s*", payload)]
+    if len(parts) >= 2:
+        if parts[0]:
+            return {"pickup": parts[0], "stops": [part for part in parts[1:-1] if part], "destination": parts[-1]}
+        return {"pickup": "", "stops": [part for part in parts[1:-1] if part], "destination": parts[-1]}
+    legacy = re.match(r"^(.+?)\s+(?:до|в)\s+(.+)$", payload, re.IGNORECASE)
+    if legacy:
+        return {"pickup": legacy.group(1).strip(), "stops": [], "destination": legacy.group(2).strip()}
+    return None
 
 
 def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
@@ -3414,11 +3634,11 @@ def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
             route = _phone_route_drafts.get(chat_id) or {}
             route_id = str(route.get("route_id") or "")
             field = str(route.get("next_field") or "")
-            if not route_id or field not in ("pickup", "destination"):
-                api.send_message(chat_id, "ℹ️ Сначала создайте черновик: «маршрут Uklon: откуда -> куда».")
+            if not route_id or not _uklon_route_field_allowed(field):
+                api.send_message(chat_id, "ℹ️ Сначала создайте черновик: «маршрут Uklon: откуда -> остановка -> куда».")
                 return True
             _pending_confirm[chat_id] = {"kind": "uklon_enter_route_query", "data": {"route_id": route_id, "field": field}}
-            label = "точку отправления" if field == "pickup" else "пункт назначения"
+            label = _uklon_route_field_label(field)
             api.send_message(chat_id,
                              f"🚕 Ввести подготовленный поисковый запрос для «{label}» в Uklon?\n"
                              "AIOS не будет выбирать подсказку и не создаст заказ. «да» / «нет»")
@@ -3430,12 +3650,13 @@ def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
         if any(word in t for word in ("статус", "состояние", "уведомлен", "готов")):
             _send_phone_status(api, chat_id, adapter)
             return True
-        route_match = re.search(r"(?:маршрут|поездк\w*)\s+(?:uklon|уклон)\s*[:—–-]?\s*(.*?)\s*(?:->|→|в|до)\s+(.+)$", raw, re.IGNORECASE)
-        if route_match:
-            pickup, destination = route_match.group(1).strip(), route_match.group(2).strip()
-            _pending_confirm[chat_id] = {"kind": "uklon_stage_route", "data": {"pickup": pickup, "destination": destination}}
+        route_request = _parse_uklon_route_request(raw)
+        if route_request:
+            _pending_confirm[chat_id] = {"kind": "uklon_stage_route", "data": route_request}
+            stop_count = len(route_request.get("stops") or [])
+            suffix = f" с {stop_count} промежуточными остановками" if stop_count else ""
             api.send_message(chat_id,
-                             "🚕 Открыть Uklon Passenger и подготовить <b>черновик маршрута</b>?\n"
+                             f"🚕 Открыть Uklon Passenger и подготовить <b>черновик маршрута{suffix}</b>?\n"
                              "Заказ, принятие поездки и любые списания не создаются. «да» / «нет»")
             return True
         if "driver" in t or "водител" in t:
@@ -3446,7 +3667,10 @@ def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
             _pending_confirm[chat_id] = {"kind": "phone_open_adapter", "data": {"app": "uklon"}}
             api.send_message(chat_id, "🚕 Открыть Uklon Passenger на телефоне? «да» / «нет»")
             return True
-        api.send_message(chat_id, "🚕 Uklon: «Uklon статус», «открой Uklon», «маршрут Uklon: откуда -> куда». Заказ поездки всегда остаётся ручным подтверждаемым действием.")
+        api.send_message(chat_id,
+                         "🚕 Uklon: «Uklon статус», «открой Uklon», "
+                         "«маршрут Uklon: откуда -> остановка 1 -> остановка 2 -> куда». "
+                         "Заказ поездки всегда остаётся ручным подтверждаемым действием.")
         return True
 
     # ---- EasyWay: package com.eway, now registered as installed ----
@@ -3626,15 +3850,21 @@ def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
         if kind == "uklon_stage_route":
             adapter = _phone_adapter("uklon")
             pickup = str(data.get("pickup") or "")
-            result = adapter.stage_route(pickup, str(data.get("destination") or ""), confirm=True)
+            stops = [str(value or "") for value in (data.get("stops") or []) if str(value or "").strip()]
+            stage_kwargs = {"confirm": True}
+            if stops:
+                stage_kwargs["stops"] = stops
+            result = adapter.stage_route(pickup, str(data.get("destination") or ""), **stage_kwargs)
             if result.get("status") == "route_staged":
                 controls = result.get("controls") or {}
                 ready = bool(controls) and all(bool(value) for value in controls.values())
                 if ready:
-                    field = "pickup" if pickup.strip() else "destination"
-                    _phone_route_drafts[chat_id] = {"route_id": result.get("route_id"), "next_field": field}
+                    field = "pickup" if pickup.strip() else ("stop_1" if stops else "destination")
+                    _phone_route_drafts[chat_id] = {
+                        "route_id": result.get("route_id"), "next_field": field, "stops": stops,
+                    }
                     _pending_confirm[chat_id] = {"kind": "uklon_enter_route_query", "data": {"route_id": result.get("route_id"), "field": field}}
-                    label = "точку отправления" if field == "pickup" else "пункт назначения"
+                    label = _uklon_route_field_label(field)
                     api.send_message(chat_id,
                                      f"🚕 Черновик маршрута готов. Ввести поисковый запрос для «{label}»?\n"
                                      "Это только ввод текста: подсказка и заказ не выбираются. «да» / «нет»")
@@ -3648,15 +3878,16 @@ def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
             field = str(data.get("field") or "")
             result = adapter.prepare_address_query(str(data.get("route_id") or ""), field, confirm=True)
             if result.get("status") == "query_entered":
-                if field == "pickup":
-                    route = _phone_route_drafts.setdefault(chat_id, {"route_id": data.get("route_id")})
-                    route["next_field"] = "destination"
+                route = _phone_route_drafts.setdefault(chat_id, {"route_id": data.get("route_id"), "stops": []})
+                next_field = _uklon_next_route_field(field, route)
+                route["next_field"] = next_field
+                if next_field:
                     api.send_message(chat_id,
-                                     "✅ Запрос точки отправления введён. Выберите точную подсказку <b>вручную на телефоне</b>, затем напишите «продолжи маршрут Uklon». Заказ не создавался.")
+                                     f"✅ Запрос для {_uklon_route_field_label(field)} введён. Выберите подсказку <b>вручную на телефоне</b>, затем напишите «продолжи маршрут Uklon» для следующего поля ({_uklon_route_field_label(next_field)}). Заказ не создавался.")
                 else:
                     _phone_route_drafts.pop(chat_id, None)
                     api.send_message(chat_id,
-                                     "✅ Запрос пункта назначения введён. Выберите точную подсказку <b>вручную на телефоне</b>; заказ поездки не создавался.")
+                                     f"✅ Запрос для {_uklon_route_field_label(field)} введён. Выберите подсказку <b>вручную на телефоне</b>; заказ поездки не создавался.")
             else:
                 api.send_message(chat_id, f"⚠️ Uklon: {_phone_error(result)}")
             return True
