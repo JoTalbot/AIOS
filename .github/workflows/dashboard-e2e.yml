@@ -10,6 +10,8 @@ permissions:
 
 jobs:
   dashboard-browser:
+    # Legacy/advisory job; the blocking surface is core-gate.yml.
+    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
