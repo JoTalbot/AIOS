@@ -1275,7 +1275,7 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
         try:
             tg = _run_account_control(["tg", "dialogs", "10"])
             if tg.get("status") == "ok" and tg.get("dialogs"):
-                _is_personal_tg = lambda d: (d.get("type") or "user") in ("user", "bot")
+                _is_personal_tg = lambda d: (d.get("type") or "user") == "user"  # без ботов
                 personal_tg = [d for d in tg["dialogs"] if _is_personal_tg(d)]
                 unread_d = [d for d in personal_tg if d.get("unread")]
                 src = unread_d if unread_only else personal_tg
@@ -1372,9 +1372,9 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
         except Exception:
             pass
 
-    # 6) Viber Desktop. В списке чатов Viber не отдаёт надёжный unread-флаг,
-    # поэтому в режиме «только непрочитанное» не подменяем неизвестное значение.
-    if _want("viber") and not unread_only:
+    # 6) Viber Desktop — только по явному запросу («инбокс вайбер»),
+    # т.к. OCR-распознавание имён ненадёжно (кириллица искажается).
+    if _want("viber") and not unread_only and "viber" in (filters.get("channels") or []):
         try:
             vb = _run_account_control(["viber", "chats"])
             if vb.get("status") == "ok" and vb.get("chats"):
@@ -1397,9 +1397,9 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
         except Exception:
             pass
 
-    # 6) Signal Desktop. OCR не даёт надёжный unread-флаг, поэтому в
-    # режиме «только непрочитанное» Signal не подменяет неизвестные данные.
-    if _want("signal") and not unread_only:
+    # 6) Signal Desktop — только по явному запросу («инбокс сигнал»),
+    # т.к. OCR-распознавание имён ненадёжно.
+    if _want("signal") and not unread_only and "signal" in (filters.get("channels") or []):
         try:
             sig = _run_account_control(["signal", "chats"])
             if sig.get("status") == "ok" and sig.get("chats"):
