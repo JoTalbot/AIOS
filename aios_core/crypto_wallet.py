@@ -1,8 +1,15 @@
 """
-AIOS Multi-Chain Crypto Wallet & Self-Funding Budget Manager
-Модуль криптокошелька и автономной финансовой самообеспеченности AIOS.
-Управляет балансами (EVM/TRC20/Solana), vault-хранилищем, отслеживанием доходов/расходов
-и автоматическим перераспределением средств на оплату VPS и LLM API.
+AIOS Multi-Chain Crypto Wallet & 4-Way Profit Distribution Manager
+Модуль криптокошельков и распределения прибыли AIOS.
+
+ПОЛИТИКА РАСПРЕДЕЛЕНИЯ ПРИБЫЛИ (25% / 25% / 25% / 25%):
+Вся прибыль проекта от любого источника автоматически делится на 4 равные части
+и распределяется по 4 отдельным кошелькам:
+1. 25% - Разработчик (Developer Wallet)
+2. 25% - Инвестор (Investor Wallet)
+3. 25% - Персонал (Personnel/Staff Wallet)
+4. 25% - Система (System Autonomous Wallet) — средства, которые AIOS может тратить
+   по своему усмотрению (VPS серверы, LLM API ключи, домены, новое железо).
 """
 
 import os
@@ -31,7 +38,7 @@ DEFAULT_COSTS = {
 
 
 class AIOSWalletManager:
-    """Управление Web3/Крипто-кошельками и бюджетом самообеспечения AIOS."""
+    """Управление 4 кошельками прибыли и бюджетом самообеспечения AIOS."""
 
     def __init__(self, data_dir: str = '/root/AIOS/data'):
         self.data_dir = Path(data_dir)
@@ -40,20 +47,33 @@ class AIOSWalletManager:
         self._ensure_files()
 
     def _ensure_files(self):
-        """Создание файлов хранения при их отсутствии."""
+        """Создание файлов хранения с конфигурацией 4 кошельков при их отсутствии."""
         self.data_dir.mkdir(parents=True, exist_ok=True)
         if not self.vault_file.exists():
             default_vault = {
-                'evm_address': '0x00000000000000000000000000000000000AIOS',
-                'trc20_address': 'T_AIOS_SELF_FUNDING_TRC20_ADDRESS',
-                'solana_address': 'AIOS_SOLANA_SELF_FUNDING_ADDRESS',
-                'networks': {
-                    'polygon': {'enabled': True},
-                    'arbitrum': {'enabled': True},
-                    'base': {'enabled': True}
-                },
-                'keys_encrypted': False,
-                'private_key': ''
+                'rule': 'PROFIT_SPLIT_4_WAY_25_PERCENT',
+                'wallets': {
+                    'developer': {
+                        'label': '1. Разработчик',
+                        'evm_address': '0x000000000000000000000000000000000DEVAIOS',
+                        'trc20_address': 'T_AIOS_DEVELOPER_WALLET_ADDRESS'
+                    },
+                    'investor': {
+                        'label': '2. Инвестор',
+                        'evm_address': '0x000000000000000000000000000000000INVAIOS',
+                        'trc20_address': 'T_AIOS_INVESTOR_WALLET_ADDRESS'
+                    },
+                    'personnel': {
+                        'label': '3. Персонал',
+                        'evm_address': '0x00000000000000000000000000000000STAFFAIOS',
+                        'trc20_address': 'T_AIOS_PERSONNEL_WALLET_ADDRESS'
+                    },
+                    'system': {
+                        'label': '4. Система (Автономный бюджет)',
+                        'evm_address': '0x00000000000000000000000000000000000SYSTEM',
+                        'trc20_address': 'T_AIOS_SYSTEM_AUTONOMOUS_WALLET'
+                    }
+                }
             }
             with open(self.vault_file, 'w', encoding='utf-8') as f:
                 json.dump(default_vault, f, indent=2, ensure_ascii=False)
@@ -62,9 +82,13 @@ class AIOSWalletManager:
         if not self.ledger_file.exists():
             default_ledger = {
                 'total_earned_usd': 0.0,
-                'total_spent_usd': 0.0,
-                'llm_balance_allocated_usd': 0.0,
-                'server_reserve_usd': 0.0,
+                'total_spent_system_usd': 0.0,
+                'distribution_shares_usd': {
+                    'developer': 0.0,
+                    'investor': 0.0,
+                    'personnel': 0.0,
+                    'system': 0.0
+                },
                 'monthly_costs': DEFAULT_COSTS,
                 'transactions': []
             }
@@ -93,168 +117,153 @@ class AIOSWalletManager:
                 return json.load(f)
         except Exception as e:
             logger.error(f'Ошибка чтения ledger: {e}')
-            return {'total_earned_usd': 0.0, 'total_spent_usd': 0.0, 'transactions': []}
+            return {'total_earned_usd': 0.0, 'transactions': []}
 
     def save_ledger(self, ledger: Dict[str, Any]):
         """Сохранение реестра доходов/расходов."""
         with open(self.ledger_file, 'w', encoding='utf-8') as f:
             json.dump(ledger, f, indent=2, ensure_ascii=False)
 
-    def get_public_addresses(self) -> Dict[str, str]:
-        """Возвращает публичные адреса кошельков для получения оплаты."""
+    def get_public_addresses(self) -> Dict[str, Any]:
+        """Возвращает публичные адреса 4 кошельков системы."""
         vault = self.load_vault()
-        return {
-            'EVM (ETH/Polygon/Arbitrum/Base/BSC)': vault.get('evm_address', ''),
-            'TRC20 (USDT Tron)': vault.get('trc20_address', ''),
-            'Solana': vault.get('solana_address', '')
-        }
-
-    def check_evm_balance(self, network: str = 'polygon') -> Dict[str, Any]:
-        """Проверка баланса на EVM-сети через публичные RPC."""
-        vault = self.load_vault()
-        address = vault.get('evm_address', '')
-        if not address or address.endswith('AIOS'):
-            return {
-                'network': network,
-                'address': address,
-                'native_balance': 0.0,
-                'symbol': 'ETH' if network != 'polygon' else 'MATIC',
-                'is_mock': True
-            }
-
-        rpc_urls = PUBLIC_RPC_NODES.get(network, PUBLIC_RPC_NODES['polygon'])
-        for rpc in rpc_urls:
-            try:
-                w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={'timeout': 5}))
-                if w3.is_connected():
-                    balance_wei = w3.eth.get_balance(Web3.to_checksum_address(address))
-                    balance_eth = balance_wei / 10**18
-                    symbol = 'MATIC' if network == 'polygon' else ('BNB' if network == 'bsc' else 'ETH')
-                    return {
-                        'network': network,
-                        'address': address,
-                        'native_balance': float(balance_eth),
-                        'symbol': symbol,
-                        'is_mock': False
-                    }
-            except Exception as e:
-                logger.warning(f'⚠️ RPC {rpc} недоступен: {e}')
-
-        return {
-            'network': network,
-            'address': address,
-            'native_balance': 0.0,
-            'symbol': 'ETH',
-            'is_mock': True,
-            'error': 'All RPCs timed out'
-        }
+        return vault.get('wallets', {})
 
     def record_income(self, amount_usd: float, source: str, task_id: str, network_token: str = 'USDT') -> Dict[str, Any]:
-        """Фиксация заработанных денег от выполненной фриланс-задачи."""
+        """
+        Фиксация поступившей прибыли и строгое разделение на 4 равные части (25% каждому):
+        1. Разработчик - 25%
+        2. Инвестор - 25%
+        3. Персонал - 25%
+        4. Система - 25% (расходуется системой по своему усмотрению)
+        """
         ledger = self.load_ledger()
         ledger['total_earned_usd'] = ledger.get('total_earned_usd', 0.0) + amount_usd
 
-        # Перераспределение доходов по правилам бюджета
-        llm_share = amount_usd * 0.50     # 50% на LLM API
-        server_share = amount_usd * 0.50  # 50% в резерв сервера
+        share = amount_usd * 0.25  # Ровно 25% каждой из 4 сторон
 
-        ledger['llm_balance_allocated_usd'] = ledger.get('llm_balance_allocated_usd', 0.0) + llm_share
-        ledger['server_reserve_usd'] = ledger.get('server_reserve_usd', 0.0) + server_share
+        shares = ledger.get('distribution_shares_usd', {
+            'developer': 0.0,
+            'investor': 0.0,
+            'personnel': 0.0,
+            'system': 0.0
+        })
+
+        shares['developer'] = shares.get('developer', 0.0) + share
+        shares['investor'] = shares.get('investor', 0.0) + share
+        shares['personnel'] = shares.get('personnel', 0.0) + share
+        shares['system'] = shares.get('system', 0.0) + share
+
+        ledger['distribution_shares_usd'] = shares
 
         tx = {
-            'type': 'INCOME',
-            'amount_usd': amount_usd,
+            'type': 'INCOME_SPLIT_4_WAY',
+            'total_amount_usd': amount_usd,
+            'share_per_wallet_usd': share,
+            'breakdown': {
+                'developer_25pct': share,
+                'investor_25pct': share,
+                'personnel_25pct': share,
+                'system_25pct': share
+            },
             'source': source,
             'task_id': task_id,
             'token': network_token,
-            'llm_share_usd': llm_share,
-            'server_share_usd': server_share,
             'timestamp': time.time(),
             'datetime': time.strftime('%Y-%m-%d %H:%M:%S')
         }
+
         if 'transactions' not in ledger:
             ledger['transactions'] = []
         ledger['transactions'].append(tx)
         self.save_ledger(ledger)
 
-        logger.info(f'💰 [CryptoWallet] Зачислено ${amount_usd:.2f} ({source}). Резерв LLM: +${llm_share:.2f}, Резерв VPS: +${server_share:.2f}')
+        logger.info(
+            f'💰 [CryptoWallet 4-Way Split] Зачислено ${amount_usd:.2f} ({source}). '
+            f'Распределено по 25% (${share:.2f}): Разработчик, Инвестор, Персонал, Система.'
+        )
         return tx
 
-    def allocate_budget_for_llm(self, amount_usd: Optional[float] = None) -> Dict[str, Any]:
-        """Выделение средств из баланса на оплату LLM API."""
+    def spend_system_budget(self, amount_usd: float, purpose: str) -> Dict[str, Any]:
+        """
+        Расход средств Системы (часть 4) по её собственному усмотрению
+        (оплата VPS серверов, LLM API ключей, доменов).
+        """
         ledger = self.load_ledger()
-        available = ledger.get('llm_balance_allocated_usd', 0.0)
+        shares = ledger.get('distribution_shares_usd', {})
+        system_available = shares.get('system', 0.0)
 
-        if amount_usd is None:
-            amount_usd = min(available, 10.0)
-
-        if available < amount_usd and available <= 0:
+        if system_available < amount_usd:
             return {
                 'status': 'insufficient_funds',
                 'requested': amount_usd,
-                'available': available,
-                'message': f'Недостаточно накопленных средств в резерве LLM (${available:.2f})'
+                'available': system_available,
+                'message': f'Недостаточно средств в автономном бюджете Системы (${system_available:.2f})'
             }
 
-        actual_spent = min(available, amount_usd)
-        ledger['llm_balance_allocated_usd'] -= actual_spent
-        ledger['total_spent_usd'] = ledger.get('total_spent_usd', 0.0) + actual_spent
+        shares['system'] -= amount_usd
+        ledger['distribution_shares_usd'] = shares
+        ledger['total_spent_system_usd'] = ledger.get('total_spent_system_usd', 0.0) + amount_usd
 
         tx = {
-            'type': 'EXPENSE_LLM',
-            'amount_usd': actual_spent,
+            'type': 'SYSTEM_EXPENSE',
+            'amount_usd': amount_usd,
+            'purpose': purpose,
             'timestamp': time.time(),
             'datetime': time.strftime('%Y-%m-%d %H:%M:%S')
         }
-        if 'transactions' not in ledger:
-            ledger['transactions'] = []
         ledger['transactions'].append(tx)
         self.save_ledger(ledger)
 
-        rem = ledger['llm_balance_allocated_usd']
-        logger.info(f'💸 [CryptoWallet] Выделен бюджет на LLM API: ${actual_spent:.2f}. Остаток LLM резерва: ${rem:.2f}')
+        logger.info(f'💸 [System Budget Expense] Система потратила ${amount_usd:.2f} на "{purpose}". Остаток системного кошелька: ${shares["system"]:.2f}')
         return {
             'status': 'success',
-            'allocated_usd': actual_spent,
-            'remaining_llm_reserve': rem
+            'spent_usd': amount_usd,
+            'remaining_system_budget': shares['system']
         }
 
     def get_financial_summary(self) -> Dict[str, Any]:
-        """Формирует сводку о финансовом состоянии и уровне самообеспечения AIOS."""
+        """Сводка балансов по всем 4 кошелькам и уровень самообеспечения."""
         ledger = self.load_ledger()
         costs = ledger.get('monthly_costs', DEFAULT_COSTS)
         total_monthly_need = sum(costs.values())
 
         total_earned = ledger.get('total_earned_usd', 0.0)
-        total_spent = ledger.get('total_spent_usd', 0.0)
-        llm_reserve = ledger.get('llm_balance_allocated_usd', 0.0)
-        server_reserve = ledger.get('server_reserve_usd', 0.0)
+        shares = ledger.get('distribution_shares_usd', {
+            'developer': 0.0,
+            'investor': 0.0,
+            'personnel': 0.0,
+            'system': 0.0
+        })
 
-        # Коэффициент автономной самообеспеченности (Self-Sufficiency Index)
-        self_sustainability_ratio = (total_earned / total_monthly_need) if total_monthly_need > 0 else 0.0
+        system_budget = shares.get('system', 0.0)
+        # Коэффициент покрытия операционных расходов из доли Системы (25%)
+        system_sustainability_ratio = (system_budget / total_monthly_need) if total_monthly_need > 0 else 0.0
 
-        addresses = self.get_public_addresses()
+        wallets = self.get_public_addresses()
 
         return {
-            'self_sustainability_pct': round(self_sustainability_ratio * 100, 1),
-            'total_earned_usd': round(total_earned, 2),
-            'total_spent_usd': round(total_spent, 2),
-            'llm_reserve_usd': round(llm_reserve, 2),
-            'server_reserve_usd': round(server_reserve, 2),
-            'monthly_operating_need_usd': round(total_monthly_need, 2),
-            'addresses': addresses
+            'policy': '4_WAY_25_PERCENT_PROFIT_SPLIT',
+            'total_earned_all_time_usd': round(total_earned, 2),
+            'monthly_operating_cost_usd': round(total_monthly_need, 2),
+            'system_sustainability_pct': round(system_sustainability_ratio * 100, 1),
+            'wallet_balances_usd': {
+                '1_developer_25pct': round(shares.get('developer', 0.0), 2),
+                '2_investor_25pct': round(shares.get('investor', 0.0), 2),
+                '3_personnel_25pct': round(shares.get('personnel', 0.0), 2),
+                '4_system_autonomous_25pct': round(shares.get('system', 0.0), 2)
+            },
+            'wallets_addresses': wallets
         }
 
 
-# Совместимость со старым API
+# Совместимость
 class AIOSWallet(AIOSWalletManager):
-    def check_balance(self):
-        res = self.check_evm_balance('polygon')
-        return res.get('native_balance', 0.0)
+    pass
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     wm = AIOSWalletManager()
-    print('=== AIOS CRYPTO WALLET SUMMARY ===')
+    print('=== AIOS 4-WAY PROFIT DISTRIBUTION SUMMARY ===')
     print(json.dumps(wm.get_financial_summary(), indent=2, ensure_ascii=False))
