@@ -1260,13 +1260,15 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
         except Exception:
             pass
 
-    # 2) Telegram
+    # 2) Telegram — только личные переписки (без групп/каналов/супергрупп)
     if _want("tg"):
         try:
             tg = _run_account_control(["tg", "dialogs", "10"])
             if tg.get("status") == "ok" and tg.get("dialogs"):
-                unread_d = [d for d in tg["dialogs"] if d.get("unread")]
-                src = unread_d if unread_only else tg["dialogs"]
+                _is_personal_tg = lambda d: (d.get("type") or "user") in ("user", "bot")
+                personal_tg = [d for d in tg["dialogs"] if _is_personal_tg(d)]
+                unread_d = [d for d in personal_tg if d.get("unread")]
+                src = unread_d if unread_only else personal_tg
                 for d in src[:6]:
                     items.append({
                         "channel": "tg",
@@ -1277,7 +1279,7 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
                         "date": "",
                     })
                 if unread_d:
-                    summary_parts.append(f"✈️ {len(unread_d)} чатов TG с новыми")
+                    summary_parts.append(f"✈️ {len(unread_d)} личных чатов TG с новыми")
         except Exception:
             pass
 
@@ -1288,6 +1290,9 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
             if ig.get("status") == "ok" and ig.get("threads"):
                 meaningful = 0
                 for d in ig["threads"][:5]:
+                    _ig_name_low = (d.get("name") or "").lower()
+                    if _ig_name_low.startswith(("вы и", "you and")):  # групповой чат Direct
+                        continue
                     preview = (d.get("preview") or "")[:80]
                     service = _is_service_preview(preview)
                     if unread_only and service:
