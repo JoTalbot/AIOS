@@ -302,7 +302,7 @@ class FreelanceTaskSolver:
             clean_code = re.sub(r'```python|```', '', code).strip()
 
             # Проверка синтаксиса
-            compile(clean_code, f"<task_{task.id}>", "exec")
+            ast.parse(clean_code, filename=f"<task_{task.id}>")
 
             task.solution_code = clean_code
             task.status = "SOLVED"
