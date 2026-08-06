@@ -260,14 +260,10 @@ def cmd_start() -> str:
 
 MAIN_MENU_KEYBOARD = {
     "keyboard": [
-        [{"text": "🧠 Кодер"}, {"text": "📊 Статистика"}],
-        [{"text": "🛒 OLX"}, {"text": "📱 Платформы"}],
-        [{"text": "📲 Телефон"}, {"text": "🌐 Аккаунты"}],
-        [{"text": "🖥 Сервер"}],
-        [{"text": "🐳 Docker"}, {"text": "❤️ Health"}],
-        [{"text": "💾 Backup"}, {"text": "🚨 Alerts"}],
-        [{"text": "🔑 API Ключи"}, {"text": "📋 Логи"}],
-        [{"text": "🤖 Бот"}, {"text": "❓ Помощь"}],
+        [{"text": "💰 Казначейство"}, {"text": "📈 Трейдинг"}],
+        [{"text": "🛒 Склад & OLX"}, {"text": "📦 Новая Почта"}],
+        [{"text": "📲 Телефон & Банки"}, {"text": "📊 Статистика"}],
+        [{"text": "🛡 SRE Статус"}, {"text": "❓ Помощь"}],
     ],
     "resize_keyboard": True,
     "one_time_keyboard": False,
@@ -2262,6 +2258,81 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
     """
     import re as _re4
     t = " ".join(str(text or "").casefold().split())
+    # Трейдинг и котировки
+    if any(phrase in t for phrase in ("трейдинг", "сигналы", "квант", "торговля", "paper trading")):
+        api.send_message(chat_id, "📈 <b>Запрашиваю количественный анализ и сигналы рынка...</b>")
+        import subprocess as _sp_tr
+        try:
+            r = _sp_tr.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_quant_trading.py")],
+                           capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+            import json as _j_tr
+            data = _j_tr.loads(r.stdout.split("===")[-1].strip() if "===" in r.stdout else r.stdout)
+            
+            lines = ["📈 <b>AIOS Quant Radar & Paper Trading:</b>\n"]
+            for sig in data.get("binance_signals", []):
+                sym = sig.get("symbol")
+                signal = sig.get("signal")
+                price = sig.get("current_price")
+                rsi = sig.get("rsi")
+                icon = "🟢" if "BUY" in signal else ("🔴" if "SELL" in signal else "⚪")
+                lines.append(f"{icon} <b>{sym}</b>: ${price:.2f} | <b>{signal}</b> (RSI: {rsi})")
+                
+            lines.append("\n💼 <b>Портфель Binance:</b>")
+            summary = data.get("binance_trading_results", [{}])[0].get("portfolio_summary", {})
+            lines.append(f"• Баланс кэша: <b>${summary.get('cash_usd', 0.0):.2f} USD</b>")
+            lines.append(f"• Реализованный PnL: <b>${summary.get('realized_pnl_usd', 0.0):.2f} USD</b>")
+            lines.append(f"• Винрейт: <b>{summary.get('win_rate_pct', 0.0)}%</b> | Позиций: <b>{summary.get('open_positions', 0)}</b>")
+            
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка трейдинга: {e}")
+        return True
+
+    # Склад & Запчасти
+    if any(phrase in t for phrase in ("склад & olx", "склад", "остатки на складе", "инвентарь")):
+        import subprocess as _sp_inv
+        try:
+            r = _sp_inv.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"), "stats"],
+                           capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            import json as _j_inv
+            data = _j_inv.loads(r.stdout)
+            lines = [
+                "🛒 <b>Склад запчастей AIOS:</b>\n",
+                f"• Всего наименований: <b>{data.get('items_count', 0)}</b>",
+                f"• Доступно деталей: <b>{data.get('available_qty', 0)} шт</b>",
+                f"• В резерве: <b>{data.get('reserved_qty', 0)} шт</b>",
+                f"• Оценочная стоимость: <b>{data.get('total_value', 0)} грн</b>\n",
+                "Для добавления детали напишите:\n<code>склад добавить <название> <цена> <кол-во></code>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка склада: {e}")
+        return True
+
+    # Новая Почта
+    if any(phrase in t for phrase in ("новая почта", "создать ттн", "накладная нп", "почта")):
+        import subprocess as _sp_np
+        try:
+            r = _sp_np.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_ttn.py"), "whoami"],
+                           capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            import json as _j_np
+            data = _j_np.loads(r.stdout)
+            sender = data.get("sender", {})
+            contact = sender.get("contact_desc", "Приватна особа")
+            lines = [
+                "📦 <b>Логистика Новая Почта:</b>\n",
+                f"• Отправитель API: <b>{contact}</b>",
+                "• Статус ключа: 🟢 <b>Подключен</b>\n",
+                "<b>Команды логистики:</b>",
+                "• Поиск города: <code>город Киев</code>",
+                "• Поиск отделений: <code>отделения Киев 1</code>",
+                "• Создать ТТН: <code>создай ТТН: <Деталь>, <Цена>, <ФИО>, <Телефон>, <Город>, <Отделение></code>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка Новой Почты: {e}")
+        return True
+
     
     # 1. Запрос баланса и аудита
     if any(phrase in t for phrase in ("казначейство", "баланс казначейства", "резерв системы", "аудит казначейства")):
