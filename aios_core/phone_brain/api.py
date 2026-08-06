@@ -147,6 +147,8 @@ class BrainAPI:
                 except Exception as exc:  # noqa: BLE001
                     return self._send(500, {"status": "error", "error": str(exc)[:200]})
 
+        return APIHandler
+
 
 
 def _draft_feedback(store, job_id: int, decision: str) -> None:
@@ -170,5 +172,3 @@ def _draft_feedback(store, job_id: int, decision: str) -> None:
         fp.write_text(_json.dumps(data[-200:], ensure_ascii=False, indent=1), encoding="utf-8")
     except Exception:
         pass
-
-        return APIHandler
