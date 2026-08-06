@@ -2111,7 +2111,7 @@ def _handle_unified_inbox_intent(api, chat_id: int, text: str) -> bool:
 
     inbox_terms = ("инбокс", "inbox", "все сообщения", "всё в одном", "сводка сообщений", "где что новое", "проверь всё")
     if any(term in t for term in inbox_terms):
-        _send_unified_inbox(api, chat_id, text)
+        _send_unified_inbox(api, chat_id, text, refresh=True)
         return True
     return False
 
@@ -4531,6 +4531,14 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                    "отредактируй объявление", "редактируй объявление", "измени объявление",
                    "обнови объявление", "мои объявления", "список объявлений")
     is_other = any(w in t for w in other_words)
+    generic_dm_request = (
+        "чат" in t
+        and any(word in t for word in ("покажи", "прочитай", "последние", "новые"))
+        and not tg_words
+        and not any(word in t for word in ("whatsapp", "ватсап", "вайбер", "viber", "signal", "мессенджер"))
+    )
+    if generic_dm_request:
+        is_ig = True
     if not is_ig and not is_g and not is_other and not tg_words:
         return False
 

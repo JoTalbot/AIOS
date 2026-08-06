@@ -34,8 +34,8 @@ def test_inbox_refresh_uses_saved_filter(monkeypatch):
 
     captured = []
     monkeypatch.setattr(bot, "_send_unified_inbox",
-                        lambda api, chat_id, text="", filters=None: captured.append((chat_id, filters)))
+                        lambda api, chat_id, text="", filters=None, **kwargs: captured.append((chat_id, filters, kwargs)))
     bot._last_inbox[778] = [{"channel": "signal"}]
     bot._last_inbox_filters[778] = {"channels": ["signal"]}
     bot._handle_inbox_callback(object(), 778, 1, "inbox_refresh")
-    assert captured == [(778, {"channels": ["signal"]})]
+    assert captured == [(778, {"channels": ["signal"]}, {"refresh": True})]

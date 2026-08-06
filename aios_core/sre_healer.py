@@ -4,6 +4,8 @@ AIOS SRE Self-Reflective Crash Healer
 """
 from __future__ import annotations
 
+import ast
+
 import os
 import re
 import sys
@@ -125,7 +127,7 @@ class SRESelfReflectiveHealer:
             new_code = code_content.replace(search_code, replace_code)
             
             # Проверяем синтаксис перед записью
-            compile(new_code, str(p), "exec")
+            ast.parse(new_code, filename=str(p))
             
             # Записываем исправленный код
             p.write_text(new_code, encoding="utf-8")

@@ -18,7 +18,7 @@ from aios_core.crypto_wallet import AIOSWalletManager
 logger = logging.getLogger("AIOS.FiatDispatcher")
 
 # Публичный API-ключ ChangeNOW для обменов без KYC
-CHANGENOW_API_KEY = "sk-or-v1-changenow-public-key-placeholder"
+CHANGENOW_API_KEY = os.environ.get("CHANGENOW_API_KEY", "")
 
 
 class AIOSFiatDispatcher:
