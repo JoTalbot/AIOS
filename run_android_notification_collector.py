@@ -25,6 +25,7 @@ APP_LABELS = {
     "ua.com.uklon.uklondriver": "Uklon Driver",
     "com.iMe.android": "iMe Messenger",
     "com.eway": "EasyWay",
+    "com.viber.voip": "Viber",
 }
 
 
