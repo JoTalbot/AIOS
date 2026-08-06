@@ -1,3 +1,4 @@
+import ast
 """
 AIOS Freelance Brain & Autonomous Self-Funding Engine
 Мозг автономного заработка и фриланса AIOS.
