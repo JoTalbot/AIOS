@@ -65,3 +65,42 @@ async def test_route_draft_api_rejects_invalid_stops(monkeypatch, tmp_path):
             headers={"Authorization": "Bearer writer-key"},
         )
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_route_draft_lifecycle_list_status_cancel_delete(monkeypatch, tmp_path):
+    monkeypatch.setenv("AIOS_PROJECT_ROOT", str(tmp_path))
+    app = create_app(
+        db_path=":memory:",
+        api_keys={"writer-key": {"subject": "writer", "roles": ["writer"]}},
+    )
+    headers = {"Authorization": "Bearer writer-key"}
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        status = await client.get("/api/v1/phone/uklon/status", headers=headers)
+        assert status.status_code == 200
+        assert status.json()["booking_automation"] is False
+
+        created = await client.post(
+            "/api/v1/phone/uklon/route-drafts",
+            json={"pickup": "A", "final_destination": "B"},
+            headers=headers,
+        )
+        draft_id = created.json()["draft_id"]
+        listed = await client.get("/api/v1/phone/uklon/route-drafts", headers=headers)
+        assert listed.status_code == 200
+        assert listed.json()["count"] == 1
+
+        cancelled = await client.post(
+            f"/api/v1/phone/uklon/route-drafts/{draft_id}/cancel", headers=headers
+        )
+        assert cancelled.status_code == 200
+        assert cancelled.json()["state"] == "cancelled"
+
+        deleted = await client.delete(
+            f"/api/v1/phone/uklon/route-drafts/{draft_id}", headers=headers
+        )
+        assert deleted.status_code == 204
+        missing = await client.get(
+            f"/api/v1/phone/uklon/route-drafts/{draft_id}", headers=headers
+        )
+        assert missing.status_code == 404
