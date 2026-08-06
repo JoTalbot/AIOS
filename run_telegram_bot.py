@@ -2258,6 +2258,57 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
     """
     import re as _re4
     t = " ".join(str(text or "").casefold().split())
+
+    # Смарт-маршрутизатор ликвидности (v19.0.0)
+    if any(phrase in t for phrase in ("ликвидность", "смарт ликвидность", "маршрутизатор", "доходность сетей", "кросс-чейн")):
+        api.send_message(chat_id, "🌐 <b>Запрашиваю мульти-чейн анализ доходностей DeFi...</b>")
+        import subprocess as _sp_lr
+        try:
+            r = _sp_lr.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_smart_liquidity_router.py")],
+                           capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            import json as _j_lr
+            data = _j_lr.loads(r.stdout)
+            best = data.get("best_yield_strategy", {})
+            lines = [
+                "🌐 <b>AIOS Smart Liquidity Router (v19.0.0):</b>\n",
+                f"🥇 <b>Лучшая стратегия:</b> {best.get('protocol')} на <b>{best.get('network')}</b> ({best.get('asset')})",
+                f"• Доходность: <b>{best.get('apy_pct')}% APY</b>\n",
+                "📊 <b>Все доступные пулы:</b>"
+            ]
+            for opp in data.get("all_opportunities", []):
+                lines.append(f"• <b>{opp.get('network')}</b> ({opp.get('protocol')}): <b>{opp.get('apy_pct')}% APY</b> [{opp.get('asset')}]")
+                
+            lines.append(f"\n💰 Доступно излишков казначейства: <b>${data.get('available_excess_capital_usd', 0.0):.2f} USD</b>")
+            lines.append(f"📈 Прогнозный доход: <b>+${data.get('estimated_annual_yield_usd', 0.0):.2f}/год</b>")
+            if data.get("rebalance_action_required"):
+                lines.append("\n🟢 <i>Рекомендуется направить свободный капитал в пул Base Compound V3.</i>")
+                
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка анализа ликвидности: {e}")
+        return True
+
+    # Сканер арбитража DEX & CEX
+    if any(phrase in t for phrase in ("арбитраж", "спред", "dex арбитраж", "разница цен")):
+        api.send_message(chat_id, "🔎 <b>Сканирую спреды и арбитражные возможности...</b>")
+        import subprocess as _sp_arb
+        try:
+            r = _sp_arb.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_dex_arbitrage_scanner.py")],
+                            capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            import json as _j_arb
+            data = _j_arb.loads(r.stdout)
+            lines = ["📊 <b>AIOS DEX/CEX Arbitrage Radar:</b>\n"]
+            for opp in data.get("opportunities", []):
+                lines.append(
+                    f"• <b>{opp.get('pair')}</b> ({opp.get('exchange')}):\n"
+                    f"  Bid: ${opp.get('bid'):.2f} | Ask: ${opp.get('ask'):.2f}\n"
+                    f"  Спред: <b>${opp.get('spread_usd')}</b> ({opp.get('spread_pct')}%) — 🟢 {opp.get('opportunity')}"
+                )
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка сканера арбитража: {e}")
+        return True
+
     # Трейдинг и котировки
     if any(phrase in t for phrase in ("трейдинг", "сигналы", "квант", "торговля", "paper trading")):
         api.send_message(chat_id, "📈 <b>Запрашиваю количественный анализ и сигналы рынка...</b>")
