@@ -1161,6 +1161,37 @@ def _run_due_reminders() -> int:
 _last_inbox: dict[int, list[dict]] = {}
 _last_inbox_filters: dict[int, dict] = {}
 INBOX_SCHEDULE_FILE = PROJECT_ROOT / "data" / "inbox_schedule.json"
+INBOX_CACHE_FILE = PROJECT_ROOT / "data" / "inbox_cache.json"
+
+
+def _inbox_cache_load() -> list[dict]:
+    """Сохранённые карточки инбокса (собраны фоновым сборщиком)."""
+    try:
+        d = json.loads(INBOX_CACHE_FILE.read_text(encoding="utf-8"))
+        if isinstance(d, dict) and isinstance(d.get("items"), list):
+            return d["items"]
+    except Exception:
+        pass
+    return []
+
+
+def _inbox_cache_save(items: list[dict]) -> None:
+    try:
+        INBOX_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        INBOX_CACHE_FILE.write_text(
+            json.dumps({"updated_at": datetime.now().strftime("%H:%M"),
+                        "items": items}, ensure_ascii=False, indent=1),
+            encoding="utf-8")
+    except Exception as e:
+        print(f"  [INBOX-CACHE] save err: {e}")
+
+
+def _inbox_refresh_now(filters: dict | None = None) -> list[dict]:
+    """Полный сбор инбокса (дёргает адаптеры) + сохранение в кэш."""
+    filters = dict(filters or {})
+    items, _summary = _collect_inbox(filters)
+    _inbox_cache_save(items)
+    return items
 
 # Каналы и их эмодзи
 _CHANNELS = {
@@ -1238,29 +1269,8 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
     def _want(ch: str) -> bool:
         return (not chans) or ch in chans
 
-    # 1) почта
-    if _want("gmail"):
-        try:
-            g = _run_account_control(["google", "gmail_list", "5"])
-            if g.get("status") == "ok" and g.get("emails"):
-                for e in g["emails"]:
-                    if unread_only and not e.get("unread"):
-                        continue
-                    items.append({
-                        "channel": "gmail",
-                        "ref": e.get("id", ""),
-                        "title": e.get("subject", "(без темы)"),
-                        "preview": (e.get("from") or "") + " · " + (e.get("snippet") or "")[:80],
-                        "unread": bool(e.get("unread")),
-                        "date": (e.get("date") or "")[:22],
-                    })
-                unread_total = g.get("unread_total", 0)
-                if unread_total:
-                    summary_parts.append(f"✉️ {unread_total} непрочитанных писем")
-        except Exception:
-            pass
-
-    # 2) Telegram — только личные переписки (без групп/каналов/супергрупп)
+    # Почта (gmail) НЕ входит в инбокс — вынесена в отдельную команду «почта».
+    # 1) Telegram — только личные переписки (без групп/каналов/супергрупп)
     if _want("tg"):
         try:
             tg = _run_account_control(["tg", "dialogs", "10"])
@@ -1379,7 +1389,7 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
                         "ref": name,
                         "title": name,
                         "preview": "Viber: откройте пункт, чтобы прочитать последние сообщения",
-                        "unread": False,
+                        "unread": True,  # OCR не даёт флаг — считаем новым
                         "date": "",
                     })
                 if seen_viber:
@@ -1404,7 +1414,7 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
                         "ref": name,
                         "title": name,
                         "preview": "Signal: откройте пункт, чтобы прочитать последние сообщения",
-                        "unread": False,
+                        "unread": True,  # OCR не даёт флаг — считаем новым
                         "date": "",
                     })
                 if seen_signal:
@@ -1472,9 +1482,12 @@ def _format_inbox(items: list[dict], filters: dict | None = None) -> str:
     return "\n".join(lines)[:3900]
 
 
-def _inbox_keyboard(items: list[dict]) -> dict | None:
-    """Удобные кнопки карточек: открыть, обновить, сводка, отметить прочитанным."""
-    if not items:
+def _inbox_keyboard(items: list[dict], force: bool = False) -> dict | None:
+    """Удобные кнопки карточек: открыть, обновить, сводка, отметить прочитанным.
+
+    force=True — показать служебные кнопки (Обновить/Сводка) даже при пустом списке.
+    """
+    if not items and not force:
         return None
     rows = []
     button_row = []
@@ -1503,8 +1516,8 @@ def _inbox_summarize(items: list[dict]) -> str:
         data_lines.append(f"{i}. [{ch}] {it['title']} — {it['preview'][:100]}")
     prompt = (
         "Ты — ассистент, помогающий с единым инбоксом сообщений. "
-        "Ниже нумерованный список новых пунктов из разных каналов (почта, Telegram, Instagram DM, "
-        "Messenger, Viber, Signal, OLX). Составь КРАТКОЕ резюме на русском (3-6 строк): что самое важное/срочное, "
+        "Ниже нумерованный список новых пунктов из разных каналов (Telegram, Instagram DM, "
+        "Messenger, Viber, Signal, телефон, OLX). Составь КРАТКОЕ резюме на русском (3-6 строк): что самое важное/срочное, "
         "кому стоит ответить, что проверить. Упомяни номера пунктов. "
         "Формат: начни с «🧠 Сводка:», потом маркированный список. Без воды.\n\n"
         + "\n".join(data_lines)
@@ -1979,22 +1992,53 @@ def _handle_sales_lifecycle_intent(api, chat_id: int, text: str) -> bool:
     return True
 
 
-def _send_unified_inbox(api, chat_id: int, text: str = "", filters: dict | None = None) -> None:
-    """Собрать и красиво показать инбокс из одного места."""
+def _send_unified_inbox(api, chat_id: int, text: str = "", filters: dict | None = None,
+                       refresh: bool = False) -> None:
+    """Показать инбокс.
+
+    refresh=True — собрать из каналов (дёргает адаптеры) и обновить кэш;
+    refresh=False — показать сохранённые сообщения (не дёргая адаптеры).
+    Показываются только непрочитанные карточки. Почта — отдельная команда «почта».
+    """
     filters = dict(filters or _parse_inbox_filters(text))
-    api.send_message(chat_id, "⏳ <b>Собираю единый инбокс…</b>\nПочта · TG · Direct · Телефон · Messenger · Viber · Signal · OLX")
-    items, _summary = _collect_inbox(filters)
-    if not items:
-        api.send_message(chat_id, "📭 <b>Инбокс пуст</b>\nНовых карточек по выбранным каналам нет.")
+    lower = " ".join((text or "").casefold().split())
+
+    # почта вынесена в отдельную команду «почта»
+    if filters.get("channels") == ["gmail"] or lower in (
+            "инбокс почта", "инбокс гмаил", "инбокс gmail", "инбокс только почта"):
+        api.send_message(chat_id, "📬 <b>Почта вынесена в отдельную команду.</b>\n\n"
+                                  "Напишите «почта» или «проверь почту» — покажу письма отдельно.")
         return
-    _last_inbox[chat_id] = items
+
+    if refresh:
+        api.send_message(chat_id, "⏳ <b>Обновляю инбокс…</b> проверяю каналы")
+        items = _inbox_refresh_now(filters)
+        if not items:
+            api.send_message(chat_id, "📭 <b>Инбокс пуст</b>\nНовых карточек по каналам нет.",
+                             reply_markup=_inbox_keyboard([], force=True))
+            return
+    else:
+        items = _inbox_cache_load()
+        if not items:
+            api.send_message(chat_id, "📥 <b>Инбокс</b>\n\nСохранённых сообщений пока нет.\n"
+                                      "Нажмите «🔄 Обновить», чтобы проверить каналы.",
+                             reply_markup=_inbox_keyboard([], force=True))
+            return
+
+    # показываем только непрочитанные
+    unread_items = [it for it in items if it.get("unread")]
+    if not unread_items:
+        api.send_message(chat_id, "✅ <b>Инбокс</b>\nНовых непрочитанных сообщений нет.",
+                         reply_markup=_inbox_keyboard([], force=True))
+        return
+    _last_inbox[chat_id] = unread_items
     _last_inbox_filters[chat_id] = filters
-    lower = (text or "").casefold()
     if any(word in lower for word in ("сводк", "резюме", "кратко", "умн")):
         api.send_message(chat_id, "🧠 Составляю сводку по карточкам…")
-        api.send_message(chat_id, _inbox_summarize(items)[:3900])
+        api.send_message(chat_id, _inbox_summarize(unread_items)[:3900])
     else:
-        api.send_message(chat_id, _format_inbox(items, filters), reply_markup=_inbox_keyboard(items))
+        api.send_message(chat_id, _format_inbox(unread_items, filters),
+                         reply_markup=_inbox_keyboard(unread_items))
 
 
 def _handle_unified_inbox_intent(api, chat_id: int, text: str) -> bool:
@@ -6674,7 +6718,8 @@ def _handle_inbox_callback(api: TelegramAPI, chat_id: int, msg_id: int, data: st
     """Обработка кнопок инбокса: прочитать пункт / всё прочитано / сводка."""
     items = _last_inbox.get(chat_id, [])
     if data == "inbox_refresh":
-        _send_unified_inbox(api, chat_id, filters=_last_inbox_filters.get(chat_id, {}))
+        _send_unified_inbox(api, chat_id, filters=_last_inbox_filters.get(chat_id, {}),
+                            refresh=True)
         return
     if data == "inbox_readall":
         _inbox_mark_read(api, chat_id)
