@@ -247,38 +247,65 @@ class PaperTradingSimulator:
                 }
                 logger.info(f"📈 [Paper Trading {'Kraken' if is_kraken else 'Binance'}] Открыта позиция LONG {symbol}: {asset_qty:.6f} по ${price:.2f}")
 
-        # 2. Закрытие позиции и фиксация прибыли
-        elif signal in ["SELL_SHORT", "HOLD"] and pos:
+        # 2. Закрытие позиции, Take-Profit (+2%) и Trailing Stop-Loss (-1%)
+        elif pos:
             entry_price = pos["entry_price"]
             qty = pos["qty"]
             invested = pos["invested_usd"]
-
             current_value = qty * price
             pnl_usd = current_value - invested
+            pnl_pct = (pnl_usd / invested) * 100.0
+            
+            # Обновляем максимальную зафиксированную цену для трейлинга
+            max_seen = pos.get("max_price_seen", entry_price)
+            if price > max_seen:
+                pos["max_price_seen"] = price
+                max_seen = price
 
-            port["cash_usd"] += current_value
-            port["realized_pnl_usd"] += pnl_usd
-            del positions[symbol]
-            port["positions"] = positions
+            # Условия закрытия:
+            # a) Автоматический Take-Profit: +2.0% прибыли
+            # b) Защитный Trailing Stop-Loss: -1.0% от входа или -1.2% от локального пика
+            # c) Медвежий сигнал: SELL_SHORT
+            should_close = False
+            close_reason = ""
+            if pnl_pct >= 2.0:
+                should_close = True
+                close_reason = f"🎯 TAKE-PROFIT (+{pnl_pct:.2f}%)"
+            elif pnl_pct <= -1.0:
+                should_close = True
+                close_reason = f"🛑 STOP-LOSS ({pnl_pct:.2f}%)"
+            elif max_seen > entry_price * 1.01 and price <= max_seen * 0.988:
+                should_close = True
+                close_reason = f"📉 TRAILING STOP (откат от пика ${max_seen:.2f})"
+            elif signal == "SELL_SHORT":
+                should_close = True
+                close_reason = "🔴 Сигнал SELL_SHORT (медвежье пересечение SMA/RSI)"
 
-            if pnl_usd > 0:
-                port["winning_trades"] += 1
-                # Мы больше НЕ записываем симуляционный доход от бумажной торговли в реальный кошелек!
-                # Бумажная прибыль фиксируется исключительно в балансе портфеля paper_portfolio.json.
-                logger.info(f"🏆 [Paper Trading {'Kraken' if is_kraken else 'Binance'}] Зафиксирована виртуальная прибыль: +${pnl_usd:.2f} USD")
+            if should_close:
+                port["cash_usd"] += current_value
+                port["realized_pnl_usd"] += pnl_usd
+                del positions[symbol]
+                port["positions"] = positions
 
-            self.save_portfolio(port)
+                if pnl_usd > 0:
+                    port["winning_trades"] += 1
+                    logger.info(f"🏆 [Paper Trading {'Kraken' if is_kraken else 'Binance'}] {close_reason}: +${pnl_usd:.2f} USD")
+                else:
+                    logger.info(f"🛡 [Paper Trading {'Kraken' if is_kraken else 'Binance'}] {close_reason}: ${pnl_usd:.2f} USD")
 
-            trade_res = {
-                "executed": True,
-                "action": "CLOSE_LONG",
-                "symbol": symbol,
-                "entry_price": entry_price,
-                "exit_price": price,
-                "pnl_usd": round(pnl_usd, 2),
-                "pnl_pct": round((pnl_usd / invested) * 100, 2)
-            }
-            logger.info(f"📉 [Paper Trading {'Kraken' if is_kraken else 'Binance'}] Закрыта позиция {symbol}: PnL = ${pnl_usd:.2f} ({trade_res['pnl_pct']}%)")
+                self.save_portfolio(port)
+
+                trade_res = {
+                    "executed": True,
+                    "action": "CLOSE_LONG",
+                    "reason": close_reason,
+                    "symbol": symbol,
+                    "entry_price": entry_price,
+                    "exit_price": price,
+                    "pnl_usd": round(pnl_usd, 2),
+                    "pnl_pct": round(pnl_pct, 2)
+                }
+                logger.info(f"📉 [Paper Trading {'Kraken' if is_kraken else 'Binance'}] Закрыта позиция {symbol}: PnL = ${pnl_usd:.2f} ({pnl_pct:.2f}%) | {close_reason}")
 
         win_rate = (port["winning_trades"] / port["total_trades"] * 100) if port["total_trades"] > 0 else 0.0
 
