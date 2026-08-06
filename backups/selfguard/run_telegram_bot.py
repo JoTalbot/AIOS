@@ -1349,7 +1349,8 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
             pass
 
     # 5) Выбранные уведомления реального Android-телефона.
-    if _want("android"):
+    #    (Viber-уведомления живут в этом же файле и помечаются каналом "viber")
+    if _want("android") or _want("viber"):
         try:
             path = PROJECT_ROOT / "data" / "android_gateway" / "notifications.json"
             phone_events = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
@@ -1362,6 +1363,18 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
                 if "aios" in _t_title or "выгодный лот" in _t_title or "донор под разбор" in _t_title \
                         or "брифинг" in _t_title or "отчёт" in _t_title or "черновик" in _t_title:
                     continue  # служебные уведомления от самого AIOS — не в инбокс
+                # Viber с телефона → канал "viber", ref = имя контакта (можно ответить)
+                if app == "Viber":
+                    items.append({
+                        "channel": "viber",
+                        "ref": title.strip() or "Viber",
+                        "title": title.strip() or "Viber",
+                        "preview": str(event.get("text") or "")[:120],
+                        "unread": not bool(event.get("read")),
+                        "date": str(event.get("collected_at") or "")[:19],
+                        "source": "phone",
+                    })
+                    continue
                 items.append({
                     "channel": "android",
                     "ref": str(event.get("id") or ""),
