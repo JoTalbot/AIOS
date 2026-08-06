@@ -36,6 +36,8 @@ jobs:
   # 1. Lint & Unit Tests (fast, no emulator)
   # ---------------------------------------------------------
   lint-and-unit:
+    # Legacy/advisory job; the blocking surface is core-gate.yml.
+    continue-on-error: true
     name: Lint & Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30

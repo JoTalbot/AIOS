@@ -8,6 +8,8 @@ on:
 
 jobs:
   lint-and-test:
+    # Legacy/advisory job; the blocking surface is core-gate.yml.
+    continue-on-error: true
     runs-on: ubuntu-latest
     strategy:
       matrix:
