@@ -36,14 +36,29 @@ class PhoneWorkflowReadiness:
             selectors = dict(cal.get("selectors") or {}) if isinstance(cal, dict) else {}
             required = config["selectors"]
             ready = bool(cal) and all(bool(selectors.get(selector)) for selector in required)
+            capabilities = dict(cal.get("capabilities") or {}) if isinstance(cal, dict) else {}
+            extended_required = {
+                "uklon": ("alternate_pickup", "multi_stop_add", "multi_stop_delete", "multi_stop_reorder"),
+            }.get(profile, ())
+            extended_available = sum(bool(capabilities.get(selector)) for selector in extended_required)
+            extended_ready = not extended_required or extended_available == len(extended_required)
             rows.append({
                 "id": profile,
                 "title": config["title"],
                 "ready": ready,
                 "required": len(required),
                 "available": sum(bool(selectors.get(selector)) for selector in required),
+                "extended_ready": extended_ready,
+                "extended_required": len(extended_required),
+                "extended_available": extended_available,
             })
-        return {"status": "ok", "workflows": rows, "ready": sum(1 for row in rows if row["ready"]), "total": len(rows)}
+        return {
+            "status": "ok",
+            "workflows": rows,
+            "ready": sum(1 for row in rows if row["ready"]),
+            "extended_ready": sum(1 for row in rows if row["extended_ready"]),
+            "total": len(rows),
+        }
 
 
 def format_telegram(snapshot: dict) -> str:

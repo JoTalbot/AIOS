@@ -239,6 +239,8 @@ def register_routes(api) -> list:
         Route("/api/v1/shards/jobs", api._shard_jobs_enqueue, methods=["POST"]),
         Route("/api/v1/shards/stats", api._shard_jobs_stats, methods=["GET"]),
         # Android M8 + Marketplace + AI Advisor (v9.1.0)
+        Route("/api/v1/phone/uklon/route-drafts", api._uklon_route_draft_create, methods=["POST"]),
+        Route("/api/v1/phone/uklon/route-drafts/{draft_id}", api._uklon_route_draft_get, methods=["GET"]),
         Route("/api/v1/android/devices", api._android_devices, methods=["GET"]),
         Route("/api/v1/android/predictive", api._android_predictive, methods=["GET"]),
         Route(

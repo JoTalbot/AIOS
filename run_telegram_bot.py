@@ -3421,9 +3421,64 @@ def _send_phone_status(api, chat_id: int, adapter) -> None:
         controls = data.get("route_controls") or {}
         ready = bool(controls) and all(bool(value) for value in controls.values())
         lines.append("Интерфейс маршрута: <b>проверен</b>" if ready else "Интерфейс маршрута: <b>требует проверки</b>")
+    capabilities = data.get("route_capabilities") or {}
+    if capabilities:
+        extended = all(bool(capabilities.get(key)) for key in ("alternate_pickup", "multi_stop_add", "multi_stop_delete", "multi_stop_reorder"))
+        lines.append("Серия адресов: <b>готова</b>" if extended else "Серия адресов: <b>требует проверки</b>")
+        lines.append("Автозаказ: <b>отключён</b>")
     if not data.get("ui_ready"):
         lines.append("⚠️ Для безопасной работы с интерфейсом требуется обновить AIOS Companion.")
     api.send_message(chat_id, "\n".join(lines))
+
+
+def _uklon_route_field_allowed(field: str) -> bool:
+    value = str(field or "").casefold()
+    return value in {"pickup", "destination"} or bool(re.fullmatch(r"stop_[1-9][0-9]*", value))
+
+
+def _uklon_route_field_label(field: str) -> str:
+    value = str(field or "")
+    if value == "pickup":
+        return "точку отправления"
+    if value == "destination":
+        return "конечную точку"
+    match = re.fullmatch(r"stop_([1-9][0-9]*)", value)
+    return f"остановку №{match.group(1)}" if match else "точку маршрута"
+
+
+def _uklon_next_route_field(field: str, route: dict) -> str:
+    value = str(field or "")
+    stops = list(route.get("stops") or [])
+    if value == "pickup":
+        return "stop_1" if stops else "destination"
+    match = re.fullmatch(r"stop_([1-9][0-9]*)", value)
+    if match:
+        index = int(match.group(1))
+        return f"stop_{index + 1}" if index < len(stops) else "destination"
+    return ""
+
+
+def _parse_uklon_route_request(raw: str) -> dict | None:
+    """Parse a safe route draft request without selecting addresses or booking."""
+    match = re.search(
+        r"(?:маршрут|поездк\w*)\s+(?:uklon|уклон)\s*[:—–-]?\s*(.+)$",
+        str(raw or "").strip(),
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    payload = match.group(1).strip()
+    if payload.casefold().startswith(("до ", "в ")):
+        return {"pickup": "", "stops": [], "destination": payload.split(" ", 1)[1].strip()}
+    parts = [part.strip() for part in re.split(r"\s*(?:->|→)\s*", payload)]
+    if len(parts) >= 2:
+        if parts[0]:
+            return {"pickup": parts[0], "stops": [part for part in parts[1:-1] if part], "destination": parts[-1]}
+        return {"pickup": "", "stops": [part for part in parts[1:-1] if part], "destination": parts[-1]}
+    legacy = re.match(r"^(.+?)\s+(?:до|в)\s+(.+)$", payload, re.IGNORECASE)
+    if legacy:
+        return {"pickup": legacy.group(1).strip(), "stops": [], "destination": legacy.group(2).strip()}
+    return None
 
 
 def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
@@ -3579,11 +3634,11 @@ def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
             route = _phone_route_drafts.get(chat_id) or {}
             route_id = str(route.get("route_id") or "")
             field = str(route.get("next_field") or "")
-            if not route_id or field not in ("pickup", "destination"):
-                api.send_message(chat_id, "ℹ️ Сначала создайте черновик: «маршрут Uklon: откуда -> куда».")
+            if not route_id or not _uklon_route_field_allowed(field):
+                api.send_message(chat_id, "ℹ️ Сначала создайте черновик: «маршрут Uklon: откуда -> остановка -> куда».")
                 return True
             _pending_confirm[chat_id] = {"kind": "uklon_enter_route_query", "data": {"route_id": route_id, "field": field}}
-            label = "точку отправления" if field == "pickup" else "пункт назначения"
+            label = _uklon_route_field_label(field)
             api.send_message(chat_id,
                              f"🚕 Ввести подготовленный поисковый запрос для «{label}» в Uklon?\n"
                              "AIOS не будет выбирать подсказку и не создаст заказ. «да» / «нет»")
@@ -3595,12 +3650,13 @@ def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
         if any(word in t for word in ("статус", "состояние", "уведомлен", "готов")):
             _send_phone_status(api, chat_id, adapter)
             return True
-        route_match = re.search(r"(?:маршрут|поездк\w*)\s+(?:uklon|уклон)\s*[:—–-]?\s*(.*?)\s*(?:->|→|в|до)\s+(.+)$", raw, re.IGNORECASE)
-        if route_match:
-            pickup, destination = route_match.group(1).strip(), route_match.group(2).strip()
-            _pending_confirm[chat_id] = {"kind": "uklon_stage_route", "data": {"pickup": pickup, "destination": destination}}
+        route_request = _parse_uklon_route_request(raw)
+        if route_request:
+            _pending_confirm[chat_id] = {"kind": "uklon_stage_route", "data": route_request}
+            stop_count = len(route_request.get("stops") or [])
+            suffix = f" с {stop_count} промежуточными остановками" if stop_count else ""
             api.send_message(chat_id,
-                             "🚕 Открыть Uklon Passenger и подготовить <b>черновик маршрута</b>?\n"
+                             f"🚕 Открыть Uklon Passenger и подготовить <b>черновик маршрута{suffix}</b>?\n"
                              "Заказ, принятие поездки и любые списания не создаются. «да» / «нет»")
             return True
         if "driver" in t or "водител" in t:
@@ -3611,7 +3667,10 @@ def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
             _pending_confirm[chat_id] = {"kind": "phone_open_adapter", "data": {"app": "uklon"}}
             api.send_message(chat_id, "🚕 Открыть Uklon Passenger на телефоне? «да» / «нет»")
             return True
-        api.send_message(chat_id, "🚕 Uklon: «Uklon статус», «открой Uklon», «маршрут Uklon: откуда -> куда». Заказ поездки всегда остаётся ручным подтверждаемым действием.")
+        api.send_message(chat_id,
+                         "🚕 Uklon: «Uklon статус», «открой Uklon», "
+                         "«маршрут Uklon: откуда -> остановка 1 -> остановка 2 -> куда». "
+                         "Заказ поездки всегда остаётся ручным подтверждаемым действием.")
         return True
 
     # ---- EasyWay: package com.eway, now registered as installed ----
@@ -3791,15 +3850,21 @@ def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
         if kind == "uklon_stage_route":
             adapter = _phone_adapter("uklon")
             pickup = str(data.get("pickup") or "")
-            result = adapter.stage_route(pickup, str(data.get("destination") or ""), confirm=True)
+            stops = [str(value or "") for value in (data.get("stops") or []) if str(value or "").strip()]
+            stage_kwargs = {"confirm": True}
+            if stops:
+                stage_kwargs["stops"] = stops
+            result = adapter.stage_route(pickup, str(data.get("destination") or ""), **stage_kwargs)
             if result.get("status") == "route_staged":
                 controls = result.get("controls") or {}
                 ready = bool(controls) and all(bool(value) for value in controls.values())
                 if ready:
-                    field = "pickup" if pickup.strip() else "destination"
-                    _phone_route_drafts[chat_id] = {"route_id": result.get("route_id"), "next_field": field}
+                    field = "pickup" if pickup.strip() else ("stop_1" if stops else "destination")
+                    _phone_route_drafts[chat_id] = {
+                        "route_id": result.get("route_id"), "next_field": field, "stops": stops,
+                    }
                     _pending_confirm[chat_id] = {"kind": "uklon_enter_route_query", "data": {"route_id": result.get("route_id"), "field": field}}
-                    label = "точку отправления" if field == "pickup" else "пункт назначения"
+                    label = _uklon_route_field_label(field)
                     api.send_message(chat_id,
                                      f"🚕 Черновик маршрута готов. Ввести поисковый запрос для «{label}»?\n"
                                      "Это только ввод текста: подсказка и заказ не выбираются. «да» / «нет»")
@@ -3813,15 +3878,16 @@ def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
             field = str(data.get("field") or "")
             result = adapter.prepare_address_query(str(data.get("route_id") or ""), field, confirm=True)
             if result.get("status") == "query_entered":
-                if field == "pickup":
-                    route = _phone_route_drafts.setdefault(chat_id, {"route_id": data.get("route_id")})
-                    route["next_field"] = "destination"
+                route = _phone_route_drafts.setdefault(chat_id, {"route_id": data.get("route_id"), "stops": []})
+                next_field = _uklon_next_route_field(field, route)
+                route["next_field"] = next_field
+                if next_field:
                     api.send_message(chat_id,
-                                     "✅ Запрос точки отправления введён. Выберите точную подсказку <b>вручную на телефоне</b>, затем напишите «продолжи маршрут Uklon». Заказ не создавался.")
+                                     f"✅ Запрос для {_uklon_route_field_label(field)} введён. Выберите подсказку <b>вручную на телефоне</b>, затем напишите «продолжи маршрут Uklon» для следующего поля ({_uklon_route_field_label(next_field)}). Заказ не создавался.")
                 else:
                     _phone_route_drafts.pop(chat_id, None)
                     api.send_message(chat_id,
-                                     "✅ Запрос пункта назначения введён. Выберите точную подсказку <b>вручную на телефоне</b>; заказ поездки не создавался.")
+                                     f"✅ Запрос для {_uklon_route_field_label(field)} введён. Выберите подсказку <b>вручную на телефоне</b>; заказ поездки не создавался.")
             else:
                 api.send_message(chat_id, f"⚠️ Uklon: {_phone_error(result)}")
             return True

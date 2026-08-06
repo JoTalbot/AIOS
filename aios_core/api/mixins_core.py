@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
@@ -1310,6 +1311,75 @@ class CoreHandlersMixin:
             return JSONResponse(report)
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
+
+    def _phone_workflow_root(self) -> Path:
+        return Path(os.environ.get("AIOS_PROJECT_ROOT") or Path(__file__).resolve().parents[2])
+
+    @staticmethod
+    def _route_draft_response(draft: dict, *, include_route: bool = True) -> dict:
+        data = dict(draft.get("data") or {})
+        data.pop("owner", None)
+        response = {
+            "status": "ok",
+            "draft_id": draft.get("id"),
+            "kind": draft.get("kind"),
+            "created_at": draft.get("created_at"),
+            "expires_at": draft.get("expires_at"),
+            "booking": "not_created",
+            "destination_count": data.get("destination_count", 0),
+            "stop_count": len(data.get("stops") or []),
+        }
+        if include_route:
+            response["route"] = data
+        return response
+
+    async def _uklon_route_draft_create(self, request: Request) -> JSONResponse:
+        """Create an authenticated Uklon route draft only; never operate the phone."""
+        if not self.auth_required:
+            return JSONResponse({"error": "Uklon route-draft API requires authentication"}, status_code=503)
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "JSON body required"}, status_code=400)
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "JSON object required"}, status_code=400)
+        pickup = body.get("pickup", "")
+        destination = body.get("final_destination") or body.get("destination", "")
+        raw_stops = body.get("stops", [])
+        if not isinstance(raw_stops, list):
+            return JSONResponse({"error": "stops must be a list"}, status_code=400)
+        stops = [item.get("address", "") if isinstance(item, dict) else item for item in raw_stops]
+        from aios_core.android_phone_workflows import UklonPhoneAdapter, WorkflowStore
+
+        route_data, error = UklonPhoneAdapter.build_route_data(pickup, destination, stops=stops)
+        if error:
+            return JSONResponse({"error": error}, status_code=400)
+        principal = getattr(request.state, "principal", None)
+        route_data["owner"] = getattr(principal, "subject", "api")
+        draft = WorkflowStore(self._phone_workflow_root()).create(
+            "route_draft", UklonPhoneAdapter.package, route_data, ttl_seconds=600,
+        )
+        response = self._route_draft_response(draft)
+        response["status"] = "route_draft_created"
+        return JSONResponse(response, status_code=201, headers={"Cache-Control": "no-store"})
+
+    async def _uklon_route_draft_get(self, request: Request) -> JSONResponse:
+        """Read an owned Uklon route draft; never select addresses or book."""
+        if not self.auth_required:
+            return JSONResponse({"error": "Uklon route-draft API requires authentication"}, status_code=503)
+        from aios_core.android_phone_workflows import UklonPhoneAdapter, WorkflowStore
+
+        draft = WorkflowStore(self._phone_workflow_root()).get(
+            request.path_params["draft_id"], kind="route_draft", package=UklonPhoneAdapter.package,
+        )
+        if not draft:
+            return JSONResponse({"error": "Route draft not found or expired"}, status_code=404)
+        principal = getattr(request.state, "principal", None)
+        owner = (draft.get("data") or {}).get("owner")
+        is_admin = bool(getattr(principal, "roles", set()) & {"admin"})
+        if owner and owner != getattr(principal, "subject", "") and not is_admin:
+            return JSONResponse({"error": "Route draft belongs to another subject"}, status_code=403)
+        return JSONResponse(self._route_draft_response(draft), headers={"Cache-Control": "no-store"})
 
     async def _android_devices(self, request: Request) -> JSONResponse:
         """List Android devices from pool + simulated metrics."""

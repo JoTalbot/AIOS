@@ -107,13 +107,28 @@ def main() -> int:
         result = IMePhoneAdapter(gateway).prepare_draft(_text_after(2), confirm=confirmed)
     elif command == "ime-send" and len(sys.argv) >= 3:
         result = IMePhoneAdapter(gateway).send_draft(sys.argv[2], confirm=confirmed)
+    elif command == "uklon-select-suggestion" and len(sys.argv) >= 3:
+        result = UklonPhoneAdapter(gateway).select_visible_suggestion(_text_after(2), confirm=confirmed)
+    elif command == "uklon-record-vision-capabilities":
+        result = UklonPhoneAdapter(gateway).record_vision_capabilities(confirm=confirmed)
     elif command == "uklon-open-driver":
         result = UklonPhoneAdapter(gateway).open_driver(confirm=confirmed)
     elif command == "uklon-stage-route" and "--to" in sys.argv:
         divider = sys.argv.index("--to")
         pickup = " ".join(sys.argv[2:divider]).strip()
-        destination = " ".join(value for value in sys.argv[divider + 1:] if value != "--confirm").strip()
-        result = UklonPhoneAdapter(gateway).stage_route(pickup, destination, confirm=confirmed)
+        tail = [value for value in sys.argv[divider + 1:] if value != "--confirm"]
+        stops: list[str] = []
+        final_tokens: list[str] = []
+        index = 0
+        while index < len(tail):
+            if tail[index] in {"--via", "--stop"} and index + 1 < len(tail):
+                stops.append(tail[index + 1])
+                index += 2
+                continue
+            final_tokens.append(tail[index])
+            index += 1
+        destination = " ".join(final_tokens).strip()
+        result = UklonPhoneAdapter(gateway).stage_route(pickup, destination, stops=stops, confirm=confirmed)
     elif command == "uklon-enter" and len(sys.argv) >= 4:
         result = UklonPhoneAdapter(gateway).prepare_address_query(sys.argv[2], sys.argv[3], confirm=confirmed)
     elif command == "easyway-stage-route" and len(sys.argv) >= 3:
