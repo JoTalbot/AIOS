@@ -1186,27 +1186,44 @@ def _is_service_preview(text: str) -> bool:
 
 
 def _parse_inbox_filters(text: str) -> dict:
-    """Парсинг фильтров инбокса: only_unread, channels."""
-    t = text.lower()
+    """Парсинг фильтров инбокса: only_unread, channels.
+
+    Поддерживает два стиля команд:
+      * «только X» — классический: «инбокс только тг»
+      * «инбокс X [и Y]» — новый: «инбокс чаты», «инбокс тг», «инбокс тг и инста»
+    «чаты» = все мессенджеры (tg, ig, messenger, viber, signal).
+    """
+    t = " ".join((text or "").casefold().split())
+    words = set(t.split())
     filters = {"unread_only": False, "channels": []}
     if any(w in t for w in ("только непрочитанное", "только непрочитанные", "непрочитанн")):
         filters["unread_only"] = True
-    if any(w in t for w in ("только почта", "только гмаил", "только gmail")):
-        filters["channels"].append("gmail")
-    if any(w in t for w in ("только телеграм", "только tg", "только телега", "только личка")):
-        filters["channels"].append("tg")
-    if any(w in t for w in ("только инстаграм", "только инст", "только direct", "только ig")):
-        filters["channels"].append("ig")
-    if any(w in t for w in ("только мессенджер", "только messenger", "только фб чат")):
-        filters["channels"].append("messenger")
-    if any(w in t for w in ("только вайбер", "только вибер", "только viber")):
-        filters["channels"].append("viber")
-    if any(w in t for w in ("только signal", "только сигнал", "только сигнaл")):
-        filters["channels"].append("signal")
-    if any(w in t for w in ("только телефон", "только android", "только андроид")):
-        filters["channels"].append("android")
-    if any(w in t for w in ("только олх", "только olx")):
-        filters["channels"].append("olx")
+
+    chans: set[str] = set()
+
+    # --- маркеры каналов (работают и без «только») ---
+    if any(w in t for w in ("почт", "gmail", "гмаил")):
+        chans.add("gmail")
+    if any(w in t for w in ("телеграм", "телега", "личк")) or "тг" in words or "tg" in words:
+        chans.add("tg")
+    if any(w in t for w in ("инстаграм", "инст", "direct", "директ")) or "ig" in words or "дм" in words or "dm" in words:
+        chans.add("ig")
+    if any(w in t for w in ("мессенджер", "messenger", "фейсбук", "facebook")) or "фб" in words or "fb" in words:
+        chans.add("messenger")
+    if any(w in t for w in ("вайбер", "вибер", "viber")):
+        chans.add("viber")
+    if any(w in t for w in ("signal", "сигнал")):
+        chans.add("signal")
+    if any(w in t for w in ("телефон", "android", "андроид", "смс")):
+        chans.add("android")
+    if any(w in t for w in ("олх", "olx")):
+        chans.add("olx")
+
+    # «чаты» — все мессенджеры (без почты, телефона, OLX)
+    if "чат" in t:
+        chans.update(["tg", "ig", "messenger", "viber", "signal"])
+
+    filters["channels"] = sorted(chans)
     return filters
 
 
