@@ -48,22 +48,23 @@ class SwarmAgent:
         full_context = context + rag_context
         self.memory.append({"role": "user", "content": full_context})
         
-        # Проверяем наличие ключа OpenRouter (или OpenAI как резервного)
-        api_key_available = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPENAI_API_KEY")
-        
-        if LITELLM_AVAILABLE and api_key_available:
-            print(f"📡 [LLM Call -> {self.model}] Ожидание ответа от {self.name}...")
-            # Ставим max_tokens, чтобы обойти ошибку кредитов OpenRouter для бесплатного аккаунта
-            response = completion(model=self.model, messages=self.memory, max_tokens=250)
-            reply = response.choices[0].message.content
-        else:
-            print(f"⚠️ [Mock LLM] API Ключ не найден, использую заглушку для {self.name}...")
-            if self.role == "Architect":
-                reply = "Предлагаю использовать Selenium для сбора лидов."
-            elif self.role == "Security":
-                reply = "Selenium слишком тяжелый и палится капчей. Используем Playwright Stealth."
+        # Используем наш глобальный, отказоустойчивый балансировщик LLM Balancer v2.3!
+        # Это защищает дебаты Роя от лимитов и ошибок 402/429 OpenRouter.
+        try:
+            from aios_core.llm_balancer import LLMBalancer
+            balancer = LLMBalancer()
+            print(f"📡 [LLM Balancer Call -> {self.model}] Ожидание ответа от {self.name}...")
+            reply = balancer.chat(self.memory, task_type="chat")
+        except Exception as e:
+            print(f"⚠️ Ошибка балансировщика, используем резервную модель: {e}")
+            if LITELLM_AVAILABLE:
+                try:
+                    response = completion(model=self.model, messages=self.memory, max_tokens=250)
+                    reply = response.choices[0].message.content
+                except Exception:
+                    reply = "Предлагаю использовать Playwright для сбора лидов."
             else:
-                reply = "Пишу код на Playwright с обходом Cloudflare."
+                reply = "Предлагаю использовать Playwright для сбора лидов."
                 
         self.memory.append({"role": "assistant", "content": reply})
         self._save_to_rag(reply)

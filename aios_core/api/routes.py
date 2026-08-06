@@ -279,6 +279,8 @@ def register_routes(api) -> list:
         ),
         Route("/api/v1/advisor/draft", api._advisor_draft, methods=["POST"]),
         Route("/api/v1/advisor/summarize", api._advisor_summarize, methods=["POST"]),
+        Route("/api/v1/services/code-audit", api._service_code_audit, methods=["POST"]),
+        Route("/api/v1/services/summarize", api._service_text_summarize, methods=["POST"]),
         Route("/api/v1/advisor/price", api._advisor_price, methods=["GET"]),
         Route("/api/v1/advisor/drafts", api._advisor_list_drafts, methods=["GET"]),
         # Production exploitation

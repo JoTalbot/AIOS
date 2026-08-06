@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AIOS Photo Recognition — распознаёт запчасть по фото через Gemini vision:
+AIOS Photo Recognition — распознаёт запчасть по фото через Gemini Vision / Mistral Pixtral / Ollama Vision:
 что это, состояние, примерная цена, совместимость.
   python run_photo_recognition.py <путь_к_фото>
 """
@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import sys
 import urllib.request
+import urllib.error
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -33,13 +35,13 @@ def _gemini_keys() -> list[str]:
     keys = []
     for k in ["GEMINI_API_KEY", "GEMINI_API_KEY_1", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3"]:
         v = _env(k)
-        if v:
+        if v and v not in keys:
             keys.append(v)
     return keys
 
 
 def recognize(photo_path: str) -> dict:
-    """Распознать запчасть по фото (Gemini vision)."""
+    """Распознать запчасть по фото с каскадным перебором провайдеров (Gemini -> Mistral -> Ollama)."""
     if not Path(photo_path).exists():
         return {"status": "error", "error": f"Файл не найден: {photo_path}"}
     try:
@@ -61,46 +63,7 @@ def recognize(photo_path: str) -> dict:
         "\"price\": число, \"compatible\": \"...\", \"notes\": \"краткие заметки\"}. По-русски."
     )
 
-    def _mistral_describe() -> dict | None:
-        """Fallback: Mistral Pixtral, когда Gemini в квоте."""
-        import urllib.error
-        keys = []
-        try:
-            keys = list(json.loads((ROOT / "data" / ".llm_keys.json").read_text(encoding="utf-8")).get("mistral") or [])
-        except Exception:
-            pass
-        for i in range(1, 5):
-            v = _env(f"MISTRAL_API_KEY_{i}")
-            if v and v not in keys:
-                keys.append(v)
-        v = _env("MISTRAL_API_KEY")
-        if v and v not in keys:
-            keys.append(v)
-        for key in keys:
-            payload = {"model": "pixtral-12b-2409", "max_tokens": 400, "temperature": 0,
-                       "messages": [{"role": "user", "content": [
-                           {"type": "text", "text": prompt},
-                           {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{data_b64}"}}]}]}
-            req = urllib.request.Request("https://api.mistral.ai/v1/chat/completions",
-                                         data=json.dumps(payload).encode(),
-                                         headers={"Content-Type": "application/json",
-                                                  "Authorization": f"Bearer {key}"})
-            try:
-                with urllib.request.urlopen(req, timeout=90) as resp:
-                    out = json.loads(resp.read())
-                txt = (out.get("choices") or [{}])[0].get("message", {}).get("content", "")
-                if isinstance(txt, list):
-                    txt = " ".join(x.get("text", "") for x in txt if isinstance(x, dict))
-                start = txt.find("{")
-                end = txt.rfind("}") + 1
-                if start >= 0 and end > start:
-                    d = json.loads(txt[start:end])
-                    d.setdefault("part", "не определено")
-                    return {"status": "ok", **d, "photo": photo_path, "provider": "mistral"}
-            except (urllib.error.URLError, OSError, ValueError):
-                continue
-        return None
-
+    # 1. Попытка Gemini Vision
     for model in ("gemini-2.5-flash", "gemini-2.0-flash"):
         for key in _gemini_keys():
             try:
@@ -111,9 +74,8 @@ def recognize(photo_path: str) -> dict:
                         {"text": prompt},
                     ]}],
                 }).encode()
-                req = urllib.request.Request(url, data=payload,
-                                             headers={"Content-Type": "application/json"})
-                with urllib.request.urlopen(req, timeout=90) as resp:
+                req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(req, timeout=30) as resp:
                     out = json.loads(resp.read())
                 cands = out.get("candidates") or []
                 if cands:
@@ -127,18 +89,87 @@ def recognize(photo_path: str) -> dict:
                         d.setdefault("price", None)
                         d.setdefault("compatible", "")
                         d.setdefault("notes", "")
-                        return {"status": "ok", **d, "photo": photo_path}
-                    return {"status": "error", "error": "Модель не вернула JSON", "raw": txt[:200]}
+                        return {"status": "ok", **d, "photo": photo_path, "provider": "gemini"}
             except Exception as e:
-                print(f"  [PHOTO-REC] {model} err: {str(e)[:100]}")
                 continue
-    return {"status": "error", "error": "Gemini недоступен"}
 
+    # 2. Попытка Mistral Pixtral
+    mistral_keys = []
+    try:
+        mistral_keys = list(json.loads((ROOT / "data" / ".llm_keys.json").read_text(encoding="utf-8")).get("mistral") or [])
+    except Exception:
+        pass
+    for i in range(1, 5):
+        v = _env(f"MISTRAL_API_KEY_{i}")
+        if v and v not in mistral_keys:
+            mistral_keys.append(v)
+    v = _env("MISTRAL_API_KEY")
+    if v and v not in mistral_keys:
+        mistral_keys.append(v)
 
-    mres = _mistral_describe()
-    if mres:
-        return mres
-    return {"status": "error", "error": "vision-провайдеры недоступны"}
+    for key in mistral_keys:
+        try:
+            payload = {
+                "model": "pixtral-12b-2409",
+                "max_tokens": 400,
+                "temperature": 0,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{data_b64}"}}
+                    ]
+                }]
+            }
+            req = urllib.request.Request(
+                "https://api.mistral.ai/v1/chat/completions",
+                data=json.dumps(payload).encode(),
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"}
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                out = json.loads(resp.read())
+            txt = (out.get("choices") or [{}])[0].get("message", {}).get("content", "")
+            if isinstance(txt, list):
+                txt = " ".join(x.get("text", "") for x in txt if isinstance(x, dict))
+            start = txt.find("{")
+            end = txt.rfind("}") + 1
+            if start >= 0 and end > start:
+                d = json.loads(txt[start:end])
+                d.setdefault("part", "не определено")
+                d.setdefault("condition", "")
+                d.setdefault("price", None)
+                d.setdefault("compatible", "")
+                d.setdefault("notes", "")
+                return {"status": "ok", **d, "photo": photo_path, "provider": "mistral"}
+        except Exception:
+            continue
+
+    # 3. Fallback: Локальный Ollama Vision (qwen2.5vl:3b)
+    try:
+        ollama_payload = {
+            "model": "qwen2.5vl:3b",
+            "prompt": prompt,
+            "images": [data_b64],
+            "stream": False,
+            "options": {"temperature": 0.1, "num_predict": 300}
+        }
+        req = urllib.request.Request(
+            "http://127.0.0.1:11434/api/generate",
+            data=json.dumps(ollama_payload).encode(),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            res = json.loads(resp.read())
+            txt = res.get("response", "")
+            start = txt.find("{")
+            end = txt.rfind("}") + 1
+            if start >= 0 and end > start:
+                d = json.loads(txt[start:end])
+                return {"status": "ok", **d, "photo": photo_path, "provider": "ollama_local"}
+    except Exception:
+        pass
+
+    return {"status": "error", "error": "Все vision-провайдеры (Gemini, Mistral, Ollama) недоступны или исчерпали квоту"}
 
 
 def main() -> None:

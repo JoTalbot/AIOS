@@ -40,7 +40,7 @@ def run_daemon(interval_seconds: int = 3600):
     while True:
         try:
             res = brain.run_market_scan_cycle(max_process_batch=2)
-            logger.info(f"📊 Сводка: Заработано ${res['income_earned_usd']:.2f}, Самообеспеченность: {res['financial_summary']['self_sustainability_pct']}%")
+            logger.info(f"📊 Сводка: Заработано ${res['income_earned_usd']:.2f}, Самообеспеченность: {res.get("financial_summary", {}).get("system_sustainability_pct", res.get("financial_summary", {}).get("self_sustainability_pct", 0.0))}%")
         except Exception as e:
             logger.error(f"❌ Ошибка в цикле фриланс-мозга: {e}")
         time.sleep(interval_seconds)
