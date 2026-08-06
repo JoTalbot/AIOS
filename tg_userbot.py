@@ -77,10 +77,23 @@ async def dialogs(limit: int = 15) -> dict:
         async for d in client.iter_dialogs(limit=limit):
             entity = d.entity
             is_bot = getattr(entity, "bot", False) if hasattr(entity, "bot") else False
+            # точный тип диалога: user / bot / group / supergroup / channel
+            _type = "user"
+            try:
+                from telethon.tl.types import User as _TU, Chat as _TC, Channel as _TCh
+                if isinstance(entity, _TU):
+                    _type = "bot" if bool(is_bot) else "user"
+                elif isinstance(entity, _TC):
+                    _type = "group"
+                elif isinstance(entity, _TCh):
+                    _type = "supergroup" if bool(getattr(entity, "megagroup", False)) else "channel"
+            except Exception:
+                _type = "user" if not is_bot else "bot"
             out.append({
                 "id": d.id,
                 "name": d.name or "(без названия)",
                 "is_bot": bool(is_bot),
+                "type": _type,
                 "unread": d.unread_count,
                 "last_msg": (d.message.message or "")[:80] if d.message else "",
             })
