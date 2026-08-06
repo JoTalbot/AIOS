@@ -17,6 +17,8 @@ permissions:
 
 jobs:
   coverage:
+    # Legacy/advisory job; the blocking surface is core-gate.yml.
+    continue-on-error: true
     name: Coverage Report
     runs-on: ubuntu-latest
     steps:

@@ -38,6 +38,8 @@ jobs:
           fi
 
   deploy:
+    # Deployment is advisory until repository SSH secrets are provisioned.
+    continue-on-error: true
     name: Deploy to SSH Target Server
     needs: check-secrets
     if: needs.check-secrets.outputs.configured == 'true'
