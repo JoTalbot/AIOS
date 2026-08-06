@@ -50,6 +50,10 @@ DEFAULT_APP_PROFILES = {
         "title": "OLX", "packages": ["ua.slando"],
         "mode": "просмотр чатов и черновики с подтверждением", "sensitive": False,
     },
+    "viber": {
+        "title": "Viber", "packages": ["com.viber.voip"],
+        "mode": "чтение уведомлений, просмотр", "sensitive": False,
+    },
 }
 
 
