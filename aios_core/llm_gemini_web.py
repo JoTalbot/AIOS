@@ -280,8 +280,8 @@ async def _ask_gemini_async(prompt: str, timeout: int, cdp_url: str) -> str:
         ctx = browser.contexts[0]
         page = await ctx.new_page()
         try:
-            await page.goto(GEMINI_URL, wait_until="domcontentloaded", timeout=60000)
-            await page.wait_for_timeout(3000)
+            await page.goto(GEMINI_URL, wait_until="domcontentloaded", timeout=30000)
+            await page.wait_for_timeout(2500)
 
             if "accounts.google.com" in page.url:
                 raise RuntimeError(
@@ -294,7 +294,7 @@ async def _ask_gemini_async(prompt: str, timeout: int, cdp_url: str) -> str:
                 print("  [gemini_web] ⚠️ кнопка нового/временного чата не найдена — шлю в текущий чат")
 
             box = page.locator("div[role=textbox]").first
-            await box.click(timeout=15000)
+            await box.click(timeout=8000)
             await page.wait_for_timeout(300)
             await page.keyboard.insert_text(prompt)  # быстро, работает с contenteditable
             await page.wait_for_timeout(200)
@@ -319,13 +319,27 @@ async def _ask_gemini_async(prompt: str, timeout: int, cdp_url: str) -> str:
 _LOCK_FILE = Path(__file__).resolve().parents[1] / "data" / ".gemini_web.lock"
 
 
+def _cdp_alive(cdp_url: str, timeout: float = 3.0) -> bool:
+    """Быстрая проверка, что Chrome с CDP доступен (HTTP GET /json/version)."""
+    try:
+        import urllib.request
+        with urllib.request.urlopen(cdp_url + "/json/version", timeout=timeout):
+            return True
+    except Exception:
+        return False
+
+
 def gemini_web_ask(prompt: str, timeout: int = 240, cdp_url: str = "") -> str:
     """Синхронно получить ответ Gemini Web.
 
     Сериализовано потоковым замком (внутри процесса) и файловым локом
     (между процессами — бот и CLI/скрипты не конфликтуют за вкладки).
+    Если Chrome/CDP недоступен — сразу поднимаем ошибку (быстрый фолбэк),
+    не тратя время на retry-петлю.
     """
     url = cdp_url or os.environ.get("AIOS_CHROME_CDP") or _CDP_DEFAULT
+    if not _cdp_alive(url):
+        raise RuntimeError("Chrome/CDP недоступен (127.0.0.1:9222) — быстрый фолбэк")
     with _lock:
         import asyncio
         import fcntl
