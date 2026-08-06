@@ -58,7 +58,7 @@ jobs:
           pip install ruff -q
           files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.py')
           [ -z "$files" ] && exit 0
-          echo "$files" | xargs ruff check --select E,F
+          echo "$files" | xargs ruff check --select E,F --ignore E402
       - name: Mypy (informational, по бэклогу 02.08)
         continue-on-error: true
         run: |

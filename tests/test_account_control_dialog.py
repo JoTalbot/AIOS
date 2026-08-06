@@ -408,11 +408,13 @@ def test_inbox_intent(monkeypatch):
     assert m._handle_account_intent(api, 1, "инбокс") is True
     joined = "\n".join(api.messages)
     assert "ЕДИНЫЙ ИНБОКС" in joined
-    # пункты сохранены и включают все каналы
+    # Единый инбокс хранит только непрочитанные каналы; почта вынесена
+    # в отдельную команду, а профиль OLX не является сообщением.
     items = m._last_inbox.get(1, [])
     chans = {it["channel"] for it in items}
-    assert "gmail" in chans and "tg" in chans and "ig" in chans
-    assert "messenger" in chans and "olx" in chans
+    assert {"tg", "ig", "messenger"}.issubset(chans)
+    assert "gmail" not in chans
+    assert "olx" not in chans
 
 
 def test_reminder_intent(monkeypatch):

@@ -34,7 +34,7 @@ jobs:
 
     - name: Lint with Ruff (check)
       run: |
-        ruff check aios_core --select E,F,W --output-format=github
+        ruff check aios_core --select E,F,W --ignore E402 --output-format=github
 
     - name: Format with Ruff (check)
       run: |

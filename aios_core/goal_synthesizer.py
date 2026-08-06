@@ -31,6 +31,34 @@ class AutonomousGoalSynthesizer:
         self.backlog_file = self.data_dir / "freelance_tasks.json"
         self.balancer = LLMBalancer()
 
+    def synthesize_meta_goals(self, context: Dict[str, Any] | None = None) -> Dict[str, Any]:
+        """Return deterministic meta-goals without invoking an LLM or mutating state.
+
+        This is the stable v14 compatibility surface used by the universal
+        modules. The autonomous proposal writer remains in
+        :meth:`analyze_and_synthesize_goal` and is intentionally separate.
+        """
+        ctx = dict(context or {})
+        return {
+            "status": "ok",
+            "synthesized_goals": [
+                {
+                    "id": "stability",
+                    "title": "Повысить надёжность production-контуров",
+                    "category": "reliability",
+                    "priority": "high",
+                    "context": ctx,
+                },
+                {
+                    "id": "safety",
+                    "title": "Усилить проверяемость автономных действий",
+                    "category": "safety",
+                    "priority": "high",
+                    "context": ctx,
+                },
+            ],
+        }
+
     def analyze_and_synthesize_goal(self) -> Dict[str, Any]:
         """Анализирует проект и автономно придумывает одну новую полезную утилиту или фичу."""
         logger.info("🧠 [GoalSynthesizer] Запуск анализа кодовой базы и синтеза новых целей...")
