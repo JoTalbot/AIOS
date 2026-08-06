@@ -134,3 +134,105 @@ def test_easyway_query_is_typed_but_route_remains_manual(tmp_path):
     assert result["status"] == "query_entered"
     assert gateway.query == "Центральная остановка"
     assert len(gateway.taps) == 2
+
+
+def test_uklon_route_supports_ordered_intermediate_stops(tmp_path):
+    from aios_core.android_phone_workflows import UklonPhoneAdapter
+
+    gateway = RouteGateway(tmp_path, "ua.com.uklontaxi")
+    adapter = UklonPhoneAdapter(gateway)
+    staged = adapter.stage_route("Точка А", "Точка В", stops=["Точка Б"], confirm=True)
+    assert staged["status"] == "route_staged"
+    assert staged["destination_count"] == 2
+    assert staged["stop_count"] == 1
+
+    route = adapter.store.get(staged["route_id"], kind="route_draft", package="ua.com.uklontaxi")
+    assert route["data"]["route_points"] == ["Точка Б", "Точка В"]
+    assert route["data"]["stops"] == [{"order": 1, "address": "Точка Б"}]
+    assert adapter.prepare_address_query(staged["route_id"], "stop_1")["status"] == "need_confirm"
+    entered = adapter.prepare_address_query(staged["route_id"], "via:1", confirm=True)
+    assert entered["status"] == "query_entered"
+    assert entered["field"] == "stop_1"
+    assert gateway.query == "Точка Б"
+
+
+def test_uklon_route_accepts_compact_ordered_destination_sequence(tmp_path):
+    from aios_core.android_phone_workflows import UklonPhoneAdapter
+
+    gateway = RouteGateway(tmp_path, "ua.com.uklontaxi")
+    staged = UklonPhoneAdapter(gateway).stage_route("Точка А", ["Точка Б", "Точка В"], confirm=True)
+    assert staged["status"] == "route_staged"
+    route = UklonPhoneAdapter(gateway).store.get(staged["route_id"], kind="route_draft", package="ua.com.uklontaxi")
+    assert route["data"]["stops"] == [{"order": 1, "address": "Точка Б"}]
+    assert route["data"]["final_destination"] == "Точка В"
+
+
+def test_uklon_route_limits_destination_count(tmp_path):
+    from aios_core.android_phone_workflows import UklonPhoneAdapter
+
+    gateway = RouteGateway(tmp_path, "ua.com.uklontaxi")
+    adapter = UklonPhoneAdapter(gateway)
+    result = adapter.stage_route("Точка А", "Финал", stops=[str(i) for i in range(adapter.MAX_ROUTE_DESTINATIONS)], confirm=True)
+    assert result["status"] == "error"
+    assert "максимум" in result["error"]
+
+
+def test_uklon_status_exposes_verified_route_capabilities(tmp_path):
+    import json
+
+    from aios_core.android_phone_workflows import UklonPhoneAdapter
+
+    data = tmp_path / "data" / "android_gateway"
+    data.mkdir(parents=True)
+    (data / "app_ui_calibrations.json").write_text(json.dumps({
+        "uklon": {
+            "package": "ua.com.uklontaxi",
+            "selectors": {"pickup_address": True, "destination_address": True},
+            "capabilities": {
+                "alternate_pickup": True,
+                "multi_stop_add": True,
+                "multi_stop_delete": True,
+                "multi_stop_reorder": True,
+                "booking_automation": False,
+                "evidence": "manual_vision_review",
+                "verified_at": "2026-08-06T00:00:00+00:00",
+            },
+        },
+    }), encoding="utf-8")
+    status = UklonPhoneAdapter(RouteGateway(tmp_path, "ua.com.uklontaxi")).status()
+    assert status["route_capabilities"]["multi_stop_reorder"] is True
+    assert status["route_capabilities"]["booking_automation"] is False
+    assert "evidence" not in status["route_capabilities"]
+
+
+def test_uklon_selects_only_one_visible_suggestion(tmp_path):
+    from aios_core.android_phone_workflows import UklonPhoneAdapter
+
+    gateway = RouteGateway(tmp_path, "ua.com.uklontaxi")
+    gateway._suggestion_nodes = [{
+        "text": "Точка Б", "description": "", "resource": "", "class": "TextView",
+        "clickable": True, "editable": False, "bounds": [20, 100, 550, 180],
+    }]
+    gateway._nodes = lambda include_text=True: gateway._suggestion_nodes
+    adapter = UklonPhoneAdapter(gateway)
+    assert adapter.select_visible_suggestion("Точка Б")["status"] == "need_confirm"
+    result = adapter.select_visible_suggestion("Точка Б", confirm=True)
+    assert result == {"status": "suggestion_selected", "booking": "not_created"}
+    assert gateway.taps == [(285, 140)]
+
+
+def test_uklon_refuses_ambiguous_visible_suggestions(tmp_path):
+    from aios_core.android_phone_workflows import UklonPhoneAdapter
+
+    gateway = RouteGateway(tmp_path, "ua.com.uklontaxi")
+    gateway._suggestion_nodes = [
+        {"text": "Парк, 1", "description": "", "resource": "", "class": "TextView",
+         "clickable": True, "editable": False, "bounds": [20, 100, 550, 180]},
+        {"text": "Парк, 2", "description": "", "resource": "", "class": "TextView",
+         "clickable": True, "editable": False, "bounds": [20, 190, 550, 270]},
+    ]
+    gateway._nodes = lambda include_text=True: gateway._suggestion_nodes
+    result = UklonPhoneAdapter(gateway).select_visible_suggestion("Парк", confirm=True)
+    assert result["status"] == "error"
+    assert "несколько" in result["error"]
+    assert gateway.taps == []

@@ -11,9 +11,17 @@ _BASE_URL = os.getenv("AIOS_API_URL", "http://aios-api:8000")
 _TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 
 
+def _auth_headers() -> dict[str, str]:
+    """Optional service credential for an authenticated REST deployment."""
+    token = os.getenv("AIOS_API_KEY", "").strip()
+    return {"Authorization": f"Bearer {token}"} if token else {}
+
+
 async def _request(method: str, path: str, **kwargs: Any) -> Any:
+    headers = dict(_auth_headers())
+    headers.update(kwargs.pop("headers", {}) or {})
     async with httpx.AsyncClient(base_url=_BASE_URL, timeout=_TIMEOUT) as client:
-        resp = await client.request(method, path, **kwargs)
+        resp = await client.request(method, path, headers=headers, **kwargs)
         resp.raise_for_status()
         return resp.json()
 
