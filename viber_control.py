@@ -30,7 +30,27 @@ LOCK_FILE = Path("/tmp/aios_viber_desktop.lock")
 _UI_NOISE = {
     "viber", "rakuten", "поиск", "search", "чаты", "чат", "звонки", "вызовы",
     "контакты", "настройки", "избранное", "недавние", "сообщения", "more", "settings",
+    # меню окна (Windows/линукс-приложение)
+    "file", "edit", "view", "window", "help", "chats", "chat", "contacts",
+    "favorites", "recent", "messages", "settings", "options", "help",
+    # служебное / уведомления / состояния
+    "using", "are", "you", "the", "and", "with", "new", "today", "yesterday",
+    "missed", "call", "calls", "voice", "video", "message", "typing", "online",
+    "seen", "read", "delivered", "sent", "закрыть", "открыть", "подробнее",
+    "закройте", "откройте", "снова", "можно", "сообщение", "входящие", "исходящие",
+    # дни недели / даты (англ и рус)
+    "mon", "tue", "wed", "thu", "fri", "sat", "sun",
+    "пн", "вт", "ср", "чт", "пт", "сб", "вс",
+    "янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек",
+    "today", "yesterday", "сегодня", "вчера",
+    "am", "pm", "дня", "назад",
 }
+
+# URL/цифры/даты/одиночные символы — не имена чатов
+_URL_RE = re.compile(r"[a-z0-9.-]+\.[a-z]{2,}|https?://|www\.", re.IGNORECASE)
+_TIME_RE = re.compile(r"^\d{1,2}[:.]\d{2}$")
+_DATE_RE = re.compile(r"^\d{1,2}[/.]\d{1,2}[/.]\d{2,4}$")
+_SINGLE_RE = re.compile(r"^[\W_]$|^[b-яёіїєґa-z]$", re.IGNORECASE)
 
 
 @contextmanager
@@ -175,27 +195,57 @@ def status() -> dict:
 
 
 @_serialized
+def _is_chat_name(name: str) -> bool:
+    """True, если OCR-токен похож на имя чата, а не на мусор интерфейса."""
+    n = name.strip()
+    if len(n) < 2:
+        return False
+    low = n.casefold()
+    if low in _UI_NOISE:
+        return False
+    if _URL_RE.search(n) or _TIME_RE.match(n) or _DATE_RE.match(n) or _SINGLE_RE.match(n):
+        return False
+    if n.isdigit():
+        return False
+    # имя не может состоять только из символов/цифр без букв
+    letters = sum(1 for ch in n if ch.isalpha())
+    if letters == 0:
+        return False
+    # сервисные SMS/банки/операторы — не личные чаты
+    _service_tokens = ("bam", "112", "privat", "privat24", "novaposhta", "nova poshta",
+                       "monobank", "otp", "sensor", "sms", "viber", "rakuten",
+                       "бездеп", "casino", "kraken", "казино", "зарплат", "oper",
+                       "оператор", "служб", "уведомл", "notif", "code", "код")
+    low_n = n.casefold()
+    if any(tok in low_n for tok in _service_tokens):
+        return False
+    return True
+
+
 def chats() -> dict:
     wid = _activate()
     if not wid:
         return {"status": "error", "error": "Окно Viber не найдено (запущен ли Viber?)"}
     path = _shot("chats")
     words = _ocr(path)
-    # левая панель чатов (примерно 1/3 ширины)
+    # левая панель чатов: x < 640, ниже заголовка/меню (y > 150)
+    left = [w for w in words if w["cx"] < 450 and w["y0"] > 150 and w["conf"] >= 50]
+    # группируем токены по строкам (y), собираем имя строки
+    rows: dict[int, list[dict]] = {}
+    for w in sorted(left, key=lambda x: (x["y0"], x["x0"])):
+        rows.setdefault(w["y0"] // 18, []).append(w)
     seen = []
     added = set()
-    for w in sorted(words, key=lambda x: (x["y0"], x["x0"])):
-        if w["cx"] > 640:
+    for _row_key in sorted(rows):
+        row_words = sorted(rows[_row_key], key=lambda x: x["x0"])
+        name = " ".join(w["text"].strip() for w in row_words if w["text"].strip()).strip()
+        if not _is_chat_name(name):
             continue
-        # чаты — строки с большим шрифтом; берём слова как имена (капитализированные)
-        name = w["text"].strip()
-        if len(name) < 2 or name.casefold() in _UI_NOISE or name in added:
+        low = name.casefold()
+        if low in added:
             continue
-        # Служебные одиночные цифры обычно являются временем/счётчиком, а не именем.
-        if name.isdigit():
-            continue
-        added.add(name)
-        seen.append({"name": name, "x": w["cx"], "y": w["cy"]})
+        added.add(low)
+        seen.append({"name": name[:80], "x": row_words[0]["cx"], "y": row_words[0]["cy"]})
     return {"status": "ok", "chats": seen[:20], "screenshot": path}
 
 
