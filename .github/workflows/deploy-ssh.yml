@@ -29,8 +29,6 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
 
       - name: Pull latest main on server
         env:
@@ -41,6 +39,7 @@ jobs:
           set -euo pipefail
           ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" \
             -o BatchMode=yes \
+            -o StrictHostKeyChecking=accept-new \
             -o ConnectTimeout=20 \
             "$SSH_USER@$SSH_HOST" \
             'cd /root/AIOS && git pull --ff-only origin main'
