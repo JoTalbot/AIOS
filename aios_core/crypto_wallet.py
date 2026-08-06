@@ -129,6 +129,49 @@ class AIOSWalletManager:
         vault = self.load_vault()
         return vault.get('wallets', {})
 
+    def check_evm_balance(self, network: str = 'polygon') -> Dict[str, Any]:
+        """Проверка реального баланса на EVM-сети через публичные RPC."""
+        vault = self.load_vault()
+        wallets = vault.get('wallets', {})
+        system_wallet = wallets.get('system', {})
+        address = system_wallet.get('evm_address', '')
+
+        if not address or address.endswith('SYSTEM'):
+            return {
+                'network': network,
+                'address': address,
+                'native_balance': 0.0,
+                'symbol': 'ETH' if network != 'polygon' else 'MATIC',
+                'is_mock': True
+            }
+
+        rpc_urls = PUBLIC_RPC_NODES.get(network, PUBLIC_RPC_NODES['polygon'])
+        for rpc in rpc_urls:
+            try:
+                w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={'timeout': 5}))
+                if w3.is_connected():
+                    balance_wei = w3.eth.get_balance(Web3.to_checksum_address(address))
+                    balance_eth = balance_wei / 10**18
+                    symbol = 'MATIC' if network == 'polygon' else ('BNB' if network == 'bsc' else 'ETH')
+                    return {
+                        'network': network,
+                        'address': address,
+                        'native_balance': float(balance_eth),
+                        'symbol': symbol,
+                        'is_mock': False
+                    }
+            except Exception as e:
+                logger.warning(f'⚠️ RPC {rpc} недоступен: {e}')
+
+        return {
+            'network': network,
+            'address': address,
+            'native_balance': 0.0,
+            'symbol': 'ETH',
+            'is_mock': True,
+            'error': 'All RPCs timed out'
+        }
+
     def record_income(self, amount_usd: float, source: str, task_id: str, network_token: str = 'USDT') -> Dict[str, Any]:
         """
         Фиксация поступившей прибыли и строгое разделение на 4 равные части (25% каждому):
@@ -237,7 +280,6 @@ class AIOSWalletManager:
         })
 
         system_budget = shares.get('system', 0.0)
-        # Коэффициент покрытия операционных расходов из доли Системы (25%)
         system_sustainability_ratio = (system_budget / total_monthly_need) if total_monthly_need > 0 else 0.0
 
         wallets = self.get_public_addresses()
@@ -259,7 +301,9 @@ class AIOSWalletManager:
 
 # Совместимость
 class AIOSWallet(AIOSWalletManager):
-    pass
+    def check_balance(self):
+        res = self.check_evm_balance('polygon')
+        return res.get('native_balance', 0.0)
 
 
 if __name__ == '__main__':
