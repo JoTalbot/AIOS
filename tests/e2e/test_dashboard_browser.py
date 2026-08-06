@@ -25,11 +25,11 @@ def test_dashboard_overview_and_knowledge_graph() -> None:
         try:
             response = page.goto(url, wait_until="domcontentloaded", timeout=45_000)
             assert response and response.ok
-            # NiceGUI hydrates the page after the initial HTTP response.
-            # Проверяем реальные секции дашборда v3 (AIOS — сводка аккаунтов).
-            page.get_by_text("AIOS — сводка аккаунтов").wait_for(state="visible")
-            page.get_by_text("🛒 OLX").wait_for(state="visible")
-            page.get_by_text("💼 Продажи и CRM").wait_for(state="visible")
+            # NiceGUI hydrates the actual pure-Python dashboard after the
+            # initial HTTP response. Assert stable labels from web_gui/main.py.
+            page.get_by_text("AIOS Dashboard").wait_for(state="visible")
+            page.get_by_text("Overview").wait_for(state="visible")
+            page.get_by_text("OLX").wait_for(state="visible")
             assert not browser_errors
         except Exception:
             page.screenshot(path=str(artifact_dir / "dashboard-e2e-failure.png"), full_page=True)
