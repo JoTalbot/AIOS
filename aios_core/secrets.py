@@ -1,3 +1,24 @@
+# Load standard library secrets module to fix shadowing issue
+import sys, os, importlib.util
+
+_real_secrets = None
+for _p in sys.path:
+    _cand = os.path.join(_p, 'secrets.py')
+    if 'lib/python' in _p and 'site-packages' not in _p and os.path.exists(_cand):
+        try:
+            _spec = importlib.util.spec_from_file_location('_real_secrets_mod', _cand)
+            _real_secrets = importlib.util.module_from_spec(_spec)
+            _spec.loader.exec_module(_real_secrets)
+            break
+        except Exception:
+            pass
+
+if _real_secrets:
+    for _attr in ['token_hex', 'token_bytes', 'token_urlsafe', 'choice', 'randbelow', 'compare_digest', 'SystemRandom']:
+        if hasattr(_real_secrets, _attr):
+            globals()[_attr] = getattr(_real_secrets, _attr)
+            setattr(sys.modules[__name__], _attr, getattr(_real_secrets, _attr))
+
 import os
 import re
 from pathlib import Path
