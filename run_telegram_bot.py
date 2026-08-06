@@ -2378,6 +2378,31 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
         api.send_message(chat_id, "\n".join(lines))
         return True
 
+
+    # Авто-экстракция реквизитов доставки из чата клиента (AI Order Extractor)
+    if any(phrase in t for phrase in ("извлеки заказ", "парсинг доставки", "извлечь адрес", "распознай адрес", "извлеки адрес")) or ("отделение" in t and any(k in t for k in ("получатель", "тел", "г.", "город"))):
+        api.send_message(chat_id, "🤖 <b>ИИ анализирует реквизиты доставки клиента...</b>")
+        from aios_core.order_extractor import AIOSOrderExtractor
+        extractor = AIOSOrderExtractor()
+        try:
+            res = extractor.extract_delivery_details(text)
+            data = res.get("extracted_data", {})
+            lines = [
+                "📦 <b>ИИ извлек данные для Новой Почты:</b>\n",
+                f"• Товар: <b>{data.get('part_name') or 'Автозапчасть'}</b>",
+                f"• Получатель: <b>{data.get('recipient_name') or 'Не указан'}</b>",
+                f"• Телефон: <b>{data.get('phone') or 'Не указан'}</b>",
+                f"• Город: <b>{data.get('city') or 'Не указан'}</b>",
+                f"• Отделение: <b>{data.get('warehouse') or '1'}</b>",
+                f"• Оплата: <i>{data.get('payment_type') or 'наложенный платеж'}</i>\n",
+                "🚀 <b>Готовая команда создания ТТН (скопируйте и отправьте):</b>",
+                f"<code>{res.get('generated_ttn_command')}</code>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка извлечения заказа: {e}")
+        return True
+
     # Новая Почта
     if any(phrase in t for phrase in ("новая почта", "создать ттн", "накладная нп", "почта")):
         import subprocess as _sp_np
