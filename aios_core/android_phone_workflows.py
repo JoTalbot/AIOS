@@ -151,6 +151,31 @@ class WorkflowStore:
             return None
         return {"id": str(workflow_id), **record}
 
+    def list(self, *, kind: str | None = None, package: str | None = None) -> list[dict]:
+        """List active short-lived workflows without touching the phone."""
+        rows = []
+        for workflow_id, record in self._load().items():
+            if kind and record.get("kind") != kind:
+                continue
+            if package and record.get("package") != package:
+                continue
+            rows.append({"id": str(workflow_id), **record})
+        return sorted(rows, key=lambda item: str(item.get("created_at") or ""), reverse=True)
+
+    def delete(self, workflow_id: str, *, kind: str | None = None, package: str | None = None) -> dict | None:
+        """Delete one owned workflow draft from the private store."""
+        workflows = self._load()
+        record = workflows.get(str(workflow_id))
+        if not record:
+            return None
+        if kind and record.get("kind") != kind:
+            return None
+        if package and record.get("package") != package:
+            return None
+        workflows.pop(str(workflow_id), None)
+        _write(self.path, workflows)
+        return {"id": str(workflow_id), **record}
+
     def update(self, workflow_id: str, **changes: Any) -> dict | None:
         workflows = self._load()
         record = workflows.get(str(workflow_id))

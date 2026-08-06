@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 from starlette.websockets import WebSocket
 
 from aios_core.api.security import Principal, find_principal, required_roles
@@ -1325,6 +1326,7 @@ class CoreHandlersMixin:
             "kind": draft.get("kind"),
             "created_at": draft.get("created_at"),
             "expires_at": draft.get("expires_at"),
+            "state": draft.get("state", "prepared"),
             "booking": "not_created",
             "destination_count": data.get("destination_count", 0),
             "stop_count": len(data.get("stops") or []),
@@ -1332,6 +1334,26 @@ class CoreHandlersMixin:
         if include_route:
             response["route"] = data
         return response
+
+    async def _uklon_route_drafts_list(self, request: Request) -> JSONResponse:
+        """List route drafts owned by the authenticated subject."""
+        if not self.auth_required:
+            return JSONResponse({"error": "Uklon route-draft API requires authentication"}, status_code=503)
+        from aios_core.android_phone_workflows import UklonPhoneAdapter, WorkflowStore
+
+        principal = getattr(request.state, "principal", None)
+        subject = getattr(principal, "subject", "")
+        is_admin = bool(getattr(principal, "roles", set()) & {"admin"})
+        drafts = WorkflowStore(self._phone_workflow_root()).list(
+            kind="route_draft", package=UklonPhoneAdapter.package,
+        )
+        if not is_admin:
+            drafts = [d for d in drafts if (d.get("data") or {}).get("owner") == subject]
+        return JSONResponse({
+            "status": "ok",
+            "count": len(drafts),
+            "drafts": [self._route_draft_response(draft) for draft in drafts],
+        }, headers={"Cache-Control": "no-store"})
 
     async def _uklon_route_draft_create(self, request: Request) -> JSONResponse:
         """Create an authenticated Uklon route draft only; never operate the phone."""
@@ -1362,6 +1384,67 @@ class CoreHandlersMixin:
         response = self._route_draft_response(draft)
         response["status"] = "route_draft_created"
         return JSONResponse(response, status_code=201, headers={"Cache-Control": "no-store"})
+
+    async def _uklon_route_draft_cancel(self, request: Request) -> JSONResponse:
+        """Cancel a route draft; cancellation never touches the phone or booking."""
+        if not self.auth_required:
+            return JSONResponse({"error": "Uklon route-draft API requires authentication"}, status_code=503)
+        from aios_core.android_phone_workflows import UklonPhoneAdapter, WorkflowStore
+
+        store = WorkflowStore(self._phone_workflow_root())
+        draft = store.get(request.path_params["draft_id"], kind="route_draft", package=UklonPhoneAdapter.package)
+        if not draft:
+            return JSONResponse({"error": "Route draft not found or expired"}, status_code=404)
+        principal = getattr(request.state, "principal", None)
+        owner = (draft.get("data") or {}).get("owner")
+        is_admin = bool(getattr(principal, "roles", set()) & {"admin"})
+        if owner and owner != getattr(principal, "subject", "") and not is_admin:
+            return JSONResponse({"error": "Route draft belongs to another subject"}, status_code=403)
+        updated = store.update(
+            request.path_params["draft_id"],
+            state="cancelled",
+            cancelled_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        )
+        return JSONResponse(self._route_draft_response(updated), headers={"Cache-Control": "no-store"})
+
+    async def _uklon_route_draft_delete(self, request: Request) -> Response:
+        """Delete an owned route draft from the private store."""
+        if not self.auth_required:
+            return JSONResponse({"error": "Uklon route-draft API requires authentication"}, status_code=503)
+        from aios_core.android_phone_workflows import UklonPhoneAdapter, WorkflowStore
+
+        store = WorkflowStore(self._phone_workflow_root())
+        draft = store.get(request.path_params["draft_id"], kind="route_draft", package=UklonPhoneAdapter.package)
+        if not draft:
+            return JSONResponse({"error": "Route draft not found or expired"}, status_code=404)
+        principal = getattr(request.state, "principal", None)
+        owner = (draft.get("data") or {}).get("owner")
+        is_admin = bool(getattr(principal, "roles", set()) & {"admin"})
+        if owner and owner != getattr(principal, "subject", "") and not is_admin:
+            return JSONResponse({"error": "Route draft belongs to another subject"}, status_code=403)
+        store.delete(request.path_params["draft_id"], kind="route_draft", package=UklonPhoneAdapter.package)
+        return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+    async def _uklon_status(self, request: Request) -> JSONResponse:
+        """Return calibration metadata only; the API never touches the phone."""
+        if not self.auth_required:
+            return JSONResponse({"error": "Uklon status API requires authentication"}, status_code=503)
+        from aios_core.android_phone_workflows import AppCalibrationStore, UklonPhoneAdapter
+
+        calibration = AppCalibrationStore(self._phone_workflow_root()).get("uklon")
+        return JSONResponse({
+            "status": "ok",
+            "package": UklonPhoneAdapter.package,
+            "title": UklonPhoneAdapter.title,
+            "ui_calibrated": calibration.get("package") == UklonPhoneAdapter.package,
+            "route_controls": dict(calibration.get("selectors") or {}),
+            "route_capabilities": {
+                key: value for key, value in (calibration.get("capabilities") or {}).items()
+                if key not in {"evidence", "verified_at"}
+            },
+            "booking_automation": False,
+            "control_plane": "phone-brain/companion",
+        }, headers={"Cache-Control": "no-store"})
 
     async def _uklon_route_draft_get(self, request: Request) -> JSONResponse:
         """Read an owned Uklon route draft; never select addresses or book."""
