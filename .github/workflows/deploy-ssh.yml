@@ -1,185 +1,46 @@
-name: AIOS SSH Deployment
+name: Deploy to VPS via SSH
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      remote_dir:
-        description: 'Remote installation path'
-        required: false
-        default: '/opt/aios'
-      force_rebuild:
-        description: 'Force Docker rebuild without cache'
-        type: boolean
-        default: false
+
+concurrency:
+  group: deploy-vps-production
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  check-secrets:
-    name: Check SSH Secrets
-    runs-on: ubuntu-latest
-    outputs:
-      configured: ${{ steps.check.outputs.configured }}
-    steps:
-      - name: Verify SSH secrets exist
-        id: check
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST || secrets.VPS_HOST }}
-          SSH_KEY: ${{ secrets.SSH_KEY || secrets.VPS_SSH_KEY || secrets.SSH_PRIVATE_KEY }}
-        run: |
-          if [ -z "$SSH_HOST" ] || [ -z "$SSH_KEY" ]; then
-            echo "::warning::SSH deploy secrets (SSH_HOST, SSH_KEY) are not configured in GitHub Secrets. SSH deployment skipped."
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          fi
-
   deploy:
-    # Deployment is advisory until repository SSH secrets are provisioned.
-    continue-on-error: true
-    name: Deploy to SSH Target Server
-    needs: check-secrets
-    if: needs.check-secrets.outputs.configured == 'true'
+    name: Pull main on VPS
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup SSH Key & Config
+      - name: Configure SSH
         env:
-          RAW_KEY: ${{ secrets.SSH_KEY || secrets.VPS_SSH_KEY || secrets.SSH_PRIVATE_KEY }}
-          SSH_HOST_VAL: ${{ secrets.SSH_HOST || secrets.VPS_HOST }}
-          SSH_USER_VAL: ${{ secrets.SSH_USER || secrets.VPS_USERNAME || 'root' }}
-          SSH_PORT_VAL: ${{ secrets.SSH_PORT || secrets.VPS_PORT || '22' }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
         run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
-          KEY_STR="${RAW_KEY}"
-          KEY_STR=$(echo "$KEY_STR" | tr -d '\r' | sed 's/\\n/\n/g')
-
-          if ! echo "$KEY_STR" | grep -q "BEGIN"; then
-            TRY_B64=$(echo "$RAW_KEY" | base64 -d 2>/dev/null || true)
-            if echo "$TRY_B64" | grep -q "BEGIN"; then
-              KEY_STR="$TRY_B64"
-            fi
-          fi
-
-          printf '%s\n' "$KEY_STR" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-
-          if ! ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1; then
-            echo "::error::SSH key in GitHub Secrets could not be parsed by OpenSSH."
-            echo "::error::Please ensure you copy the entire private key (including -----BEGIN ... PRIVATE KEY----- and -----END ... PRIVATE KEY-----)."
-            exit 1
-          fi
-
-          cat << EOF > ~/.ssh/config
-          Host target-server
-            HostName ${SSH_HOST_VAL}
-            User ${SSH_USER_VAL}
-            Port ${SSH_PORT_VAL}
-            IdentityFile ~/.ssh/id_rsa
-            StrictHostKeyChecking no
-            UserKnownHostsFile /dev/null
-          EOF
-          chmod 600 ~/.ssh/config
-
-      - name: Deploy codebase and start stack via SSH
+      - name: Pull latest main on server
         env:
-          APP_DIR: ${{ github.event.inputs.remote_dir || secrets.SSH_PATH || secrets.VPS_APP_DIR || '/opt/aios' }}
-          ENV_CONTENTS: ${{ secrets.ENV_FILE_CONTENTS }}
-          FORCE_REBUILD: ${{ github.event.inputs.force_rebuild || 'true' }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          ssh target-server << EOF
-            set -euo pipefail
-
-            echo "🚀 [1/6] Synchronizing repository in ${APP_DIR}..."
-            mkdir -p "${APP_DIR}"
-            if [ -d "${APP_DIR}/.git" ]; then
-              cd "${APP_DIR}"
-              git fetch origin
-              git checkout ${{ github.sha }} || git checkout main
-              git reset --hard origin/main
-            else
-              git clone https://github.com/JoTalbot/AIOS.git "${APP_DIR}"
-              cd "${APP_DIR}"
-              git checkout ${{ github.sha }} || git checkout main
-            fi
-
-            echo "⚙️ [2/6] Configuring .env environment..."
-            cd "${APP_DIR}"
-            if [ -n "${ENV_CONTENTS:-}" ]; then
-              echo "${ENV_CONTENTS}" > .env
-            elif [ ! -f .env ]; then
-              if [ -f .env.example ]; then
-                cp .env.example .env
-              fi
-              API_KEY=\$(python3 -c "import secrets; print(secrets.token_urlsafe(32))" 2>/dev/null || openssl rand -hex 24)
-              GRAFANA_PASS=\$(python3 -c "import secrets; print(secrets.token_urlsafe(16))" 2>/dev/null || openssl rand -hex 12)
-              echo "AIOS_API_KEYS={\"\\\$API_KEY\":{\"subject\":\"ci-deploy\",\"roles\":[\"admin\"]}}" >> .env
-              echo "GRAFANA_PASSWORD=\$GRAFANA_PASS" >> .env
-            fi
-
-            echo "🔧 [3/6] Ensuring Docker & Docker Compose are installed on target server..."
-            if ! command -v docker >/dev/null 2>&1 || (! docker compose version >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1); then
-              export DEBIAN_FRONTEND=noninteractive
-              apt-get update -qq || true
-              apt-get install -y -qq curl ca-certificates gnupg git || true
-              if ! command -v docker >/dev/null 2>&1; then
-                curl -fsSL https://get.docker.com | sh
-              fi
-              if ! docker compose version >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1; then
-                apt-get install -y -qq docker-compose-plugin || apt-get install -y -qq docker-compose || true
-              fi
-            fi
-
-            echo "🛡️ [3.5/6] Ensuring Firewall ports are open (UFW)..."
-            if command -v ufw >/dev/null 2>&1; then
-              ufw allow 22/tcp || true
-              ufw allow 8000/tcp || true
-              ufw allow 8080/tcp || true
-              ufw allow 8580/tcp || true
-              ufw allow 8471/tcp || true
-              ufw allow 3000/tcp || true
-              ufw allow 9090/tcp || true
-            fi
-
-            echo "🐳 [4/6] Fast-starting Docker Compose stack..."
-            BUILD_FLAGS=""
-            if [ "${FORCE_REBUILD}" = "true" ]; then
-              BUILD_FLAGS="--build"
-            fi
-
-            if docker compose version >/dev/null 2>&1; then
-              docker compose -f docker-compose.prod.yml up -d \$BUILD_FLAGS
-            elif command -v docker-compose >/dev/null 2>&1; then
-              docker-compose -f docker-compose.prod.yml up -d \$BUILD_FLAGS
-            else
-              echo "Error: Neither 'docker compose' nor 'docker-compose' is available."
-              exit 1
-            fi
-
-            echo "🌱 [4.5/6] Seeding initial dashboard metrics, tasks and memory items..."
-            sleep 3
-            docker exec aios-dashboard python seed_dashboard_data.py || true
-
-            echo "🩺 [5/6] Checking container status & health..."
-            sleep 10
-            curl -f http://localhost:8000/health || exit 1
-
-            echo "✅ [6/6] Deployment completed successfully!"
-            if docker compose version >/dev/null 2>&1; then
-              docker compose -f docker-compose.prod.yml ps
-            else
-              docker-compose -f docker-compose.prod.yml ps
-            fi
-          EOF
-
-      - name: Verify Health Endpoint remotely
-        run: |
-          ssh target-server "curl -s http://localhost:8000/health | jq ." || echo "Healthcheck completed"
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            "$SSH_USER@$SSH_HOST" \
+            'cd /root/AIOS && git pull --ff-only origin main'
