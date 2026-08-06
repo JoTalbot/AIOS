@@ -32,6 +32,10 @@ class APIMonetizationManager:
     """Управление коммерческими API-ключами, кредитами и зачислением выручки."""
 
     def __init__(self, data_dir: str = "/root/AIOS/data"):
+        if data_dir in ['/root/AIOS/data', "/root/AIOS/data"]:
+            is_docker = os.path.exists('/.dockerenv') or (os.path.exists('/proc/self/cgroup') and 'docker' in open('/proc/self/cgroup').read())
+            if is_docker and os.path.exists('/app/data'):
+                data_dir = '/app/data'
         self.data_dir = Path(data_dir)
         self.keys_file = self.data_dir / "api_keys_monetization.json"
         self.wallet = AIOSWalletManager(data_dir)

@@ -7,7 +7,7 @@ AIOS Quantitative Trading Engine & Signal Radar
 2. Расчет количественных индикаторов (SMA 5/20 Crossover, RSI 14, Bollinger Bands).
 3. Генерация торговых сигналов (BUY_LONG, SELL_SHORT, HOLD) с уровнем уверенности (Confidence Score).
 4. Безопасная симуляция бумажной торговли (Paper Trading) с фиксированным начальным балансом $1,000.00.
-5. Авто-сплит прибыльных сделок 25%/25%/25%/25% по правилу 4-х кошельков в AIOSWalletManager.
+5. Интегрированный симулятор торгов на бирже Kraken с виртуальным балансом $100.00.
 6. Встроенный Kill-Switch при просадке > 5.0%.
 """
 
@@ -20,7 +20,7 @@ import urllib.request
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
-from aios_core.crypto_wallet import AIOSWalletManager
+from aios_core.crypto_wallet import AIOSWalletManager, PUBLIC_RPC_NODES
 
 logger = logging.getLogger("AIOS.QuantTrading")
 
@@ -31,7 +31,6 @@ class MarketDataFeed:
     @staticmethod
     def fetch_live_price(symbol: str = "BTCUSDT") -> Dict[str, Any]:
         """Запрашивает живую цену пары с публичных API Binance/Bitstamp/CoinGecko."""
-        # 1. Binance Public Ticker API
         url = f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol.upper()}"
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "AIOS-Quant-Engine/1.0"})
@@ -74,6 +73,11 @@ class QuantSignalEngine:
     """Двигатель количественного анализа и индикаторов (SMA, RSI)."""
 
     def __init__(self, data_dir: str = "/root/AIOS/data"):
+        # Умное разрешение путей (Docker/Host)
+        is_docker = os.path.exists('/.dockerenv') or (os.path.exists('/proc/self/cgroup') and 'docker' in open('/proc/self/cgroup').read())
+        if is_docker and os.path.exists("/app/data"):
+            data_dir = "/app/data"
+            
         self.data_dir = Path(data_dir)
         self.history_file = self.data_dir / "price_history_quant.json"
         self._ensure_file()
@@ -162,20 +166,26 @@ class QuantSignalEngine:
 
 
 class PaperTradingSimulator:
-    """Симулятор бумажной торговли с учетом рисков и сплитом прибыли 25%."""
+    """Симулятор бумажной торговли с учетом рисков."""
 
-    def __init__(self, data_dir: str = "/root/AIOS/data"):
+    def __init__(self, data_dir: str = "/root/AIOS/data", portfolio_filename: str = "paper_portfolio.json", initial_balance: float = 1000.0):
+        # Умное разрешение путей (Docker/Host)
+        is_docker = os.path.exists('/.dockerenv') or (os.path.exists('/proc/self/cgroup') and 'docker' in open('/proc/self/cgroup').read())
+        if is_docker and os.path.exists("/app/data"):
+            data_dir = "/app/data"
+            
         self.data_dir = Path(data_dir)
-        self.portfolio_file = self.data_dir / "paper_portfolio.json"
+        self.portfolio_file = self.data_dir / portfolio_filename
         self.wallet = AIOSWalletManager(data_dir)
+        self.initial_balance = initial_balance
         self._ensure_file()
 
     def _ensure_file(self):
         self.data_dir.mkdir(parents=True, exist_ok=True)
         if not self.portfolio_file.exists():
             default_port = {
-                "initial_balance_usd": 1000.0,
-                "cash_usd": 1000.0,
+                "initial_balance_usd": self.initial_balance,
+                "cash_usd": self.initial_balance,
                 "realized_pnl_usd": 0.0,
                 "total_trades": 0,
                 "winning_trades": 0,
@@ -195,7 +205,7 @@ class PaperTradingSimulator:
         with open(self.portfolio_file, "w", encoding="utf-8") as f:
             json.dump(port, f, indent=2, ensure_ascii=False)
 
-    def execute_paper_signal(self, signal_info: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_paper_signal(self, signal_info: Dict[str, Any], is_kraken: bool = False) -> Dict[str, Any]:
         """Исполняет бумажную сделку на основе полученного количественного сигнала."""
         symbol = signal_info["symbol"]
         price = signal_info["current_price"]
@@ -207,10 +217,13 @@ class PaperTradingSimulator:
 
         trade_res = {"executed": False, "details": "Нет условий для сделки"}
 
+        # Лимитируем объем одной сделки (20% от кэша)
+        max_trade_usd = 200.0 if not is_kraken else 20.0 # Для Кракен-лимита в $100 сделка равна $20
+
         # 1. Покупка (BUY_LONG)
         if signal == "BUY_LONG" and not pos:
-            buy_amount_usd = min(port["cash_usd"] * 0.20, 200.0)  # 20% от кэша
-            if buy_amount_usd >= 10.0:
+            buy_amount_usd = min(port["cash_usd"] * 0.20, max_trade_usd)
+            if buy_amount_usd >= 2.0:
                 asset_qty = buy_amount_usd / price
                 port["cash_usd"] -= buy_amount_usd
                 positions[symbol] = {
@@ -232,7 +245,7 @@ class PaperTradingSimulator:
                     "qty": round(asset_qty, 6),
                     "invested_usd": round(buy_amount_usd, 2)
                 }
-                logger.info(f"📈 [Paper Trading] Открыта позиция LONG {symbol}: {asset_qty:.6f} по ${price:.2f}")
+                logger.info(f"📈 [Paper Trading {'Kraken' if is_kraken else 'Binance'}] Открыта позиция LONG {symbol}: {asset_qty:.6f} по ${price:.2f}")
 
         # 2. Закрытие позиции и фиксация прибыли
         elif signal in ["SELL_SHORT", "HOLD"] and pos:
@@ -250,12 +263,9 @@ class PaperTradingSimulator:
 
             if pnl_usd > 0:
                 port["winning_trades"] += 1
-                # Если сделка прибыльная — записываем прибыль и делим по 25%
-                self.wallet.record_income(
-                    amount_usd=pnl_usd,
-                    source=f"QuantTrading:{symbol}:PaperProfit",
-                    task_id=f"trade_{int(time.time())}"
-                )
+                # Мы больше НЕ записываем симуляционный доход от бумажной торговли в реальный кошелек!
+                # Бумажная прибыль фиксируется исключительно в балансе портфеля paper_portfolio.json.
+                logger.info(f"🏆 [Paper Trading {'Kraken' if is_kraken else 'Binance'}] Зафиксирована виртуальная прибыль: +${pnl_usd:.2f} USD")
 
             self.save_portfolio(port)
 
@@ -268,7 +278,7 @@ class PaperTradingSimulator:
                 "pnl_usd": round(pnl_usd, 2),
                 "pnl_pct": round((pnl_usd / invested) * 100, 2)
             }
-            logger.info(f"📉 [Paper Trading] Закрыта позиция {symbol}: PnL = ${pnl_usd:.2f} ({trade_res['pnl_pct']}%)")
+            logger.info(f"📉 [Paper Trading {'Kraken' if is_kraken else 'Binance'}] Закрыта позиция {symbol}: PnL = ${pnl_usd:.2f} ({trade_res['pnl_pct']}%)")
 
         win_rate = (port["winning_trades"] / port["total_trades"] * 100) if port["total_trades"] > 0 else 0.0
 
@@ -288,32 +298,80 @@ class QuantMasterOrchestrator:
     """Главный координатор количественного анализа и трейдинга AIOS."""
 
     def __init__(self, data_dir: str = "/root/AIOS/data"):
+        # Умное разрешение путей (Docker/Host)
+        is_docker = os.path.exists('/.dockerenv') or (os.path.exists('/proc/self/cgroup') and 'docker' in open('/proc/self/cgroup').read())
+        if is_docker and os.path.exists("/app/data"):
+            data_dir = "/app/data"
+            
         self.signal_engine = QuantSignalEngine(data_dir)
-        self.simulator = PaperTradingSimulator(data_dir)
+        
+        # Симулятор #1: Стандартный бумажный трейдинг Binance (Баланс $1,000)
+        self.binance_simulator = PaperTradingSimulator(data_dir, "paper_portfolio.json", initial_balance=1000.0)
+        
+        # Симулятор #2: Интегрированный бумажный трейдинг Kraken (Баланс $100)
+        self.kraken_simulator = PaperTradingSimulator(data_dir, "kraken_paper_portfolio.json", initial_balance=100.0)
 
     def run_quant_cycle(self) -> Dict[str, Any]:
         """Запуск цикла: Запрос котировок -> Анализ индикаторов -> Симулирование сделок."""
         logger.info("📈 [QuantEngine] Запуск цикла количественного анализа котировок...")
 
+        # 1. Цикл 1: Трейдинг-симулятор Binance
         symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
-        signals = []
-        trades = []
+        binance_signals = []
+        binance_trades = []
 
         for sym in symbols:
             market_data = MarketDataFeed.fetch_live_price(sym)
             analysis = self.signal_engine.record_and_analyze(sym, market_data["price"])
+            trade_exec = self.binance_simulator.execute_paper_signal(analysis, is_kraken=False)
 
-            trade_exec = self.simulator.execute_paper_signal(analysis)
+            binance_signals.append(analysis)
+            binance_trades.append(trade_exec)
 
-            signals.append(analysis)
-            trades.append(trade_exec)
+        # 2. Цикл 2: Трейдинг-симулятор KRAKEN (Виртуальный баланс $100)
+        # Мы запрашиваем ЖИВЫЕ котировки непосредственно с API Кракен!
+        from aios_core.kraken_client import AIOSKrakenClient
+        kraken_client = AIOSKrakenClient()
+        
+        kraken_pairs_map = {
+            "BTCUSD": "XXBTZUSD",
+            "ETHUSD": "XETHZUSD",
+            "SOLUSD": "SOLUSD"
+        }
+        
+        kraken_signals = []
+        kraken_trades = []
+        
+        for std_pair, kraken_pair in kraken_pairs_map.items():
+            price = 0.0
+            ticker_res = kraken_client.get_ticker(kraken_pair)
+            if ticker_res.get("status") == "success":
+                try:
+                    # Извлекаем последнюю цену закрытия 'c' из тикера Kraken
+                    price = float(ticker_res["ticker"][kraken_pair]["c"][0])
+                except Exception:
+                    pass
+            
+            if price <= 0:
+                # Fallback на случай недоступности API
+                fallback_prices = {"BTCUSD": 64700.0, "ETHUSD": 3450.0, "SOLUSD": 155.0}
+                price = fallback_prices.get(std_pair, 100.0)
+                
+            # Расчет сигналов по котировкам Кракена
+            analysis = self.signal_engine.record_and_analyze(f"KRAKEN_{std_pair}", price)
+            trade_exec = self.kraken_simulator.execute_paper_signal(analysis, is_kraken=True)
+            
+            kraken_signals.append(analysis)
+            kraken_trades.append(trade_exec)
 
-        logger.info("✅ [QuantEngine] Цикл завершен. Сигналы и портфель обновлены.")
+        logger.info("✅ [QuantEngine] Циклы Binance и Kraken успешно завершены.")
 
         return {
-            "signals": signals,
-            "trading_results": trades,
-            "financial_summary": self.simulator.wallet.get_financial_summary()
+            "binance_signals": binance_signals,
+            "binance_trading_results": binance_trades,
+            "kraken_signals": kraken_signals,
+            "kraken_trading_results": kraken_trades,
+            "financial_summary": self.binance_simulator.wallet.get_financial_summary()
         }
 
 

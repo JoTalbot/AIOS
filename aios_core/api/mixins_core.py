@@ -1027,6 +1027,50 @@ class CoreHandlersMixin:
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=400)
 
+    async def _service_code_audit(self, request: Request) -> JSONResponse:
+        try:
+            from aios_core.api_monetization import APIMonetizationManager
+            
+            api_key = request.headers.get("X-API-KEY")
+            if not api_key:
+                return JSONResponse({"status": "error", "message": "Missing X-API-KEY header."}, status_code=401)
+                
+            body = await request.json()
+            code_snippet = body.get("code_snippet", "")
+            if not code_snippet:
+                return JSONResponse({"status": "error", "message": "Missing code_snippet parameter."}, status_code=400)
+                
+            mgr = APIMonetizationManager()
+            result = mgr.process_code_audit(api_key, code_snippet)
+            if result.get("status") == "error":
+                return JSONResponse(result, status_code=402)
+                
+            return JSONResponse(result)
+        except Exception as e:
+            return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+    async def _service_text_summarize(self, request: Request) -> JSONResponse:
+        try:
+            from aios_core.api_monetization import APIMonetizationManager
+            
+            api_key = request.headers.get("X-API-KEY")
+            if not api_key:
+                return JSONResponse({"status": "error", "message": "Missing X-API-KEY header."}, status_code=401)
+                
+            body = await request.json()
+            text = body.get("text", "")
+            if not text:
+                return JSONResponse({"status": "error", "message": "Missing text parameter."}, status_code=400)
+                
+            mgr = APIMonetizationManager()
+            result = mgr.process_text_summarization(api_key, text)
+            if result.get("status") == "error":
+                return JSONResponse(result, status_code=402)
+                
+            return JSONResponse(result)
+        except Exception as e:
+            return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
     async def _advisor_draft(self, request: Request) -> JSONResponse:
         try:
             from aios_core.ai_advisor import AISalesAdvisor

@@ -23,11 +23,11 @@ from web3 import Web3
 logger = logging.getLogger('AIOS.CryptoWallet')
 
 PUBLIC_RPC_NODES = {
-    'ethereum': ['https://cloudflare-eth.com', 'https://rpc.ankr.com/eth'],
-    'polygon': ['https://polygon-rpc.com', 'https://rpc.ankr.com/polygon'],
-    'arbitrum': ['https://arb1.arbitrum.io/rpc', 'https://rpc.ankr.com/arbitrum'],
-    'base': ['https://mainnet.base.org', 'https://developer-access-mainnet.base.org'],
-    'bsc': ['https://bsc-dataseed.binance.org', 'https://rpc.ankr.com/bsc']
+    'ethereum': ['https://cloudflare-eth.com', 'https://ethereum-rpc.publicnode.com', 'https://1rpc.io/eth'],
+    'polygon': ['https://polygon.drpc.org', 'https://polygon-bor-rpc.publicnode.com', 'https://1rpc.io/matic'],
+    'arbitrum': ['https://arbitrum.drpc.org', 'https://arbitrum-one-rpc.publicnode.com', 'https://arb1.arbitrum.io/rpc', 'https://1rpc.io/arb'],
+    'base': ['https://base.drpc.org', 'https://base-rpc.publicnode.com', 'https://mainnet.base.org', 'https://1rpc.io/base'],
+    'bsc': ['https://bsc-rpc.publicnode.com', 'https://1rpc.io/bnb']
 }
 
 DEFAULT_COSTS = {
@@ -41,6 +41,10 @@ class AIOSWalletManager:
     """Управление 4 кошельками прибыли и бюджетом самообеспечения AIOS."""
 
     def __init__(self, data_dir: str = '/root/AIOS/data'):
+        if data_dir in ['/root/AIOS/data', "/root/AIOS/data"]:
+            is_docker = os.path.exists('/.dockerenv') or (os.path.exists('/proc/self/cgroup') and 'docker' in open('/proc/self/cgroup').read())
+            if is_docker and os.path.exists('/app/data'):
+                data_dir = '/app/data'
         self.data_dir = Path(data_dir)
         self.vault_file = self.data_dir / '.wallet_vault.json'
         self.ledger_file = self.data_dir / 'self_funding_ledger.json'
@@ -128,6 +132,264 @@ class AIOSWalletManager:
         """Возвращает публичные адреса 4 кошельков системы."""
         vault = self.load_vault()
         return vault.get('wallets', {})
+
+    def check_erc20_balance(self, network: str = 'polygon', token_symbol: str = 'USDT') -> Dict[str, Any]:
+        """Проверка реального баланса ERC20 токена на EVM-сети через публичные RPC."""
+        vault = self.load_vault()
+        wallets = vault.get('wallets', {})
+        system_wallet = wallets.get('system', {})
+        address = system_wallet.get('evm_address', '')
+
+        if not address or address.endswith('SYSTEM'):
+            return {
+                'network': network,
+                'token': token_symbol,
+                'address': address,
+                'balance': 0.0,
+                'is_mock': True
+            }
+
+        # Определяем адрес контракта в зависимости от сети и символа
+        contract_addr = None
+        if network == 'polygon':
+            if token_symbol.upper() == 'USDT':
+                contract_addr = '0xc2132D05D31c914a87C6611C10748AEb04B58e8F'
+            elif token_symbol.upper() == 'USDC':
+                contract_addr = '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359'
+            elif token_symbol.upper() == 'APOLUSDT':
+                contract_addr = '0x6ab707Aca953e11f07b2210a415E9817594e7725'
+        elif network == 'base':
+            if token_symbol.upper() == 'USDC':
+                contract_addr = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+            elif token_symbol.upper() == 'USDT':
+                contract_addr = '0xfde4c96c8593536e31f229ea8f37b2ad3e12726c'
+
+        if not contract_addr:
+            return {
+                'network': network,
+                'token': token_symbol,
+                'address': address,
+                'balance': 0.0,
+                'error': f'Неизвестный контракт для токена {token_symbol} в сети {network}'
+            }
+
+        rpc_urls = PUBLIC_RPC_NODES.get(network, PUBLIC_RPC_NODES['polygon'])
+        
+        # Минимальный ABI для balanceOf и decimals
+        erc20_abi = [
+            {
+                "constant": True,
+                "inputs": [{"name": "_owner", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"name": "balance", "type": "uint256"}],
+                "type": "function"
+            },
+            {
+                "constant": True,
+                "inputs": [],
+                "name": "decimals",
+                "outputs": [{"name": "decimals", "type": "uint8"}],
+                "type": "function"
+            }
+        ]
+
+        for rpc in rpc_urls:
+            try:
+                w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={'timeout': 5}))
+                if w3.is_connected():
+                    contract = w3.eth.contract(
+                        address=Web3.to_checksum_address(contract_addr),
+                        abi=erc20_abi
+                    )
+                    raw_balance = contract.functions.balanceOf(Web3.to_checksum_address(address)).call()
+                    decimals = contract.functions.decimals().call()
+                    balance = raw_balance / (10 ** decimals)
+                    
+                    return {
+                        'network': network,
+                        'token': token_symbol.upper(),
+                        'contract_address': contract_addr,
+                        'wallet_address': address,
+                        'balance': float(balance),
+                        'is_mock': False
+                    }
+            except Exception as e:
+                logger.warning(f'⚠️ ERC20 RPC {rpc} недоступен: {e}')
+
+        return {
+            'network': network,
+            'token': token_symbol,
+            'address': address,
+            'balance': 0.0,
+            'is_mock': True,
+            'error': 'All RPCs timed out'
+        }
+
+    def send_evm_tokens(self, network: str = 'polygon', token_symbol: str = 'USDT', recipient: str = '', amount_usd: float = 0.0) -> Dict[str, Any]:
+        """Физическая отправка транзакции перевода EVM-токенов (USDT/USDC или нативного MATIC/ETH) со счетов системы."""
+        from web3 import Web3
+        
+        vault = self.load_vault()
+        wallets = vault.get('wallets', {})
+        system_wallet = wallets.get('system', {})
+        sender_address = system_wallet.get('evm_address', '')
+        
+        # Получаем приватный ключ из сейфа
+        private_key = vault.get('evm_private_key') or vault.get('private_key', '')
+        
+        if not private_key or not sender_address or sender_address.endswith('SYSTEM'):
+            return {
+                'status': 'error',
+                'error': 'Отправка заблокирована: отсутствует приватный ключ или адрес системы.'
+            }
+
+        # Определяем адрес контракта токена
+        is_native = (token_symbol.upper() in ['MATIC', 'ETH', 'POL'])
+        contract_addr = None
+        decimals = 18
+        
+        if not is_native:
+            if network == 'polygon':
+                if token_symbol.upper() == 'USDT':
+                    contract_addr = '0xc2132D05D31c914a87C6611C10748AEb04B58e8F'
+                    decimals = 6
+                elif token_symbol.upper() == 'USDC':
+                    contract_addr = '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359'
+                    decimals = 6
+            elif network == 'base':
+                if token_symbol.upper() == 'USDC':
+                    contract_addr = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+                    decimals = 6
+                elif token_symbol.upper() == 'USDT':
+                    contract_addr = '0xfde4c96c8593536e31f229ea8f37b2ad3e12726c'
+                    decimals = 6
+
+            if not contract_addr:
+                return {
+                    'status': 'error',
+                    'error': f'Неизвестный контракт для токена {token_symbol} в сети {network}'
+                }
+
+        # Получаем RPC ноды
+        rpc_urls = PUBLIC_RPC_NODES.get(network, PUBLIC_RPC_NODES['polygon'])
+        w3 = None
+        for rpc in rpc_urls:
+            try:
+                temp_w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={'timeout': 8}))
+                if temp_w3.is_connected():
+                    w3 = temp_w3
+                    break
+            except Exception:
+                continue
+
+        if not w3:
+            return {
+                'status': 'error',
+                'error': f'Все RPC ноды для сети {network} недоступны.'
+            }
+
+        # Проверяем перегрузку сети перед отправкой (Gas Sentry Guard)
+        try:
+            from aios_core.gas_sentry import Web3GasSentry
+            gas_check = Web3GasSentry.is_gas_safe(w3, network)
+            if not gas_check.get("is_safe"):
+                logger.warning(f"⚠️ [EVM Yield Dispatcher] Транзакция отложена: высокая комиссия в сети {network.upper()} ({gas_check['current_gas_gwei']} Gwei > лимит {gas_check['max_allowed_gwei']} Gwei)")
+                return {
+                    'status': 'error',
+                    'error': f"Gas congestion: current gas {gas_check['current_gas_gwei']} Gwei exceeds limit of {gas_check['max_allowed_gwei']} Gwei"
+                }
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка проверки Gas Sentry: {e}")
+
+        try:
+            sender_checksum = Web3.to_checksum_address(sender_address)
+            recipient_checksum = Web3.to_checksum_address(recipient)
+            
+            # Сверяем адрес из приватного ключа
+            account = w3.eth.account.from_key(private_key)
+            if account.address.lower() != sender_checksum.lower():
+                return {
+                    'status': 'error',
+                    'error': 'Критическое несовпадение: приватный ключ не соответствует адресу отправителя.'
+                }
+
+            # Расчет сырой суммы перевода
+            raw_amount = int(amount_usd * (10 ** decimals))
+            
+            # Построение транзакции
+            tx_params = {
+                'chainId': w3.eth.chain_id,
+                'nonce': w3.eth.get_transaction_count(sender_checksum),
+            }
+
+            # Оценка Gas Price (EIP-1559 с legacy fallback)
+            try:
+                fee_history = w3.eth.fee_history(1, 'latest', [25.0])
+                base_fee = fee_history['baseFeePerGas'][-1]
+                priority_fee = fee_history['reward'][-1][0]
+                tx_params['maxFeePerGas'] = int((base_fee * 1.35) + priority_fee)
+                tx_params['maxPriorityFeePerGas'] = priority_fee
+            except Exception:
+                tx_params['gasPrice'] = int(w3.eth.gas_price * 1.25)
+
+            if is_native:
+                tx_params['to'] = recipient_checksum
+                tx_params['value'] = raw_amount
+                tx_params['gas'] = 21000
+            else:
+                erc20_abi = [
+                    {
+                        "constant": False,
+                        "inputs": [{"name": "_to", "type": "address"}, {"name": "_value", "type": "uint256"}],
+                        "name": "transfer",
+                        "outputs": [{"name": "success", "type": "bool"}],
+                        "type": "function"
+                    }
+                ]
+                contract = w3.eth.contract(address=Web3.to_checksum_address(contract_addr), abi=erc20_abi)
+                
+                built_tx = contract.functions.transfer(
+                    recipient_checksum,
+                    raw_amount
+                ).build_transaction({
+                    'from': sender_checksum,
+                    'nonce': tx_params['nonce'],
+                    'chainId': tx_params['chainId']
+                })
+                
+                if 'gasPrice' in tx_params:
+                    built_tx['gasPrice'] = tx_params['gasPrice']
+                else:
+                    built_tx['maxFeePerGas'] = tx_params['maxFeePerGas']
+                    built_tx['maxPriorityFeePerGas'] = tx_params['maxPriorityFeePerGas']
+                
+                try:
+                    built_tx['gas'] = int(w3.eth.estimate_gas(built_tx) * 1.2)
+                except Exception:
+                    built_tx['gas'] = 100000
+                
+                tx_params = built_tx
+
+            signed_tx = w3.eth.account.sign_transaction(tx_params, private_key)
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            
+            logger.info(f"📲 [EVM Transaction Sent!] {network.upper()} {token_symbol.upper()}: {amount_usd:.2f} -> {recipient}. TxHash: {tx_hash.hex()}")
+            
+            return {
+                'status': 'success',
+                'network': network,
+                'token': token_symbol.upper(),
+                'amount_usd': amount_usd,
+                'recipient': recipient,
+                'tx_hash': tx_hash.hex()
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Ошибка отправки EVM транзакции ({network}): {e}")
+            return {
+                'status': 'error',
+                'error': str(e)
+            }
 
     def check_evm_balance(self, network: str = 'polygon') -> Dict[str, Any]:
         """Проверка реального баланса на EVM-сети через публичные RPC."""

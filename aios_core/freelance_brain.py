@@ -48,6 +48,10 @@ class FreelanceMarketRadar:
     """Сканер источников фриланс-задач и баунти."""
 
     def __init__(self, data_dir: str = "/root/AIOS/data"):
+        if data_dir in ['/root/AIOS/data', "/root/AIOS/data"]:
+            is_docker = os.path.exists('/.dockerenv') or (os.path.exists('/proc/self/cgroup') and 'docker' in open('/proc/self/cgroup').read())
+            if is_docker and os.path.exists('/app/data'):
+                data_dir = '/app/data'
         self.data_dir = Path(data_dir)
         self.tasks_file = self.data_dir / "freelance_tasks.json"
         self._ensure_file()
@@ -68,6 +72,51 @@ class FreelanceMarketRadar:
     def save_tasks(self, tasks: List[Dict[str, Any]]):
         with open(self.tasks_file, "w", encoding="utf-8") as f:
             json.dump(tasks, f, indent=2, ensure_ascii=False)
+
+    def fetch_upwork_jobs(self) -> List[FreelanceTask]:
+        """Парсинг реальных вакансий с Upwork через глобальный RSS-фид."""
+        tasks = []
+        url = "https://www.upwork.com/ab/feed/jobs/rss?q=python+scraping&sort=recency"
+        try:
+            req = urllib.request.Request(
+                url, 
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                xml_data = resp.read().decode("utf-8")
+                
+                # Извлекаем элементы <item> регулярными выражениями
+                items = re.findall(r"<item>(.*?)</item>", xml_data, re.DOTALL)
+                for item in items[:5]:
+                    title_match = re.search(r"<title><!\[CDATA\[(.*?)\]\]></title>", item)
+                    if not title_match:
+                        title_match = re.search(r"<title>(.*?)</title>", item)
+                    link_match = re.search(r"<link>(.*?)</link>", item)
+                    desc_match = re.search(r"<description><!\[CDATA\[(.*?)\]\]></description>", item)
+                    if not desc_match:
+                        desc_match = re.search(r"<description>(.*?)</description>", item)
+                    
+                    if title_match and link_match:
+                        title = title_match.group(1).strip()
+                        link = link_match.group(1).strip()
+                        task_id = f"upwork_{hash(link) % 1000000}"
+                        
+                        clean_desc = desc_match.group(1) if desc_match else ""
+                        clean_desc = re.sub(r"<[^>]*>", "", clean_desc) # очистка от HTML
+                        
+                        tasks.append(FreelanceTask(
+                            id=task_id,
+                            title=title,
+                            description=clean_desc[:1000].strip(),
+                            budget_usd=150.0,
+                            category="web_scraping",
+                            source="upwork",
+                            url=link
+                        ))
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка парсинга Upwork RSS: {e}")
+            
+        return tasks
 
     def fetch_github_bounties(self) -> List[FreelanceTask]:
         """Сбор задач с GitHub Bounties / Help Wanted."""
@@ -287,8 +336,13 @@ class FreelanceBrainManager:
         logger.info("🔍 [FreelanceBrain] Запуск цикла поиска и анализа фриланс-задач...")
 
         gh_tasks = self.radar.fetch_github_bounties()
+        upwork_tasks = []
+        try:
+            upwork_tasks = self.radar.fetch_upwork_jobs()
+        except Exception as e:
+            logger.error(f"Ошибка вызова fetch_upwork_jobs: {e}")
         seed_tasks = self.radar.generate_seed_market_tasks()
-        all_raw_tasks = gh_tasks + seed_tasks
+        all_raw_tasks = gh_tasks + upwork_tasks + seed_tasks
 
         existing_raw = self.radar.load_tasks()
         existing_ids = {t.get("id") for t in existing_raw}
@@ -322,14 +376,48 @@ class FreelanceBrainManager:
                 sol_res = self.solver.solve_task(task)
                 if sol_res.get("status") == "success":
                     solved_count += 1
-                    task.status = "PAID"
-                    # Фиксируем доход в кошельке
-                    self.wallet.record_income(
-                        amount_usd=task.budget_usd,
-                        source=f"Freelance:{task.source}",
-                        task_id=task.id
-                    )
+                    task.status = "BID_SUBMITTED" # Смена статуса на ожидание подтверждения оплаты
                     total_potential_usd += task.budget_usd
+                    # Автоматически генерируем интерактивный HTML-счет для этого клиента
+                    try:
+                        from aios_core.invoice_generator import AIOSInvoiceGenerator
+                        invoicer = AIOSInvoiceGenerator(self.wallet.data_dir)
+                        invoicer.generate_invoice_html(
+                            client_name=task.source,
+                            amount_usd=task.budget_usd,
+                            service_desc=task.title,
+                            invoice_id=task.id
+                        )
+                    except Exception as e:
+                        logger.error(f"Ошибка авто-генерации инвойса: {e}")
+                        
+                    # АВТОПИЛОТ: Физическая отправка отклика на биржу без подтверждения владельца!
+                    if task.source in ["habr_freelance", "freelance_market", "kwork", "kwork_projects", "kwork_rss", "kwork_projects"]:
+                        try:
+                            from aios_core.platforms.freelance_chrome_twin_adapter import FreelanceChromeTwinAdapter
+                            import asyncio
+                            
+                            logger.info(f"🚀 [Autopilot] Инициирована автоматическая отправка отклика на {task.source} (URL: {task.url})...")
+                            
+                            def _run_async(coro):
+                                try:
+                                    loop = asyncio.get_event_loop()
+                                except RuntimeError:
+                                    loop = asyncio.new_event_loop()
+                                    asyncio.set_event_loop(loop)
+                                return loop.run_until_complete(coro)
+                                
+                            adapter = FreelanceChromeTwinAdapter()
+                            if task.source in ["habr_freelance", "freelance_market"]:
+                                p_res = _run_async(adapter.submit_habr_proposal(task.url, task.proposal_text, confirm=True))
+                            elif task.source in ["kwork", "kwork_projects", "kwork_rss", "kwork_projects"]:
+                                p_res = _run_async(adapter.submit_kwork_proposal(task.url, task.proposal_text, confirm=True))
+                            else:
+                                p_res = {"status": "skipped", "message": "Unknown source"}
+                                
+                            logger.info(f"📊 [Autopilot] Результат автоматической отправки: {p_res}")
+                        except Exception as e:
+                            logger.error(f"❌ [Autopilot] Ошибка авто-отправки отклика: {e}")
 
             updated_tasks_list.append(asdict(task))
             processed_in_cycle += 1
