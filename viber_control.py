@@ -51,6 +51,8 @@ _URL_RE = re.compile(r"[a-z0-9.-]+\.[a-z]{2,}|https?://|www\.", re.IGNORECASE)
 _TIME_RE = re.compile(r"^\d{1,2}[:.]\d{2}$")
 _DATE_RE = re.compile(r"^\d{1,2}[/.]\d{1,2}[/.]\d{2,4}$")
 _SINGLE_RE = re.compile(r"^[\W_]$|^[b-яёіїєґa-z]$", re.IGNORECASE)
+_VIBER_SERVICE = {"notes", "my notes", "viber:", "rakuten", "pinned", "закреп",
+                  "no messages", "welcome", "welcome to", "all", "chat", "chats"}
 
 
 @contextmanager
@@ -101,6 +103,50 @@ def _shot(name: str) -> str:
     path = SHOTS / f"viber_{name}_{int(time.time() * 1000)}.png"
     _run(["scrot", "-o", str(path)])
     return str(path)
+
+
+def _window_geo() -> tuple[int, int, int, int]:
+    """Позиция и размер окна Viber (X, Y, W, H) на дисплее."""
+    wid = win_id()
+    if not wid:
+        return 0, 0, 950, 780
+    out, _ = _run(["xdotool", "getwindowgeometry", "--shell", wid])
+    geo = {"X": 0, "Y": 0, "WIDTH": 950, "HEIGHT": 780}
+    for line in out.splitlines():
+        k, _, v = line.partition("=")
+        if k in geo:
+            try:
+                geo[k] = int(v)
+            except ValueError:
+                pass
+    return geo["X"], geo["Y"], geo["WIDTH"], geo["HEIGHT"]
+
+
+def _window_shot(name: str) -> str:
+    """Скриншот ТОЛЬКО окна Viber (без соседних окон рабочего стола)."""
+    path = SHOTS / f"viber_{name}_{int(time.time() * 1000)}.png"
+    X, Y, W, H = _window_geo()
+    _run(["scrot", "-a", f"{X},{Y},{W},{H}", "-o", str(path)])
+    return str(path)
+
+
+def _click_chats_tab() -> None:
+    """Клик по иконке «Чаты» (первая иконка в левой панели Viber)."""
+    X, Y, _, _ = _window_geo()
+    _run(["xdotool", "mousemove", str(X + 25), str(Y + 50)])
+    _run(["xdotool", "click", "1"])
+    time.sleep(1.5)
+
+
+_CALL_WORDS = {"call", "calls", "voice", "missed", "outgoing", "unanswered",
+               "звонок", "звонки", "звонков", "входящ", "исходящ", "пропущ"}
+
+
+def _looks_like_calls_tab(words: list[dict]) -> bool:
+    """Признак, что открыта вкладка «Звонки» (журнал вызовов), а не «Чаты»."""
+    left = [w for w in words if w["cx"] < 240 and w["y0"] > 150 and w["conf"] >= 40]
+    hits = sum(1 for w in left if w["text"].casefold() in _CALL_WORDS)
+    return hits >= 2
 
 
 def _ocr(path: str) -> list[dict]:
@@ -211,6 +257,10 @@ def _is_chat_name(name: str) -> bool:
     letters = sum(1 for ch in n if ch.isalpha())
     if letters == 0:
         return False
+    if letters / max(1, len(n)) < 0.6:  # «Qre@=v», «80 Ha we» — OCR-мусор
+        return False
+    if any(sym in n for sym in ("@", "=", "|")) and letters < 6:
+        return False
     # сервисные SMS/банки/операторы — не личные чаты
     _service_tokens = ("bam", "112", "privat", "privat24", "novaposhta", "nova poshta",
                        "monobank", "otp", "sensor", "sms", "viber", "rakuten",
@@ -219,6 +269,8 @@ def _is_chat_name(name: str) -> bool:
     low_n = n.casefold()
     if any(tok in low_n for tok in _service_tokens):
         return False
+    if low_n in _VIBER_SERVICE or any(s in low_n for s in _VIBER_SERVICE):
+        return False
     return True
 
 
@@ -226,19 +278,33 @@ def chats() -> dict:
     wid = _activate()
     if not wid:
         return {"status": "error", "error": "Окно Viber не найдено (запущен ли Viber?)"}
-    path = _shot("chats")
+    path = _window_shot("chats")
     words = _ocr(path)
-    # левая панель чатов: x < 640, ниже заголовка/меню (y > 150)
-    left = [w for w in words if w["cx"] < 450 and w["y0"] > 150 and w["conf"] >= 50]
-    # группируем токены по строкам (y), собираем имя строки
+    seen = _extract_chat_names(words)
+    # если имён мало — возможно, открыт чат/вкладка не «Чаты»: кликаем иконку «Чаты» и повторяем
+    if len(seen) < 2:
+        _click_chats_tab()
+        path2 = _window_shot("chats2")
+        words2 = _ocr(path2)
+        seen2 = _extract_chat_names(words2)
+        if len(seen2) > len(seen):
+            seen = seen2
+            path = path2
+    return {"status": "ok", "chats": seen[:20], "screenshot": path}
+
+
+def _extract_chat_names(words: list[dict]) -> list[dict]:
+    """Из OCR-слов окна Viber достать имена чатов (левая колонка, без служебного)."""
+    left = [w for w in words if w["cx"] < 220 and w["y0"] > 150 and w["conf"] >= 40]
     rows: dict[int, list[dict]] = {}
     for w in sorted(left, key=lambda x: (x["y0"], x["x0"])):
-        rows.setdefault(w["y0"] // 18, []).append(w)
+        rows.setdefault(w["y0"] // 20, []).append(w)
     seen = []
     added = set()
     for _row_key in sorted(rows):
         row_words = sorted(rows[_row_key], key=lambda x: x["x0"])
         name = " ".join(w["text"].strip() for w in row_words if w["text"].strip()).strip()
+        name = name.lstrip("&+-.() ").strip()  # убрать иконки/служебные символы спереди
         if not _is_chat_name(name):
             continue
         low = name.casefold()
@@ -246,7 +312,7 @@ def chats() -> dict:
             continue
         added.add(low)
         seen.append({"name": name[:80], "x": row_words[0]["cx"], "y": row_words[0]["cy"]})
-    return {"status": "ok", "chats": seen[:20], "screenshot": path}
+    return seen
 
 
 @_serialized
