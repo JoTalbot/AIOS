@@ -150,7 +150,7 @@ def _looks_like_calls_tab(words: list[dict]) -> bool:
 
 
 def _ocr(path: str) -> list[dict]:
-    out, _ = _run(["tesseract", path, "-", "tsv"])
+    out, _ = _run(["tesseract", path, "-", "tsv", "-l", "eng+rus+ukr"])
     words = []
     for line in out.splitlines()[1:]:
         parts = line.split("\t")
@@ -281,15 +281,14 @@ def chats() -> dict:
     path = _window_shot("chats")
     words = _ocr(path)
     seen = _extract_chat_names(words)
-    # если имён мало — возможно, открыт чат/вкладка не «Чаты»: кликаем иконку «Чаты» и повторяем
-    if len(seen) < 2:
+    # если имён мало — возможно, открыт чат/вкладка не «Чаты»: кликаем иконку «Чаты» и повторяем (до 3 раз)
+    for _attempt in range(3):
+        if len(seen) >= 2:
+            break
         _click_chats_tab()
-        path2 = _window_shot("chats2")
-        words2 = _ocr(path2)
-        seen2 = _extract_chat_names(words2)
-        if len(seen2) > len(seen):
-            seen = seen2
-            path = path2
+        path = _window_shot("chats2")
+        words = _ocr(path)
+        seen = _extract_chat_names(words)
     return {"status": "ok", "chats": seen[:20], "screenshot": path}
 
 
