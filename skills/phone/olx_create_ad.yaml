@@ -1,0 +1,39 @@
+# OLX: создание нового объявления на авторазборку / автозапчасти.
+# params: title, price, description, category.
+# Требует confirm=true перед физической публикацией.
+id: olx_create_ad
+title: "OLX: создать объявление о продаже детали"
+app: olx
+params: [title, price, description, category]
+confirm: true
+sensitive: false
+steps:
+  - id: open_app
+    do: app.open
+    package: ua.slando
+    fresh: true
+
+  - id: tap_add_ad_button
+    do: ui.tap
+    timeout: 10
+    heal: true
+    heal_hint: "the plus or 'Post Ad' / 'Подати оголошення' button at the bottom navigation in OLX"
+    selectors:
+      - {resource: "ua.slando:id/button_post_new_ad"}
+      - {desc_contains: "Подати оголошення"}
+      - {desc_contains: "Подать объявление"}
+      - {text_contains: "Подати"}
+      - {text_contains: "Подать"}
+      - {bounds: [240, 1180, 336, 1260]}
+
+  - id: type_ad_title
+    do: ui.type
+    text: "${title}"
+
+  - id: type_ad_price
+    do: ui.type
+    text: "${price}"
+
+  - id: type_ad_description
+    do: ui.type
+    text: "${description}"

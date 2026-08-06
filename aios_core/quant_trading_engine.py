@@ -1,3 +1,43 @@
+
+def _send_trading_tg_alert(message: str) -> bool:
+    """Отправка уведомления о сделках квант-трейдинга в Telegram."""
+    import urllib.request
+    import json
+    import os
+    from pathlib import Path
+    
+    token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("AIOS_TELEGRAM_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    
+    if not token or not chat_id:
+        env_file = Path("/root/AIOS/.env")
+        if env_file.exists():
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                if line.startswith("TELEGRAM_BOT_TOKEN=") and not token:
+                    token = line.split("=", 1)[1].strip().strip('"').strip("'")
+                elif line.startswith("TELEGRAM_CHAT_ID=") and not chat_id:
+                    chat_id = line.split("=", 1)[1].strip().strip('"').strip("'")
+                    
+    if not token or not chat_id:
+        return False
+        
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": int(chat_id),
+        "text": message,
+        "parse_mode": "HTML"
+    }
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=10):
+            return True
+    except Exception:
+        return False
+
 """
 AIOS Quantitative Trading Engine & Signal Radar
 Модуль количественного трейдинга, анализа сигналов и бумажной торговли (Paper Trading) AIOS.
@@ -246,6 +286,7 @@ class PaperTradingSimulator:
                     "invested_usd": round(buy_amount_usd, 2)
                 }
                 logger.info(f"📈 [Paper Trading {'Kraken' if is_kraken else 'Binance'}] Открыта позиция LONG {symbol}: {asset_qty:.6f} по ${price:.2f}")
+                _send_trading_tg_alert(f"📈 <b>[Quant Radar] Открыта позиция LONG</b>\n• Биржа: <b>{'Kraken' if is_kraken else 'Binance'}</b>\n• Пара: <code>{symbol}</code>\n• Цена входа: <b>${price:.2f}</b>\n• Объем: {asset_qty:.6f} (${buy_amount_usd:.2f})")
 
         # 2. Закрытие позиции, Take-Profit (+2%) и Trailing Stop-Loss (-1%)
         elif pos:
@@ -306,6 +347,8 @@ class PaperTradingSimulator:
                     "pnl_pct": round(pnl_pct, 2)
                 }
                 logger.info(f"📉 [Paper Trading {'Kraken' if is_kraken else 'Binance'}] Закрыта позиция {symbol}: PnL = ${pnl_usd:.2f} ({pnl_pct:.2f}%) | {close_reason}")
+                icon = "🎯" if pnl_usd > 0 else "🛑"
+                _send_trading_tg_alert(f"{icon} <b>[Quant Radar] Закрыта позиция {symbol}</b>\n• Биржа: <b>{'Kraken' if is_kraken else 'Binance'}</b>\n• Причина: <b>{close_reason}</b>\n• Вход: ${entry_price:.2f} ➔ Выход: ${price:.2f}\n• Результат (PnL): <b>{'+' if pnl_usd>0 else ''}${pnl_usd:.2f} USD ({pnl_pct:.2f}%)</b>")
 
         win_rate = (port["winning_trades"] / port["total_trades"] * 100) if port["total_trades"] > 0 else 0.0
 
