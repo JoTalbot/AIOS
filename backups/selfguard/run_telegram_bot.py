@@ -4122,6 +4122,20 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     # ---- Viber (десктоп) ----
     if any(w in t for w in ("вайбер", "вибер", "viber")) and not any(
             w in t for w in ("инбокс", "inbox", "все сообщения", "всё в одном", "сводка сообщений")):
+        # Непрочитанные сообщения Viber с телефона (активные уведомления)
+        _unread_hint = any(w in t for w in ("непрочитанн", "сообщен", "собери", "посмотри",
+                                            "проверь", "что ново", "новые", "пришли", "пришло"))
+        _send_hint = any(w in t for w in ("напиши", "отправь", "написать", "ответь", "перешли"))
+        if _unread_hint and not _send_hint:
+            import subprocess as _sp_vib
+            try:
+                r = _sp_vib.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_viber_unread.py")],
+                                capture_output=True, text=True, timeout=90, cwd=str(PROJECT_ROOT))
+                out = (r.stdout or r.stderr or "").strip()
+                api.send_message(chat_id, out[:3900] if out else "💜 Не удалось собрать Viber.")
+            except Exception as exc_vib:
+                api.send_message(chat_id, f"❌ Viber: {_esc_tg(str(exc_vib)[:180])}")
+            return True
         if "чернов" in t or "draft" in t:
             try:
                 from viber_drafts import ViberDraftStore
