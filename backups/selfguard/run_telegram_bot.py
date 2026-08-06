@@ -7140,7 +7140,11 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
     if _llm_mode != "gemini":
         try:
             from aios_core.system_knowledge import get_system_guide as _gsg2
-            _guide_sec = "\n\n=== ВОЗМОЖНОСТИ СИСТЕМЫ (для подсказок пользователю) ===\n" + _gsg2(prompt_mode=True)
+            _guide_sec = ("\n\n=== ВОЗМОЖНОСТИ СИСТЕМЫ (для подсказок пользователю) ===\n"
+                          "Если пользователь спрашивает «что ты умеешь», «какие есть функции», "
+                          "«как сделать X» — ОБЯЗАТЕЛЬНО перечисли конкретные возможности из "
+                          "справки ниже по доменам с примерами фраз, а не общие слова.\n" +
+                          _gsg2(prompt_mode=True))
             _sys_for_llm = system + _guide_sec
             messages[0] = {"role": "system", "content": _sys_for_llm}
         except Exception:

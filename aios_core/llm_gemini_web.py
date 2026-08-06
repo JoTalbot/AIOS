@@ -39,6 +39,13 @@ except ImportError:  # pragma: no cover
 
 GEMINI_URL = "https://gemini.google.com/app"
 
+try:
+    from .system_knowledge import get_system_guide as _get_system_guide
+    HAS_GUIDE = True
+except Exception:
+    _get_system_guide = None
+    HAS_GUIDE = False
+
 _CDP_DEFAULT = "http://127.0.0.1:9222"
 
 # Файл режимов LLM: chat_id -> "auto" | "gemini"
@@ -127,7 +134,7 @@ TG_COMMANDS_HELP = (
 
 
 def build_gemini_prompt(system: str, messages: list[dict], max_turns: int = 10,
-                        max_chars: int = 9000) -> str:
+                        max_chars: int = 12000) -> str:
     """Собрать один текстовый промпт: системная инструкция + последние ходы.
 
     Gemini Web получает одну строку, поэтому роли размечаются текстом.
@@ -150,11 +157,18 @@ def build_gemini_prompt(system: str, messages: list[dict], max_turns: int = 10,
             lines.append(f"{who}: {m['content']}")
         parts.append("=== КОНТЕКСТ ДИАЛОГА (последние ходы) ===\n" + "\n".join(lines))
 
+    try:
+        _guide = _get_system_guide(prompt_mode=True) if HAS_GUIDE else TG_COMMANDS_HELP
+    except Exception:
+        _guide = TG_COMMANDS_HELP
     parts.append(
-        "=== КОМАНДЫ, КОТОРЫЕ МОЖЕТ ИСПОЛЬЗОВАТЬ ПОЛЬЗОВАТЕЛЬ ===\n" + TG_COMMANDS_HELP +
-        "\n\nВАЖНО: если пользователь спрашивает «какие команды я могу использовать», "
-        "«что ты умеешь», «какие есть команды» и т.п. — перечисли именно эти команды "
-        "Telegram-бота текстовым списком. НЕ выполняй и НЕ показывай shell-команды сервера."
+        "=== ВОЗМОЖНОСТИ СИСТЕМЫ (справка для подсказок пользователю) ===\n" + _guide +
+        "\n\nВАЖНО: если пользователь спрашивает «что ты умеешь», «какие команды я могу "
+        "использовать», «какие есть функции», «как сделать X» — ОБЯЗАТЕЛЬНО используй эту "
+        "справку: перечисли КОНКРЕТНЫЕ возможности системы по доменам (OLX, склад, финансы, "
+        "Новая Почта, инбокс, телефон, Instagram, Google, дайджесты и т.д.) с примерами фраз. "
+        "Не отвечай общими словами («помогать с задачами», «писать код») без конкретики. "
+        "НЕ выполняй и НЕ показывай shell-команды сервера без явного запроса через /cmd."
     )
 
     parts.append(
@@ -171,7 +185,12 @@ def build_gemini_prompt(system: str, messages: list[dict], max_turns: int = 10,
         "=== ЗАДАНИЕ ===\n"
         "Ответь сейчас на последнее сообщение пользователя как Лиза: кратко, по-русски, "
         "в своём стиле. Только твой ответ — без «Лиза:», без пересказа контекста, "
-        "без кавычек вокруг всего ответа."
+        "без кавычек вокруг всего ответа.\n"
+        "Если последний вопрос — о твоих возможностях («что ты умеешь» и т.п.) — ответь "
+        "структурированным списком функциональных возможностей ИЗ СЕКЦИИ ВОЗМОЖНОСТИ СИСТЕМЫ: "
+        "домен + пример фразы (например: «OLX — создание и публикация объявлений: "
+        "напиши „создай объявление …"", „мониторинг цен""»; «Склад — „добавь деталь …"", "
+        "„что на складе""»; «Финансы — „запиши продажу …""» и т.д.). В конце спроси, что сделать."
     )
 
     text = "\n\n".join(parts)
@@ -321,7 +340,19 @@ def gemini_web_ask(prompt: str, timeout: int = 240, cdp_url: str = "") -> str:
             except Exception:
                 pass
         try:
-            return asyncio.run(_ask_gemini_async(prompt, timeout, url))
+            _last_err = None
+            for _attempt in range(3):
+                try:
+                    return asyncio.run(_ask_gemini_async(prompt, timeout, url))
+                except Exception as _e:
+                    _last_err = _e
+                    msg = str(_e)
+                    if "closed" in msg.lower() or "target" in msg.lower() or "browser" in msg.lower():
+                        print(f"  [gemini_web] попытка {_attempt + 1} не удалась ({msg[:80]}), повторяю…")
+                        time.sleep(1.5)
+                        continue
+                    raise
+            raise _last_err if _last_err else RuntimeError("Gemini Web недоступен")
         finally:
             if _lf is not None:
                 try:
