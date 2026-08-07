@@ -126,6 +126,8 @@ class LLMBalancer:
         "openrouter": {
             "base_url": "https://openrouter.ai/api/v1/chat/completions",
             "models": [
+                "google/gemini-2.0-flash-001",
+                "mistralai/pixtral-12b-2409",
                 "meta-llama/llama-4-maverick",
                 "mistralai/mistral-small-3.2-24b-instruct",
                 "deepseek/deepseek-chat-v3-0324",
@@ -186,6 +188,8 @@ class LLMBalancer:
         "mistral": {
             "base_url": "https://api.mistral.ai/v1/chat/completions",
             "models": [
+                "pixtral-12b-2409",
+                "pixtral-large-latest",
                 "mistral-small-latest",
                 "mistral-medium-latest",
                 "open-mistral-7b",
@@ -242,6 +246,8 @@ class LLMBalancer:
         "local": {
             "base_url": os.environ.get("LOCAL_LLM_BASE_URL", "http://localhost:11434/v1/chat/completions"),
             "models": [
+                "qwen2.5vl:7b",
+                "qwen2.5vl:3b",
                 "aios-coder:7b",     # AIOS fine-tune на базе qwen2.5-coder:7b
                 "qwen2.5-coder:7b",  # prefer 7b over 1.5b
                 "qwen2.5-coder:1.5b",
@@ -372,6 +378,7 @@ class LLMBalancer:
         self._cache_max = int(os.environ.get("LLM_CACHE_MAX", "256"))
         # FIXED PRIORITY: groq и deepseek первыми (самые надежные), openrouter и local последними
         self.task_priority = {
+            "vision": ["gemini", "mistral", "openrouter", "local"],
             "chat": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "deepseek", "zai", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "ibm", "local"],
             "code": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "huggingface", "gemini", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
             "analysis": ["groq", "cerebras", "github", "gemini", "mistral", "cohere", "together", "nvidia", "huggingface", "openai", "airforce", "openrouter", "local"],
