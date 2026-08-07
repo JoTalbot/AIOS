@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [19.1.0] — 2026-08-07 — AIOS Smart Liquidity Router v19.1 (Cross-Chain Solana/Arbitrum)
+
+### Added
+- **Smart Liquidity Router v19.1** (`aios_core/smart_liquidity_router.py` 110→351 lines):
+  - 4 сети: `Solana Marinade/Jito 6.8%` (live API + fallback), `Base Compound 5.25%` (live), `Arbitrum Aave V3` (live on-chain 4.15% fallback), `Polygon Aave V3 2.74%` (live).
+  - Live Solana APY via Marinade `api.marinade.finance/apy` + Jito fallback, Arbitrum live via `ARBITRUM_DATA_PROVIDER` on-chain `getReserveData`.
+  - `_get_bridge_quote()` — оценка Stargate/Across/LiFi: fee 0.05-0.12% + gas $0.01-0.05, time 2-5 мин, для Polygon→Solana `0.8168$` на `639$`.
+  - `scan_multi_chain_yields()` расширен: net APY после газа, `net_gain_annual`, `yield_30d/90d`, `current_allocation`, `bridge_quote`, сортировка по APY.
+  - `execute_rebalance(dry_run=True)` — `dry_run` по умолчанию (safe), `AIOS_LIQUIDITY_LIVE=1` для live, проверка приватного ключа, stub для Stargate.
+  - `generate_telegram_report()` — markdown отчет `Excess $639 → Annual $43.45 (Solana 6.8% best), net +$25.13`.
+  - `save_state/load_state` → `data/liquidity_router_state.json`.
+- **Runner v19.1** (`run_smart_liquidity_router.py`):
+  - Args: `--telegram`, `--dry-run`, `--execute`, `--amount`, `--daemon --interval 3600`, `--json`.
+  - Daemon mode: loop scan + dry-run quote + state save.
+  - Safety: `AIOS_LIQUIDITY_LIVE=0` блокирует live bridge.
+- **ROI:** Excess `639$` → Base `33.55$/год`, Solana `43.45$/год` (+9.9$), net ребаланс Polygon→Solana `+25.13$/год` после fee `0.81$`.
+
 ## [19.0.0] — 2026-08-07 — AIOS Autonomous Freelance Chrome Twin v19 (Freelancehunt/Upwork/Fiverr)
 
 ### Added
