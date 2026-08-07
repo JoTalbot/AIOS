@@ -25,7 +25,7 @@ logger = logging.getLogger('AIOS.CryptoWallet')
 PUBLIC_RPC_NODES = {
     'ethereum': ['https://cloudflare-eth.com', 'https://ethereum-rpc.publicnode.com', 'https://1rpc.io/eth'],
     'polygon': ['https://polygon.drpc.org', 'https://polygon-bor-rpc.publicnode.com', 'https://1rpc.io/matic'],
-    'arbitrum': ['https://arbitrum.drpc.org', 'https://arbitrum-one-rpc.publicnode.com', 'https://arb1.arbitrum.io/rpc', 'https://1rpc.io/arb'],
+    'arbitrum': ['https://arbitrum.drpc.org', 'https://arbitrum-one-rpc.publicnode.com', 'https://arbitrum-one.publicnode.com', 'https://arb1.arbitrum.io/rpc'],  # 1rpc.io/arb rate-limited, removed 2026-08-08
     'base': ['https://base.drpc.org', 'https://base-rpc.publicnode.com', 'https://mainnet.base.org', 'https://1rpc.io/base'],
     'bsc': ['https://bsc-rpc.publicnode.com', 'https://1rpc.io/bnb']
 }
