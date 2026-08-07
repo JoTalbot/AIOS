@@ -92,6 +92,7 @@ def build_report():
         "win_rate_pct": win_rate,
         "pipeline_open_usd": round(pipeline_usd, 2),
         "by_source": {s: dict(c) for s, c in sorted(by_source.items())},
+        "by_niche": dict(Counter(t.get("category", "?") for t in tasks)),
         "budget_by_source_usd": {s: round(v, 2) for s, v in sorted(budget_by_source.items())},
     }
     STATE.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -108,6 +109,9 @@ def tg_text(r):
         lines.append(f"Win-rate: <b>{r['win_rate_pct']}%</b> ({r['won']}W/{r['lost']}L)")
     else:
         lines.append("Побед пока нет — воронка на этапе накопления ставок")
+    if r.get("by_niche"):
+        top = sorted(r["by_niche"].items(), key=lambda kv: -kv[1])[:4]
+        lines.append("<b>Ниши:</b> " + ", ".join(f"{k}×{v}" for k, v in top))
     lines.append("<b>По источникам:</b>")
     for src, sts in r["by_source"].items():
         bud = r["budget_by_source_usd"].get(src, 0)
