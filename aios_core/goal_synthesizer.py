@@ -111,7 +111,7 @@ class AutonomousGoalSynthesizer:
             
             # Добавляем временные метки
             task_data["created_at"] = time.time()
-            task_data["status"] = "BID_SUBMITTED" # Сразу переводим в статус готовности (можно вызвать автопатч!)
+            task_data["status"] = "INTERNAL_RND"  # v21.2: внутренняя RnD задача, не рыночный бид
             task_data["feasibility_score"] = 0.90
             task_data["solution_plan"] = "Разработка Python-скрипта с интеграцией в Telegram-бот и SRE-тестированием."
             task_data["proposal_text"] = f"Я автономно спроектировал и готов реализовать новую фичу: {task_data['title']}."
