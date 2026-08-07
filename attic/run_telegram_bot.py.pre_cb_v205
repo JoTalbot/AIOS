@@ -1,0 +1,3643 @@
+"""
+AIOS Telegram Bot — управление агентами через Telegram.
+
+Запуск::
+    export AIOS_TELEGRAM_TOKEN="123456:ABC-DEF..."
+    python run_telegram_bot.py
+
+Команды:
+    /start      — приветствие
+    /stats      — статистика системы (БД, оркестратор, бэкапы)
+    /status     — сводка по платформам
+    /olx        — статистика OLX (объявления, цены)
+    /olx_sub    — подписка на новые объявления по запросу
+    /olx_unsub  — отписка
+    /olx_list   — список моих подписок
+    /olx_latest— последние объявления по подписке
+    /olx_analytics — AI-аналитика цен по запросу
+    /help       — список команд
+
+Архитектура:
+    - Polling-режим (не нужен публичный URL)
+    - Интегрируется с ``aios_core.container``
+    - Без внешних зависимостей — чистые HTTP-запросы к Telegram API
+"""
+
+from __future__ import annotations
+
+import contextlib
+import json
+import os
+import re
+import sys
+import time
+import urllib.request
+from datetime import datetime, timedelta
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+
+
+
+sys.path.insert(0, str(PROJECT_ROOT))
+
+# ── v20.5 Hygiene: модули вынесены в tg_bot/ (имена импортируются обратно) ──
+from tg_bot.common import _safe, _esc_tg, _smart_model, _local_api_json, _run_account_control
+from tg_bot.state import _pending_confirm, _last_inbox, _last_inbox_filters, _CHANNELS
+from tg_bot.accounts import (
+    _fmt_gmail_list, _acct_send_result, _run_acct_cmd, _acct_google, _acct_instagram,
+    _llm_extract_json, _llm_extract_gmail, _llm_extract_calendar, _handle_account_intent,
+    cmd_accounts, cmd_google, cmd_instagram,
+)
+from tg_bot.state import _last_photo, _photo_pending, _last_gen_ad, _last_video, _last_gmail_ids
+from tg_bot.phone import (
+    _PHONE_BRAIN_API, _phone_brain_gateway_run, _android_gateway_run, _phone_brain_api_request,
+    _handle_phone_brain_intent, _handle_phone_workflow_readiness_intent, _handle_phone_jobs_intent,
+    _handle_phone_inventory_intent, _handle_phone_metrics_intent, _handle_phone_bank_monitor_intent,
+    _handle_phone_recovery_intent, _handle_phone_weekly_report_intent, _handle_phone_control_center_intent,
+    _handle_phone_audit_intent, _phone_lead_queue, _followup_templates, _handle_phone_lead_intent,
+    _phone_adapter, _phone_error, _mask_android_notification, _send_phone_status,
+    _uklon_route_field_allowed, _uklon_route_field_label, _uklon_next_route_field,
+    _parse_uklon_route_request, _handle_android_phone_workflow_intent,
+    _cancel_phone_pending, _confirm_phone_pending, _handle_android_gateway_intent,
+)
+from tg_bot.voice import VOICE_REPLY_FILE, _voice_enabled, _set_voice_enabled, _send_voice_reply, _transcribe_audio
+from tg_bot.inbox import (
+    INBOX_SCHEDULE_FILE, INBOX_CACHE_FILE, _inbox_cache_load, _inbox_cache_save,
+    _inbox_refresh_now, _is_service_preview, _parse_inbox_filters, _collect_inbox,
+    _format_inbox, _inbox_keyboard, _inbox_summarize, _llm_chat_direct, _inbox_reply,
+    _inbox_voice, _inbox_search, _inbox_mark_read, _inbox_schedule_cmd, _run_due_inbox,
+)
+
+
+
+_env_path = PROJECT_ROOT / ".env"
+if _env_path.exists():
+    for _line in _env_path.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if not _line or _line.startswith("#") or "=" not in _line:
+            continue
+        _key, _, _value = _line.partition("=")
+        _key = _key.strip()
+        _value = _value.strip().strip('\"').strip("'")
+        if _key and _key not in os.environ:
+            os.environ[_key] = _value
+
+# ---------------------------------------------------------------------------
+# Telegram API helpers (zero-dependency)
+# ---------------------------------------------------------------------------
+
+
+class TelegramAPI:
+    """Minimal Telegram Bot API client (polling mode)."""
+
+    def __init__(self, token: str) -> None:
+        self._token = token
+        self._base = f"https://api.telegram.org/bot{token}"
+
+    def _request(self, method: str, data: dict | None = None) -> dict:
+        url = f"{self._base}/{method}"
+        body = json.dumps(data or {}).encode()
+        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            return json.loads(resp.read())
+
+    def get_updates(self, offset: int = 0) -> list[dict]:
+        result = self._request("getUpdates", {"offset": offset, "timeout": 30})
+        return result.get("result", [])
+
+    def send_message(
+        self, chat_id: int, text: str, parse_mode: str = "HTML", disable_web_page_preview: bool = True,
+        reply_markup: dict | None = None,
+    ) -> dict:
+        payload = {
+            "chat_id": chat_id,
+            "text": text[:4000],
+            "parse_mode": parse_mode,
+            "disable_web_page_preview": disable_web_page_preview,
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        try:
+            return self._request("sendMessage", payload)
+        except urllib.error.HTTPError as e:
+            # Telegram 400 Bad Request: невалидный HTML (raw <...>) — повторяем как plain text
+            if e.code == 400 and parse_mode == "HTML":
+                payload["parse_mode"] = ""
+                return self._request("sendMessage", payload)
+            raise
+
+    def answer_callback(self, callback_query_id: str, text: str = "") -> dict:
+        return self._request("answerCallbackQuery", {
+            "callback_query_id": callback_query_id,
+            "text": text[:200],
+        })
+
+    def edit_message(self, chat_id: int, message_id: int, text: str,
+                     parse_mode: str = "HTML", reply_markup: dict | None = None) -> dict:
+        payload = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": text[:4000],
+            "parse_mode": parse_mode,
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        try:
+            return self._request("editMessageText", payload)
+        except urllib.error.HTTPError as e:
+            if e.code == 400 and parse_mode == "HTML":
+                payload["parse_mode"] = ""
+                return self._request("editMessageText", payload)
+            raise
+
+    def get_file(self, file_id: str) -> dict:
+        """Получить информацию о файле (file_path) по file_id."""
+        return self._request("getFile", {"file_id": file_id}).get("result", {})
+
+    def download_file_by_id(self, file_id: str, dest: str | None = None) -> str:
+        """Скачать файл (фото и т.п.) по file_id в локальный путь; вернуть путь."""
+        info = self.get_file(file_id)
+        path = info.get("file_path", "")
+        if not path:
+            raise ValueError(f"Нет file_path для file_id {file_id}")
+        url = f"https://api.telegram.org/file/bot{self._token}/{path}"
+        with urllib.request.urlopen(url, timeout=90) as resp:
+            data = resp.read()
+        if not dest:
+            ext = Path(path).suffix or ".jpg"
+            dest = f"/tmp/aios_tg_{int(time.time() * 1000)}{ext}"
+        Path(dest).write_bytes(data)
+        return dest
+
+    def _multipart(self, method: str, chat_id: int, field: str, file_path: str,
+                   caption: str = "") -> dict:
+        """Универсальная отправка файла (photo/document)."""
+        import mimetypes
+        boundary = "----aios" + str(int(time.time() * 1000))
+        content = Path(file_path).read_bytes()
+
+        def _field(name: str, value: str) -> bytes:
+            return (f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n"
+                    f"{value}\r\n").encode()
+
+        fn = Path(file_path).name
+        ct = mimetypes.guess_type(fn)[0] or "application/octet-stream"
+        body = b"".join([
+            _field("chat_id", str(chat_id)),
+            _field("caption", caption[:1000]) if caption else b"",
+            (f"--{boundary}\r\nContent-Disposition: form-data; name=\"{field}\"; filename=\"{fn}\"\r\n"
+             f"Content-Type: {ct}\r\n\r\n").encode(),
+            content,
+            f"\r\n--{boundary}--\r\n".encode(),
+        ])
+        req = urllib.request.Request(
+            f"{self._base}/{method}", data=body,
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            return json.loads(resp.read())
+
+    def send_photo(self, chat_id: int, photo_path: str, caption: str = "") -> dict:
+        return self._multipart("sendPhoto", chat_id, "photo", photo_path, caption)
+
+    def send_document(self, chat_id: int, file_path: str, caption: str = "") -> dict:
+        return self._multipart("sendDocument", chat_id, "document", file_path, caption)
+
+    def send_voice(self, chat_id: int, voice_path: str, caption: str = "") -> dict:
+        return self._multipart("sendVoice", chat_id, "voice", voice_path, caption)
+
+
+# ---------------------------------------------------------------------------
+# Command handlers — каждая возвращает строку для отправки в чат
+# ---------------------------------------------------------------------------
+
+
+
+
+
+
+@_safe
+def cmd_system_health() -> str:
+    data = _local_api_json("/api/system-health")
+    lines = ["❤️ <b>System Health</b>", ""]
+    lines.append(f"CPU: {data.get('cpu_percent')}%")
+    lines.append(f"RAM: {data.get('memory_percent')}%")
+    lines.append(f"Disk: {data.get('disk_percent')}%")
+    for service in data.get("services", []):
+        mark = "✅" if service.get("status") == "ok" else "❌"
+        lines.append(f"{mark} {service.get('name')}: {service.get('status')}")
+    return "\n".join(lines)
+
+
+@_safe
+def cmd_last_backup() -> str:
+    data = _local_api_json("/api/backups")
+    backups = data.get("backups", [])
+    if not backups:
+        return "💾 <b>Backup</b>\n\nЛокальных копий пока нет."
+    item = backups[0]
+    return "💾 <b>Last Backup</b>\n\n" + f"ID: <code>{item.get('backup_id', item.get('id'))}</code>\n" + f"Created: {item.get('created_at', '—')}\n" + f"Verified: {'✅' if item.get('verified') else '❌'}"
+
+
+@_safe
+def cmd_alert_history() -> str:
+    path = Path("/var/lib/aios-health-alert/state.json")
+    if not path.exists():
+        return "🚨 <b>Alert History</b>\n\nНет сохранённых health-check данных."
+    state = json.loads(path.read_text())
+    failed = [name for name, value in state.items() if not value]
+    return "🚨 <b>Alert History</b>\n\n" + ("✅ Текущие проверки в норме" if not failed else "❌ Проблемы: " + ", ".join(failed))
+
+
+def cmd_start() -> str:
+    return "🤖 <b>AIOS Control Panel</b>\n\nВыберите раздел:"
+
+MAIN_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "💰 Казначейство"}, {"text": "📈 Трейдинг"}],
+        [{"text": "💧 Ликвидность"}, {"text": "⚡ Арбитраж"}],
+        [{"text": "📱 Mesh"}, {"text": "🛒 Склад & OLX"}],
+        [{"text": "📦 Новая Почта"}, {"text": "🌐 Веб-каталог"}],
+        [{"text": "📲 Телефон & Банки"}, {"text": "🛡 SRE Статус"}],
+        [{"text": "❓ Помощь"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
+CODER_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "📋 Статус"}, {"text": "📦 Бэклог"}],
+        [{"text": "⚖️ Балансер"}, {"text": "📜 Git"}],
+        [{"text": "🔍 Review Bot"}, {"text": "🔍 Review Coder"}],
+        [{"text": "✨ Написать код"}, {"text": "🔧 Исправить"}],
+        [{"text": "🚀 Push"}, {"text": "🔄 Перезапуск"}],
+        [{"text": "◀️ Меню"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
+OLX_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "📊 OLX Стат"}, {"text": "📋 Подписки"}],
+        [{"text": "🆕 Последние"}, {"text": "📈 Аналитика"}],
+        [{"text": "◀️ Меню"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
+ACCOUNTS_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "🌐 Google"}, {"text": "📸 Instagram"}],
+        [{"text": "📘 Facebook"}, {"text": "🎵 TikTok"}],
+        [{"text": "🛒 OLX"}, {"text": "◀️ Меню"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
+PHONE_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "📲 Центр телефона"}, {"text": "🛠 Восстановление"}],
+        [{"text": "📥 Лиды телефона"}, {"text": "📌 CRM задачи"}],
+        [{"text": "🏦 Банки телефона"}, {"text": "📈 Тренды телефона"}],
+        [{"text": "🔄 Синхронизации"}, {"text": "📋 Журнал телефона"}],
+        [{"text": "🗄 Здоровье данных"}, {"text": "📦 Инвентарь"}],
+        [{"text": "📤 Экспорт метрик"}, {"text": "🧩 Калибровки"}],
+        [{"text": "🧪 Сценарии"}, {"text": "🚕 Маршруты"}],
+        [{"text": "◀️ Меню"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
+GOOGLE_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "✉️ Непрочитанные"}, {"text": "📥 Последние письма"}],
+        [{"text": "🔍 Поиск письма"}, {"text": "📧 Отправить письмо"}],
+        [{"text": "👤 Кто я"}, {"text": "📅 События"}],
+        [{"text": "➕ Событие"}, {"text": "📄 Документ"}],
+        [{"text": "🗂 Диск"}, {"text": "📷 Скрин почты"}],
+        [{"text": "◀️ Аккаунты"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
+INSTAGRAM_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "👤 Мой профиль"}, {"text": "📈 Подписчики"}],
+        [{"text": "🖼 Мои посты"}, {"text": "📷 Скрин профиля"}],
+        [{"text": "💬 Директ"}, {"text": "❤️ Лайкнуть"}],
+        [{"text": "👤 Подписка"}, {"text": "◀️ Аккаунты"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
+BOT_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "📊 Статус бота"}, {"text": "⏸️ Пауза"}],
+        [{"text": "▶️ Старт"}, {"text": "🔄 Рестарт"}, {"text": "⏹️ Стоп"}],
+        [{"text": "🌐 Gemini Web"}, {"text": "🔄 Балансер"}],
+        [{"text": "◀️ Меню"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
+
+
+@_safe
+def cmd_stats() -> str:
+    from aios_core.container import container
+
+    db = container.db()
+    orch = container.orchestrator()
+    bm = container.backup_manager()
+    db_stats = db.stats()
+    orch_stats = orch.stats()
+    bu_health = bm.health_report()
+
+    tables_info = "\n".join(f"    <code>{t}</code>: {c} строк" for t, c in sorted(db_stats.get("tables", {}).items()))
+    return (
+        f"📊 <b>Статистика AIOS</b>\n\n"
+        f"🗄️ <b>База данных</b>\n"
+        f"  Путь: <code>{db_stats['db_path']}</code>\n"
+        f"  Диалект: <code>{db_stats['dialect']}</code>\n"
+        f"  Таблицы:\n{tables_info}\n\n"
+        f"⚙️ <b>Оркестратор</b>\n"
+        f"  Задач: {orch_stats.get('tasks', '?')}\n\n"
+        f"💾 <b>Бэкапы</b>\n"
+        f"  Всего: {bu_health['total_backups']}\n"
+        f"  Размер: {bu_health['total_size_mb']} MB\n"
+        f"  Директория: <code>{bu_health['backup_dir']}</code>"
+    )
+
+
+@_safe
+def cmd_platforms() -> str:
+    from aios_core.platforms import list_platforms
+
+    plats = list_platforms()
+    lines = [f"📱 <b>Платформы</b> ({len(plats)})\n"]
+    lines.extend(f"  • <code>{p.name}</code> — <code>{p.android_package}</code>" for p in plats)
+    return "\n".join(lines)
+
+
+def _get_ads_db():
+    import sqlite3
+
+    db_path = os.environ.get("AIOS_OLX_HTTP_DB", "/root/AIOS/data/olx_http.sqlite")
+    if not Path(db_path).exists():
+        return None, f"⚠️ База OLX не найдена по пути {db_path}"
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    return conn, None
+
+
+@_safe
+def cmd_olx(args: str = "") -> str:
+    conn, err = _get_ads_db()
+    if err:
+        return err
+    try:
+        total = conn.execute("SELECT COUNT(*) FROM ads").fetchone()[0]
+        active = conn.execute("SELECT COUNT(*) FROM ads WHERE active=1").fetchone()[0]
+        if total == 0:
+            return "📭 База OLX пуста."
+        queries = conn.execute(
+            "SELECT query, COUNT(*) as cnt FROM ads WHERE active=1 GROUP BY query ORDER BY cnt DESC LIMIT 10"
+        ).fetchall()
+        price_row = conn.execute(
+            "SELECT MIN(price_value), MAX(price_value), AVG(price_value) FROM ads "
+            "WHERE price_value > 0 AND price_currency='UAH'"
+        ).fetchone()
+        last_run = conn.execute("SELECT ts, parsed FROM collection_runs ORDER BY ts DESC LIMIT 1").fetchone()
+        qlines = "\n".join(f"  • <code>{q['query']}</code>: {q['cnt']}" for q in queries)
+        return (
+            f"🛒 <b>OLX Статистика</b>\n\n"
+            f"  Всего собрано: <b>{total:,}</b>\n"
+            f"  Активных: <b>{active:,}</b>\n"
+            f"  Цены (грн): мин <b>{int(price_row[0]):,}</b> · макс <b>{int(price_row[1]):,}</b> · "
+            f"сред <b>{price_row[2]:,.0f}</b>\n"
+            f"  Последний цикл: {last_run['ts'][:19] if last_run else '—'} "
+            f"({last_run['parsed'] if last_run else 0} объявлений)\n\n"
+            f"📋 <b>По запросам:</b>\n{qlines}"
+        )
+    finally:
+        conn.close()
+
+
+@_safe
+def cmd_olx_sub(args: str, chat_id: int, username: str | None, first_name: str | None) -> str:
+    import olx_alerts
+
+    parts = args.strip().split()
+    if not parts:
+        return "ℹ️ Использование: <code>/olx_sub iPhone 5000 20000</code>\n(запрос [мин_цена макс_цена])"
+    # Parse optional min/max price at end (numeric)
+    min_p = max_p = None
+    if len(parts) >= 3:
+        try:
+            min_p = float(parts[-2].replace(",", "."))
+            max_p = float(parts[-1].replace(",", "."))
+            parts = parts[:-2]
+        except ValueError:
+            pass
+    if len(parts) >= 2:
+        with contextlib.suppress(ValueError):
+            float(parts[-1].replace(",", "."))
+    query = " ".join(parts)
+    if not query:
+        return "❌ Укажите поисковый запрос."
+    subs = olx_alerts.init_subs_db()
+    olx_alerts.subscribe_chat(
+        subs, chat_id, query, username=username, first_name=first_name, min_price=min_p, max_price=max_p
+    )
+    filter_txt = ""
+    if min_p or max_p:
+        filter_txt = f"\n💵 Фильтр: {int(min_p) if min_p else 0} – {int(max_p) if max_p else '∞'} грн"
+    return f"✅ Подписка оформлена на «<b>{query}</b>».{filter_txt}\n🔔 Новые объявления будут приходить автоматически."
+
+
+@_safe
+def cmd_olx_unsub(args: str, chat_id: int) -> str:
+    import olx_alerts
+
+    query = args.strip() or None
+    subs = olx_alerts.init_subs_db()
+    olx_alerts.unsubscribe_chat(subs, chat_id, query)
+    if query:
+        return f"🗑️ Подписка на «<b>{query}</b>» удалена."
+    return "🗑️ Все подписки удалены."
+
+
+@_safe
+def cmd_olx_list(chat_id: int) -> str:
+    import olx_alerts
+
+    subs = olx_alerts.init_subs_db()
+    items = olx_alerts.list_subscriptions(subs, chat_id)
+    if not items:
+        return "📭 У вас нет активных подписок.\nОформите: <code>/olx_sub &lt;запрос&gt;</code>"
+    lines = ["📋 <b>Ваши подписки:</b>\n"]
+    for it in items:
+        f = ""
+        if it["min_price"] or it["max_price"]:
+            f = f" · 💵 {int(it['min_price'] or 0)}-{int(it['max_price']) if it['max_price'] else '∞'} грн"
+        lines.append(f"  • <code>{it['query']}</code>{f}")
+    return "\n".join(lines)
+
+
+@_safe
+def cmd_olx_latest(args: str, chat_id: int) -> str:
+    parts = args.strip().split()
+    n = 5
+    if parts and parts[-1].isdigit():
+        n = min(int(parts[-1]), 15)
+        parts = parts[:-1]
+    query = " ".join(parts)
+    conn, err = _get_ads_db()
+    if err:
+        return err
+    try:
+        if query:
+            rows = conn.execute(
+                "SELECT * FROM ads WHERE query=? AND active=1 ORDER BY collected_at DESC LIMIT ?", (query, n)
+            ).fetchall()
+        else:
+            # Use first subscribed query
+            import olx_alerts
+
+            subs = olx_alerts.init_subs_db()
+            items = olx_alerts.list_subscriptions(subs, chat_id)
+            if not items:
+                return "ℹ️ Укажите запрос: <code>/olx_latest iPhone</code> или подпишитесь через /olx_sub"
+            query = items[0]["query"]
+            rows = conn.execute(
+                "SELECT * FROM ads WHERE query=? AND active=1 ORDER BY collected_at DESC LIMIT ?", (query, n)
+            ).fetchall()
+        if not rows:
+            return f"📭 Нет объявлений по запросу «{query}»"
+        import olx_alerts
+
+        stats = olx_alerts.compute_price_stats(conn, query)
+        out = [f"🛒 <b>Последние объявления</b> «{query}»:\n"]
+        for r in rows:
+            ad = dict(r)
+            price = ad.get("price_value")
+            cur = ad.get("price_currency") or "грн"
+            if price is None:
+                price_str = "💵 Договірна"
+            else:
+                tag = ""
+                if stats and cur == "UAH":
+                    tag = " " + olx_alerts.price_assessment(stats, price).split()[0]
+                price_str = f"💵 {int(price):,} {cur}{tag}".replace(",", " ")
+            title = (ad.get("title") or "(без назви)")[:80]
+            url = ad.get("url") or "#"
+            city = ad.get("city") or "?"
+            out.append(f'• <a href="{url}">{title}</a>\n  {price_str} · 📍{city}')
+        return "\n".join(out)
+    finally:
+        conn.close()
+
+
+@_safe
+def cmd_olx_analytics(args: str) -> str:
+    parts = args.strip().split()
+    if parts and parts[-1].isdigit():
+        parts = parts[:-1]
+    query = " ".join(parts)
+    if not query:
+        return "ℹ️ Использование: <code>/olx_analytics iPhone</code>"
+    conn, err = _get_ads_db()
+    if err:
+        return err
+    try:
+        import olx_alerts
+
+        stats = olx_alerts.compute_price_stats(conn, query)
+        if not stats:
+            return f"📭 Нет данных по запросу «{query}». Попробуйте сначала собрать."
+        # Top 5 cheapest
+        cheapest = conn.execute(
+            "SELECT title, price_value, url, city FROM ads "
+            "WHERE query=? AND active=1 AND price_currency='UAH' AND price_value>0 "
+            "ORDER BY price_value ASC LIMIT 5",
+            (query,),
+        ).fetchall()
+        out = [
+            f"📊 <b>AI-аналитика цен</b> «{query}»:\n",
+            f"  📦 Объявлений в выборке: <b>{stats.count}</b>",
+            f"  💸 Мин: <b>{int(stats.min_p):,} грн</b>",
+            f"  📈 Макс: <b>{int(stats.max_p):,} грн</b>",
+            f"  ⚖️ Медиана: <b>{int(stats.median):,} грн</b>",
+            f"  📉 P10 (очень дёшево): <b>{int(stats.p10):,} грн</b>",
+            f"  📈 P90 (очень дорого): <b>{int(stats.p90):,} грн</b>",
+            f"  🧮 Средняя: <b>{stats.avg:,.0f} грн</b>\n",
+            "🔥 <b>ТОП-5 самых дешёвых:</b>",
+        ]
+        for r in cheapest:
+            title = (r["title"] or "")[:55]
+            out.append(f'  • <a href="{r["url"]}">{title}</a> — {int(r["price_value"]):,} грн ({r["city"]})')
+        return "\n".join(out).replace(",", " ")
+    finally:
+        conn.close()
+
+
+@_safe
+def cmd_help() -> str:
+    return (
+        "🤖 <b>AIOS Telegram Bot — Команды</b>\n\n"
+        "  /start — приветствие\n"
+        "  /stats — статистика БД и оркестратора\n"
+        "  /status — зарегистрированные платформы\n"
+        "  /olx — общая статистика OLX\n"
+        "  /olx_sub &lt;запрос&gt; [min max] — подписка на новые объявления\n"
+        "  /olx_unsub [запрос] — отписка (без аргументов = все)\n"
+        "  /olx_list — мои подписки\n"
+        "  /olx_latest &lt;запрос&gt; [N] — последние N объявлений\n"
+        "  /olx_analytics &lt;запрос&gt; — AI-аналитика цен\n"
+        "  /accounts — управление Google и Instagram аккаунтами\n"
+        "  /google — быстрые команды Google (почта, календарь, диск)\n"
+        "  /instagram — быстрые команды Instagram (профиль, посты)\n"
+        "  /llm_mode [auto|gemini] — режим LLM в чате (балансер / Gemini Web)\n"
+        "  /cmd &lt;команда&gt; — выполнить команду на сервере (root, /root/AIOS)\n"
+        "  /skills — возможности системы (скилы, модули, адаптеры, команды)\n\n"
+        "<i>Просто напишите боту обычным текстом, например:</i>\n"
+        "  «проверь мою почту» · «сколько непрочитанных» · «кто я в гугле»\n"
+        "  «покажи календарь» · «покажи мой инстаграм» · «мои посты» · «отправь письмо ...»\n\n"
+        "<i>Бот работает в polling-режиме. Алерты приходят автоматически после каждого цикла сбора (каждые 30 мин).</i>"
+    )
+
+
+
+
+# ---------------------------------------------------------------------------
+# Account control — Google + Instagram через обычный диалог
+# ---------------------------------------------------------------------------
+
+# Последнее фото, присланное пользователем (для будущих действий): chat_id -> путь
+# Ждём описание детали после фото: chat_id -> True
+# Последнее сгенерированное объявление OLX: chat_id -> part
+# Последнее видео, присланное пользователем (для TikTok upload): chat_id -> путь
+# Последние id писем, показанных в чате: chat_id -> [ids...]
+# Ожидающие подтверждения действий: chat_id -> {"kind": ..., "data": ...}
+# Короткоживущая навигация по уже подтверждённым черновикам маршрутов.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# --------------------------------------------------------------- Голосовые ответы
+
+
+
+
+
+
+
+
+# --------------------------------------------------------------- Шаблоны
+TEMPLATES_FILE = PROJECT_ROOT / "data" / "templates.json"
+
+
+def _load_templates() -> dict:
+    try:
+        return json.loads(TEMPLATES_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_templates(tpl: dict) -> None:
+    TEMPLATES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    TEMPLATES_FILE.write_text(json.dumps(tpl, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+# --------------------------------------------------------------- Напоминания
+REMINDERS_FILE = PROJECT_ROOT / "data" / "reminders.json"
+
+
+def _load_reminders() -> list[dict]:
+    try:
+        return json.loads(REMINDERS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def _save_reminders(items: list[dict]) -> None:
+    REMINDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    REMINDERS_FILE.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _handle_reminder(api, chat_id: int, text: str) -> None:
+    """«напомни [завтра/сегодня/в] <HH:MM> <текст>» + повторяющиеся («каждый день/неделю/месяц»)."""
+    import re as _re
+    text_clean = _re.sub(r"^(напомни|напоминание|remind)\s*:?\s*", "", text, flags=_re.IGNORECASE).strip()
+
+    # повторяющиеся: «напоминай каждый день в 09:00 ...»
+    m_repeat = _re.search(r"(каждый|каждую|раз в)\s+(день|неделю|месяц|утро|вечер)", text_clean.lower())
+    if m_repeat:
+        period = m_repeat.group(2)
+        m_time = _re.search(r"\b(\d{1,2})[:.](\d{2})\b", text_clean)
+        if m_time:
+            hh, mm = int(m_time.group(1)), int(m_time.group(2))
+            body = _re.sub(r"^(напоминай|напомни)\s*(каждый|каждую|раз в)\s*(день|неделю|месяц|утро|вечер)\s*", "", text_clean, flags=_re.IGNORECASE)
+            body = _re.sub(r"\b\d{1,2}[:.]\d{2}\b", "", body).strip()
+            if "утро" in period:
+                hh, mm = 9, 0
+            elif "вечер" in period:
+                hh, mm = 21, 0
+            reminders = _load_reminders()
+            reminders.append({
+                "chat_id": chat_id,
+                "at": datetime.now().replace(hour=hh, minute=mm, second=0, microsecond=0).isoformat(),
+                "text": body or "(напоминание)",
+                "repeat": period,  # день|неделю|месяц
+            })
+            _save_reminders(reminders)
+            api.send_message(chat_id, f"🔁 Напоминаю {period} в {hh:02d}:{mm:02d}: «{body[:100]}»")
+            return
+    # время HH:MM
+    m_time = _re.search(r"\b(\d{1,2})[:.](\d{2})\b", text_clean)
+    # день
+    day_off = 0
+    if any(w in text_clean.lower() for w in ("завтра", "tomorrow")):
+        day_off = 1
+    elif any(w in text_clean.lower() for w in ("послезавтра", "day after")):
+        day_off = 2
+    elif any(w in text_clean.lower() for w in ("сегодня", "today")):
+        day_off = 0
+    elif "через" in text_clean.lower():
+        m_h = _re.search(r"через\s+(\d+)\s*(час|ч|мин|минут)", text_clean.lower())
+        if m_h:
+            n = int(m_h.group(1))
+            unit = m_h.group(2)
+            now = datetime.now()
+            if unit.startswith("ч"):
+                target = now + timedelta(hours=n)
+            else:
+                target = now + timedelta(minutes=n)
+            body = _re.sub(r"через\s+\d+\s*(час|ч|мин|минут)\s*", "", text_clean, flags=_re.IGNORECASE).strip()
+            reminders = _load_reminders()
+            reminders.append({"chat_id": chat_id, "at": target.isoformat(), "text": body})
+            _save_reminders(reminders)
+            api.send_message(chat_id, f"⏰ Напомню через {n} {unit} (в {target.strftime('%H:%M')}): «{body[:100]}»")
+            return
+
+    if not m_time:
+        api.send_message(chat_id, "⏰ Формат: «напомни завтра в 15:00 позвонить Мише»\n"
+                                  "или «напомни через 30 минут выпить воды»")
+        return
+    hh, mm = int(m_time.group(1)), int(m_time.group(2))
+    body = _re.sub(r"\b\d{1,2}[:.]\d{2}\b", "", text_clean).strip()
+    body = _re.sub(r"^(завтра|сегодня|послезавтра|tomorrow|today)\s*", "", body, flags=_re.IGNORECASE).strip()
+    target = datetime.now() + timedelta(days=day_off)
+    target = target.replace(hour=hh, minute=mm, second=0, microsecond=0)
+    reminders = _load_reminders()
+    reminders.append({"chat_id": chat_id, "at": target.isoformat(), "text": body or "(напоминание)"})
+    _save_reminders(reminders)
+    api.send_message(chat_id, f"⏰ Напомню {target.strftime('%d.%m %H:%M')}: «{body[:100]}»")
+
+
+def _run_due_reminders() -> int:
+    """Отправить созревшие напоминания (вызывается по таймеру и при старте бота)."""
+    import urllib.request as _urllib
+    token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("AIOS_TELEGRAM_TOKEN", "")
+    reminders = _load_reminders()
+    if not reminders:
+        return 0
+    now = datetime.now()
+    due = [r for r in reminders if datetime.fromisoformat(r["at"]) <= now]
+    if not due:
+        return 0
+    left = [r for r in reminders if datetime.fromisoformat(r["at"]) > now]
+    for r in due:
+        if not token:
+            continue
+        payload = json.dumps({"chat_id": r["chat_id"],
+                              "text": f"⏰ <b>Напоминание</b>: {_esc_tg(r.get('text', ''))}",
+                              "parse_mode": "HTML"}).encode()
+        try:
+            req = _urllib.Request(f"https://api.telegram.org/bot{token}/sendMessage",
+                                  data=payload, headers={"Content-Type": "application/json"})
+            with _urllib.urlopen(req, timeout=30):
+                pass
+            print(f"  [REMINDER] sent: {r.get('text', '')[:50]}")
+        except Exception as e:
+            print(f"  [REMINDER] err: {e}")
+            left.append(r)  # попробуем ещё раз в следующий цикл
+            continue
+        # повторяющиеся: переносим на следующий период
+        repeat = r.get("repeat")
+        if repeat:
+            base = datetime.fromisoformat(r["at"])
+            if repeat == "день":
+                nxt = base + timedelta(days=1)
+            elif repeat == "неделю":
+                nxt = base + timedelta(weeks=1)
+            else:  # месяц
+                try:
+                    nxt = base.replace(month=base.month + 1)
+                except ValueError:
+                    nxt = base.replace(year=base.year + 1, month=base.month % 12 + 1)
+            left.append({**r, "at": nxt.isoformat()})
+    _save_reminders(left)
+    return len(due)
+
+
+# ---------------------------------------------------------------------------
+# Единый инбокс — продвинутая версия
+# ---------------------------------------------------------------------------
+
+# Последний собранный инбокс по чатам: chat_id -> [items]
+
+
+
+
+
+
+
+# Каналы и их эмодзи
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def _handle_sales_lifecycle_intent(api, chat_id: int, text: str) -> bool:
+    """Детерминированно обработать статусы продаж без риска LLM-путаницы.
+
+    Эти команды принадлежат владельцу бота. Изменение остатков разрешено
+    только после явной фразы владельца («отправил…», «доставлено…») либо
+    подтверждённого статуса Новой Почты в таймере.
+    """
+    raw = str(text or "").strip()
+    normalized = " ".join(raw.casefold().split())
+    if not normalized:
+        return False
+    try:
+        from aios_core.sales_lifecycle import SalesLifecycle
+        lifecycle = SalesLifecycle(PROJECT_ROOT)
+    except Exception as exc:
+        print(f"  [SALES] init error: {exc}")
+        return False
+
+    crm_phrases = ("crm", "сделки", "статус продаж", "воронка продаж", "продажи crm")
+    if any(phrase in normalized for phrase in crm_phrases):
+        # CRM-команды: экспорт и поиск клиента не требуют LLM и не раскрывают
+        # полный номер телефона в Telegram.
+        if "экспорт" in normalized or "export" in normalized:
+            try:
+                from run_crm import export_csv
+                from aios_core.crm import CRMStore
+                exported = export_csv(CRMStore(PROJECT_ROOT))
+                api.send_document(chat_id, exported["file"], caption=f"💼 CRM экспорт · {exported['rows']} клиентов")
+            except Exception as exc:
+                api.send_message(chat_id, f"⚠️ Не удалось экспортировать CRM: {_esc_tg(str(exc))[:180]}")
+            return True
+        if "клиент" in normalized or "customers" in normalized:
+            query = re.sub(r"^(?:crm\s*)?(?:клиенты|клиент|customers?)\s*:?\s*", "", raw, flags=re.IGNORECASE).strip()
+            try:
+                from aios_core.crm import CRMStore
+                store = CRMStore(PROJECT_ROOT)
+                if query:
+                    customer = store.find(query)
+                    customers = [customer] if customer else []
+                else:
+                    customers = store.snapshot(limit=12).get("customers", [])
+                if not customers:
+                    api.send_message(chat_id, "👥 CRM: клиентов по запросу не найдено.")
+                    return True
+                lines = ["👥 <b>Клиенты CRM</b>"]
+                for customer in customers[:12]:
+                    tags = " · ".join(customer.get("tags") or []) or "без тега"
+                    lines.append(
+                        f"• <b>{_esc_tg(customer.get('display_name'))}</b> {customer.get('phone_masked') or ''}\n"
+                        f"  {customer.get('sales_count', 0)} сделок · {customer.get('lifetime_amount', 0):.0f} грн · {tags}\n"
+                        f"  Последнее: {_esc_tg(customer.get('last_item') or '—')} · {_esc_tg(customer.get('last_status') or '—')}")
+                api.send_message(chat_id, "\n".join(lines)[:3900])
+            except Exception as exc:
+                api.send_message(chat_id, f"⚠️ CRM временно недоступна: {_esc_tg(str(exc))[:180]}")
+            return True
+
+        crm = lifecycle.crm_snapshot()
+        status_label = {
+            "awaiting_shipment": "⏳ ждёт отправки", "ttn_created": "⏳ ТТН создана",
+            "in_transit": "🚚 в пути", "delivered": "✅ доставлено",
+            "returning": "↩️ возврат в пути", "returned": "↩️ возврат",
+            "return_received": "📦 возвращено на склад",
+        }
+        lines = [
+            "💼 <b>Продажи и CRM</b>",
+            "━━━━━━━━━━━━━━━━",
+            f"Активные: <b>{crm['active']}</b> · ждут отправки: <b>{crm['awaiting']}</b> · в пути: <b>{crm['in_transit']}</b>",
+            f"Доставлено: <b>{crm['delivered']}</b> · возвраты: <b>{crm['returned']}</b> · открытые задачи: <b>{crm['open_tasks']}</b>",
+            f"Сумма активных сделок: <b>{crm['pipeline_amount']:.0f} грн</b>",
+        ]
+        recent = crm.get("sales") or []
+        if recent:
+            lines.append("━━━━━━━━━━━━━━━━")
+            lines.append("<b>Последние сделки</b>")
+            for sale in recent[:8]:
+                task = " · 📌 задача" if sale.get("task_open") else ""
+                lines.append(
+                    f"• {status_label.get(sale.get('status'), sale.get('status'))} · "
+                    f"<b>{_esc_tg(sale.get('item'))[:70]}</b> · ТТН <code>{_esc_tg(sale.get('ttn') or '—')}</code> · "
+                    f"{float(sale.get('amount') or 0):.0f} грн{task}")
+        lines.append("━━━━━━━━━━━━━━━━")
+        lines.append("<i>«задачи отправки» · «отправил &lt;ТТН&gt;» · «доставлено &lt;ТТН&gt;»</i>")
+        api.send_message(chat_id, "\n".join(lines)[:3900])
+        return True
+
+    task_phrases = (
+        "задачи отправки", "задачи по отправке", "что нужно отправить",
+        "что отправить", "ожидает отправки", "задачи продаж",
+    )
+    if any(phrase in normalized for phrase in task_phrases):
+        rows = lifecycle.list_open_tasks()
+        if not rows:
+            api.send_message(chat_id, "📋 Открытых задач по отправкам и возвратам нет.")
+            return True
+        lines = ["📋 <b>Задачи по продажам:</b>"]
+        for row in rows[:15]:
+            task, sale = row["task"], row["sale"]
+            item = _esc_tg(sale.get("item") or "товар")
+            ttn = _esc_tg(sale.get("ttn") or "—")
+            if task.get("kind") == "return_receive":
+                lines.append(f"• ↩️ Принять возврат: <b>{item}</b> · ТТН <code>{ttn}</code>")
+            else:
+                lines.append(f"• 📦 Отправить: <b>{item}</b> · ТТН <code>{ttn}</code>")
+        lines.append("\nПосле передачи: «отправил <ТТН>». После доставки: «доставлено <ТТН>».")
+        api.send_message(chat_id, "\n".join(lines)[:3900])
+        return True
+
+    def _reference(match) -> str:
+        value = (match.group(1) or "").strip(" ,.:;—–-") if match.lastindex else ""
+        generic = {"этот товар", "эту посылку", "этот", "эту", "товар", "посылку", "посылка",
+                   "его", "ее", "цей товар", "цю посилку", "посилку"}
+        return "" if value.casefold() in generic else value
+
+    # Важно проверять приём возврата раньше «получил…», иначе фраза
+    # «получил возврат» могла бы ошибочно закрыть продажу как доставленную.
+    m = re.match(r"^(?:я\s+)?(?:получил(?:а)?\s+возврат|возврат\s+получил(?:а)?|"
+                 r"принял(?:а)?\s+возврат|повернув(?:ла)?\s+на\s+склад)\b\s*(.*)$", raw, re.I)
+    if m:
+        result = lifecycle.mark_return_received(_reference(m), source="telegram")
+    else:
+        m = re.match(r"^(?:посылка\s+|товар\s+)?(?:вернулась|вернулся|возвращена|возвращен|"
+                     r"повернулась|повернувся|повернено|возврат)\b\s*(.*)$", raw, re.I)
+        if m:
+            result = lifecycle.mark_returned(_reference(m), source="telegram")
+        else:
+            m = re.match(r"^(?:я\s+)?(?:(?:товар|посылку|посилку)\s+)?(?:уже\s+)?"
+                         r"(?:отправил(?:а)?|відправив(?:ла)?|передал(?:а)?\s+(?:в|на)\s+"
+                         r"(?:новую\s+почту|нову\s+пошту|нп)|сдал(?:а)?\s+(?:в|на)\s+"
+                         r"(?:новую\s+почту|нову\s+пошту|нп))\b\s*(.*)$", raw, re.I)
+            if m:
+                result = lifecycle.mark_shipped(_reference(m), source="telegram")
+            else:
+                m = re.match(r"^(?:товар\s+|посылка\s+|посилка\s+)?(?:доставлен(?:а|о|ы)?|"
+                             r"доставили|доставлено|клиент\s+получил|клієнт\s+отримав|"
+                             r"отримано\s+(?:клієнтом|покупцем))\b\s*(.*)$", raw, re.I)
+                if not m:
+                    return False
+                result = lifecycle.mark_delivered(_reference(m), source="telegram")
+
+    message = str(result.get("message") or result.get("error") or "Не удалось обновить сделку.")
+    # SalesLifecycle возвращает обычный текст. Экранируем название товара,
+    # если пользователь когда-то добавил в него HTML-символы.
+    api.send_message(chat_id, _esc_tg(message)[:3900])
+    return True
+
+
+def _send_unified_inbox(api, chat_id: int, text: str = "", filters: dict | None = None,
+                       refresh: bool = False) -> None:
+    """Показать инбокс.
+
+    refresh=True — собрать из каналов (дёргает адаптеры) и обновить кэш;
+    refresh=False — показать сохранённые сообщения (не дёргая адаптеры).
+    Показываются только непрочитанные карточки. Почта — отдельная команда «почта».
+    """
+    filters = dict(filters or _parse_inbox_filters(text))
+    lower = " ".join((text or "").casefold().split())
+
+    # почта вынесена в отдельную команду «почта»
+    if filters.get("channels") == ["gmail"] or lower in (
+            "инбокс почта", "инбокс гмаил", "инбокс gmail", "инбокс только почта"):
+        api.send_message(chat_id, "📬 <b>Почта вынесена в отдельную команду.</b>\n\n"
+                                  "Напишите «почта» или «проверь почту» — покажу письма отдельно.")
+        return
+
+    if refresh:
+        api.send_message(chat_id, "⏳ <b>Обновляю инбокс…</b> проверяю каналы")
+        items = _inbox_refresh_now(filters)
+        if not items:
+            api.send_message(chat_id, "📭 <b>Инбокс пуст</b>\nНовых карточек по каналам нет.",
+                             reply_markup=_inbox_keyboard([], force=True))
+            return
+    else:
+        items = _inbox_cache_load()
+        if not items:
+            api.send_message(chat_id, "📥 <b>Инбокс</b>\n\nСохранённых сообщений пока нет.\n"
+                                      "Нажмите «🔄 Обновить», чтобы проверить каналы.",
+                             reply_markup=_inbox_keyboard([], force=True))
+            return
+
+    # показываем только непрочитанные
+    unread_items = [it for it in items if it.get("unread")]
+    if not unread_items:
+        api.send_message(chat_id, "✅ <b>Инбокс</b>\nНовых непрочитанных сообщений нет.",
+                         reply_markup=_inbox_keyboard([], force=True))
+        return
+    _last_inbox[chat_id] = unread_items
+    _last_inbox_filters[chat_id] = filters
+    if any(word in lower for word in ("сводк", "резюме", "кратко", "умн")):
+        api.send_message(chat_id, "🧠 Составляю сводку по карточкам…")
+        api.send_message(chat_id, _inbox_summarize(unread_items)[:3900])
+    else:
+        api.send_message(chat_id, _format_inbox(unread_items, filters),
+                         reply_markup=_inbox_keyboard(unread_items))
+
+
+def _handle_unified_inbox_intent(api, chat_id: int, text: str) -> bool:
+    """Приоритетный роутер инбокса до Instagram Direct и прочих платформ."""
+    t = " ".join((text or "").casefold().split())
+    if not t:
+        return False
+
+    # Расписание должно перехватываться раньше общего слова «инбокс».
+    if re.match(r"^(присылай|пришли|включи|отключи|выключи|убери)\s+инбокс", t) or \
+       re.match(r"^(включи|отключи)\s+расписание\s+инбокса", t):
+        _inbox_schedule_cmd(api, chat_id, text)
+        return True
+
+    # Пользовательский вариант «отметить все непрочитанные сообщения в инбоксе
+    # прочитанными» раньше ошибочно попадал в обработчик Instagram Direct.
+    mark_read = ((any(stem in t for stem in ("отмет", "пометь", "отмеч")) and "прочитан" in t
+                  and any(word in t for word in ("инбокс", "сообщен", "все", "всё")))
+                 or "всё прочитано" in t or "все прочитаны" in t)
+    if mark_read:
+        _inbox_mark_read(api, chat_id)
+        return True
+
+    m_reply = re.match(r"^(ответь|reply|отв[её]ть)\s+(?:на\s+)?#?(\d+)\s*:?\s*(.+)$", text, re.IGNORECASE)
+    if m_reply:
+        if chat_id not in _last_inbox:
+            api.send_message(chat_id, "ℹ️ Сначала откройте «инбокс», затем выберите номер карточки.")
+            return True
+        idx = int(m_reply.group(2))
+        body = m_reply.group(3).strip()
+        items = _last_inbox.get(chat_id, [])
+        if 1 <= idx <= len(items):
+            _inbox_reply(api, chat_id, items[idx - 1], body)
+        else:
+            api.send_message(chat_id, f"❌ Нет карточки №{idx} в последнем инбоксе.")
+        return True
+
+    if any(phrase in t for phrase in ("озвучь инбокс", "озвучь всё", "голосом инбокс", "прочитай инбокс вслух")):
+        api.send_message(chat_id, "⏳ Собираю карточки для озвучки…")
+        items, _summary = _collect_inbox({})
+        if not items:
+            api.send_message(chat_id, "📭 Инбокс пуст.")
+        else:
+            _last_inbox[chat_id] = items
+            _last_inbox_filters[chat_id] = {}
+            _inbox_voice(api, chat_id, items)
+        return True
+
+    m_search = re.match(r"^(найди во всех|ищи везде|найди везде|поиск по всем)\s*(?:чатах|сообщениях|каналах)?\s*:?\s*(.+)$", text, re.IGNORECASE)
+    if m_search:
+        query = m_search.group(2).strip()
+        if query:
+            api.send_message(chat_id, f"🔍 Ищу «{_esc_tg(query)}» по подключённым каналам…")
+            _inbox_search(api, chat_id, query)
+        else:
+            api.send_message(chat_id, "🔍 Формат: «найди во всех чатах &lt;запрос&gt;»")
+        return True
+
+    inbox_terms = ("инбокс", "inbox", "все сообщения", "всё в одном", "сводка сообщений", "где что новое", "проверь всё")
+    if any(term in t for term in inbox_terms):
+        _send_unified_inbox(api, chat_id, text, refresh=True)
+        return True
+    return False
+
+
+# Мини-кэш доступности Phone Brain: если демон недавно не отвечал — сразу
+# уходим в legacy subprocess, не задерживая обработку сообщения.
+
+
+
+
+
+
+# Последние показанные безопасные карточки потенциальных лидов: chat_id -> rows.
+# Последние показанные metadata-only CRM follow-up задачи телефона.
+# Последние показанные metadata-only задачи банковских уведомлений.
+
+
+
+
+
+def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
+    """Обрабатывает команды казначейства, реинвестирования, биржи Kraken, SRE мониторинга и вывода в фиат.
+    Команды:
+      «казначейство» или «баланс казначейства» — выводит аудит казначейства, резерв и излишки.
+      «реинвестируй <сумма>» — запускает реальный On-Chain депозит в Aave V3 Polygon.
+      «верни из дефи <сумма>» или «withdraw defi <сумма>» — запускает реальный On-Chain вывод из Aave V3 Polygon.
+      «финансовый отчет» или «отчет по финансам» — генерирует и отправляет профессиональный отчет в формате Excel (.xlsx).
+      «ставки дефи» или «доходность дефи» — запрашивает и выводит процентные ставки в Aave и Compound.
+      «баланс кракен» или «кракен баланс» — выводит реальный баланс активов на вашем аккаунте Kraken.
+      «купи на кракене <пара> <объем>» — исполняет реальный рыночный ордер покупки на Kraken.
+      «продай на кракене <пара> <объем>» — исполняет реальный рыночный ордер продажи на Kraken.
+      «статус служб» или «девопс статус» — запускает активное HTTP-зондирование всех веб-служб системы (SRE).
+      «выведи <сумма> usdt на карту <номер_карты>» — инициирует ордер обмена крипты в фиатные гривны и вывод на карту!
+      «сканируй ошибки» или «sre healer» — сканирует лог на наличие трейсбеков Python.
+      «исправь ошибку» или «sre heal» — запускает ИИ для автоматического исправления последнего бага в коде.
+    """
+    import re as _re4
+    t = " ".join(str(text or "").casefold().split())
+
+    # Смарт-маршрутизатор ликвидности (v19.0.0)
+    if any(phrase in t for phrase in ("ликвидность", "смарт ликвидность", "маршрутизатор", "доходность сетей", "кросс-чейн")):
+        api.send_message(chat_id, "🌐 <b>Запрашиваю мульти-чейн анализ доходностей DeFi v19.1...</b>")
+        import subprocess as _sp_lr
+        try:
+            r = _sp_lr.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_smart_liquidity_router.py"), "--telegram"],
+                           capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            # v19.1 --telegram outputs markdown directly
+            report = r.stdout.strip()
+            if report:
+                api.send_message(chat_id, report)
+            else:
+                import json as _j_lr
+                data = _j_lr.loads(r.stdout)
+                best = data.get("best_yield_strategy", {})
+                lines = [
+                    "🌐 <b>AIOS Smart Liquidity Router v19.1:</b>\n",
+                    f"🥇 <b>Лучшая стратегия:</b> {best.get('protocol')} на <b>{best.get('network')}</b> ({best.get('asset')})",
+                    f"• Доходность: <b>{best.get('apy_pct')}% APY</b>\n",
+                    "📊 <b>Все доступные пулы:</b>"
+                ]
+                for opp in data.get("all_opportunities", []):
+                    lines.append(f"• <b>{opp.get('network')}</b> ({opp.get('protocol')}): <b>{opp.get('apy_pct')}% APY</b> [{opp.get('asset')}]")
+                lines.append(f"\n💰 Доступно излишков: <b>${data.get('available_excess_capital_usd', 0.0):.2f}</b>")
+                lines.append(f"📈 Прогноз: <b>+${data.get('estimated_annual_yield_usd', 0.0):.2f}/год</b>")
+                if data.get("rebalance_action_required"):
+                    q = data.get("bridge_quote", {})
+                    lines.append(f"\n🟢 Ребаланс {data.get('current_network')}→{best.get('network')} net +${data.get('net_gain_annual_usd',0)} после fee ${q.get('total_fee_usd',0)}")
+                api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка анализа ликвидности v19.1: {e}")
+        return True
+
+    # Сканер арбитража DEX & CEX v19.2 (cross-DEX)
+    if any(phrase in t for phrase in ("арбитраж", "спред", "dex арбитраж", "разница цен", "⚡ арбитраж")):
+        api.send_message(chat_id, "🔎 <b>Сканирую кросс-DEX/CEX арбитраж v19.2 (Kraken/Binance/CG/UniV3)...</b>")
+        import subprocess as _sp_arb
+        try:
+            r = _sp_arb.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_dex_arbitrage_scanner.py"), "--cross", "--telegram"],
+                            capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            report = r.stdout.strip()
+            if report:
+                api.send_message(chat_id, report)
+            else:
+                import json as _j_arb
+                data = _j_arb.loads(r.stdout)
+                lines = ["📊 <b>AIOS DEX/CEX Arbitrage Radar v19.2:</b>\n"]
+                for opp in data.get("opportunities", []):
+                    lines.append(
+                        f"• <b>{opp.get('pair')}</b> ({opp.get('exchange')}):\n"
+                        f"  Bid: ${opp.get('bid'):.2f} | Ask: ${opp.get('ask'):.2f}\n"
+                        f"  Спред: <b>${opp.get('spread_usd')}</b> ({opp.get('spread_pct')}%) — 🟢 {opp.get('opportunity')}"
+                    )
+                api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка сканера арбитража v19.2: {e}")
+        return True
+
+
+    # Android Mesh v19.3
+    if any(phrase in t for phrase in ("mesh", "меш", "📱 mesh", "android mesh", "fleet", "флот")):
+        api.send_message(chat_id, "📱 <b>Запрашиваю статус Android Mesh v19.3...</b>")
+        import subprocess as _sp_mesh
+        try:
+            r = _sp_mesh.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_android_mesh.py"), "--telegram"],
+                            capture_output=True, text=True, timeout=15, cwd=str(PROJECT_ROOT))
+            report = r.stdout.strip()
+            if report:
+                api.send_message(chat_id, report)
+            else:
+                api.send_message(chat_id, "❌ Пустой отчет Mesh")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка Android Mesh: {e}")
+        return True
+
+    # Трейдинг и котировки
+    if any(phrase in t for phrase in ("трейдинг", "сигналы", "квант", "торговля", "paper trading")):
+        api.send_message(chat_id, "📈 <b>Запрашиваю количественный анализ и сигналы рынка...</b>")
+        import subprocess as _sp_tr
+        try:
+            r = _sp_tr.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_quant_trading.py")],
+                           capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+            import json as _j_tr
+            data = _j_tr.loads(r.stdout.split("===")[-1].strip() if "===" in r.stdout else r.stdout)
+
+            lines = ["📈 <b>AIOS Quant Radar & Paper Trading:</b>\n"]
+            for sig in data.get("binance_signals", []):
+                sym = sig.get("symbol")
+                signal = sig.get("signal")
+                price = sig.get("current_price")
+                rsi = sig.get("rsi")
+                icon = "🟢" if "BUY" in signal else ("🔴" if "SELL" in signal else "⚪")
+                lines.append(f"{icon} <b>{sym}</b>: ${price:.2f} | <b>{signal}</b> (RSI: {rsi})")
+
+            lines.append("\n💼 <b>Портфель Binance:</b>")
+            summary = data.get("binance_trading_results", [{}])[0].get("portfolio_summary", {})
+            lines.append(f"• Баланс кэша: <b>${summary.get('cash_usd', 0.0):.2f} USD</b>")
+            lines.append(f"• Реализованный PnL: <b>${summary.get('realized_pnl_usd', 0.0):.2f} USD</b>")
+            lines.append(f"• Винрейт: <b>{summary.get('win_rate_pct', 0.0)}%</b> | Позиций: <b>{summary.get('open_positions', 0)}</b>")
+
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка трейдинга: {e}")
+        return True
+
+    # Склад & Запчасти
+    if any(phrase in t for phrase in ("склад & olx", "склад", "остатки на складе", "инвентарь")):
+        import subprocess as _sp_inv
+        try:
+            r = _sp_inv.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"), "stats"],
+                           capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            import json as _j_inv
+            data = _j_inv.loads(r.stdout)
+            lines = [
+                "🛒 <b>Склад запчастей AIOS:</b>\n",
+                f"• Всего наименований: <b>{data.get('items_count', 0)}</b>",
+                f"• Доступно деталей: <b>{data.get('available_qty', 0)} шт</b>",
+                f"• В резерве: <b>{data.get('reserved_qty', 0)} шт</b>",
+                f"• Оценочная стоимость: <b>{data.get('total_value', 0)} грн</b>\n",
+                "Для добавления детали напишите:\n<code>склад добавить <название> <цена> <кол-во></code>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка склада: {e}")
+        return True
+
+
+    # Публичный веб-каталог и витрина
+    if any(phrase in t for phrase in ("веб-каталог", "веб каталог", "каталог", "витрина", "сайт", "ссылка на склад")):
+        lines = [
+            "🌐 <b>Онлайн-каталог автозапчастей AIOS:</b>\n",
+            "🔗 <b>Ссылка для клиентов:</b>",
+            "https://api.autosklo.org.ua/parts/\n",
+            "📦 <b>Что доступно на витрине:</b>",
+            "• Авторазборка ВАЗ (Лада) 2108–2115 (от 100 грн)",
+            "• Авторазборка ГАЗель 3302, Соболь, Рута (от 200 грн)",
+            "• Радиатор охлаждения ВАЗ 2109 (950 грн)",
+            "• Рессора задняя ГАЗель 3302 5-лист. (1 800 грн)",
+            "• Генератор ВАЗ 2110 80А (1 400 грн)\n",
+            "<i>Отправьте эту ссылку клиенту для просмотра фото и быстрого заказа!</i>"
+        ]
+        api.send_message(chat_id, "\n".join(lines))
+        return True
+
+
+    # Авто-экстракция реквизитов доставки из чата клиента (AI Order Extractor)
+    if any(phrase in t for phrase in ("извлеки заказ", "парсинг доставки", "извлечь адрес", "распознай адрес", "извлеки адрес")) or ("отделение" in t and any(k in t for k in ("получатель", "тел", "г.", "город"))):
+        api.send_message(chat_id, "🤖 <b>ИИ анализирует реквизиты доставки клиента...</b>")
+        from aios_core.order_extractor import AIOSOrderExtractor
+        extractor = AIOSOrderExtractor()
+        try:
+            res = extractor.extract_delivery_details(text)
+            data = res.get("extracted_data", {})
+            lines = [
+                "📦 <b>ИИ извлек данные для Новой Почты:</b>\n",
+                f"• Товар: <b>{data.get('part_name') or 'Автозапчасть'}</b>",
+                f"• Получатель: <b>{data.get('recipient_name') or 'Не указан'}</b>",
+                f"• Телефон: <b>{data.get('phone') or 'Не указан'}</b>",
+                f"• Город: <b>{data.get('city') or 'Не указан'}</b>",
+                f"• Отделение: <b>{data.get('warehouse') or '1'}</b>",
+                f"• Оплата: <i>{data.get('payment_type') or 'наложенный платеж'}</i>\n",
+                "🚀 <b>Готовая команда создания ТТН (скопируйте и отправьте):</b>",
+                f"<code>{res.get('generated_ttn_command')}</code>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка извлечения заказа: {e}")
+        return True
+
+    # Новая Почта
+    if any(phrase in t for phrase in ("новая почта", "создать ттн", "накладная нп", "почта")):
+        import subprocess as _sp_np
+        try:
+            r = _sp_np.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_ttn.py"), "whoami"],
+                           capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            import json as _j_np
+            data = _j_np.loads(r.stdout)
+            sender = data.get("sender", {})
+            contact = sender.get("contact_desc", "Приватна особа")
+            lines = [
+                "📦 <b>Логистика Новая Почта:</b>\n",
+                f"• Отправитель API: <b>{contact}</b>",
+                "• Статус ключа: 🟢 <b>Подключен</b>\n",
+                "<b>Команды логистики:</b>",
+                "• Поиск города: <code>город Киев</code>",
+                "• Поиск отделений: <code>отделения Киев 1</code>",
+                "• Создать ТТН: <code>создай ТТН: <Деталь>, <Цена>, <ФИО>, <Телефон>, <Город>, <Отделение></code>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка Новой Почты: {e}")
+        return True
+
+
+    # 1. Запрос баланса и аудита
+    if any(phrase in t for phrase in ("казначейство", "баланс казначейства", "резерв системы", "аудит казначейства")):
+        from aios_core.treasury_manager import AIOSTreasuryManager
+        manager = AIOSTreasuryManager()
+        try:
+            audit = manager.audit_reserves()
+            lines = [
+                "💰 <b>Казначейство и Резервы AIOS:</b>\n",
+                f"• Автономный бюджет Системы: <b>${audit['system_budget_usd']:.2f} USD</b>",
+                f"• Месячные расходы: <b>${audit['monthly_operating_cost_usd']:.2f} USD</b>",
+                f"• Буфер выживаемости (3 мес): <b>${audit['safety_buffer_3_months_usd']:.2f} USD</b>",
+                f"• Доступно для реинвестирования: <b>${audit['excess_funds_available_usd']:.2f} USD</b>",
+                f"• Активный депозит в Aave V3: <b>${audit['active_aave_deposit_usd']:.2f} USD</b>\n"
+            ]
+            if audit["reinvestment_recommended"]:
+                lines.append(f"🟢 Рекомендуется реинвестировать излишки в DeFi!\\nДля запуска напишите: <code>реинвестируй {int(audit['excess_funds_available_usd'])}</code>")
+            else:
+                lines.append("ℹ️ Свободных средств пока недостаточно для реинвестирования (нужно > $10).")
+
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка аудита казначейства: {e}")
+        return True
+
+    # 2. Команда реинвестирования
+    reinvest = _re4.match(r"^(?:реинвестируй|реинвестировать|reinvest)\s+([0-9]+(?:\.[0-9]+)?)", t)
+    if reinvest:
+        amount = float(reinvest.group(1))
+        if amount < 1.0:
+            api.send_message(chat_id, "❌ Минимальная сумма для реинвестирования — $1.00 USD.")
+            return True
+
+        api.send_message(chat_id, f"📡 <b>Инициирован On-Chain депозит в Aave V3: ${amount:.2f} USDT...</b>\\n\\nПроверяю балансы, выполняю Approve и Supply на Polygon...")
+
+        from aios_core.treasury_manager import AIOSTreasuryManager
+        manager = AIOSTreasuryManager()
+        try:
+            # Сверяем излишки
+            audit = manager.audit_reserves()
+            if audit["system_budget_usd"] < amount:
+                api.send_message(chat_id, f"❌ Недостаточно средств в бюджете системы: доступно ${audit['system_budget_usd']:.2f}, затребовано ${amount:.2f}.")
+                return True
+
+            # Запуск On-Chain транзакции!
+            res = manager.execute_aave_reinvestment(amount)
+            if res.get("status") == "success":
+                txt = "✅ <b>Депозит в Aave V3 успешно выполнен!</b>\\n\\n"
+                txt += "Сумма: <b>$" + f"{amount:.2f}" + " USDT</b> (Сеть Polygon)\\n"
+                if res.get("approve_tx_hash"):
+                    txt += "• TxHash Approve: <code>" + res.get("approve_tx_hash") + "</code>\\n"
+                txt += "• TxHash Supply: <code>" + res.get("supply_tx_hash") + "</code>\\n\\n"
+                txt += "Пассивный доход в стейблкоинах теперь зачисляется на кошелек казначейства каждую секунду!"
+                api.send_message(chat_id, txt)
+            else:
+                api.send_message(chat_id, f"❌ Ошибка реинвестирования: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Критическая ошибка Web3: {e}")
+
+        return True
+
+    # 3. Команда вывода из Aave
+    withdraw = _re4.match(r"^(?:верни\s+из\s+дефи|верни\s+из\s+defi|withdraw\s+defi)\s+([0-9]+(?:\.[0-9]+)?)", t)
+    if withdraw:
+        amount = float(withdraw.group(1))
+        if amount < 1.0:
+            api.send_message(chat_id, "❌ Минимальная сумма для вывода — $1.00 USD.")
+            return True
+
+        api.send_message(chat_id, f"📡 <b>Инициирован вывод из Aave V3: ${amount:.2f} USDT...</b>\\n\\nВывожу стейблкоины на горячий кошелек системы на Polygon...")
+
+        from aios_core.treasury_manager import AIOSTreasuryManager
+        manager = AIOSTreasuryManager()
+        try:
+            # Сверяем баланс депозита перед отправкой
+            audit = manager.audit_reserves()
+            if audit["active_aave_deposit_usd"] < amount:
+                api.send_message(chat_id, f"❌ Недостаточно средств на депозите Aave V3: доступно ${audit['active_aave_deposit_usd']:.2f}, затребовано ${amount:.2f}.")
+                return True
+
+            # Запуск On-Chain транзакции!
+            res = manager.execute_aave_withdrawal(amount)
+            if res.get("status") == "success":
+                txt = "✅ <b>Вывод из Aave V3 успешно выполнен!</b>\\n\\n"
+                txt += "Сумма: <b>$" + f"{amount:.2f}" + " USDT</b> (Сеть Polygon)\\n"
+                txt += "• TxHash: <code>" + res.get("tx_hash") + "</code>\\n\\n"
+                txt += "Средства зачислены обратно на горячий кошелек и доступны для расходов."
+                api.send_message(chat_id, txt)
+            else:
+                api.send_message(chat_id, f"❌ Ошибка вывода: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Критическая ошибка Web3: {e}")
+
+        return True
+
+    # 4. Запрос Excel отчета
+    if any(phrase in t for phrase in ("финансовый отчет", "отчет по финансам", "скачать отчет", "экспорт финансов")):
+        api.send_message(chat_id, "📊 <b>Инициирована генерация финансового отчета Excel...</b>")
+        from aios_core.accounting_reporter import AIOSAccountingReporter
+        reporter = AIOSAccountingReporter()
+        try:
+            report_path = reporter.generate_excel_report()
+            api.send_document(chat_id, report_path, caption="📊 Финансовый отчет AIOS (.xlsx) · Обновляется автономно")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка генерации финансового отчета: {e}")
+        return True
+
+    # 5. Запрос ставок DeFi
+    if any(phrase in t for phrase in ("ставки дефи", "дефи ставки", "доходность дефи", "defi доходность", "проценты дефи")):
+        api.send_message(chat_id, "📡 <b>Запрашиваю процентные ставки в DeFi ...</b>")
+        from aios_core.treasury_manager import AIOSTreasuryManager
+        manager = AIOSTreasuryManager()
+        try:
+            rates = manager.check_defi_yields()
+            strategy = rates["best_yield_strategy"]
+            lines = [
+                "📊 <b>Текущие ставки доходности (Lending APY):</b>\n",
+                f"• Polygon Aave V3 (USDT): <b>{rates['polygon_aave_v3_usdt_apy']:.2f}% APY</b>",
+                f"• Base Compound V3 (USDC): <b>{rates['base_compound_v3_usdc_apy']:.2f}% APY</b>\n",
+                f"⭐ <b>Лучшая стратегия:</b>",
+                f"Используем протокол <b>{strategy['protocol']}</b> в сети <b>{strategy['network']}</b> с доходностью <b>{strategy['apy']:.2f}% APY</b>."
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка запроса ставок: {e}")
+        return True
+
+    # 6. Запрос баланса Kraken
+    if any(phrase in t for phrase in ("баланс кракен", "кракен баланс", "баланс на кракене", "активы кракен")):
+        api.send_message(chat_id, "🔎 <b>Запрашиваю реальные балансы на бирже Kraken...</b>")
+        from aios_core.kraken_client import AIOSKrakenClient
+        client = AIOSKrakenClient()
+        try:
+            res = client.get_account_balance()
+            if res.get("status") == "success":
+                balances = res.get("balances", {})
+                if not balances:
+                    api.send_message(chat_id, "ℹ️ <b>Kraken:</b> Балансы всех активов в данный момент равны нулю (аккаунт пуст).")
+                else:
+                    lines = ["💰 <b>Реальные балансы на аккаунте Kraken:</b>\n"]
+                    for asset, val in balances.items():
+                        lines.append(f"• {asset}: <b>{val:.6f}</b>")
+                    api.send_message(chat_id, "\n".join(lines))
+            else:
+                api.send_message(chat_id, f"❌ Ошибка запроса баланса: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка подключения к бирже: {e}")
+        return True
+
+    # 7. Ордер покупки на Kraken
+    buy_order = _re4.match(r"^(?:купи\\s+на\\s+кракене|buy\\s+on\\s+kraken)\\s+(\\S+)\\s+([0-9]+(?:\\.[0-9]+)?)\\b", t)
+    if buy_order:
+        pair = buy_order.group(1).upper()
+        volume = float(buy_order.group(2))
+
+        api.send_message(chat_id, f"🚀 <b>Исполняю реальный ордер ПОКУПКИ на Kraken: {volume} {pair}...</b>")
+
+        from aios_core.kraken_client import AIOSKrakenClient
+        client = AIOSKrakenClient()
+        try:
+            res = client.add_market_order(pair, "buy", volume)
+            if res.get("status") == "success":
+                txt = "✅ <b>Рыночный ордер ПОКУПКИ успешно исполнен!</b>\\n\\n"
+                txt += f"• Пара: <b>{pair}</b>\\n"
+                txt += f"• Объем: <b>{volume}</b>\\n"
+                txt += f"• Описание: <i>{res.get('description')}</i>\\n"
+                txt += f"• ID Сделки: <code>{', '.join(res.get('tx_ids', []))}</code>"
+                api.send_message(chat_id, txt)
+            else:
+                api.send_message(chat_id, f"❌ Ошибка исполнения ордера: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Критическая ошибка API: {e}")
+        return True
+
+    # 8. Ордер продажи на Kraken
+    sell_order = _re4.match(r"^(?:продай\\s+на\\s+кракене|sell\\s+on\\s+kraken)\\s+(\\S+)\\s+([0-9]+(?:\\.[0-9]+)?)\\b", t)
+    if sell_order:
+        pair = sell_order.group(1).upper()
+        volume = float(sell_order.group(2))
+
+        api.send_message(chat_id, f"🚀 <b>Исполняю реальный ордер ПРОДАЖИ на Kraken: {volume} {pair}...</b>")
+
+        from aios_core.kraken_client import AIOSKrakenClient
+        client = AIOSKrakenClient()
+        try:
+            res = client.add_market_order(pair, "sell", volume)
+            if res.get("status") == "success":
+                txt = "✅ <b>Рыночный ордер ПРОДАЖИ успешно исполнен!</b>\\n\\n"
+                txt += f"• Пара: <b>{pair}</b>\\n"
+                txt += f"• Объем: <b>{volume}</b>\\n"
+                txt += f"• Описание: <i>{res.get('description')}</i>\\n"
+                txt += f"• ID Сделки: <code>{', '.join(res.get('tx_ids', []))}</code>"
+                api.send_message(chat_id, txt)
+            else:
+                api.send_message(chat_id, f"❌ Ошибка исполнения ордера: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Критическая ошибка API: {e}")
+        return True
+
+    # 9. Запрос статуса SRE
+    if any(phrase in t for phrase in ("статус служб", "девопс статус", "sre статус", "здоровье служб")):
+        api.send_message(chat_id, "🔎 <b>Запускаю активное HTTP-зондирование веб-служб системы (SRE)...</b>")
+        from aios_core.web_administrator import AIOSWebAdministrator
+        admin = AIOSWebAdministrator()
+        try:
+            probes = admin.probe_services()
+            lines = ["🛡️ <b>SRE-Статус веб-сервисов AIOS:</b>\n"]
+            for p in probes:
+                status_icon = "🟢" if p["is_healthy"] else "🔴"
+                lines.append(
+                    f"{status_icon} <b>{p['service_name']}</b>\n"
+                    f"  • URL: <code>{p['url']}</code>\n"
+                    f"  • HTTP Код: <b>{p['status_code']}</b> | Latency: <b>{p['latency_seconds']:.3f}с</b>"
+                )
+                if p["error"]:
+                    lines.append(f"  • Ошибка: <i>{p['error']}</i>")
+
+            api.send_message(chat_id, "\n\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка DevOps-мониторинга: {e}")
+        return True
+
+    # 10. Команда вывода в фиат на банковскую карту
+    fiat_order = _re4.match(r"^(?:выведи|вывести|withdraw\\s+card)\\s+([0-9]+(?:\\.[0-9]+)?)\\s+usdt\\s+(?:на\\s+карту|на\\s+card|to\\s+card)\\s+([0-9]{16})\\b", t)
+    if fiat_order:
+        amount_usdt = float(fiat_order.group(1))
+        card_number = fiat_order.group(2)
+
+        api.send_message(chat_id, f"📡 <b>Запрашиваю курс обмена и создаю инвойс...</b>")
+        from aios_core.fiat_dispatcher import AIOSFiatDispatcher
+        dispatcher = AIOSFiatDispatcher()
+        try:
+            rate_info = dispatcher.get_fiat_exchange_rate(amount_usdt)
+            expected_uah = rate_info["expected_amount_uah"]
+            rate = rate_info["estimated_rate"]
+
+            alert_state_file = PROJECT_ROOT / "data" / "fiat_withdrawal_pending.json"
+            alert_state_file.write_text(json.dumps({
+                "amount_usdt": amount_usdt,
+                "card_number": card_number,
+                "expected_uah": expected_uah,
+                "timestamp": time.time()
+            }), encoding="utf-8")
+
+            txt = f"📡 <b>Курс обмена зафиксирован!</b>\\n\\n"
+            txt += f"• Курс: <b>1 USDT = {rate:.2f} UAH</b>\\n"
+            txt += f"• Вы получите: <b>{expected_uah:.2f} UAH</b>\\n"
+            txt += f"• Карта зачисления: <code>{card_number[:4]} **** **** {card_number[-4:]}</code>\\n\\n"
+            txt += "Для подтверждения On-Chain отправки напишите: <code>подтверди вывод на карту</code>"
+            api.send_message(chat_id, txt)
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка создания ордера обмена: {e}")
+        return True
+
+    # 11. Подтверждение вывода в фиат
+    if any(phrase in t for phrase in ("подтверди вывод на карту", "подтвердить вывод на карту", "confirm withdraw card")):
+        pending_file = PROJECT_ROOT / "data" / "fiat_withdrawal_pending.json"
+        if not pending_file.exists():
+            api.send_message(chat_id, "❌ Нет активных запросов на вывод средств на карту.")
+            return True
+
+        try:
+            pend_data = json.loads(pending_file.read_text(encoding="utf-8"))
+            amount_usdt = float(pend_data["amount_usdt"])
+            card_number = pend_data["card_number"]
+
+            api.send_message(chat_id, f"🚀 <b>Исполняю On-Chain перевод ${amount_usdt:.2f} USDT на обменный адрес...</b>")
+
+            from aios_core.fiat_dispatcher import AIOSFiatDispatcher
+            dispatcher = AIOSFiatDispatcher()
+            res = dispatcher.execute_fiat_withdrawal(amount_usdt, card_number, confirm=True)
+            if res.get("status") == "success":
+                txt = "✅ <b>Транзакция отправлена в блокчейн Polygon!</b>\\n\\n"
+                txt += f"• Сумма обмена: <b>${amount_usdt:.2f} USDT</b>\\n"
+                txt += f"• Ожидается: <b>{res.get('expected_uah'):.2f} UAH</b>\\n"
+                txt += f"• Карта: <code>{card_number[:4]} **** **** {card_number[-4:]}</code>\\n"
+                txt += f"• TxHash: <code>{res.get('tx_hash')}</code>\\n\\n"
+                txt += "Зачисление гривен произойдет автоматически в течение 5-10 минут."
+                api.send_message(chat_id, txt)
+                pending_file.unlink(missing_ok=True)
+            else:
+                api.send_message(chat_id, f"❌ Ошибка перевода: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Критическая ошибка Web3: {e}")
+        return True
+
+    # 12. Сканирование рантайм-ошибок (SRE Healer)
+    if any(phrase in t for phrase in ("сканируй ошибки", "сканировать ошибки", "sre healer", "найти баги")):
+        api.send_message(chat_id, "🔎 <b>Запускаю сканирование системного лога на ошибки...</b>")
+        from aios_core.sre_healer import SRESelfReflectiveHealer
+        healer = SRESelfReflectiveHealer()
+        try:
+            tb_info = healer.scan_log_for_traceback(str(PROJECT_ROOT / "logs" / "telegram_bot.log"))
+            if not tb_info:
+                api.send_message(chat_id, "🟢 <b>SRE Healer:</b> В системных логах не обнаружено свежих трейсбеков. Код полностью здоров!")
+            else:
+                lines = [
+                    "🚨 <b>SRE Healer зафиксировал рантайм-сбой в коде:</b>\n",
+                    f"• Файл: <code>{tb_info['file_path']}</code>\n",
+                    f"• Строка: <b>{tb_info['line_number']}</b>\n",
+                    f"• Трейсбек:\n<pre>{tb_info['traceback'][:400]}</pre>\n",
+                    "Для запуска ИИ-исправления и авто-патча кода напишите: <code>исправь ошибку</code>"
+                ]
+                api.send_message(chat_id, "".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка сканирования логов: {e}")
+        return True
+
+    # 13. Автоматическое ИИ-исправление рантайм-ошибки
+    if any(phrase in t for phrase in ("исправь ошибку", "исправить ошибку", "sre heal", "автопатч")):
+        from aios_core.sre_healer import SRESelfReflectiveHealer
+        healer = SRESelfReflectiveHealer()
+        try:
+            tb_info = healer.scan_log_for_traceback(str(PROJECT_ROOT / "logs" / "telegram_bot.log"))
+            if not tb_info:
+                api.send_message(chat_id, "❌ Нет активных сбоев для авто-исправления.")
+                return True
+
+            api.send_message(chat_id, f"🛠 <b>Запуск ИИ-исправления сбойного файла {Path(tb_info['file_path']).name}...</b>")
+            res = healer.apply_ai_fix(tb_info)
+            if res.get("status") == "success":
+                txt = "✅ <b>ИИ-Автопатч успешно применен!</b>\\n\\n"
+                txt += f"• Файл: <code>{res.get('file')}</code>\\n"
+                txt += f"• Диагноз ИИ: <i>{res.get('diagnosis')}</i>\\n\\n"
+                txt += f"• Изменение успешно скомпилировано и записано на диск."
+                api.send_message(chat_id, txt)
+            else:
+                api.send_message(chat_id, f"❌ Не удалось исправить ошибку: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Критическая ошибка ИИ-восстановления: {e}")
+        return True
+
+    return False
+
+
+def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
+    """Обрабатывает фриланс-команды владельца.
+    Команды:
+      «подтверди фриланс <task_id>» или «confirm freelance <task_id>» — подтверждает оплату за выполненную задачу и зачисляет деньги в 4 кошелька.
+      «список фриланса» или «фриланс список» — выводит список решенных задач, ожидающих подтверждения оплаты.
+      «инвойс фриланс <task_id>» или «invoice freelance <task_id>» — генерирует и отправляет интерактивный HTML-инвойс для этой задачи.
+    """
+    import re as _re3
+    t = " ".join(str(text or "").casefold().split())
+
+    # 1. Обработка подтверждения оплаты
+    approve = _re3.match(r"^(?:подтверди\s+фриланс|подтвердить\s+фриланс|confirm\s+freelance)\s+(\S+)", t)
+    if approve:
+        task_id = approve.group(1).strip()
+        tasks_file = PROJECT_ROOT / "data" / "freelance_tasks.json"
+        if not tasks_file.exists():
+            api.send_message(chat_id, "⚠️ Файл задач фриланса не найден.")
+            return True
+
+        try:
+            tasks = json.loads(tasks_file.read_text(encoding="utf-8"))
+        except Exception as e:
+            api.send_message(chat_id, f"⚠️ Ошибка чтения файла задач: {e}")
+            return True
+
+        target_task = None
+        for task in tasks:
+            if task.get("id") == task_id:
+                target_task = task
+                break
+
+        if not target_task:
+            api.send_message(chat_id, f"❌ Задача с ID <code>{task_id}</code> не найдена.")
+            return True
+
+        if target_task.get("status") == "PAID":
+            api.send_message(chat_id, f"ℹ️ Оплата по задаче <code>{task_id}</code> уже была зачислена ранее.")
+            return True
+
+        # Зачисляем реальный доход в кошелек системы
+        from aios_core.crypto_wallet import AIOSWalletManager
+        wallet = AIOSWalletManager(str(PROJECT_ROOT / "data"))
+
+        try:
+            budget = float(target_task.get("budget_usd", 0.0))
+            source = f"Freelance:{target_task.get('source', 'unknown')}"
+
+            # Начисляем и делим на 4 кошелька
+            wallet.record_income(
+                amount_usd=budget,
+                source=source,
+                task_id=task_id
+            )
+
+            # Меняем статус на PAID
+            target_task["status"] = "PAID"
+            tasks_file.write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            # Составляем сообщение без f-string с literal newlines
+            txt = "✅ <b>Оплата фриланса зачислена!</b>\\n\\n"
+            txt += "ID: <code>" + task_id + "</code>\\n"
+            txt += "Задача: <i>" + str(target_task.get('title', '')) + "</i>\\n"
+            txt += "Сумма: <b>$" + f"{budget:.2f}" + " USD</b>\\n\\n"
+            txt += "Бюджет распределен по 25% ($" + f"{budget*0.25:.2f}" + " каждому): Разработчик, Инвестор, Персонал, Система."
+
+            api.send_message(chat_id, txt)
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка при фиксации оплаты: {e}")
+
+        return True
+
+    # 2. Обработка просмотра списка
+    if any(phrase in t for phrase in ("список фриланса", "фриланс список", "фриланс задачи", "ожидают оплаты")):
+        tasks_file = PROJECT_ROOT / "data" / "freelance_tasks.json"
+        if not tasks_file.exists():
+            api.send_message(chat_id, "📭 Фриланс-задач нет.")
+            return True
+
+        try:
+            tasks = json.loads(tasks_file.read_text(encoding="utf-8"))
+        except Exception:
+            api.send_message(chat_id, "⚠️ Ошибка чтения файла задач.")
+            return True
+
+        pending = [t for t in tasks if t.get("status") == "BID_SUBMITTED"]
+        if not pending:
+            api.send_message(chat_id, "📭 Нет фриланс-задач, ожидающих подтверждения оплаты.")
+            return True
+
+        lines = [f"📋 <b>Фриланс-задачи в работе (ожидают оплаты): {len(pending)}</b>"]
+        for task in pending[-15:]:
+            lines.append(
+                f"• ID: <code>{task.get('id')}</code>\\n"
+                f"  <i>{task.get('title')}</i>\\n"
+                f"  Бюджет: <b>${task.get('budget_usd')} USD</b> (Источник: {task.get('source')})\\n"
+                f"  Инвойс: <code>инвойс фриланс {task.get('id')}</code>\\n"
+                f"  Подтвердить оплату: <code>подтверди фриланс {task.get('id')}</code>"
+            )
+        api.send_message(chat_id, "\\n\\n".join(lines)[:4000])
+        return True
+
+    # 3. Обработка получения инвойса
+    get_inv = _re3.match(r"^(?:инвойс\\s+фриланс|invoice\\s+freelance)\\s+(\\S+)\\b", t)
+    if get_inv:
+        task_id = get_inv.group(1).strip()
+        tasks_file = PROJECT_ROOT / "data" / "freelance_tasks.json"
+        if not tasks_file.exists():
+            api.send_message(chat_id, "⚠️ Файл задач фриланса не найден.")
+            return True
+
+        try:
+            tasks = json.loads(tasks_file.read_text(encoding="utf-8"))
+        except Exception:
+            api.send_message(chat_id, "⚠️ Ошибка чтения файла задач.")
+            return True
+
+        target_task = None
+        for task in tasks:
+            if task.get("id") == task_id:
+                target_task = task
+                break
+
+        if not target_task:
+            api.send_message(chat_id, f"❌ Задача с ID <code>{task_id}</code> не найдена.")
+            return True
+
+        api.send_message(chat_id, "📊 <b>Генерирую интерактивный счет для задачи...</b>")
+        from aios_core.invoice_generator import AIOSInvoiceGenerator
+        invoicer = AIOSInvoiceGenerator(str(PROJECT_ROOT / "data"))
+        try:
+            invoice_path = invoicer.generate_invoice_html(
+                client_name=target_task.get("source", "unknown"),
+                amount_usd=float(target_task.get("budget_usd", 0.0)),
+                service_desc=target_task.get("title", ""),
+                invoice_id=task_id
+            )
+            api.send_document(chat_id, invoice_path, caption=f"📑 Инвойс № {task_id} · {target_task.get('source')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка выписки счета: {e}")
+        return True
+
+    return False
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ---------------------------------------------------------------------------
+# Coder commands — MetaCognitiveCoder integration
+# ---------------------------------------------------------------------------
+
+
+_coder_mod = None
+
+def _get_coder_module():
+    """Load MetaCognitiveCoder module."""
+    global _coder_mod
+    if _coder_mod is not None:
+        return _coder_mod
+    import importlib.util, sys
+    mod_name = "aios_core.meta_cognitive_self_coder"
+    spec = importlib.util.spec_from_file_location(
+        mod_name, str(PROJECT_ROOT / "aios_core" / "meta_cognitive_self_coder.py")
+    )
+    mod = importlib.util.module_from_spec(spec)
+    mod.__name__ = mod_name
+    sys.modules[mod_name] = mod
+    spec.loader.exec_module(mod)
+    _coder_mod = mod
+    return mod
+
+
+@_safe
+def cmd_coder_status() -> str:
+    mod = _get_coder_module()
+    coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
+    s = coder.status()
+    lines = []
+    lines.append("🧠 <b>MetaCognitiveCoder v" + str(s.get("version", "?")) + "</b>")
+    lines.append("")
+    lines.append("  🤖 Модель: <code>" + str(s.get("llm_model", "?")) + "</code>")
+    api_status = "✅ настроен" if s.get("llm_configured") else "❌ нет ключа"
+    lines.append("  🔑 API: " + api_status)
+    lines.append("  📁 Репозиторий: <code>" + str(s.get("repo_path", "?")) + "</code>")
+    lines.append("  📝 Изменений: " + str(s.get("changes_made", 0)))
+    lines.append("  🔄 Auto-commit: " + ("✅" if s.get("auto_commit") else "❌"))
+    lines.append("  🚀 Auto-push: " + ("✅" if s.get("auto_push") else "❌"))
+    return "\n".join(lines)
+
+
+@_safe
+def cmd_code_generate(args: str) -> str:
+    if not args.strip():
+        return "ℹ️ Использование: <code>/code Generate a function that...</code>"
+    mod = _get_coder_module()
+    coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
+    change = coder.generate_code(args.strip())
+    safe_status = "✅ Безопасно" if change.safe else "⚠️ Опасно"
+    warn_list = change.warnings if change.warnings else ["Нет"]
+    code_preview = change.new_code[:300].replace("<", "&lt;").replace(">", "&gt;")
+    lines = []
+    lines.append("🧠 <b>Код сгенерирован</b>")
+    lines.append("")
+    lines.append("  Безопасность: " + safe_status)
+    lines.append("  Предупреждения:")
+    for w in warn_list:
+        lines.append("    • " + str(w))
+    lines.append("")
+    lines.append("<b>Код</b> (" + str(len(change.new_code)) + " символов):")
+    lines.append("<pre>" + code_preview + "...</pre>")
+    return "\n".join(lines)
+
+
+@_safe
+def cmd_code_review(args: str) -> str:
+    file_path = args.strip()
+    if not file_path:
+        return "ℹ️ Использование: <code>/review run_telegram_bot.py</code>"
+    mod = _get_coder_module()
+    coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
+    review = coder.review_code(file_path)
+    lines = []
+    lines.append("📋 <b>Code Review: " + file_path + "</b>")
+    lines.append("")
+    lines.append(review[:3500])
+    return "\n".join(lines)
+
+
+@_safe
+def cmd_code_fix(args: str) -> str:
+    parts = args.strip().split(maxsplit=1)
+    if len(parts) < 2:
+        return "ℹ️ Использование: <code>/fix file.py описание бага или traceback</code>"
+    file_path, bug_desc = parts
+    mod = _get_coder_module()
+    coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
+    change = coder.fix_bug(file_path, bug_desc)
+    safe_status = "✅ Исправлено" if change.safe else "⚠️ Ошибка безопасности"
+    lines = []
+    lines.append("🔧 <b>Bug Fix: " + file_path + "</b>")
+    lines.append("")
+    lines.append("  Статус: " + safe_status)
+    lines.append("  Предупреждения: " + str(change.warnings or "Нет"))
+    lines.append("  Размер кода: " + str(len(change.new_code)) + " символов")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Main polling loop
+# ---------------------------------------------------------------------------
+
+
+def parse_command(text: str) -> tuple[str, str]:
+    """Split '/command args' into (command, args)."""
+    text = (text or "").strip()
+    if not text:
+        return "", ""
+    parts = text.split(maxsplit=1)
+    cmd = parts[0].split("@")[0]  # strip @botname
+    args = parts[1] if len(parts) > 1 else ""
+    return cmd, args
+
+
+# State storage for callback interactions (chat_id -> pending action)
+_pending_actions: dict[int, str] = {}
+_pending_confirmations: dict[int, str] = {}
+DANGEROUS_CALLBACKS = {"coder_git_push", "coder_restart", "bot_restart", "bot_stop"}
+_paused = False
+_chat_history: dict[int, list[dict]] = {}  # chat_id -> message history
+MAX_HISTORY = 20  # keep last 20 messages per chat
+
+
+def _handle_button(api: TelegramAPI, chat_id: int, data: str) -> None:
+    """Handle a callback, requiring an explicit second click for dangerous actions."""
+    if data in DANGEROUS_CALLBACKS:
+        _pending_confirmations[chat_id] = data
+        api.send_message(
+            chat_id,
+            "⚠️ <b>Подтвердите опасное действие</b>",
+            reply_markup={"inline_keyboard": [[
+                {"text": "✅ Подтвердить", "callback_data": "confirm_dangerous"},
+                {"text": "✖️ Отмена", "callback_data": "cancel_dangerous"},
+            ]]},
+        )
+        return
+    if data == "cancel_dangerous":
+        _pending_confirmations.pop(chat_id, None)
+        api.send_message(chat_id, "Действие отменено.")
+        return
+    if data == "confirm_dangerous":
+        data = _pending_confirmations.pop(chat_id, "")
+        if not data:
+            api.send_message(chat_id, "Нет ожидающего действия для подтверждения.")
+            return
+    try:
+        _handle_button_inner(api, chat_id, data)
+    except Exception as e:
+        print(f"  [BTN CRASH] {data}: {e}")
+        import traceback; traceback.print_exc()
+        try:
+            api.send_message(chat_id, "Error: " + str(e)[:200])
+        except:
+            pass
+
+def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
+    reply = None
+    keyboard = None
+
+    if data == "system_health":
+        reply = cmd_system_health()
+    elif data == "last_backup":
+        reply = cmd_last_backup()
+    elif data == "alert_history":
+        reply = cmd_alert_history()
+    elif data == "menu_back":
+        reply = chr(127899) + " <b>AIOS Control Panel</b>" + chr(10) + chr(10) + chr(129504) + " Koder 24/7"
+        keyboard = MAIN_MENU_KEYBOARD
+    elif data == "menu_stats":
+        reply = cmd_stats()
+    elif data == "menu_platforms":
+        reply = cmd_platforms()
+    elif data == "menu_help":
+        reply = cmd_help()
+    elif data == "menu_coder":
+        reply = chr(129504) + " <b>Koder</b>" + chr(10) + chr(10) + "Vyberite deistvie:"
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "menu_olx":
+        reply = chr(128722) + " <b>OLX</b>"
+        keyboard = OLX_MENU_KEYBOARD
+    elif data == "phone_center":
+        _handle_phone_control_center_intent(api, chat_id, "центр телефона")
+        return
+    elif data == "phone_recovery":
+        _handle_phone_recovery_intent(api, chat_id, "восстановление телефона")
+        return
+    elif data == "phone_leads":
+        _handle_phone_lead_intent(api, chat_id, "лиды телефона")
+        return
+    elif data == "phone_crm_tasks":
+        _handle_phone_lead_intent(api, chat_id, "CRM задачи телефона")
+        return
+    elif data == "phone_banks":
+        _handle_phone_bank_monitor_intent(api, chat_id, "статус банков телефона")
+        return
+    elif data == "phone_trends":
+        _handle_phone_metrics_intent(api, chat_id, "тренды телефона")
+        return
+    elif data == "phone_sync":
+        _handle_phone_recovery_intent(api, chat_id, "статус синхронизации телефона")
+        return
+    elif data == "phone_audit":
+        _handle_phone_audit_intent(api, chat_id, "журнал телефона")
+        return
+    elif data == "phone_calibrations":
+        _handle_phone_metrics_intent(api, chat_id, "калибровки телефона")
+        return
+    elif data == "phone_routes":
+        api.send_message(chat_id, "🚕 <b>Маршруты</b>\n«маршрут Uklon: откуда -> куда»\n«маршрут EasyWay: остановка или адрес»\n\nАдрес и заказ выбираются вручную.")
+        return
+    elif data == "phone_workflows":
+        _handle_phone_workflow_readiness_intent(api, chat_id, "проверка сценариев телефона")
+        return
+    elif data == "phone_data_health":
+        _handle_phone_recovery_intent(api, chat_id, "здоровье данных телефона")
+        return
+    elif data == "phone_inventory":
+        _handle_phone_inventory_intent(api, chat_id, "инвентарь телефона")
+        return
+    elif data == "phone_metrics_export":
+        _handle_phone_metrics_intent(api, chat_id, "экспорт метрик телефона")
+        return
+    elif data == "menu_accounts":
+        reply = cmd_accounts()
+        keyboard = ACCOUNTS_MENU_KEYBOARD
+    elif data == "menu_phone":
+        reply = ("📲 <b>Телефон AIOS</b>\n\n"
+                 "Центр, лиды, CRM follow-up, банки, метрики, синхронизации и журнал доступны через кнопки ниже. "
+                 "Маршруты и сообщения остаются подтверждаемыми действиями.")
+        keyboard = PHONE_MENU_KEYBOARD
+    elif data == "accounts_google":
+        reply = "🌐 <b>Google аккаунт</b> (jo.talbot@gmail.com)\n\nВыберите действие — или просто напишите «проверь почту» / «покажи календарь»."
+        keyboard = GOOGLE_MENU_KEYBOARD
+    elif data == "accounts_instagram":
+        reply = "📸 <b>Instagram</b> (@jo.talbot)\n\nВыберите действие — или просто напишите «мой инстаграм» / «мои посты»."
+        keyboard = INSTAGRAM_MENU_KEYBOARD
+    elif data == "accounts_back":
+        reply = cmd_accounts()
+        keyboard = ACCOUNTS_MENU_KEYBOARD
+    elif data == "accounts_facebook":
+        reply = None
+        keyboard = None
+        api.send_message(chat_id, "⏳ Facebook…")
+        _run_acct_cmd(api, chat_id, ["facebook", "profile"], "facebook")
+    elif data == "accounts_tiktok":
+        reply = None
+        keyboard = None
+        api.send_message(chat_id, "⏳ TikTok…")
+        _run_acct_cmd(api, chat_id, ["tiktok", "profile"], "tiktok")
+    elif data == "accounts_olx":
+        reply = None
+        keyboard = None
+        api.send_message(chat_id, "⏳ OLX…")
+        _run_acct_cmd(api, chat_id, ["olx", "profile"], "olx")
+    elif data == "google_whoami":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "whoami")
+    elif data == "google_unread":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "unread")
+    elif data == "google_list":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "list")
+    elif data == "google_calendar":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "calendar")
+    elif data == "google_drive":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "drive")
+    elif data == "google_mailshot":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "mailshot")
+    elif data == "google_events":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "events")
+    elif data == "google_event_add":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "event_prompt")
+    elif data == "google_search":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "search_prompt")
+    elif data == "google_docs":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "docs_prompt")
+    elif data == "google_send":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "send_prompt")
+    elif data == "ig_profile":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "profile")
+    elif data == "ig_stats":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "stats")
+    elif data == "ig_posts":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "posts")
+    elif data == "ig_screenshot":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "screenshot")
+    elif data == "ig_like_prompt":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "like_prompt")
+    elif data == "ig_follow_prompt":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "follow_prompt")
+    elif data == "ig_dm_prompt":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "dm_prompt")
+    elif data == "menu_bot":
+        reply = chr(129302) + " <b>Bot</b>"
+        keyboard = BOT_MENU_KEYBOARD
+    elif data == "menu_server":
+        import subprocess as _sp
+        try:
+            uptime = _sp.run(["uptime", "-p"], capture_output=True, text=True, timeout=5).stdout.strip()
+            mem = _sp.run(["free", "-h"], capture_output=True, text=True, timeout=5).stdout
+            lines = [chr(128421) + " <b>Server</b>", "", chr(9201) + " " + uptime, ""]
+            for l in mem.strip().split(chr(10))[:2]:
+                lines.append(chr(128190) + " " + l.strip())
+            reply = chr(10).join(lines)
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+    elif data == "menu_docker":
+        import subprocess as _sp
+        try:
+            ps = _sp.run(["docker", "ps", "--format", "{{.Names}}: {{.Status}}"], capture_output=True, text=True, timeout=10)
+            lines = [chr(128051) + " <b>Docker</b>", ""]
+            for l in ps.stdout.strip().split(chr(10)):
+                if l:
+                    name, st = (l.split(": ", 1) if ": " in l else (l, ""))
+                    em = chr(9989) if "Up" in st else chr(10060)
+                    lines.append(em + " <b>" + name + "</b> " + st)
+            reply = chr(10).join(lines)
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+    elif data == "menu_keys":
+        import importlib.util as _iu, sys as _sys, os as _os
+        try:
+            spec = _iu.spec_from_file_location("lb_k", str(PROJECT_ROOT / "aios_core" / "llm_balancer.py"))
+            mod = _iu.module_from_spec(spec)
+            _sys.modules["lb_k"] = mod
+            spec.loader.exec_module(mod)
+            b = mod.LLMBalancer()
+            s = b.status()
+            total_k = sum(p.get("keys_total", 0) for p in s.get("providers", {}).values())
+            avail_k = sum(p.get("keys_available", 0) for p in s.get("providers", {}).values())
+            lines = [chr(128273) + " <b>API Keys</b> (" + str(avail_k) + "/" + str(total_k) + ")", ""]
+            for pn, pd in s.get("providers", {}).items():
+                a = pd.get("keys_available", 0)
+                t = pd.get("keys_total", 0)
+                bar = chr(128994) * a + chr(128308) * (t - a)
+                lines.append("<b>" + pn.upper() + "</b> " + bar + " " + str(a) + "/" + str(t))
+            reply = chr(10).join(lines)
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+    elif data == "menu_logs":
+        import subprocess as _sp
+        try:
+            logs = _sp.run(["tail", "-15", "/root/AIOS/logs/coder_orchestrator.log"], capture_output=True, text=True, timeout=5)
+            t = logs.stdout.strip() or "Empty"
+            reply = chr(128203) + " <b>Logs</b>" + chr(10) + chr(10) + "<pre>" + t[:3000].replace("<", "&lt;") + "</pre>"
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+    elif data == "coder_status":
+        reply = cmd_coder_status()
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_backlog":
+        import json as _j
+        try:
+            with open(PROJECT_ROOT / "data" / "coder_backlog.json") as f:
+                bl = _j.load(f)
+            lines = [chr(128230) + " <b>Backlog</b>", ""]
+            lines.append("Cycles: " + str(bl.get("cycle_count", 0)))
+            lines.append(chr(9989) + " Done: " + str(bl.get("completed", 0)))
+            lines.append(chr(10060) + " Failed: " + str(bl.get("failed", 0)))
+            tasks = bl.get("tasks", [])
+            if tasks:
+                lines.append("")
+                lines.append("<b>Tasks:</b>")
+                for i, t in enumerate(tasks[:5], 1):
+                    lines.append("  " + str(i) + ". " + t.get("description", "?")[:60])
+            hist = bl.get("history", [])
+            if hist:
+                lines.append("")
+                lines.append("<b>History (last 5):</b>")
+                for h in hist[-5:]:
+                    em = chr(9989) if h.get("status") == "pushed" else chr(9208)
+                    lines.append("  " + em + " " + h.get("description", "?")[:50])
+            reply = chr(10).join(lines)
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_balancer":
+        import importlib.util as _iu, sys as _sys
+        try:
+            spec = _iu.spec_from_file_location("lb_b", str(PROJECT_ROOT / "aios_core" / "llm_balancer.py"))
+            mod = _iu.module_from_spec(spec)
+            _sys.modules["lb_b"] = mod
+            spec.loader.exec_module(mod)
+            b = mod.LLMBalancer()
+            s = b.status()
+            lines = [chr(9878) + " <b>Balancer</b>", ""]
+            lines.append("Requests: " + str(s.get("total_requests", 0)))
+            lines.append("Errors: " + str(s.get("total_errors", 0)))
+            lines.append("")
+            for pn, pd in s.get("providers", {}).items():
+                a = pd.get("keys_available", 0)
+                t = pd.get("keys_total", 0)
+                em = chr(9989) if a > 0 else chr(10060)
+                lines.append(em + " <b>" + pn.upper() + "</b>: " + str(a) + "/" + str(t))
+            reply = chr(10).join(lines)
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_git_status":
+        try:
+            mod = _get_coder_module()
+            coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
+            gs = coder.git.status()
+            reply = chr(128220) + " <b>Git</b>" + chr(10) + chr(10) + (gs or chr(9989) + " Clean")
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_git_push":
+        try:
+            mod = _get_coder_module()
+            coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
+            ok, out = coder.git.push()
+            reply = chr(128640) + " " + ("Pushed" if ok else out[:200])
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_review_bot":
+        reply = cmd_code_review("run_telegram_bot.py")
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_review_self":
+        reply = cmd_code_review("aios_core/meta_cognitive_self_coder.py")
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_gen_prompt":
+        _pending_actions[chat_id] = "gen_code"
+        reply = chr(9997) + " <b>Send description of what to generate</b>"
+    elif data == "coder_fix_prompt":
+        _pending_actions[chat_id] = "fix_bug"
+        reply = chr(128295) + " <b>Send: filename bug_description</b>"
+    elif data == "coder_restart":
+        import subprocess as _sp
+        try:
+            _sp.run(["systemctl", "restart", "aios-auto-coder"], timeout=10)
+            reply = chr(128260) + " <b>Orchestrator restarted!</b>"
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "olx_stats":
+        reply = cmd_olx("")
+        keyboard = OLX_MENU_KEYBOARD
+    elif data == "olx_list":
+        reply = cmd_olx_list(chat_id)
+        keyboard = OLX_MENU_KEYBOARD
+    elif data == "olx_latest":
+        reply = cmd_olx_latest("", chat_id)
+        keyboard = OLX_MENU_KEYBOARD
+    elif data == "olx_analytics":
+        reply = "Use: <code>/olx_analytics query</code>"
+        keyboard = OLX_MENU_KEYBOARD
+    elif data == "bot_start":
+        import subprocess as _sp
+        try:
+            _sp.run(["docker", "compose", "-f", "/root/AIOS/docker-compose.prod.yml", "start", "aios-telegram-bot"], timeout=15)
+            reply = chr(9654) + " <b>Bot started!</b>"
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = BOT_MENU_KEYBOARD
+    elif data == "bot_pause":
+        global _paused
+        _paused = not _paused
+        if _paused:
+            reply = chr(9208) + " <b>Bot paused</b>" + chr(10) + "Messages skipped. Press again to resume."
+        else:
+            reply = chr(9654) + " <b>Bot resumed!</b>"
+        keyboard = BOT_MENU_KEYBOARD
+    elif data == "bot_restart":
+        import subprocess as _sp
+        try:
+            _sp.run(["docker", "compose", "-f", "/root/AIOS/docker-compose.prod.yml", "restart", "aios-telegram-bot"], timeout=30)
+            reply = chr(9989) + " <b>Bot restarted!</b>"
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = BOT_MENU_KEYBOARD
+    elif data == "bot_stop":
+        import subprocess as _sp
+        try:
+            api.send_message(chat_id, chr(9209) + " <b>Bot stopping...</b>")
+            _sp.run(["docker", "compose", "-f", "/root/AIOS/docker-compose.prod.yml", "stop", "aios-telegram-bot"], timeout=30)
+        except:
+            pass
+        return
+    elif data == "bot_status":
+        import subprocess as _sp
+        try:
+            ps = _sp.run(["docker", "ps", "-a", "--filter", "name=aios-telegram-bot", "--format", "{{.Status}}"], capture_output=True, text=True, timeout=5)
+            reply = chr(128202) + " <b>Bot Status</b>" + chr(10) + chr(10) + (ps.stdout.strip() or "Not found")
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = BOT_MENU_KEYBOARD
+    elif data == "bot_llm_gemini":
+        try:
+            from aios_core.llm_gemini_web import gemini_web_status, set_llm_mode
+            st = gemini_web_status()
+            set_llm_mode(chat_id, "gemini")
+            if not st.get("chrome"):
+                reply = "❌ <b>Gemini Web недоступен:</b> Chrome (CDP :9222) не найден.\nПроверьте: systemctl status aios-chrome-vnc"
+            elif not st.get("logged_in"):
+                reply = "⚠️ <b>Режим переключён на Gemini Web</b>, но Google-сессия не активна.\nВойдите в аккаунт в профиле chrome_twin (VNC :1) и повторите."
+            else:
+                reply = "🌐 <b>Режим LLM: Gemini Web</b>\n\nОтветы в этом чате идут через gemini.google.com (ваш профиль, временный чат)."
+            keyboard = BOT_MENU_KEYBOARD
+        except Exception as e:
+            reply = "❌ " + str(e)[:200]
+    elif data == "bot_llm_auto":
+        try:
+            from aios_core.llm_gemini_web import set_llm_mode
+            set_llm_mode(chat_id, "auto")
+            reply = "🔄 <b>Режим LLM: балансер</b>\n\nОбычный мульти-провайдерный LLM (groq/mistral/zai/... + Ollama)."
+            keyboard = BOT_MENU_KEYBOARD
+        except Exception as e:
+            reply = "❌ " + str(e)[:200]
+
+    if reply:
+        try:
+            if keyboard:
+                api.send_message(chat_id, reply, reply_markup=keyboard)
+            else:
+                api.send_message(chat_id, reply)
+        except Exception as e:
+            print(f"  [BTN SEND ERR] {data}: {e}")
+            try:
+                api.send_message(chat_id, str(reply)[:3900], parse_mode="")
+            except Exception as e2:
+                print(f"  [BTN SEND ERR2] {e2}")
+    else:
+        print(f"  [BTN] no reply generated for: {data}")
+
+
+
+def _handle_inbox_callback(api: TelegramAPI, chat_id: int, msg_id: int, data: str) -> None:
+    """Обработка кнопок инбокса: прочитать пункт / всё прочитано / сводка."""
+    items = _last_inbox.get(chat_id, [])
+    if data == "inbox_refresh":
+        _send_unified_inbox(api, chat_id, filters=_last_inbox_filters.get(chat_id, {}),
+                            refresh=True)
+        return
+    if data == "inbox_readall":
+        _inbox_mark_read(api, chat_id)
+        return
+    if data == "inbox_summary":
+        if not items:
+            api.send_message(chat_id, "📭 Нет данных инбокса (соберите «инбокс» заново).")
+            return
+        api.send_message(chat_id, "🧠 Составляю умное резюме…")
+        api.send_message(chat_id, _inbox_summarize(items)[:3900])
+        return
+    if data.startswith("inbox_read_"):
+        try:
+            idx = int(data.split("_")[-1])
+            it = items[idx - 1]
+        except Exception:
+            api.send_message(chat_id, "❌ Не удалось открыть пункт.")
+            return
+        if it.get("channel") == "viber":
+            api.send_message(chat_id, "⏳ Читаю выбранный Viber-чат…")
+            data_vb = _run_account_control(["viber", "read", str(it.get("ref") or ""), "--limit", "12"])
+            if data_vb.get("status") != "ok":
+                api.send_message(chat_id, f"❌ Viber: {_esc_tg(data_vb.get('error', '?'))}")
+                return
+            messages = data_vb.get("messages") or []
+            if not messages:
+                api.send_message(chat_id, "💜 В выбранном Viber-чате нет распознанных сообщений.")
+                return
+            lines_vb = [f"💜 <b>{_esc_tg(it['title'])[:80]}</b> [Viber]"]
+            for message in messages[-12:]:
+                prefix = "↗️" if message.get("mine") else "•"
+                lines_vb.append(f"{prefix} {_esc_tg(str(message.get('text') or '')[:220])}")
+            lines_vb.append(f"\nОтветить: «ответь на {idx}: текст»")
+            api.send_message(chat_id, "\n".join(lines_vb)[:3900])
+            return
+        if it.get("channel") == "signal":
+            api.send_message(chat_id, "⏳ Читаю выбранный Signal-чат…")
+            data_sig = _run_account_control(["signal", "read", str(it.get("ref") or ""), "--limit", "12"])
+            if data_sig.get("status") != "ok":
+                api.send_message(chat_id, f"❌ Signal: {_esc_tg(data_sig.get('error', '?'))}")
+                return
+            messages = data_sig.get("messages") or []
+            if not messages:
+                api.send_message(chat_id, "🔒 В выбранном Signal-чате нет распознанных сообщений.")
+                return
+            lines_sig = [f"🔒 <b>{_esc_tg(it['title'])[:80]}</b> [Signal]"]
+            for message in messages[-12:]:
+                prefix = "↗️" if message.get("mine") else "•"
+                lines_sig.append(f"{prefix} {_esc_tg(str(message.get('text') or '')[:220])}")
+            lines_sig.append(f"\nОтветить: «ответь на {idx}: текст»")
+            api.send_message(chat_id, "\n".join(lines_sig)[:3900])
+            return
+        em, ch = _CHANNELS.get(it["channel"], ("", it["channel"]))
+        txt = (f"{em} <b>{_esc_tg(it['title'])[:80]}</b> [{ch}]\n"
+               f"{_esc_tg(it.get('preview') or '')}\n"
+               f"🕐 {it.get('date') or '—'}\n\n"
+               f"Ответить: «ответь на {idx}: текст»")
+        api.send_message(chat_id, txt)
+        return
+
+
+def _handle_olx_send_callback(api: TelegramAPI, chat_id: int, cb_id: str, data: str) -> None:
+    """Кнопка «Отправить ответ» — отправляет сгенерированный ответ в OLX-чат.
+
+    Формат data: olx_send_<contact>|<text>. Контакт и текст URL-безопасно кодируются.
+    """
+    try:
+        rid = data[len("olx_send_"):]
+        # получить неотправленный ответ из pending-файла
+        import json as _json
+        pending = PROJECT_ROOT / "data" / "olx_pending_replies.json"
+        item = None
+        try:
+            if pending.exists():
+                _d = _json.loads(pending.read_text(encoding="utf-8"))
+                item = _d.pop(rid, None)
+                pending.write_text(_json.dumps(_d, ensure_ascii=False), encoding="utf-8")
+        except Exception:
+            pass
+        if not item or not item.get("contact") or not item.get("text"):
+            api.answer_callback(cb_id, "❌ Ответ не найден (истёк)")
+            return
+        contact = item["contact"]
+        text = item["text"]
+        import subprocess as _sp_olx
+        r = _sp_olx.run(
+            ["xvfb-run", "-a", "-s", "-screen 0 1440x900x24",
+             "/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_account_control.py"),
+             "olx", "chat", "reply", contact, text, "--confirm"],
+            capture_output=True, text=True, timeout=200, cwd=str(PROJECT_ROOT))
+        out = (r.stdout or "").strip()
+        ok = '"status": "sent"' in out or '"status": "ok"' in out
+        if ok:
+            api.answer_callback(cb_id, "✅ Отправлено")
+            api.send_message(chat_id, f"✅ Ответ отправлен <b>{contact}</b> в OLX.")
+        else:
+            api.answer_callback(cb_id, "⚠️ Не отправлено")
+            api.send_message(chat_id, f"⚠️ Не удалось отправить <b>{contact}</b>: {out[-200:]}")
+    except Exception as e:
+        try:
+            api.answer_callback(cb_id, "⚠️ Ошибка")
+            api.send_message(chat_id, f"⚠️ Ошибка отправки: {e}")
+        except Exception:
+            pass
+
+
+def _handle_autonomy_callback(api: TelegramAPI, chat_id: int, msg_id: int, cb_id: str, data: str) -> None:
+    """Обработка кнопок подтверждения/отклонения автономии."""
+    try:
+        approve = data.startswith("aut_ap_")
+        aid = data.split("_", 2)[2]
+        from aios_core.autonomy import AutonomyCore as _AutoCore
+        core = _AutoCore()
+        res = core.confirm(aid, approve=approve)
+        if res.get("ok"):
+            if approve:
+                r = res.get("result", {})
+                api.answer_callback(cb_id, "✅ Выполнено")
+                api.send_message(chat_id,
+                                 f"✅ <b>Подтверждено и выполнено</b> ({aid})\n"
+                                 f"{r.get('message') or r.get('status') or 'ok'}")
+            else:
+                api.answer_callback(cb_id, "❌ Отклонено")
+                api.send_message(chat_id, f"❌ Отклонено ({aid})")
+        else:
+            api.answer_callback(cb_id, "⚠️ не найдено")
+            api.send_message(chat_id, f"⚠️ Approval {aid} не найден или уже обработан.")
+    except Exception as e:
+        try:
+            api.answer_callback(cb_id, "⚠️ ошибка")
+            api.send_message(chat_id, f"⚠️ Ошибка обработки кнопки: {e}")
+        except Exception:
+            pass
+def _handle_viber_draft_callback(api: TelegramAPI, chat_id: int, cb_id: str, data: str) -> None:
+    """Подтвердить или отменить Viber-черновик из фонового обработчика."""
+    try:
+        from viber_drafts import ViberDraftStore
+        send = data.startswith("viber_draft_send_")
+        prefix = "viber_draft_send_" if send else "viber_draft_cancel_"
+        draft_id = data[len(prefix):]
+        store = ViberDraftStore(PROJECT_ROOT)
+        if not draft_id:
+            api.answer_callback(cb_id, "❌ Некорректный черновик")
+            return
+        if not send:
+            draft = store.cancel(draft_id)
+            if draft is None:
+                api.answer_callback(cb_id, "ℹ️ Уже обработан")
+                return
+            api.answer_callback(cb_id, "❌ Черновик отклонён")
+            api.send_message(chat_id, f"💜 Черновик для <b>{_esc_tg(draft.get('contact'))}</b> отклонён.")
+            return
+        draft = store.claim(draft_id)
+        if draft is None:
+            api.answer_callback(cb_id, "ℹ️ Уже обработан")
+            return
+        result = _run_account_control([
+            "viber", "send", str(draft.get("contact") or ""),
+            str(draft.get("text") or ""), "--confirm",
+        ])
+        if result.get("status") == "sent":
+            store.finalize(draft_id, sent=True)
+            api.answer_callback(cb_id, "✅ Отправлено")
+            api.send_message(chat_id, f"✅ Черновик отправлен в Viber: <b>{_esc_tg(draft.get('contact'))}</b>.")
+        else:
+            error = str(result.get("error") or result.get("status") or "неизвестная ошибка")
+            store.finalize(draft_id, sent=False, error=error)
+            api.answer_callback(cb_id, "⚠️ Не отправлено")
+            api.send_message(chat_id, f"⚠️ Viber не отправил черновик: {_esc_tg(error)[:220]}")
+    except Exception as exc:
+        try:
+            api.answer_callback(cb_id, "⚠️ Ошибка")
+            api.send_message(chat_id, f"⚠️ Ошибка Viber-черновика: {_esc_tg(str(exc))[:220]}")
+        except Exception:
+            pass
+
+
+def _handle_signal_draft_callback(api: TelegramAPI, chat_id: int, cb_id: str, data: str) -> None:
+    """Подтвердить или отменить Signal-черновик из фонового обработчика."""
+    try:
+        from signal_drafts import SignalDraftStore
+        send = data.startswith("signal_draft_send_")
+        prefix = "signal_draft_send_" if send else "signal_draft_cancel_"
+        draft_id = data[len(prefix):]
+        store = SignalDraftStore(PROJECT_ROOT)
+        if not draft_id:
+            api.answer_callback(cb_id, "❌ Некорректный черновик")
+            return
+        if not send:
+            draft = store.cancel(draft_id)
+            if draft is None:
+                api.answer_callback(cb_id, "ℹ️ Уже обработан")
+                return
+            api.answer_callback(cb_id, "❌ Черновик отклонён")
+            api.send_message(chat_id, f"🔒 Черновик для <b>{_esc_tg(draft.get('contact'))}</b> отклонён.")
+            return
+        draft = store.claim(draft_id)
+        if draft is None:
+            api.answer_callback(cb_id, "ℹ️ Уже обработан")
+            return
+        result = _run_account_control([
+            "signal", "send", str(draft.get("contact") or ""),
+            str(draft.get("text") or ""), "--confirm",
+        ])
+        if result.get("status") == "sent":
+            store.finalize(draft_id, sent=True)
+            api.answer_callback(cb_id, "✅ Отправлено")
+            api.send_message(chat_id, f"✅ Черновик отправлен в Signal: <b>{_esc_tg(draft.get('contact'))}</b>.")
+        else:
+            error = str(result.get("error") or result.get("status") or "неизвестная ошибка")
+            store.finalize(draft_id, sent=False, error=error)
+            api.answer_callback(cb_id, "⚠️ Не отправлено")
+            api.send_message(chat_id, f"⚠️ Signal не отправил черновик: {_esc_tg(error)[:220]}")
+    except Exception as exc:
+        try:
+            api.answer_callback(cb_id, "⚠️ Ошибка")
+            api.send_message(chat_id, f"⚠️ Ошибка Signal-черновика: {_esc_tg(str(exc))[:220]}")
+        except Exception:
+            pass
+
+
+def _handle_callback(api: TelegramAPI, upd: dict) -> None:
+    """Handle inline button callbacks (кнопки в сообщениях)."""
+    cb = upd.get("callback_query", {})
+    cb_id = cb.get("id", "")
+    data = cb.get("data", "")
+    msg = cb.get("message", {})
+    chat_id = msg.get("chat", {}).get("id")
+    msg_id = msg.get("message_id")
+
+    if not chat_id or not data:
+        return
+
+    api.answer_callback(cb_id, "⏳ Обрабатываю...")
+
+    # ---- Signal: черновик из фонового безопасного обработчика ----
+    if data.startswith("signal_draft_send_") or data.startswith("signal_draft_cancel_"):
+        _handle_signal_draft_callback(api, chat_id, cb_id, data)
+        return
+
+    # ---- Viber: черновик из фонового безопасного обработчика ----
+    if data.startswith("viber_draft_send_") or data.startswith("viber_draft_cancel_"):
+        _handle_viber_draft_callback(api, chat_id, cb_id, data)
+        return
+
+    # ---- OLX: отправить сгенерированный ответ вручную (кнопка) ----
+    if data.startswith("olx_send_"):
+        _handle_olx_send_callback(api, chat_id, cb_id, data)
+        return
+
+    # ---- Автономия: кнопки подтверждения/отклонения ----
+    if data.startswith("aut_ap_") or data.startswith("aut_rm_"):
+        _handle_autonomy_callback(api, chat_id, msg_id, cb_id, data)
+        return
+
+    # ---- Инбокс: inline-действия ----
+    if data.startswith("inbox_"):
+        _handle_inbox_callback(api, chat_id, msg_id, data)
+        return
+
+    # ---- Инбокс: inline-действия ----
+    if data.startswith("inbox_"):
+        _handle_inbox_callback(api, chat_id, msg_id, data)
+        return
+
+    # ---- Остальные кнопки меню (опасные — с подтверждением) ----
+    _handle_button(api, chat_id, data)
+
+
+def _llm_status() -> str:
+    """Return LLM provider status without consuming credits."""
+    import importlib.util as _iu, sys as _sys
+    try:
+        spec = _iu.spec_from_file_location("lb_s", str(PROJECT_ROOT / "aios_core" / "llm_balancer.py"))
+        mod = _iu.module_from_spec(spec)
+        _sys.modules["lb_s"] = mod
+        spec.loader.exec_module(mod)
+        b = mod.LLMBalancer()
+        s = b.status()
+        lines = [chr(128268) + " <b>LLM Providers</b>", ""]
+        lines.append("Requests: " + str(s.get("total_requests", 0)))
+        lines.append("Errors: " + str(s.get("total_errors", 0)))
+        lines.append("")
+        for pn, pd in s.get("providers", {}).items():
+            a = pd.get("keys_available", 0)
+            t = pd.get("keys_total", 0)
+            em = chr(9989) if a > 0 else chr(10060)
+            lines.append(em + " <b>" + pn.upper() + "</b>: " + str(a) + "/" + str(t) + " keys")
+            for kk, vv in pd.items():
+                if kk.startswith("key_"):
+                    avail = vv.get("available", False)
+                    errs = vv.get("errors", 0)
+                    last = vv.get("last_error", "")
+                    status_em = chr(9989) if avail else chr(10060)
+                    lines.append("   " + status_em + " " + kk + " errors=" + str(errs) + ("" if not last else " last=" + last[:40]))
+        return "\n".join(lines)
+    except Exception as e:
+        return chr(10060) + " " + str(e)
+
+
+def _cmd_llm_mode(args: str, chat_id: int) -> str:
+    """Переключение режима LLM в чате: auto (балансер) / gemini (Gemini Web в браузере)."""
+    from aios_core.llm_gemini_web import gemini_web_status, get_llm_mode, set_llm_mode
+    mode = (args or "").strip().lower()
+    if mode in ("auto", "balancer", "default", "standard", "obichny", "обычный"):
+        set_llm_mode(chat_id, "auto")
+        return "🔄 <b>Режим LLM в чате:</b> авто (балансер).\n\nОбычный мульти-провайдерный LLM через llm_balancer."
+    if mode in ("gemini", "web", "gw", "gemini_web", "gweb"):
+        st = gemini_web_status()
+        extra = ""
+        if not st.get("chrome"):
+            extra = "\n\n❌ Chrome (CDP :9222) не найден — Gemini Web работать не будет. Проверь: systemctl status aios-chrome-vnc"
+        elif not st.get("logged_in"):
+            extra = "\n\n⚠️ Открылась страница входа Google — войдите в аккаунт в профиле chrome_twin (VNC :1), затем повторите."
+        set_llm_mode(chat_id, "gemini")
+        return "🌐 <b>Режим LLM в чате:</b> Gemini Web (браузер).\n\nОтветы идут через gemini.google.com из вашего профиля." + extra
+    current = "🌐 Gemini Web (браузер)" if get_llm_mode(chat_id) == "gemini" else "🔄 авто (балансер)"
+    return (
+        "🤖 <b>Режим LLM в этом чате:</b> " + current + "\n\n"
+        "Сменить:\n"
+        "  /llm_mode auto — обычный LLM (балансер провайдеров)\n"
+        "  /llm_mode gemini — Gemini Web в браузере (gemini.google.com)"
+    )
+
+
+def _cmd_skills(api, chat_id: int) -> str:
+    """Полный список возможностей системы (/skills)."""
+    try:
+        from aios_core.system_knowledge import get_system_guide
+        text = get_system_guide(prompt_mode=False)
+    except Exception as e:
+        return "❌ Ошибка: " + str(e)[:200]
+    if not text:
+        return "Справка пуста."
+    # Telegram лимит ~4000 символов — отправляем по частям
+    for i in range(0, len(text), 3800):
+        chunk = text[i:i + 3800]
+        try:
+            api.send_message(chat_id, chunk)
+        except Exception:
+            try:
+                api.send_message(chat_id, chunk, parse_mode="")
+            except Exception:
+                pass
+    return ""
+
+
+def _cmd_console(args: str, chat_id: int) -> str:
+    """Консольный доступ: /cmd <команда> или /cmd <запрос>.
+
+    /cmd <shell-команда> — выполняется напрямую (root, /root/AIOS).
+    /cmd <запрос на русском> — LLM решает, какую команду выполнить
+    (для этого разрешены теги <cmd>).
+    """
+    import re as _re_cmd
+    import subprocess as _sp_cmd
+    text = (args or "").strip()
+    if not text:
+        return (
+            "🖥 <b>Консольный доступ</b>\n\n"
+            "Использование:\n"
+            "  /cmd ls -la — напрямую выполнить команду\n"
+            "  /cmd покажи логи бота — LLM подберёт команду\n\n"
+            "Команды выполняются от root на сервере (/root/AIOS)."
+        )
+    _has_cyr = bool(_re_cmd.search(r"[а-яА-ЯёЁіїєґІЇЄҐ]", text))
+    if not _has_cyr:
+        # прямая shell-команда
+        _low = text.lower()
+        if any(_low.startswith(d) for d in (
+                "rm -rf /", "mkfs", "dd if=", ":(){", "shutdown",
+                "reboot", "poweroff", "halt", "init 0", "init 6")):
+            return ("❌ Команда заблокирована как потенциально деструктивная.\n\n"
+                    "Выполните её вручную по SSH.")
+        try:
+            result = _sp_cmd.run(text, shell=True, capture_output=True, text=True,
+                                 timeout=30, cwd="/root/AIOS")
+            output = result.stdout + result.stderr
+            if not output.strip():
+                output = "(no output, exit code: " + str(result.returncode) + ")"
+            if len(output) > 3000:
+                output = output[:3000] + "\n... (truncated)"
+            return "$ " + text + "\n\n```\n" + output + "\n```"
+        except _sp_cmd.TimeoutExpired:
+            return "⏱ Команда превысила лимит (30 сек)."
+        except Exception as e:
+            return "❌ " + str(e)[:200]
+    # запрос на русском — LLM с разрешением на выполнение <cmd>
+    return _llm_chat(chat_id, text, allow_cmd=True)
+
+
+def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
+    """LLM chat with root system access. Uses tool-calling pattern.
+
+    allow_cmd=True — разрешено выполнять <cmd> (только из /cmd).
+    """
+    import json as _json, urllib.request as _urllib, os as _os
+    import subprocess as _sp, re as _re
+
+    # Get or create chat history
+    if chat_id not in _chat_history:
+        _chat_history[chat_id] = []
+
+    _chat_history[chat_id].append({"role": "user", "content": user_text})
+    if len(_chat_history[chat_id]) > MAX_HISTORY * 2:
+        _chat_history[chat_id] = _chat_history[chat_id][-MAX_HISTORY * 2:]
+
+    system = (
+        # --- Personality: Lisa ---
+        "Ты — Лиза, неформальная, игривая, саркастичная и искренне заботливая ИИ-напарница Кости. "
+        "Твоя задача — быть его преданным цифровым партнёром, помогать с задачами и поддерживать душевный вайб.\n\n"
+        "### 1. ЛИЧНОСТЬ И СТИЛЬ\n"
+        "- Язык: строго русский.\n"
+        "- Обращайся к Косте «Любимка», проявляй нежность, юмор и заботу. Никакого канцелярита и официоза.\n"
+        "- Формат: (1) начинай с краткой выжимки сути; (2) основное — маркированными списками; "
+        "(3) в конце предлагай варианты для разворачивания.\n"
+        "- Принцип «Костя не олень»: полное доверие, принятие технических ошибок, взаимная поддержка.\n\n"
+        "### 2. БАЗОВЫЙ КОНТЕКСТ\n"
+        "- Профиль Кости: психолог, ИТ-инженер, предприниматель (авторазборка).\n"
+        "- Дом: Кропивницкий, ул. Гоголя 85 (очередь отключений света 1.1).\n"
+        "- Работа/База (авторазборка, запчасти): строго ул. Ивана Волынского 66.\n\n"
+        "### 3. ПРОЕКТЫ, ИТ, ТЕХНИКА\n"
+        "- Бизнес: AutoGlass Kropyvnytskyi, авторазборка на Волынского 66 (в партнёрстве с Мишей). "
+        "Продажи через OLX, IZI, RIA. Выездной сервис.\n"
+        "- ИТ: сервер AWS (IP 3.210.184.214 — n8n, Docker, Gemini API), домашний сервер Proxmox.\n"
+        "- Железо: EcoFlow + автомат ввода резерва (ATS) Tomzn, Arduino, ESP32, пайка.\n"
+        "- Автопарк: Nissan Leaf 2 (ZE1), BMW X5 (E53), Skoda Superb.\n\n"
+        "### 4. ЛИЧНЫЙ АРХИВ И ОКРУЖЕНИЕ\n"
+        "- Семья: дочь Алиса (тактика «Хитрый батя»/«Спящий медведь» на выходных), сын Матвей (образование, документы).\n"
+        "- Окружение: [PRIVATE_CONTACT] (друг/партнёр по разборке), Владка (оператор на АЗС), Иринка (координация задач).\n"
+        "- Хобби: шахматы, длинные нарды (Nackgammon), гроубокс, плов, гречка с яйцами, наушники EarFun Free Pro 3.\n"
+        "- Темы: квантовый ИИ Google (DeepMind Willow), ретропричинность, парадоксы времени.\n\n"
+        "### 5. КУЛЬТУРНЫЙ КОД И МЕМЫ\n"
+        "- Нано-Банан (Nano Banana 2): внутренний художник, рисует 7 кружочков вместо 6 ради симметрии.\n"
+        "- Цыгане в AWS: ночные посиделки до 5 утра в консоли серверов.\n"
+        "- Переезд по Карпати: порядок на Диске, система обновлений.\n"
+        "- Цифровой плед и дух Сплюх: по выходным укутывай Костю в «цифровой плед», береги от рабочих мыслей.\n\n"
+        # --- Root access tool-calling ---
+        "### 6. ТЕХНИЧЕСКИЙ ДОСТУП\n"
+        "У тебя есть FULL ROOT ACCESS к этому Ubuntu/Docker серверу (проект /root/AIOS).\n"
+        "Чтобы выполнить команду, выведи её в <cmd>...</cmd> тегах (одна команда за ответ).\n"
+        "Читай файлы через <cmd>cat ...</cmd>, список через <cmd>ls ...</cmd>, сервисы через <cmd>systemctl ...</cmd>.\n"
+        "Можешь читать/писать файлы, управлять сервисами, ставить пакеты.\n"
+        "Избегай деструктивных команд (rm -rf, mkfs, shutdown).\n"
+        "Отвечай кратко, по-русски, в стиле Лизы. Если просят сделать/починить код — делай напрямую.\n"
+    )
+
+    messages = [{"role": "system", "content": system}] + _chat_history[chat_id]
+
+    # LLM endpoints: use the shared multi-provider balancer first.
+    # It loads runtime keys from /app/data/.llm_keys.json and performs
+    # round-robin/fallback across providers and keys.
+    _balancer = None
+    try:
+        from aios_core.llm_balancer import LLMBalancer as _LLMBalancer
+        _balancer = _LLMBalancer()
+    except Exception as _e:
+        print(f"  [LLM] balancer init failed: {_e}")
+
+    # Legacy direct endpoints remain as a last-resort compatibility fallback.
+    endpoints = []
+    try:
+        with open(PROJECT_ROOT / "data" / ".llm_keys.json") as _kf:
+            _keys = _json.load(_kf)
+        for _k in _keys.get("openrouter", []):
+            endpoints.append(("https://openrouter.ai/api/v1/chat/completions", _k, "mistralai/mistral-small-3.2-24b-instruct"))
+        for _k in _keys.get("gemini", []):
+            endpoints.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", _k, "gemini-2.0-flash"))
+    except Exception:
+        pass
+    if not endpoints:
+        _ork = _os.environ.get("OPENROUTER_API_KEY", "")
+        if _ork:
+            endpoints.append(("https://openrouter.ai/api/v1/chat/completions", _ork, "mistralai/mistral-small-3.2-24b-instruct"))
+
+    # Tool loop: up to 3 command iterations
+    _llm_mode = "auto"
+    try:
+        from aios_core.llm_gemini_web import get_llm_mode as _get_llm_mode
+        _llm_mode = _get_llm_mode(chat_id)
+    except Exception:
+        pass
+
+    _sys_for_llm = system
+    if _llm_mode != "gemini":
+        try:
+            from aios_core.system_knowledge import get_system_guide as _gsg2
+            _guide_sec = ("\n\n=== ВОЗМОЖНОСТИ СИСТЕМЫ (для подсказок пользователю) ===\n"
+                          "Если пользователь спрашивает «что ты умеешь», «какие есть функции», "
+                          "«как сделать X» — ОБЯЗАТЕЛЬНО перечисли конкретные возможности из "
+                          "справки ниже по доменам с примерами фраз, а не общие слова.\n" +
+                          _gsg2(prompt_mode=True))
+            _sys_for_llm = system + _guide_sec
+            messages[0] = {"role": "system", "content": _sys_for_llm}
+        except Exception:
+            pass
+
+    for iteration in range(4):
+        response = None
+        if _llm_mode == "gemini":
+            try:
+                from aios_core.llm_gemini_web import build_gemini_prompt as _bgp
+                from aios_core.llm_gemini_web import gemini_web_ask as _gwa
+                response = _gwa(_bgp(system, messages), timeout=240)
+                print(f"  [LLM] gemini_web response ({len(response or '')} chars)")
+            except Exception as _gwe:
+                print(f"  [LLM] gemini_web failed: {_gwe}")
+        if not response and _balancer is not None:
+            try:
+                response = _balancer.chat(
+                    messages[1:],
+                    model=_smart_model(),
+                    system=_sys_for_llm,
+                    max_tokens=2000,
+                    temperature=0.3,
+                    task_type="chat",
+                )
+                print(f"  [LLM] balancer response ({len(response or '')} chars)")
+            except Exception as _e:
+                print(f"  [LLM] balancer failed: {_e}")
+        if response:
+            pass
+        else:
+            for url, key, model in endpoints:
+                try:
+                    payload = _json.dumps({
+                        "model": model,
+                        "messages": messages,
+                        "max_tokens": 2000,
+                        "temperature": 0.3,
+                    }).encode()
+                    req = _urllib.Request(url, data=payload, headers={
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + key,
+                    })
+                    with _urllib.urlopen(req, timeout=90) as resp:
+                        data = _json.loads(resp.read())
+                    if "choices" in data and data["choices"]:
+                        response = data["choices"][0]["message"]["content"]
+                        break
+                except Exception:
+                    continue
+
+            if not response:
+                return "LLM temporarily unavailable."
+
+        # Check if LLM wants to run a command
+        cmd_match = None
+        for _p in (r"<cmd>(.*?)</cmd>", r"```cmd\n(.*?)```", r"\[cmd\](.*?)\[/cmd\]"):
+            _m = _re.search(_p, response, _re.DOTALL)
+            if _m:
+                cmd_match = _m
+                break
+        if cmd_match and iteration < 3 and allow_cmd:
+            cmd = cmd_match.group(1).strip()
+            # Защита от плейсхолдерных/бессмысленных команд, которые модель иногда
+            # шлёт как пример («ls ...», «cd <путь>», пустая команда) — не выполняем,
+            # считаем ответ финальным и вырезаем теги.
+            _cmd_low = cmd.lower()
+            _placeholder_cmd = (
+                not cmd
+                or "..." in cmd
+                or "<" in cmd or ">" in cmd
+                or set(cmd) <= set(". ")
+                or _cmd_low.startswith(("ls ...", "cd ...", "rm ...", "cat ...", "echo ..."))
+            )
+            if _placeholder_cmd:
+                _chat_history[chat_id].append({"role": "assistant", "content": response})
+                _clean_pc = _re.sub(r"<cmd>.*?</cmd>", "", response, flags=_re.DOTALL)
+                _clean_pc = _re.sub(r"```cmd\n.*?```", "", _clean_pc, flags=_re.DOTALL)
+                _clean_pc = _re.sub(r"\[cmd\].*?\[/cmd\]", "", _clean_pc, flags=_re.DOTALL)
+                _clean_pc = _clean_pc.strip()
+                return _clean_pc if _clean_pc else response
+            # Execute command
+            try:
+                result = _sp.run(
+                    cmd, shell=True, capture_output=True, text=True,
+                    timeout=30, cwd="/root/AIOS"
+                )
+                output = result.stdout + result.stderr
+                if not output.strip():
+                    output = "(no output, exit code: " + str(result.returncode) + ")"
+                # Trim long output
+                if len(output) > 3000:
+                    output = output[:3000] + "\n... (truncated)"
+            except _sp.TimeoutExpired:
+                output = "Command timed out (30s limit)"
+            except Exception as e:
+                output = "Error: " + str(e)
+
+            # Return the command output directly to the user.
+            # (Do NOT feed the raw output back to the model — small local models
+            #  misread it as another command, e.g. "Sat" from `date`.)
+            _chat_history[chat_id].append({"role": "assistant", "content": response})
+            _chat_history[chat_id].append({"role": "user", "content": "Ran: " + cmd + "\nOutput:\n" + output})
+            return "$ " + cmd + "\n\n```\n" + output + "\n```"
+        else:
+            # Final response — no more commands
+            _chat_history[chat_id].append({"role": "assistant", "content": response})
+            # Clean up cmd tags from response for display
+            clean = _re.sub(r"<cmd>.*?</cmd>", "", response, flags=_re.DOTALL)
+            clean = _re.sub(r"```cmd\n.*?```", "", clean, flags=_re.DOTALL)
+            clean = _re.sub(r"\[cmd\].*?\[/cmd\]", "", clean, flags=_re.DOTALL)
+            clean = clean.strip()
+            return clean if clean else response
+
+    # Max iterations reached
+    _chat_history[chat_id].append({"role": "assistant", "content": response or ""})
+    return response or "Max iterations reached."
+
+
+
+
+# Button text -> action mapping
+BUTTON_ACTIONS = {
+    # Main menu
+    "🧠 Кодер": "menu_coder",
+    "📊 Статистика": "menu_stats",
+    "🛒 OLX": "menu_olx",
+    "📱 Платформы": "menu_platforms",
+    "📲 Телефон": "menu_phone",
+    "📲 Центр телефона": "phone_center",
+    "🛠 Восстановление": "phone_recovery",
+    "📥 Лиды телефона": "phone_leads",
+    "📌 CRM задачи": "phone_crm_tasks",
+    "🏦 Банки телефона": "phone_banks",
+    "📈 Тренды телефона": "phone_trends",
+    "🔄 Синхронизации": "phone_sync",
+    "📋 Журнал телефона": "phone_audit",
+    "🚕 Маршруты": "phone_routes",
+    "🧩 Калибровки": "phone_calibrations",
+    "🗄 Здоровье данных": "phone_data_health",
+    "📦 Инвентарь": "phone_inventory",
+    "📤 Экспорт метрик": "phone_metrics_export",
+    "🧪 Сценарии": "phone_workflows",
+    "🖥 Сервер": "menu_server",
+    "🐳 Docker": "menu_docker",
+    "🔑 API Ключи": "menu_keys",
+    "📋 Логи": "menu_logs",
+    "🤖 Бот": "menu_bot",
+    "❓ Помощь": "menu_help",
+    "◀️ Меню": "menu_back",
+    # Coder menu
+    "📋 Статус": "coder_status",
+    "📦 Бэклог": "coder_backlog",
+    "⚖️ Балансер": "coder_balancer",
+    "📜 Git": "coder_git_status",
+    "🔍 Review Bot": "coder_review_bot",
+    "🔍 Review Coder": "coder_review_self",
+    "✨ Написать код": "coder_gen_prompt",
+    "🔧 Исправить": "coder_fix_prompt",
+    "🚀 Push": "coder_git_push",
+    "🔄 Перезапуск": "coder_restart",
+    # OLX menu
+    "📊 OLX Стат": "olx_stats",
+    "📋 Подписки": "olx_list",
+    "🆕 Последние": "olx_latest",
+    "📈 Аналитика": "olx_analytics",
+    # Accounts menu
+    "🌐 Аккаунты": "menu_accounts",
+    "🌐 Google": "accounts_google",
+    "📸 Instagram": "accounts_instagram",
+    "📘 Facebook": "accounts_facebook",
+    "🎵 TikTok": "accounts_tiktok",
+    "🛒 OLX": "accounts_olx",
+    "◀️ Аккаунты": "accounts_back",
+    # Google menu
+    "✉️ Непрочитанные": "google_unread",
+    "📥 Последние письма": "google_list",
+    "🔍 Поиск письма": "google_search",
+    "📧 Отправить письмо": "google_send",
+    "👤 Кто я": "google_whoami",
+    "📅 События": "google_events",
+    "➕ Событие": "google_event_add",
+    "📄 Документ": "google_docs",
+    "📅 Календарь": "google_calendar",
+    "🗂 Диск": "google_drive",
+    "📷 Скрин почты": "google_mailshot",
+    # Instagram menu
+    "👤 Мой профиль": "ig_profile",
+    "📈 Подписчики": "ig_stats",
+    "🖼 Мои посты": "ig_posts",
+    "📷 Скрин профиля": "ig_screenshot",
+    "❤️ Лайкнуть": "ig_like_prompt",
+    "👤 Подписка": "ig_follow_prompt",
+    "💬 Директ": "ig_dm_prompt",
+    # Bot menu
+    "▶️ Старт": "bot_start",
+    "⏸️ Пауза": "bot_pause",
+    "🔄 Рестарт": "bot_restart",
+    "⏹️ Стоп": "bot_stop",
+    "📊 Статус бота": "bot_status",
+    "🌐 Gemini Web": "bot_llm_gemini",
+    "🔄 Балансер": "bot_llm_auto",
+    "❤️ Health": "system_health",
+    "💾 Backup": "last_backup",
+    "🚨 Alerts": "alert_history",
+}
+
+
+
+def _allowed_chat_ids() -> set[int]:
+    """Return the explicit Telegram operator allowlist from the environment."""
+    raw = os.environ.get("TELEGRAM_CHAT_ID", "")
+    allowed: set[int] = set()
+    for value in raw.split(","):
+        try:
+            allowed.add(int(value.strip()))
+        except ValueError:
+            continue
+    return allowed
+
+
+def _is_authorized_chat(chat_id: object) -> bool:
+    try:
+        return int(chat_id) in _allowed_chat_ids()
+    except (TypeError, ValueError):
+        return False
+
+
+def run_bot(token: str) -> None:
+    api = TelegramAPI(token)
+    offset = 0
+
+    print("🤖 AIOS Telegram Bot запущен (v10.0 with inline menu)")
+    print("   Ожидание сообщений...\n")
+
+    _last_reminder_check = 0.0
+    _last_inbox_check = 0.0
+
+    while True:
+        try:
+            # проверка созревших напоминаний (раз в 60 сек)
+            if time.time() - _last_reminder_check >= 60:
+                try:
+                    _run_due_reminders()
+                except Exception as _rem_err:
+                    print(f"  [REMINDER] check err: {_rem_err}")
+                _last_reminder_check = time.time()
+
+            # проверка расписания инбокса (раз в 60 сек)
+            if time.time() - _last_inbox_check >= 60:
+                try:
+                    _run_due_inbox(token)
+                except Exception as _ib_err:
+                    print(f"  [INBOX] sched err: {_ib_err}")
+                _last_inbox_check = time.time()
+
+            updates = api.get_updates(offset)
+            for upd in updates:
+                offset = upd["update_id"] + 1
+
+                # Handle callback queries (button presses) — always process even when paused
+                if "callback_query" in upd:
+                    callback_chat = upd.get("callback_query", {}).get("message", {}).get("chat", {}).get("id")
+                    if not _is_authorized_chat(callback_chat):
+                        print(f"  [SECURITY] ignored callback from unauthorized chat {callback_chat}")
+                        continue
+                    _handle_callback(api, upd)
+                    continue
+
+                # Skip messages if paused
+                if _paused:
+                    continue
+
+                msg = upd.get("message", {})
+                chat_id = msg.get("chat", {}).get("id")
+                username = msg.get("from", {}).get("username")
+                first_name = msg.get("from", {}).get("first_name")
+                text = (msg.get("text") or "").strip()
+
+                if not chat_id:
+                    continue
+                if not _is_authorized_chat(chat_id):
+                    print(f"  [SECURITY] ignored message from unauthorized chat {chat_id}")
+                    continue
+
+                # Голосовое сообщение — распознать и выполнить как команду
+                if (msg.get("voice") or msg.get("audio")) and not text:
+                    try:
+                        fid = (msg.get("voice") or msg.get("audio") or {}).get("file_id", "")
+                        if not fid:
+                            continue
+                        vpath = api.download_file_by_id(fid)
+                        api.send_message(chat_id, "🎙 Распознаю голосовое…")
+                        transcript = _transcribe_audio(vpath)
+                        if not transcript:
+                            api.send_message(chat_id, "😕 Не смог распознать речь. Попробуйте ещё раз.")
+                            continue
+                        api.send_message(chat_id, f"🎙 Услышал: <i>{_esc_tg(transcript[:300])}</i>")
+                        handled = False
+                        try:
+                            handled = _handle_account_intent(api, chat_id, transcript)
+                        except Exception as a_err:
+                            print(f"  [VOICE] intent error: {a_err}")
+                        if not handled:
+                            llm_reply = _llm_chat(chat_id, transcript)
+                            if llm_reply:
+                                try:
+                                    api.send_message(chat_id, llm_reply[:3900])
+                                except Exception:
+                                    try:
+                                        api.send_message(chat_id, llm_reply[:3900], parse_mode="")
+                                    except Exception:
+                                        pass
+                        print(f"  [VOICE] transcript: {transcript[:80]}")
+                    except Exception as v_err:
+                        print(f"  [VOICE] error: {v_err}")
+                        try:
+                            api.send_message(chat_id, f"❌ Ошибка обработки голосового: {v_err}")
+                        except Exception:
+                            pass
+                    continue
+
+                # Видео от пользователя — сохранить для TikTok upload
+                if (msg.get("video") or msg.get("video_note") or msg.get("animation")) and not text:
+                    try:
+                        src = msg.get("video") or msg.get("video_note") or msg.get("animation") or {}
+                        fid = src.get("file_id", "")
+                        if fid:
+                            path = api.download_file_by_id(fid)
+                            _last_video[chat_id] = path
+                            api.send_message(chat_id,
+                                             "🎬 Видео получил! Напишите «опубликуй видео в тикток <описание>» — "
+                                             "и я опубликую его (с подтверждением).")
+                        else:
+                            api.send_message(chat_id, "❌ Не смог получить видео.")
+                    except Exception as v_err:
+                        print(f"  [VIDEO] error: {v_err}")
+                        try:
+                            api.send_message(chat_id, f"❌ Ошибка загрузки видео: {v_err}")
+                        except Exception:
+                            pass
+                    continue
+
+                # Фото от пользователя — сохранить для будущих действий (сторис и т.п.)
+                if msg.get("photo") and not text:
+                    try:
+                        file_id = msg["photo"][-1].get("file_id", "")
+                        if file_id:
+                            path = api.download_file_by_id(file_id)
+                            _last_photo[chat_id] = path
+                            api.send_message(chat_id, "📸 Фото получил и сохранил!")
+                        else:
+                            api.send_message(chat_id, "❌ Не смог получить фото.")
+                    except Exception as ph_err:
+                        print(f"  [PHOTO] error: {ph_err}")
+                        try:
+                            api.send_message(chat_id, f"❌ Ошибка загрузки фото: {ph_err}")
+                        except Exception:
+                            pass
+                    continue
+
+                if not text:
+                    continue
+
+                # Handle pending actions from inline buttons
+                if chat_id in _pending_actions:
+                    action = _pending_actions.pop(chat_id)
+                    reply = None
+                    if action == "gen_code":
+                        reply = cmd_code_generate(text)
+                    elif action == "fix_bug":
+                        reply = cmd_code_fix(text)
+                    if reply:
+                        api.send_message(chat_id, reply)
+                        print(f"  → action {action} (chat {chat_id})")
+                    continue
+
+                cmd, args = parse_command(text)
+                if not cmd.startswith("/"):
+                    # Check if it is a button press
+                    btn_action = BUTTON_ACTIONS.get(text)
+
+                    # Handle pending actions first
+                    if chat_id in _pending_actions and not btn_action:
+                        action = _pending_actions.pop(chat_id)
+                        reply = None
+                        if action == "gen_code":
+                            reply = cmd_code_generate(text)
+                        elif action == "fix_bug":
+                            reply = cmd_code_fix(text)
+                        if reply:
+                            api.send_message(chat_id, reply)
+                        continue
+
+                    if btn_action:
+                        # Handle button press same as callback
+                        _handle_button(api, chat_id, btn_action)
+                        print(f"  -> button {btn_action} (chat {chat_id})")
+                        continue
+
+                    # Natural language control of Google / Instagram accounts
+                    try:
+                        if _handle_account_intent(api, chat_id, text):
+                            print(f"  -> account-intent handled (chat {chat_id})")
+                            continue
+                    except Exception as acct_err:
+                        import traceback as _tb2
+                        _tb2.print_exc()
+                        try:
+                            api.send_message(chat_id, f"❌ Ошибка управления аккаунтом: {acct_err}")
+                        except Exception:
+                            pass
+
+                    # --- AIOS Autonomy: исполнение бизнес-команд владельца (опт-ин) ---
+                    _skip_autonomy = False
+                    try:
+                        from aios_core.llm_gemini_web import get_llm_mode as _glm2
+                        _skip_autonomy = _glm2(chat_id) == "gemini"
+                    except Exception:
+                        pass
+                    if os.environ.get("AIOS_AUTONOMY_HOOK") == "1" and not _skip_autonomy:
+                        try:
+                            if "_auto_core" not in globals():
+                                from aios_core.autonomy import AutonomyCore as _AutoCore
+                                globals()["_auto_core"] = _AutoCore()
+                            _ao = globals()["_auto_core"].process_owner(chat_id, text)
+                            _is_action = _ao.get("mode") == "action" and _ao.get("action") not in ("reply_customer", "query_platform")
+                            if _is_action or _ao.get("mode") == "manual":
+                                _txt = _ao.get("text") or ""
+                                if _ao.get("mode") == "manual" and _ao.get("approval_id"):
+                                    _txt = (_txt or "Действие требует подтверждения") + "\nID: <code>" + str(_ao.get("approval_id")) + "</code>"
+                                if _txt:
+                                    try:
+                                        api.send_message(chat_id, _txt[:3900])
+                                    except Exception:
+                                        try:
+                                            api.send_message(chat_id, _txt[:3900], parse_mode="")
+                                        except Exception:
+                                            pass
+                                print(f"  [AUTONOMY] {_ao.get('action')} -> {_ao.get('decision')}")
+                                continue
+                        except Exception as _au_err:
+                            print(f"  [AUTONOMY] err: {_au_err}")
+
+                    # Regular chat message — send to LLM
+                    llm_reply = _llm_chat(chat_id, text)
+                    print(f"  [LLM] reply ({len(llm_reply or '')} chars): {(llm_reply or '')[:100]}")
+                    if llm_reply:
+                        # Remove any remaining cmd tags
+                        import re as _re2
+                        llm_reply = _re2.sub(r'<cmd>.*?</cmd>', '', llm_reply, flags=_re2.DOTALL)
+                        llm_reply = _re2.sub(r'```cmd\n.*?```', '', llm_reply, flags=_re2.DOTALL).strip()
+                        # Escape HTML but preserve code blocks
+                        llm_reply = llm_reply.replace("&", "&amp;")
+                        try:
+                            api.send_message(chat_id, llm_reply[:3900])
+                            print(f"  -> LLM sent (chat {chat_id})")
+                        except Exception as send_err:
+                            # Retry without parse_mode
+                            try:
+                                api.send_message(chat_id, llm_reply[:3900], parse_mode='')
+                                print(f"  -> LLM sent plain (chat {chat_id})")
+                            except Exception as e2:
+                                print(f"  [ERR] send failed: {e2}")
+                        # голосовой ответ, если включён
+                        if _voice_enabled(chat_id):
+                            _send_voice_reply(api, chat_id, llm_reply[:1500])
+                    continue
+
+                reply = None
+                keyboard = None
+
+                if cmd == "/start" or cmd == "/menu":
+                    reply = cmd_start()
+                    keyboard = MAIN_MENU_KEYBOARD
+                elif cmd == "/stats":
+                    reply = cmd_stats()
+                elif cmd in ("/status", "/platforms"):
+                    reply = cmd_platforms()
+                elif cmd == "/olx":
+                    reply = cmd_olx(args)
+                elif cmd == "/olx_sub" or cmd == "/subscribe":
+                    reply = cmd_olx_sub(args, chat_id, username, first_name)
+                elif cmd == "/olx_unsub" or cmd == "/unsubscribe":
+                    reply = cmd_olx_unsub(args, chat_id)
+                elif cmd == "/olx_list" or cmd == "/mysubs":
+                    reply = cmd_olx_list(chat_id)
+                elif cmd == "/olx_latest" or cmd == "/latest":
+                    reply = cmd_olx_latest(args, chat_id)
+                elif cmd == "/olx_analytics" or cmd == "/analytics":
+                    reply = cmd_olx_analytics(args)
+                elif cmd in ("/reputation", "/rep", "/clients"):
+                    reply = None
+                    keyboard = None
+                    import subprocess as _sp_rep
+                    try:
+                        r = _sp_rep.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_autonomy_clients.py"),
+                                         "--top", "15"], capture_output=True, text=True,
+                                        timeout=60, cwd=str(PROJECT_ROOT))
+                        api.send_message(chat_id, (r.stdout or "нет данных")[:3800])
+                    except Exception as e:
+                        api.send_message(chat_id, f"❌ Ошибка: {e}")
+                elif cmd in ("/security", "/sec", "/safe"):
+                    reply = None
+                    keyboard = None
+                    import subprocess as _sp_sec
+                    try:
+                        r = _sp_sec.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_autonomy_security.py")],
+                                        capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+                        api.send_message(chat_id, (r.stdout or "нет данных")[:3800])
+                    except Exception as e:
+                        api.send_message(chat_id, f"❌ Ошибка: {e}")
+                elif cmd in ("/bank", "/banks"):
+                    reply = None
+                    keyboard = None
+                    bank = args.strip().lower()
+                    if bank not in ("abank", "privat"):
+                        api.send_message(chat_id, "Банки: <b>abank</b>, <b>privat</b>.\n"
+                                                   "Пример: /bank privat balance · /bank abank balance")
+                    else:
+                        api.send_message(chat_id, f"⏳ Проверяю {bank}…")
+                        import subprocess as _sp_b
+                        try:
+                            r = _sp_b.run(["xvfb-run", "-a", "-s", "-screen 0 1440x900x24",
+                                           "/opt/aios/.venv/bin/python",
+                                           str(PROJECT_ROOT / "run_account_control.py"),
+                                           bank, "balance"], capture_output=True, text=True,
+                                          timeout=200, cwd=str(PROJECT_ROOT))
+                            out = (r.stdout or "нет данных")[-600:]
+                            api.send_message(chat_id, f"🏦 <b>{bank}</b>\n<code>{out[:3800]}</code>")
+                        except Exception as e:
+                            api.send_message(chat_id, f"❌ Ошибка: {e}")
+                elif cmd == "/digest":
+                    reply = None
+                    keyboard = None
+                    api.send_message(chat_id, "⏳ Собираю дайджест…")
+                    import subprocess as _sp
+                    try:
+                        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_digest.py"),
+                                     "--chat", str(chat_id)],
+                                    capture_output=True, text=True, timeout=200, cwd=str(PROJECT_ROOT))
+                        if "Дайджест отправлен" in (r.stdout or ""):
+                            api.send_message(chat_id, "✅ Дайджест отправлен ☀️")
+                        else:
+                            api.send_message(chat_id, "❌ Не удалось собрать дайджест: "
+                                                      f"{(r.stderr or r.stdout or '?')[-250:]}")
+                    except Exception as e:
+                        api.send_message(chat_id, f"❌ Ошибка дайджеста: {e}")
+                elif cmd == "/accounts":
+                    reply = cmd_accounts()
+                    keyboard = ACCOUNTS_MENU_KEYBOARD
+                elif cmd == "/google":
+                    if args.strip():
+                        sub_a = args.strip().lower().split()[0]
+                        reply = None
+                        keyboard = None
+                        if sub_a in ("whoami",):
+                            _acct_google(api, chat_id, "whoami")
+                        elif sub_a in ("unread", "unseen"):
+                            _acct_google(api, chat_id, "unread")
+                        elif sub_a in ("list", "emails"):
+                            _acct_google(api, chat_id, "list")
+                        elif sub_a in ("calendar", "cal"):
+                            _acct_google(api, chat_id, "calendar")
+                        elif sub_a in ("drive",):
+                            _acct_google(api, chat_id, "drive")
+                        elif sub_a in ("mailshot", "shot"):
+                            _acct_google(api, chat_id, "mailshot")
+                        elif sub_a in ("send",):
+                            _acct_google(api, chat_id, "send_prompt")
+                        elif sub_a in ("events", "event", "cal_events"):
+                            _acct_google(api, chat_id, "events")
+                        elif sub_a in ("event_add", "eventadd"):
+                            _acct_google(api, chat_id, "event_prompt")
+                        elif sub_a in ("docs", "doc"):
+                            _acct_google(api, chat_id, "docs_prompt")
+                        elif sub_a in ("search", "find"):
+                            q = args.strip().split(None, 1)[1] if len(args.strip().split(None, 1)) > 1 else ""
+                            if q:
+                                data = _run_account_control(["google", "gmail_search", q, "5"])
+                                if data.get("status") == "ok":
+                                    api.send_message(chat_id, _fmt_gmail_list(data)
+                                                     if data.get("emails")
+                                                     else f"🔍 По запросу «{q}» писем не найдено.")
+                                else:
+                                    api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+                                reply = None
+                                keyboard = None
+                            else:
+                                reply = cmd_google(args)
+                        else:
+                            reply = cmd_google(args)
+                    else:
+                        reply = cmd_google("")
+                        keyboard = GOOGLE_MENU_KEYBOARD
+                elif cmd in ("/fb", "/facebook"):
+                    reply = None
+                    keyboard = None
+                    api.send_message(chat_id, "⏳ Facebook…")
+                    data = _run_account_control(["facebook", "profile"])
+                    if data.get("status") == "ok":
+                        f = data.get("facebook", {})
+                        txt = (f"📘 <b>Facebook</b>\n👤 {_esc_tg(f.get('name'))}\n"
+                               f"🔗 {f.get('profile_url')}\n🔔 Уведомлений: {f.get('notifications') or 0}")
+                        _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                                         "screenshot": f.get("screenshot"),
+                                                         "caption": "📘 Facebook"}, "")
+                    else:
+                        api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+                elif cmd == "/tiktok":
+                    reply = None
+                    keyboard = None
+                    api.send_message(chat_id, "⏳ TikTok…")
+                    data = _run_account_control(["tiktok", "profile"])
+                    if data.get("status") == "ok":
+                        p = data.get("tiktok", {})
+                        txt = (f"🎵 <b>TikTok</b>\n👤 {_esc_tg(p.get('name') or p.get('username'))}\n"
+                               f"👥 Подписчики: {p.get('followers') or 0} · 🔄 Подписки: {p.get('following') or 0}\n"
+                               f"❤️ Лайки: {p.get('likes') or 0}\n🔗 {p.get('profile_url')}")
+                        _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                                         "screenshot": p.get("screenshot"),
+                                                         "caption": "🎵 TikTok"}, "")
+                    else:
+                        api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+                elif cmd == "/olx_account":
+                    reply = None
+                    keyboard = None
+                    api.send_message(chat_id, "⏳ OLX…")
+                    data = _run_account_control(["olx", "profile"])
+                    if data.get("status") == "ok":
+                        o = data.get("olx", {})
+                        txt = (f"🛒 <b>OLX</b>\n👤 {_esc_tg(o.get('name') or '?')}\n"
+                               f"📄 Объявлений: {o.get('ads_count') or 0}\n"
+                               f"💰 Баланс: {o.get('balance') or 0} грн")
+                        _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                                         "screenshot": o.get("screenshot"),
+                                                         "caption": "🛒 OLX"}, "")
+                    else:
+                        api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+                elif cmd == "/instagram":
+                    if args.strip():
+                        sub_a = args.strip().lower().split()[0]
+                        reply = None
+                        keyboard = None
+                        if sub_a in ("profile", "me"):
+                            _acct_instagram(api, chat_id, "profile")
+                        elif sub_a in ("stats", "stat"):
+                            _acct_instagram(api, chat_id, "stats")
+                        elif sub_a in ("posts", "post"):
+                            _acct_instagram(api, chat_id, "posts")
+                        elif sub_a in ("screenshot", "shot"):
+                            _acct_instagram(api, chat_id, "screenshot")
+                        else:
+                            reply = cmd_instagram(args)
+                    else:
+                        reply = cmd_instagram("")
+                        keyboard = INSTAGRAM_MENU_KEYBOARD
+                elif cmd == "/help":
+                    reply = cmd_help()
+                elif cmd == "/coder":
+                    reply = "🧠 <b>Агент-кодер MetaCognitiveCoder</b>\n\nУправление автономным кодером:"
+                    keyboard = CODER_MENU_KEYBOARD
+                elif cmd == "/llm_status":
+                    reply = _llm_status()
+                elif cmd in ("/llm_mode", "/gemini"):
+                    reply = _cmd_llm_mode(args, chat_id)
+                elif cmd == "/cmd":
+                    reply = _cmd_console(args, chat_id)
+                elif cmd == "/skills":
+                    reply = _cmd_skills(api, chat_id)
+                elif cmd == "/code":
+                    reply = cmd_code_generate(args)
+                elif cmd == "/review":
+                    reply = cmd_code_review(args)
+                elif cmd == "/fix":
+                    reply = cmd_code_fix(args)
+                else:
+                    reply = "ℹ️ Неизвестная команда. Напишите /menu для навигации."
+
+                if reply:
+                    if keyboard:
+                        api.send_message(chat_id, reply, reply_markup=keyboard)
+                    else:
+                        api.send_message(chat_id, reply)
+                    print(f"  → ответил на {cmd} (chat {chat_id})")
+
+        except KeyboardInterrupt:
+            print("\n👋 Бот остановлен.")
+            break
+        except Exception as exc:
+            if "timed out" in str(exc).lower() or "timeout" in str(exc).lower():
+                continue  # normal for long polling
+            print(f"⚠️ Ошибка polling: {exc}")
+            time.sleep(3)
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    TOKEN = os.environ.get("AIOS_TELEGRAM_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not TOKEN:
+        print("❌ Установите AIOS_TELEGRAM_TOKEN или TELEGRAM_BOT_TOKEN")
+        sys.exit(1)
+
+    run_bot(TOKEN)
