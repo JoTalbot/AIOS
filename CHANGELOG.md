@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [19.9.0] — 2026-08-07 — AIOS FH 50 Projects v19.9 (Pagination + Python Filter)
+
+### Added
+- **FH 50 Projects v19.9** ( 870→882 lines):
+  -  (env) →  ×10 = **50 projects** (was 30),  (Python),  → try  then fallback to all, … dedup , .
+  -  19.8.0→19.9.0,  19.9.0.
+  - **Test:**  (5 pages, dedup, python filter 400 fallback to all, +8 extra),  (10 pages),  sample , ,  — all 50,  882.
+
 ## [19.8.0] — 2026-08-07 — AIOS Freelance API Pagination v19.8 (30 Projects)
 
 ### Added
