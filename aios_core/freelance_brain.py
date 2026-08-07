@@ -142,58 +142,50 @@ class FreelanceMarketRadar:
         return tasks
 
     def fetch_freelancehunt_jobs(self) -> List[FreelanceTask]:
-        """Парсинг задач с Freelancehunt (UA) через RSS или HTML. v19"""
+        """Парсинг задач с Freelancehunt (UA) через API v2 (bypass Cloudflare). v19.6 API"""
         tasks = []
-        # RSS фид Freelancehunt — основной источник, быстрый и легковесный
-        rss_urls = [
-            "https://freelancehunt.com/rss/projects.xml",
-            "https://freelancehunt.com/rss/projects.xml?skills=python",
+        # Primary: Freelancehunt API v2 — bypasses Cloudflare (RSS is 403)
+        api_urls = [
+            "https://api.freelancehunt.com/v2/projects?page[number]=1&page[size]=10",
+            "https://api.freelancehunt.com/v2/projects?page[number]=1&page[size]=10&filter[skill_id]=17",
         ]
-        for url in rss_urls:
+        for url in api_urls:
             try:
-                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", "Accept": "application/rss+xml,application/xml;q=0.9,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.9,ru;q=0.8,uk;q=0.8"})
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
                 with urllib.request.urlopen(req, timeout=10) as resp:
-                    xml_data = resp.read().decode("utf-8", errors="ignore")
-                    items = __import__("re").findall(r"<item>(.*?)</item>", xml_data, __import__("re").DOTALL)
-                    for item in items[:7]:
-                        title_match = __import__("re").search(r"<title><!\[CDATA\[(.*?)\]\]></title>", item) or __import__("re").search(r"<title>(.*?)</title>", item)
-                        link_match = __import__("re").search(r"<link>(.*?)</link>", item)
-                        desc_match = __import__("re").search(r"<description><!\[CDATA\[(.*?)\]\]></description>", item) or __import__("re").search(r"<description>(.*?)</description>", item)
-                        category_match = __import__("re").search(r"<category>(.*?)</category>", item)
-                        if title_match and link_match:
-                            title = title_match.group(1).strip()
-                            link = link_match.group(1).strip()
-                            # ID из URL: /project/xyz/12345.html -> 12345
-                            task_id = f"fh_{abs(hash(link)) % 1000000}"
-                            clean_desc = desc_match.group(1) if desc_match else ""
-                            clean_desc = __import__("re").sub(r"<[^>]*>", "", clean_desc).strip()
-                            # Бюджет: пытаемся вытащить из title/desc вида "5000 UAH" или "100$"
-                            budget = 40.0
-                            m_uah = __import__("re").search(r"(\d{3,6})\s*(uah|грн|₴)", clean_desc.lower())
-                            m_usd = __import__("re").search(r"\$(\d+)|(\d+)\s*\$|\b(\d+)\s*usd", clean_desc.lower())
-                            if m_uah:
-                                try:
-                                    uah = float(m_uah.group(1))
-                                    budget = round(uah / 41.0, 2)  # UAH -> USD approx 41
-                                except Exception:
-                                    pass
-                            elif m_usd:
-                                try:
-                                    for g in m_usd.groups():
-                                        if g:
-                                            budget = float(g)
-                                            break
-                                except Exception:
-                                    pass
-                            # Категория по ключевым словам
-                            cat = "python_scripting"
-                            tl = (title + " " + clean_desc).lower()
-                            if any(k in tl for k in ["парс", "scrap", "crawl"]):
-                                cat = "web_scraping"
-                            elif any(k in tl for k in ["бот", "telegram", "bot"]):
-                                cat = "bot_dev"
-                            elif any(k in tl for k in ["данные", "data", "excel", "csv", "pandas"]):
-                                cat = "data_analysis"
+                    data = json.loads(resp.read().decode("utf-8"))
+                    for item in data.get("data", [])[:10]:
+                        attr = item.get("attributes", {})
+                        title = attr.get("name", "").strip()
+                        desc = attr.get("description", "").strip()
+                        clean_desc = __import__("re").sub(r"<[^>]*>", "", desc).strip()
+                        budget_info = attr.get("budget") or {}
+                        amount = budget_info.get("amount") if isinstance(budget_info, dict) else None
+                        currency = budget_info.get("currency", "UAH") if isinstance(budget_info, dict) else "UAH"
+                        budget = 40.0
+                        if amount:
+                            try:
+                                amt = float(amount)
+                                if currency == "UAH":
+                                    budget = round(amt / 41.0, 2)
+                                else:
+                                    budget = amt
+                            except Exception:
+                                pass
+                        proj_id = item.get("id")
+                        link = f"https://freelancehunt.com/project/{proj_id}"
+                        skills = [s.get("name","").lower() for s in attr.get("skills",[])]
+                        skills_str = " ".join(skills)
+                        tl = (title + " " + clean_desc + " " + skills_str).lower()
+                        cat = "python_scripting"
+                        if any(k in tl for k in ["парс", "scrap", "crawl", "парсер"]):
+                            cat = "web_scraping"
+                        elif any(k in tl for k in ["бот", "telegram", "bot"]):
+                            cat = "bot_dev"
+                        elif any(k in tl for k in ["данные", "data", "excel", "csv", "pandas"]):
+                            cat = "data_analysis"
+                        if title:
+                            task_id = f"fh_{proj_id}"
                             tasks.append(FreelanceTask(
                                 id=task_id,
                                 title=title[:150],
@@ -204,35 +196,50 @@ class FreelanceMarketRadar:
                                 url=link
                             ))
                     if tasks:
+                        logger.info(f"✅ Freelancehunt API {url} found {len(tasks)} projects")
                         break
             except Exception as e:
-                logger.warning(f"⚠️ Freelancehunt RSS {url} ошибка: {e}")
+                logger.warning(f"⚠️ Freelancehunt API {url} ошибка: {e}")
                 continue
-        # Fallback: HTML парсинг если RSS пуст (через freelancehunt.com/projects)
+        # Fallback: RSS (often 403) — kept for legacy
         if not tasks:
-            try:
-                req = urllib.request.Request("https://freelancehunt.com/projects", headers={"User-Agent": "Mozilla/5.0"})
-                with urllib.request.urlopen(req, timeout=10) as resp:
-                    html = resp.read().decode("utf-8", errors="ignore")
-                    # Ищем ссылки на проекты
-                    links = __import__("re").findall(r'href="(https://freelancehunt\.com/project/[^\"]+)"', html)[:5]
-                    for link in links:
-                        title = link.split("/")[-1].replace("-", " ").replace(".html", "")[:80]
-                        tasks.append(FreelanceTask(
-                            id=f"fh_{abs(hash(link)) % 1000000}",
-                            title=title,
-                            description=f"Проект Freelancehunt: {title}",
-                            budget_usd=35.0,
-                            category="python_scripting",
-                            source="freelancehunt",
-                            url=link
-                        ))
-            except Exception as e:
-                logger.warning(f"⚠️ Freelancehunt HTML fallback ошибка: {e}")
-        # Browser fallback v19.4: если все еще 0 и есть Playwright — пробуем реальный Chrome
+            rss_urls = [
+                "https://freelancehunt.com/rss/projects.xml",
+                "https://freelancehunt.com/rss/projects.xml?skills=python",
+            ]
+            for url in rss_urls:
+                try:
+                    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/rss+xml"})
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        xml_data = resp.read().decode("utf-8", errors="ignore")
+                        items = __import__("re").findall(r"<item>(.*?)</item>", xml_data, __import__("re").DOTALL)
+                        for item in items[:7]:
+                            title_match = __import__("re").search(r"<title><!\[CDATA\[(.*?)\]\]></title>", item) or __import__("re").search(r"<title>(.*?)</title>", item)
+                            link_match = __import__("re").search(r"<link>(.*?)</link>", item)
+                            desc_match = __import__("re").search(r"<description><!\[CDATA\[(.*?)\]\]></description>", item) or __import__("re").search(r"<description>(.*?)</description>", item)
+                            if title_match and link_match:
+                                title = title_match.group(1).strip()
+                                link = link_match.group(1).strip()
+                                task_id = f"fh_{abs(hash(link)) % 1000000}"
+                                clean_desc = desc_match.group(1) if desc_match else ""
+                                clean_desc = __import__("re").sub(r"<[^>]*>", "", clean_desc).strip()
+                                budget = 40.0
+                                m_uah = __import__("re").search(r"(\d{3,6})\s*(uah|грн|₴)", clean_desc.lower())
+                                if m_uah:
+                                    try:
+                                        budget = round(float(m_uah.group(1))/41.0,2)
+                                    except Exception:
+                                        pass
+                                tasks.append(FreelanceTask(id=task_id, title=title[:150], description=clean_desc[:1000] or title, budget_usd=budget, category="python_scripting", source="freelancehunt", url=link))
+                        if tasks:
+                            break
+                except Exception as e:
+                    logger.warning(f"⚠️ Freelancehunt RSS {url} ошибка: {e}")
+                    continue
+        # Final fallback: browser (if still 0)
         if not tasks and HAS_PLAYWRIGHT:
             try:
-                logger.info("🌐 FH RSS+HTML blocked (403), пробую browser fallback...")
+                logger.info("🌐 FH API+RSS blocked, пробую browser fallback...")
                 browser_tasks = self._fetch_freelancehunt_via_browser()
                 if browser_tasks:
                     logger.info(f"✅ Browser FH нашел {len(browser_tasks)} проектов")
