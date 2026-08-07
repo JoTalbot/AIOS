@@ -57,6 +57,58 @@ class FreelanceTask:
     rejection_reason: str = ""
 
 
+# ── v21.0 Multi-Niche: таксономия ниш с весами + RU-ярлыки ──────────────────
+NICHE_KEYWORDS: dict[str, list[str]] = {
+    "telegram_bots": [
+        "телеграм", "telegram", "tg bot", "тг бот", "чат-бот", "чатбот", "chatbot",
+        "aiogram", "telebot", " бот ", "бота ", "бот для", "бот,", "бот\n", "tg-бот",
+    ],
+    "data_engineering": [
+        "etl", "data pipeline", "airflow", "sql", "база данн", "базы данн", "postgresql",
+        "mysql", "clickhouse", "bigquery", "power bi", "аналитика данн", "excel", "csv", "pandas",
+    ],
+    "web_scraping": [
+        "парс", "scrap", "crawl", "selenium", "playwright", "beautifulsoup", "bs4",
+        "спарсить", "грабер", "grab", "заполнить таблицу с сайта",
+    ],
+    "api_integration": [
+        "api", "интеграц", "вебхук", "webhook", "rest api", "amocrm", "bitrix",
+        "crm", "1c", "1с", "opencart", "опенкарт", "payment", "платёж", "платеж",
+    ],
+    "python_automation": [
+        "python", "скрипт", "автоматизац", "automation", "макрос", "script",
+    ],
+}
+
+NICHE_RU_LABEL: dict[str, str] = {
+    "telegram_bots": "разработке Telegram-ботов",
+    "data_engineering": "обработке данных и ETL",
+    "web_scraping": "парсингу и веб-скрапингу",
+    "api_integration": "API-интеграциям",
+    "python_automation": "Python-автоматизации",
+    "python_scripting": "Python-разработке",
+    "web_scraping_legacy": "парсингу и веб-скрапингу",
+    "bot_dev": "разработке ботов",
+    "data_analysis": "анализу данных",
+    "bug_fixing": "поиску и исправлению багов",
+}
+
+
+def classify_niche(text_lower: str) -> str:
+    """Взвешенная классификация ниши проекта по ключевым словам."""
+    best, best_score = "python_scripting", 0
+    for niche, keywords in NICHE_KEYWORDS.items():
+        score = sum(1 for k in keywords if k in text_lower)
+        if score > best_score:
+            best, best_score = niche, score
+    return best
+
+
+def niche_ru_label(category: str) -> str:
+    """Человекочитаемый ярлык ниши для текстов откликов."""
+    return NICHE_RU_LABEL.get(category, "Python-разработке")
+
+
 class FreelanceMarketRadar:
     """Сканер источников фриланс-задач и баунти."""
 
@@ -192,13 +244,7 @@ class FreelanceMarketRadar:
                             skills = [s.get("name","").lower() for s in attr.get("skills",[])]
                             skills_str = " ".join(skills)
                             tl = (title + " " + clean_desc + " " + skills_str).lower()
-                            cat = "python_scripting"
-                            if any(k in tl for k in ["парс", "scrap", "crawl", "парсер"]):
-                                cat = "web_scraping"
-                            elif any(k in tl for k in ["бот", "telegram", "bot"]):
-                                cat = "bot_dev"
-                            elif any(k in tl for k in ["данные", "data", "excel", "csv", "pandas"]):
-                                cat = "data_analysis"
+                            cat = classify_niche(tl)  # v21.0 multi-niche
                             if title:
                                 task_id = f"fh_{proj_id}"
                                 if not any(t.id == task_id for t in tasks):
@@ -678,7 +724,7 @@ class FreelanceProposalGenerator:
             return task.proposal_text
         except Exception as e:
             logger.error(f" Ошибка генерации заявки: {e}")
-            fallback = f"Здравствуйте! Готов качественно и в сжатые сроки выполнить вашу задачу '{task.title}'. Имею большой опыт в {task.category}. Напишу чистый Python код, приложу unit-тесты и подробный README. Обращайтесь!"
+            fallback = f"Здравствуйте! Готов качественно и в сжатые сроки выполнить вашу задачу '{task.title}'. Имею большой опыт в {niche_ru_label(task.category)}. Напишу чистый Python код, приложу unit-тесты и подробный README. Обращайтесь!"
             task.proposal_text = fallback
             task.status = "BID_SUBMITTED"
             return fallback
