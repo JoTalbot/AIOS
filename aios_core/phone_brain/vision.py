@@ -14,6 +14,11 @@ from __future__ import annotations
 import base64
 import json
 import os
+try:
+    from aios_core.llm_balancer import LLMBalancer
+    _HAS_BALANCER = True
+except ImportError:
+    _HAS_BALANCER = False
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -230,6 +235,26 @@ class VisionLocator:
 
     # ------------------------------------------------------------ public
 
+    def _ask_via_balancer(self, image_b64: str, hint: str, mime: str = "image/jpeg") -> dict | None:
+        """Попытка через LLMBalancer (если доступен) — использует ротацию ключей и fallback цепочку."""
+        if not _HAS_BALANCER:
+            return None
+        try:
+            balancer = LLMBalancer()
+            prompt = _PROMPT.format(hint=hint)
+            messages = [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{image_b64}"}}
+                ]
+            }]
+            # Явно используем vision-модель gemini-2.0-flash (поддерживает image_url) — балансер попробует gemini→openrouter
+            raw = balancer.chat(messages, model="gemini-2.0-flash", system="", max_tokens=120, temperature=0.0, task_type="general")
+            return _extract_json(str(raw or ""))
+        except Exception:
+            return None
+
     def locate(self, image_path: Path | str, hint: str) -> dict:
         """{"status":"ok","x","y","provider"} или {"status":"error",...}."""
         if not self.enabled:
@@ -244,6 +269,38 @@ class VisionLocator:
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
         mime = _mime(image_bytes)
         frame_size = _png_size(image_bytes)  # реальные размеры кадра (если PNG)
+        # 1) Сначала пробуем напрямую Ollama (qwen2.5vl) для ABank — локально, без 429
+        direct_ollama = self._ask_ollama("", image_b64, hint, mime)
+        if direct_ollama and direct_ollama.get("found") is True:
+            try:
+                x, y = int(direct_ollama["x"]), int(direct_ollama["y"])
+                if frame_size is not None:
+                    max_x, max_y = frame_size[0] / scale, frame_size[1] / scale
+                else:
+                    max_x, max_y = 4000 * scale, 8000 * scale
+                if 0 <= x <= max_x and 0 <= y <= max_y:
+                    return {status: ok, x: int(x * scale), y: int(y * scale), provider: ollama_direct}
+            except (KeyError, TypeError, ValueError):
+                pass
+        # 2) Затем через LLMBalancer (ротация, fallback, локальный)
+        balancer_answer = self._ask_via_balancer(image_b64, hint, mime)
+        if balancer_answer:
+            if balancer_answer.get("found") is True:
+                try:
+                    x, y = int(balancer_answer["x"]), int(balancer_answer["y"])
+                except (KeyError, TypeError, ValueError):
+                    pass
+                else:
+                    if frame_size is not None:
+                        max_x, max_y = frame_size[0] / scale, frame_size[1] / scale
+                    else:
+                        max_x, max_y = 4000 * scale, 8000 * scale
+                    if 0 <= x <= max_x and 0 <= y <= max_y:
+                        return {"status": "ok", "x": int(x * scale), "y": int(y * scale), "provider": "llm_balancer"}
+            elif balancer_answer.get("found") is False:
+                # Не останавливаемся, пробуем следующий провайдер (mistral/ollama) — разные модели видят по-разному
+                pass
+
         if self._providers_override is not None:
             providers = self._providers_override
         else:
@@ -268,5 +325,6 @@ class VisionLocator:
                 if x < 0 or y < 0 or x > max_x or y > max_y:
                     continue
                 return {"status": "ok", "x": int(x * scale), "y": int(y * scale), "provider": provider}
-            return {"status": "error", "error": "элемент не виден на экране", "provider": provider}
+            # found == False — пробуем следующего провайдера, не возвращаем ошибку сразу
+            continue
         return {"status": "error", "error": "vision-провайдеры недоступны"}
