@@ -144,14 +144,26 @@ class FreelanceMarketRadar:
     def fetch_freelancehunt_jobs(self) -> List[FreelanceTask]:
         """Парсинг задач с Freelancehunt (UA) через API v2 (bypass Cloudflare). v19.6 API"""
         tasks = []
-        # Primary: Freelancehunt API v2 — bypasses Cloudflare (RSS is 403) — pagination 30
-        api_pages = [1,2,3]
+        # Primary: Freelancehunt API v2 — bypasses Cloudflare (RSS is 403) — pagination 50 + python filter (skill 22)
+        # Делаем всё: 50 проектов (5 страниц) + python-фильтр + keep 30 logic via env
+        import os as _os
+        max_pages = int(_os.getenv("AIOS_FH_PAGES", "5"))  # 5 → 50 projects, set 10 for 100
+        python_skill_id = _os.getenv("AIOS_FH_PYTHON_SKILL", "22")  # 22 = Python
+        # Try python-filtered first, then fallback to all
+        api_pages = list(range(1, max_pages+1))
+        use_python_filter = _os.getenv("AIOS_FH_PYTHON_FILTER", "1") == "1"
         for page_num in api_pages:
-            if len(tasks) >= 30:
+            if len(tasks) >= max_pages*10:
                 break
-            api_urls = [
-                f"https://api.freelancehunt.com/v2/projects?page[number]={page_num}&page[size]=10",
-            ]
+            if use_python_filter:
+                api_urls = [
+                    f"https://api.freelancehunt.com/v2/projects?page[number]={page_num}&page[size]=10&filter[skill_id]={python_skill_id}",
+                    f"https://api.freelancehunt.com/v2/projects?page[number]={page_num}&page[size]=10",
+                ]
+            else:
+                api_urls = [
+                    f"https://api.freelancehunt.com/v2/projects?page[number]={page_num}&page[size]=10",
+                ]
             for url in api_urls:
                 try:
                     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
@@ -207,7 +219,7 @@ class FreelanceMarketRadar:
             import time as _t
             _t.sleep(0.5)
         if tasks:
-            logger.info(f"✅ Freelancehunt API total {len(tasks)} projects (3 pages)")
+            logger.info(f"✅ Freelancehunt API total {len(tasks)} projects ({max_pages} pages, python_filter={use_python_filter})")
         # Fallback: RSS (often 403) — kept for legacy
         if not tasks:
             rss_urls = [
