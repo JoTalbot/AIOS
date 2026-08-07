@@ -45,7 +45,7 @@ class AlgoraGitcoinBountyScanner:
     def __init__(self, github_token: Optional[str] = None):
         self.token = github_token or _get_github_token()
 
-    def search_live_bounties(self, query: str = "label:bounty language:python", max_results: int = 3) -> List[Dict[str, Any]]:
+    def search_live_bounties(self, query: str = "label:bounty language:python type:issue", max_results: int = 3) -> List[Dict[str, Any]]:
         """Ищет реальные открытые баунти-задачи через GitHub Search API."""
         bounties = []
         url = f"https://api.github.com/search/issues?q={urllib.parse.quote(query)}+state:open&sort=created&order=desc&per_page={max_results}"
@@ -62,6 +62,8 @@ class AlgoraGitcoinBountyScanner:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 for item in data.get("items", []):
+                    if item.get("pull_request"):
+                        continue  # PR конкурентов/охотников — не баунти
                     bounties.append({
                         "id": f"gh_bounty_{item.get('id')}",
                         "title": item.get("title", ""),
