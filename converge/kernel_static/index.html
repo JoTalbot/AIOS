@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0a0e14" />
+  <title>AIOS Kernel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <link rel="stylesheet" href="kernel_static/app.css?v=1" />
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="logo">AIOS <span>v1.0</span></div>
+      <nav>
+        <button class="nav active" data-panel="overview"><span class="ms">dashboard</span> Overview</button>
+        <button class="nav" data-panel="agents"><span class="ms">smart_toy</span> Agents</button>
+        <button class="nav" data-panel="business"><span class="ms">storefront</span> Business</button>
+        <button class="nav" data-panel="phone"><span class="ms">smartphone</span> Phone</button>
+        <button class="nav" data-panel="health"><span class="ms">monitor_heart</span> Health</button>
+        <a class="nav link" href="/converge/"><span class="ms">forum</span> Converge</a>
+        <a class="nav link" href="/crm/"><span class="ms">badge</span> CRM</a>
+        <a class="nav link" href="/parts/"><span class="ms">inventory_2</span> Parts</a>
+      </nav>
+      <div class="side-foot" id="side-time">—</div>
+    </aside>
+    <main>
+      <header class="top">
+        <div>
+          <h1 id="page-title">Kernel Overview</h1>
+          <p class="sub" id="page-sub">Live operator snapshot</p>
+        </div>
+        <div class="top-actions">
+          <button id="btn-refresh" class="btn"><span class="ms">sync</span> Refresh</button>
+        </div>
+      </header>
+
+      <section class="panel active" id="panel-overview">
+        <div class="metrics" id="metrics"></div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Active Processes</h3>
+            <div id="agents-mini"></div>
+          </div>
+          <div class="card">
+            <h3>System Console</h3>
+            <pre class="console" id="console"></pre>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Resource Allocation</h3>
+          <div class="bars" id="bars"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-agents">
+        <div class="card"><h3>Agent Control</h3><div id="agents-full" class="agent-grid"></div></div>
+      </section>
+
+      <section class="panel" id="panel-business">
+        <div class="metrics" id="biz-metrics"></div>
+        <div class="grid-2">
+          <div class="card"><h3>Inventory</h3><div id="inventory"></div></div>
+          <div class="card"><h3>Sales lifecycle</h3><div id="sales"></div></div>
+        </div>
+        <div class="card"><h3>Profit rule</h3><p class="profit">25% Dev · 25% Investor · 25% Team · 25% System</p></div>
+      </section>
+
+      <section class="panel" id="panel-phone">
+        <div class="card"><h3>Android Gateway</h3><pre class="console" id="phone-console"></pre></div>
+      </section>
+
+      <section class="panel" id="panel-health">
+        <div class="card"><h3>Service matrix</h3><div id="services" class="svc-grid"></div></div>
+      </section>
+    </main>
+  </div>
+  <script src="kernel_static/app.js?v=1"></script>
+</body>
+</html>

@@ -1083,7 +1083,7 @@ async def _extract_messages(page, limit: int = 15) -> list[dict]:
     return msgs[-limit:]
 
 
-async def instagram_dm_read(thread: str, limit: int = 15) -> dict:
+async def instagram_dm_read(thread: str, limit: int = 50) -> dict:
     """Прочитать последние сообщения чата."""
     a = await _instagram_adapter()
     try:
@@ -1334,7 +1334,7 @@ def viber_chats() -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
-def viber_read(chat: str, limit: int = 15) -> dict:
+def viber_read(chat: str, limit: int = 50) -> dict:
     try:
         import viber_control as vc
         return vc.read_chat(chat, limit)
@@ -1369,7 +1369,7 @@ def signal_chats() -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
-def signal_read(chat: str, limit: int = 15) -> dict:
+def signal_read(chat: str, limit: int = 50) -> dict:
     try:
         import signal_control as sc
         return sc.read_chat(chat, limit)
@@ -1438,7 +1438,7 @@ async def olx_chat_list(limit: int = 20) -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
-async def olx_chat_read(contact: str, limit: int = 15) -> dict:
+async def olx_chat_read(contact: str, limit: int = 50) -> dict:
     """OLX-чат: прочитать переписку."""
     try:
         from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
@@ -1480,7 +1480,7 @@ async def olx_chat_list(limit: int = 20) -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
-async def olx_chat_read(contact: str, limit: int = 15) -> dict:
+async def olx_chat_read(contact: str, limit: int = 50) -> dict:
     """OLX-чат: прочитать переписку."""
     try:
         from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
@@ -1562,7 +1562,7 @@ async def messages_code(sender: str = "") -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
-async def messages_read(contact: str, limit: int = 15) -> dict:
+async def messages_read(contact: str, limit: int = 50) -> dict:
     """Прочитать переписку с контактом."""
     try:
         from aios_core.platforms.messages_web_chrome_twin_adapter import MessagesWebChromeTwinAdapter
@@ -1747,7 +1747,7 @@ def tg_dialogs(limit: int = 15) -> dict:
     return _tg_userbot(["dialogs", str(limit)])
 
 
-def tg_read(ref: str, limit: int = 12) -> dict:
+def tg_read(ref: str, limit: int = 50) -> dict:
     return _tg_userbot(["read", ref, str(limit)])
 
 
@@ -1826,7 +1826,7 @@ async def messenger_list(limit: int = 10) -> dict:
         await a.close()
 
 
-async def messenger_read(chat: str, limit: int = 12) -> dict:
+async def messenger_read(chat: str, limit: int = 50) -> dict:
     a = await _fb_adapter()
     try:
         msgs = await a.messenger_read(chat, limit)
@@ -2056,7 +2056,7 @@ def main():
     igdl.add_argument("n", nargs="?", type=int, default=10)
     igdr = igg.add_parser("dm_read")
     igdr.add_argument("thread")
-    igdr.add_argument("--limit", type=int, default=15)
+    igdr.add_argument("--limit", type=int, default=50)
     igds = igg.add_parser("dm_send")
     igds.add_argument("thread")
     igds.add_argument("text")
@@ -2075,7 +2075,7 @@ def main():
     fbml.add_argument("--limit", type=int, default=10)
     fbmr = fbg.add_parser("messenger_read")
     fbmr.add_argument("chat")
-    fbmr.add_argument("--limit", type=int, default=12)
+    fbmr.add_argument("--limit", type=int, default=50)
     fbms = fbg.add_parser("messenger_send")
     fbms.add_argument("chat")
     fbms.add_argument("text")
@@ -2111,7 +2111,7 @@ def main():
     olxchatlist.add_argument("--limit", type=int, default=20)
     olxcr = olxchatg.add_parser("read")
     olxcr.add_argument("contact")
-    olxcr.add_argument("--limit", type=int, default=15)
+    olxcr.add_argument("--limit", type=int, default=50)
     olxcrp = olxchatg.add_parser("reply")
     olxcrp.add_argument("contact")
     olxcrp.add_argument("text")
@@ -2123,7 +2123,7 @@ def main():
     vbg.add_parser("chats")
     vbr = vbg.add_parser("read")
     vbr.add_argument("chat")
-    vbr.add_argument("--limit", type=int, default=15)
+    vbr.add_argument("--limit", type=int, default=50)
     vbs = vbg.add_parser("send")
     vbs.add_argument("chat")
     vbs.add_argument("text")
@@ -2135,7 +2135,7 @@ def main():
     sgg.add_parser("chats")
     sgr = sgg.add_parser("read")
     sgr.add_argument("chat")
-    sgr.add_argument("--limit", type=int, default=15)
+    sgr.add_argument("--limit", type=int, default=50)
     sgs = sgg.add_parser("send")
     sgs.add_argument("chat")
     sgs.add_argument("text")
@@ -2152,7 +2152,7 @@ def main():
     msc.add_argument("sender", nargs="?", default="")
     msr = msgsg.add_parser("read")
     msr.add_argument("contact")
-    msr.add_argument("--limit", type=int, default=15)
+    msr.add_argument("--limit", type=int, default=50)
     mss = msgsg.add_parser("send")
     mss.add_argument("contact")
     mss.add_argument("text")
@@ -2166,10 +2166,10 @@ def main():
     tg = sub.add_parser("tg")
     tgg = tg.add_subparsers(dest="action", required=True)
     tgd = tgg.add_parser("dialogs")
-    tgd.add_argument("n", nargs="?", type=int, default=15)
+    tgd.add_argument("n", nargs="?", type=int, default=30)
     tgr = tgg.add_parser("read")
     tgr.add_argument("ref")
-    tgr.add_argument("--limit", type=int, default=12)
+    tgr.add_argument("--limit", type=int, default=50)
     tgs = tgg.add_parser("send")
     tgs.add_argument("ref")
     tgs.add_argument("text")
