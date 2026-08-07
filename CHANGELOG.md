@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [19.8.0] — 2026-08-07 — AIOS Freelance API Pagination v19.8 (30 Projects)
+
+### Added
+- **Freelance API Pagination v19.8** (`aios_core/freelance_brain.py` 863→870 lines):
+  - `fetch_freelancehunt_jobs` теперь `api_pages = [1,2,3]` → `page[size]=10` ×3 = **30 projects** (was 10), `if len(tasks)>=30 break`, dedup by `fh_{proj_id}`, `sleep 0.5` respect API.
+  - `VERSION` 19.7.0→19.8.0, `pyproject` 19.8.0.
+  - `FH API` still primary: `10→30` projects, `Upwork 0` graceful, `Fiverr 1`, `Github 3` + seed → **~34 scanned** per cycle (vs 17 before), `max_process_batch=3` → 3 bids/cycle.
+
+### Test
+- `FH API page 1 found 10 total` → `page 2 found 20 total` → `page 3 found 30 total` → `total 30 projects (3 pages)` ✅
+- Sample: `fh_1646235 3d модель step $65.85`, `fh_1646233 google ads $24.39`, `fh_1646229 web project $300` — all 30 with `budget/currency` UAH→USD + category.
+- `py_compile OK` 870 lines
+
 ## [19.7.0] — 2026-08-07 — AIOS FlareSolverr v19.7 (Docker Cloudflare Bypass)
 
 ### Added
