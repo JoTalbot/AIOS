@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [19.6.0] — 2026-08-07 — AIOS Stealth Bypass v19.6 (Cloudflare)
+
+### Added
+- **Stealth v19.6** (`aios_core/freelance_brain.py` 786→813 lines, `playwright-stealth 2.0.3`):
+  - `HAS_STEALTH` + `from playwright_stealth import Stealth` — `Stealth().apply_stealth_async(page)` для обоих браузеров.
+  - FH helper: `user_agent Chrome/120`, `viewport 1280x900`, `Stealth` + `wait 5s` + Cloudflare `Just a moment`/`challenges.cloudflare.com` detect → extra 5s wait, `try/except` + `finally ctx.close`.
+  - Upwork helper: аналогично `Stealth` + `user_agent` + `viewport` + 5s wait.
+  - `VERSION` 19.5.0→19.6.0, `pyproject` 19.6.0, `playwright-stealth` installed.
+
+### Test
+- `pip show playwright-stealth` → `2.0.3` ✅
+- `Stealth().apply_stealth_async(page)` on `freelancehunt.com/projects` → still `Just a moment...` `len 27471` `challenges.cloudflare.com True` — Cloudflare **still blocks** headless even with stealth (expected, need `undetected-chromedriver` or residential proxy for full bypass)
+- `FH RSS 403 → browser 0` graceful (не падает), `Upwork 0` graceful — fallback best-effort, primary remains `github + seed + fiverr` (7 scanned) ✅
+- `py_compile OK` 813 lines, `headless example.com` still OK
+
+### Note
+- Cloudflare Turnstile на Freelancehunt требует `playwright-stealth` + `chrome` non-headless + `proxy` или `FlareSolverr` — пока fallback оставлен как best-effort, RSS primary. Полный bypass — в `v20` с `undetected-chromedriver`.
+
 ## [19.5.0] — 2026-08-07 — AIOS Freelance Browser v19.5 (Playwright Fallback)
 
 ### Added

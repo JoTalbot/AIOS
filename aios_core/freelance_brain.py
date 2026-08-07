@@ -22,6 +22,12 @@ try:
 except ImportError:
     HAS_PLAYWRIGHT = False
     async_playwright = None
+try:
+    from playwright_stealth import Stealth
+    HAS_STEALTH = True
+except ImportError:
+    HAS_STEALTH = False
+    Stealth = None
 from dataclasses import dataclass, asdict, field
 from typing import List, Dict, Any, Optional
 from pathlib import Path
@@ -288,11 +294,25 @@ class FreelanceMarketRadar:
                         user_data_dir="/tmp/aios_fh_browser",
                         headless=True,
                         args=["--no-sandbox","--disable-dev-shm-usage","--disable-blink-features=AutomationControlled"],
-                        viewport={"width": 1280, "height": 900}
+                        viewport={"width": 1280, "height": 900},
+                        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                     )
                     page = await ctx.new_page()
+                    if HAS_STEALTH and Stealth:
+                        try:
+                            await Stealth().apply_stealth_async(page)
+                        except Exception:
+                            pass
                     await page.goto("https://freelancehunt.com/projects", timeout=30000, wait_until="domcontentloaded")
-                    await page.wait_for_timeout(3000)
+                    # Cloudflare check
+                    await page.wait_for_timeout(5000)
+                    try:
+                        content = await page.content()
+                        if "Just a moment" in content or "challenges.cloudflare.com" in content:
+                            # Wait a bit more for challenge, then check again
+                            await page.wait_for_timeout(5000)
+                    except Exception:
+                        pass
                     # Try to find project links
                     links = await page.evaluate("""() => {
                         const els = Array.from(document.querySelectorAll('a[href*="/project/"]'));
@@ -369,11 +389,18 @@ class FreelanceMarketRadar:
                     ctx = await p.chromium.launch_persistent_context(
                         user_data_dir="/tmp/aios_upwork_browser",
                         headless=True,
-                        args=["--no-sandbox","--disable-dev-shm-usage"]
+                        args=["--no-sandbox","--disable-dev-shm-usage"],
+                        viewport={"width": 1280, "height": 900},
+                        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                     )
                     page = await ctx.new_page()
+                    if HAS_STEALTH and Stealth:
+                        try:
+                            await Stealth().apply_stealth_async(page)
+                        except Exception:
+                            pass
                     await page.goto("https://www.upwork.com/nx/jobs/search/?q=python&sort=recency", timeout=30000, wait_until="domcontentloaded")
-                    await page.wait_for_timeout(4000)
+                    await page.wait_for_timeout(5000)
                     links = await page.evaluate("""() => {
                         const els = Array.from(document.querySelectorAll('a[href*="/jobs/"]'));
                         const out = [];
