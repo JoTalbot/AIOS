@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [19.7.0] — 2026-08-07 — AIOS FlareSolverr v19.7 (Docker Cloudflare Bypass)
+
+### Added
+- **FlareSolverr v19.7** (Docker `ghcr.io/flaresolverr/flaresolverr:3.5.0` + `aios_core/freelance_brain.py` 813→863 lines):
+  - Docker `flaresolverr` on `127.0.0.1:8191` (Chrome 148, `LOG_LEVEL=info`, `restart unless-stopped`) — `Test successful! Serving on 0.0.0.0:8191` ✅
+  - `_fetch_via_flaresolverr(url, timeout=60000)` — `POST http://127.0.0.1:8191/v1 {cmd:request.get, url, maxTimeout}` → `solution.response` + `cf_clearance` cookie, `Just a moment` check, `len>1000`.
+  - FH fallback: `if not tasks` → `FlareSolverr https://freelancehunt.com/projects` → `re.findall href project` 7 links `fh_flare_*`, Upwork fallback similarly `/nx/jobs/` 5 links `upwork_flare_*`.
+  - `VERSION` 19.6.0→19.7.0, `pyproject` 19.7.0, `undetected-chromedriver 3.5.5` + `selenium` + `cloudscraper` installed (tested, still 403), `FlareSolverr` primary for Cloudflare.
+
+### Test
+- `curl POST /v1 {cmd:request.get, url:freelancehunt.com/projects}` → `status ok Challenge solved!` `cf_clearance LKdr3I...` `response len` real page `615 projects` `title Удаленная работа` ✅
+- Second POST same URL → `500 Error solving challenge Connection refused port 35581` — FlareSolverr browser session unstable (needs `sessions` reuse), fallback graceful
+- `Upwork` via FlareSolverr → `500 Cloudflare has blocked this request. Probably your IP is banned` — Upwork datacenter IP ban (needs residential proxy)
+- Direct `cloudscraper` and `undetected-chromedriver` (Chrome 151 vs 150 mismatch, then `Just a moment...` still) → **API remains best** for FH (10 projects via `api.freelancehunt.com/v2/projects?page[size]=10` bypasses Cloudflare 200 OK)
+- `FH API` still primary: `10 projects` (vs browser 0), `Upwork 0` graceful, overall `17 scanned` → 3 bids `$225` — жив
+- `docker ps` `flaresolverr Up 2 minutes 0.0.0.0:8191->8191` `restart unless-stopped`, `py_compile OK` 863 lines
+
+### Note
+- **API > FlareSolverr > Browser** priority: `FH API v2` is **best** (no Cloudflare), `FlareSolverr` is fallback for `Upwork`/`RSS` when API not available, `undetected`/`stealth` is last. Full Cloudflare bypass for Upwork requires `residential proxy` + `FlareSolverr` with `sessions`.
+
 ## [19.6.0] — 2026-08-07 — AIOS Stealth Bypass v19.6 (Cloudflare)
 
 ### Added

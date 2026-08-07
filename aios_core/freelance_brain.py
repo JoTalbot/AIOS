@@ -246,6 +246,28 @@ class FreelanceMarketRadar:
                     tasks.extend(browser_tasks)
             except Exception as e:
                 logger.warning(f"Browser FH outer error: {e}")
+        # FlareSolverr fallback (if still 0) — solves Cloudflare via Docker Chrome
+        if not tasks:
+            try:
+                html = self._fetch_via_flaresolverr("https://freelancehunt.com/projects", timeout=60000)
+                if html:
+                    import re
+                    links = re.findall(r'href="(https://freelancehunt\.com/project/[^\"]+)"', html)[:7]
+                    for link in links:
+                        title = link.split("/")[-1].replace("-", " ").replace(".html", "")[:80]
+                        tasks.append(FreelanceTask(
+                            id=f"fh_flare_{abs(hash(link)) % 1000000}",
+                            title=title or "Freelancehunt via FlareSolverr",
+                            description=f"FlareSolverr Freelancehunt: {title}",
+                            budget_usd=35.0,
+                            category="python_scripting",
+                            source="freelancehunt",
+                            url=link
+                        ))
+                    if tasks:
+                        logger.info(f"✅ FlareSolverr FH found {len(tasks)}")
+            except Exception as e:
+                logger.warning(f"FlareSolverr FH error: {e}")
         return tasks
 
     def fetch_fiverr_gigs(self) -> List[FreelanceTask]:
@@ -463,6 +485,27 @@ class FreelanceMarketRadar:
         except Exception as e:
             logger.warning(f"Upwork browser fallback failed: {e}")
             return []
+
+    def _fetch_via_flaresolverr(self, url: str, timeout: int = 60000) -> str | None:
+        """Fetch via FlareSolverr Docker (bypass Cloudflare). Returns HTML or None."""
+        try:
+            import requests, json
+            payload = {"cmd": "request.get", "url": url, "maxTimeout": timeout}
+            r = requests.post("http://127.0.0.1:8191/v1", json=payload, timeout=timeout/1000 + 10)
+            data = r.json()
+            if data.get("status") == "ok":
+                sol = data.get("solution", {})
+                resp = sol.get("response", "")
+                if resp and "Just a moment" not in resp and len(resp) > 1000:
+                    logger.info(f"✅ FlareSolverr solved {url} len {len(resp)}")
+                    return resp
+                else:
+                    logger.warning(f"FlareSolverr still challenged for {url} len {len(resp) if resp else 0}")
+            else:
+                logger.warning(f"FlareSolverr error for {url}: {data.get('message')}")
+        except Exception as e:
+            logger.debug(f"FlareSolverr fetch {url} failed: {e}")
+        return None
 
     def fetch_github_bounties(self) -> List[FreelanceTask]:
         """Сбор задач с GitHub Bounties / Help Wanted."""
