@@ -76,6 +76,8 @@ def build_report():
     decided = won + lost
     win_rate = round(100 * won / decided, 1) if decided else None
     pipeline_usd = sum(float(t.get("budget_usd") or 0) for t in tasks if t.get("status") == "BID_SUBMITTED")
+    ready = [t for t in tasks if t.get("status") == "PROPOSAL_READY"]
+    ready_usd = sum(float(t.get("budget_usd") or 0) for t in ready)
 
     # новые ставки за последние 7 дней
     week_ago = time.time() - 7 * 86400
@@ -91,6 +93,8 @@ def build_report():
         "lost": lost,
         "win_rate_pct": win_rate,
         "pipeline_open_usd": round(pipeline_usd, 2),
+        "proposals_ready": len(ready),
+        "proposals_ready_usd": round(ready_usd, 2),
         "by_source": {s: dict(c) for s, c in sorted(by_source.items())},
         "by_niche": dict(Counter(t.get("category", "?") for t in tasks)),
         "budget_by_source_usd": {s: round(v, 2) for s, v in sorted(budget_by_source.items())},
@@ -105,6 +109,8 @@ def tg_text(r):
         f"Всего задач: <b>{r['total_tasks']}</b> (+{r['new_last_7d']} за 7д)",
         f"Открытых ставок: <b>{r['open_bids']}</b> на <b>${r['pipeline_open_usd']:.0f}</b>",
     ]
+    if r.get("proposals_ready"):
+        lines.append(f"🟡 Пропозалов ждут approve: <b>{r['proposals_ready']}</b> (${r['proposals_ready_usd']:.0f})")
     if r["win_rate_pct"] is not None:
         lines.append(f"Win-rate: <b>{r['win_rate_pct']}%</b> ({r['won']}W/{r['lost']}L)")
     else:

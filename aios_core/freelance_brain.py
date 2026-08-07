@@ -722,13 +722,13 @@ class FreelanceProposalGenerator:
             messages = [{"role": "user", "content": prompt}]
             proposal = self.balancer.chat(messages, task_type="chat")
             task.proposal_text = proposal.strip()
-            task.status = "BID_SUBMITTED"
+            task.status = "PROPOSAL_READY"  # v21.2: сгенерирован, НЕ отправлен
             return task.proposal_text
         except Exception as e:
             logger.error(f" Ошибка генерации заявки: {e}")
             fallback = f"Здравствуйте! Готов качественно и в сжатые сроки выполнить вашу задачу '{task.title}'. Имею большой опыт в {niche_ru_label(task.category)}. Напишу чистый Python код, приложу unit-тесты и подробный README. Обращайтесь!"
             task.proposal_text = fallback
-            task.status = "BID_SUBMITTED"
+            task.status = "PROPOSAL_READY"  # v21.2: сгенерирован, НЕ отправлен
             return fallback
 
 
@@ -832,6 +832,8 @@ class FreelanceBrainManager:
                 break
 
             # 2. Оценка задачи
+            if "/demo_" in (task.url or ""):
+                continue  # v21.2: seed-заглушки не идут в пропозалы
             self.evaluator.evaluate_task(task)
             evaluated_count += 1
 
@@ -844,7 +846,7 @@ class FreelanceBrainManager:
                 sol_res = self.solver.solve_task(task)
                 if sol_res.get("status") == "success":
                     solved_count += 1
-                    task.status = "BID_SUBMITTED" # Смена статуса на ожидание подтверждения оплаты
+                    task.status = "PROPOSAL_READY"  # v21.2: решён, ждёт approve на отправку
                     total_potential_usd += task.budget_usd
                     # Автоматически генерируем интерактивный HTML-счет для этого клиента
                     try:
@@ -896,10 +898,18 @@ class FreelanceBrainManager:
                             if p_res.get("status") == "need_confirm" and not confirm_flag:
                                 try:
                                     logger.info(f"📨 [v19] Задача {task.id} требует подтверждения в Telegram: {task.url}")
-                                except Exception:
-                                    pass
+                                    from run_freelance_funnel import send_tg as _send_tg
+                                    _send_tg(
+                                        f"📨 <b>Пропозал готов к отправке</b> ({task.source})\n"
+                                        f"Проект: {task.title[:90]}\nБюджет: ${task.budget_usd:.0f}\n{task.url}\n"
+                                        f"Approve: включи AIOS_FREELANCE_AUTOPILOT=1 в .env или отправь вручную"
+                                    )
+                                except Exception as _e:
+                                    logger.debug(f"TG notify failed: {_e}")
                                 
                             logger.info(f"📊 [Autopilot] Результат автоматической отправки: {p_res}")
+                            if isinstance(p_res, dict) and p_res.get("status") == "success":
+                                task.status = "BID_SUBMITTED"  # v21.2: реально доставлено платформе
                         except Exception as e:
                             logger.error(f"❌ [Autopilot] Ошибка авто-отправки отклика: {e}")
 
