@@ -575,12 +575,14 @@ class FreelanceMarketRadar:
     def fetch_github_bounties(self) -> List[FreelanceTask]:
         """Сбор задач с GitHub Bounties / Help Wanted."""
         tasks = []
-        url = "https://api.github.com/search/issues?q=label:bounty+state:open+language:python&sort=created&order=desc&per_page=3"
+        url = "https://api.github.com/search/issues?q=label:bounty+state:open+language:python+type:issue&sort=created&order=desc&per_page=3"
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "AIOS-Freelance-Agent/1.0", "Accept": "application/vnd.github.v3+json"})
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 for item in data.get("items", []):
+                    if item.get("pull_request"):
+                        continue  # пропускаем PR (чужие наработки, не баунти)
                     title = item.get("title", "")
                     body = item.get("body", "") or ""
                     html_url = item.get("html_url", "")
