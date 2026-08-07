@@ -24,18 +24,3 @@ _CHANNELS = {
     "android": ("📲", "Телефон"),
     "olx": ("🛒", "OLX"),
 }
-
-
-_last_photo: dict[int, str] = {}
-
-
-_photo_pending: dict[int, bool] = {}
-
-
-_last_gen_ad: dict[int, str] = {}
-
-
-_last_video: dict[int, str] = {}
-
-
-_last_gmail_ids: dict[int, list[str]] = {}
