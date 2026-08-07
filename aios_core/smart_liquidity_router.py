@@ -268,9 +268,14 @@ class AIOSSmartLiquidityRouter:
         best = scan["best_yield_strategy"]
         excess = amount_usd if amount_usd is not None else scan["available_excess_capital_usd"]
         current = scan["current_network"]
-        quote = scan["bridge_quote"]
+        # Use correct quote for requested amount, not scan's full excess
+        quote = self._get_bridge_quote(current, best["network"], excess)
+        # Recalculate net gain for this amount
+        current_apy = next((o["apy_pct"] for o in scan["all_opportunities"] if o["network"] == current), best["apy_pct"])
+        gain_pct = best["apy_pct"] - current_apy
+        net_gain_for_amount = round(excess * (gain_pct / 100.0) - quote["total_fee_usd"], 2) if gain_pct > 0 else 0.0
 
-        logger.info(f"🌉 [LiquidityRouter] Rebalance {current} → {best['network']} ${excess} dry_run={dry_run}")
+        logger.info(f"🌉 [LiquidityRouter] Rebalance {current} → {best['network']} ${excess} dry_run={dry_run} net +${net_gain_for_amount}/yr fee ${quote['total_fee_usd']}")
 
         if dry_run:
             return {
@@ -280,7 +285,7 @@ class AIOSSmartLiquidityRouter:
                 "amount_usd": excess,
                 "best_apy": best["apy_pct"],
                 "bridge_quote": quote,
-                "net_gain_annual_usd": scan["net_gain_annual_usd"],
+                "net_gain_annual_usd": net_gain_for_amount,
                 "action": f"Would bridge {excess} USD from {current} ({scan['all_opportunities']}) to {best['network']} via {quote['provider']}",
                 "next_step": "Run with dry_run=False to execute on-chain (requires private key + confirm)"
             }
