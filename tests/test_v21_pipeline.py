@@ -80,3 +80,24 @@ def test_report_structure(env, capsys):
     assert r["inventory"]["positions"] == 2
     assert r["inventory"]["available_qty"] == 2
     assert r["inventory"]["value_uah"] == 200.0
+
+
+def test_olx_price_rules(monkeypatch):
+    """v21.3: цена склада > модель в названии; явная валюта доверяется."""
+    import run_olx_ad_gen as adgen
+
+    monkeypatch.setattr(adgen, "_llm", lambda p: json.dumps(
+        {"title": "Тестовая деталь 16+ символов", "description": "б/у", "price": ""}))
+    monkeypatch.setattr(adgen, "_inventory_price",
+                        lambda part: 950.0 if "Радиатор" in part else None)
+
+    cases = [
+        ("Радиатор охлаждения ВАЗ 2109", "950"),   # цена склада бьёт номер модели
+        ("Крыло ВАЗ 2114", None),                   # голая 4-зн. модель — не цена
+        ("Рессора ГАЗель 1800", None),              # 4-зн. без валюты — не цена
+        ("Глушитель ВАЗ 2107 750 грн", "750"),      # явная валюта — цена
+        ("Стекло фары 320 грн.", "320"),
+    ]
+    for part, want in cases:
+        got = adgen.generate(part).get("price") or None
+        assert got == want, f"{part}: {got} != {want}"

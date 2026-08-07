@@ -126,16 +126,18 @@ def generate(part: str) -> dict:
         # OLX требует заголовок минимум 16 символов
         if len(str(d.get("title") or "").strip()) < 16:
             d["title"] = (str(d.get("title") or "").strip() + " — б/у з авторазборки")[:60]
-        # приоритет: цена, указанная пользователем в запросе (число 2-6 цифр, похожее на цену)
+        # v21.3: цена склада имеет приоритет и не переопределяется числом из названия
+        # («ВАЗ 2109» — это МОДЕЛЬ, а не цена; суффикс доверяем только с явной валютой)
         import re as _re
-        m_user_price = _re.search(r"\b(\d{2,6})\b\s*(?:грн|грн\.|uah)?\s*$", part, _re.IGNORECASE)
-        if m_user_price and int(m_user_price.group(1)) >= 100:
-            d["price"] = m_user_price.group(1)
-        # fallback: если цена всё ещё пустая — извлечь число из конца
-        elif not str(d.get("price") or "").strip():
-            m = _re.search(r"(\d{2,6})\s*(грн|грн\.|uah)?\s*$", part, _re.IGNORECASE)
-            if m:
-                d["price"] = m.group(1)
+        if not inv_price:
+            m_user_price = _re.search(r"\b(\d{2,6})\s+(?:грн|грн\.|uah)\s*$", part, _re.IGNORECASE)
+            if m_user_price and int(m_user_price.group(1)) >= 100:
+                d["price"] = m_user_price.group(1)
+            elif not str(d.get("price") or "").strip():
+                m = _re.search(r"(\d{2,6})\s*(грн|грн\.|uah)?\s*$", part, _re.IGNORECASE)
+                # голое 4-значное число без валюты — номер модели (ВАЗ 2114), не цена
+                if m and (m.group(2) or len(m.group(1)) != 4) and int(m.group(1)) >= 50:
+                    d["price"] = m.group(1)
         return {"status": "ok", **d, "part": part}
     except Exception as exc:
         return {"status": "error", "error": f"Не удалось сгенерировать (LLM): {exc}", "part": part}
