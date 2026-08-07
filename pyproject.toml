@@ -35,7 +35,7 @@ dev = [
     "pytest-benchmark>=5.2.3",
     "black>=24.0.0",
     "isort>=5.13.0",
-    "pre-commit>=3.8.0",
+    "pre-commit>=4.6.1",
     "flake8>=7.3.0",
 ]
 docs = [
