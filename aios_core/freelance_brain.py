@@ -147,7 +147,7 @@ class FreelanceMarketRadar:
         # Primary: Freelancehunt API v2 — bypasses Cloudflare (RSS is 403) — pagination 50 + python filter (skill 22)
         # Делаем всё: 50 проектов (5 страниц) + python-фильтр + keep 30 logic via env
         import os as _os
-        max_pages = int(_os.getenv("AIOS_FH_PAGES", "5"))  # 5 → 50 projects, set 10 for 100
+        max_pages = int(_os.getenv("AIOS_FH_PAGES", "3"))  # 3 → 30 projects default, 5→50 set 10 for 100 via env
         python_skill_id = _os.getenv("AIOS_FH_PYTHON_SKILL", "22")  # 22 = Python
         # Try python-filtered first, then fallback to all
         api_pages = list(range(1, max_pages+1))
