@@ -7,7 +7,7 @@ set -euo pipefail
 
 DATE=$(date +%Y%m%d_%H%M%S)
 BK="/root/AIOS/backups/daily"
-KEEP=${KEEP_DAYS:-14}
+KEEP=${KEEP_DAYS:-7}
 mkdir -p "$BK"
 LOG="/root/AIOS/logs/backup.log"
 
@@ -43,6 +43,9 @@ done
 # --- Data directories ---
 TARBALL="$BK/${DATE}__data.tar.gz"
 if tar -czf "$TARBALL" \
+   --exclude='data/chrome_twin' \
+   --exclude='*/__pycache__' \
+   --exclude='data/instagram' \
    -C /root/AIOS \
    data 2>/dev/null; then
   # exclude sqlite which are already backed individually? keep simple: only json/config
