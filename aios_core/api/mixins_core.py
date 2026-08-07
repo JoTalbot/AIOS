@@ -1313,6 +1313,79 @@ class CoreHandlersMixin:
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
 
+    def _banking_service(self):
+        """Build the local, read-only banking service for the current process."""
+        from aios_core.banking import BankingService
+
+        root = os.environ.get("AIOS_BANKING_DATA") or str(self._phone_workflow_root() / "data" / "banking")
+        return BankingService(root)
+
+    @staticmethod
+    def _banking_subject(request: Request) -> str:
+        principal = getattr(request.state, "principal", None)
+        subject = str(getattr(principal, "subject", "api") or "api")
+        return subject[:160]
+
+    async def _abank_banking_status(self, request: Request) -> JSONResponse:
+        """Return capabilities only; never contacts a bank or reads phone data."""
+        try:
+            result = self._banking_service().status(self._banking_subject(request))
+            return JSONResponse(result, headers={"Cache-Control": "no-store"})
+        except Exception:
+            return JSONResponse({"error": "banking status unavailable"}, status_code=503)
+
+    async def _abank_banking_consent(self, request: Request) -> JSONResponse:
+        """Return the locally recorded consent state, never grant consent."""
+        try:
+            result = self._banking_service().status(self._banking_subject(request))
+            return JSONResponse(
+                {"status": "ok", "consent": result["local_store"]["consent"], "read_only": True},
+                headers={"Cache-Control": "no-store"},
+            )
+        except Exception:
+            return JSONResponse({"error": "banking consent status unavailable"}, status_code=503)
+
+    async def _abank_banking_transactions(self, request: Request) -> JSONResponse:
+        """List imported/provider-normalized transactions for the owner only."""
+        try:
+            limit = self._bounded_int(request.query_params.get("limit"), default=100, maximum=500)
+            since = request.query_params.get("since") or None
+            service = self._banking_service()
+            transactions = service.list_transactions(self._banking_subject(request), limit=limit, since=since)
+            return JSONResponse(
+                {"status": "ok", "read_only": True, "count": len(transactions), "transactions": transactions},
+                headers={"Cache-Control": "no-store"},
+            )
+        except Exception:
+            return JSONResponse({"error": "banking transactions unavailable"}, status_code=503)
+
+    async def _abank_banking_import(self, request: Request) -> JSONResponse:
+        """Import a user-supplied CSV/JSON statement without persisting raw content."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "JSON body required"}, status_code=400)
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "JSON object required"}, status_code=400)
+        content = body.get("content")
+        if not isinstance(content, (str, bytes)):
+            return JSONResponse({"error": "content must be a CSV or JSON string"}, status_code=400)
+        if len(content) > 2_000_000:
+            return JSONResponse({"error": "statement is too large"}, status_code=413)
+        format_name = str(body.get("format", "")).strip().lower()
+        account_id = str(body.get("account_id", "manual")).strip()[:160] or "manual"
+        if format_name not in {"csv", "json"}:
+            return JSONResponse({"error": "format must be csv or json"}, status_code=400)
+        try:
+            result = self._banking_service().import_content(
+                self._banking_subject(request), content, format=format_name, account_id=account_id,
+            )
+            return JSONResponse(result.to_dict(), status_code=201, headers={"Cache-Control": "no-store"})
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        except Exception:
+            return JSONResponse({"error": "statement import failed"}, status_code=400)
+
     def _phone_workflow_root(self) -> Path:
         return Path(os.environ.get("AIOS_PROJECT_ROOT") or Path(__file__).resolve().parents[2])
 

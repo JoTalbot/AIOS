@@ -25,8 +25,8 @@ jobs:
           python -m pip install -e ".[dev]"
           python -m pip install nicegui fastapi requests pytest pytest-asyncio
       - name: Compile Python sources
-        run: python -m compileall -q aios_core aios_cli run_android_gateway.py run_telegram_bot.py
-      - name: Targeted Android/Telegram/REST tests
+        run: python -m compileall -q aios_core aios_cli run_android_gateway.py run_telegram_bot.py run_abank_integration.py
+      - name: Targeted Android/Telegram/REST/banking tests
         run: |
           python -m pytest -q --tb=short \
             tests/test_android_route_bot.py \
@@ -34,7 +34,8 @@ jobs:
             tests/test_android_phone_workflows.py \
             tests/test_phone_workflow_readiness.py \
             tests/test_uklon_route_api.py \
-            tests/test_api_security.py
+            tests/test_api_security.py \
+            tests/test_abank_integration.py
         env:
           LLM_API_KEY: test_dummy_key
           OLX_WEBHOOK_SECRET: test_secret
