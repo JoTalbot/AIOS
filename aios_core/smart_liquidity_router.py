@@ -25,13 +25,15 @@ logger = logging.getLogger("AIOS.LiquidityRouter")
 ARBITRUM_Aave_POOL = "0x794a61358D6845594F94dc1DB02A252b5b4814aD"  # Aave V3 Pool same address cross-chain
 ARBITRUM_DATA_PROVIDER = "0x69FA688f67A5d2A16F17a7b3F3aCF0DBB3B47967"  # Arbitrum DataProvider
 ARBITRUM_USDC = "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"  # USDC on Arbitrum
-ARBITRUM_RPC_FALLBACK = "https://arbitrum.drpc.org"
+ARBITRUM_RPC_FALLBACK = "https://arbitrum-one-rpc.publicnode.com"
+ARBITRUM_RPC_BACKUP = "https://arb1.arbitrum.io/rpc"
 
 # Solana
 SOLANA_MARINADE_API = "https://api.marinade.finance/apy"
 SOLANA_RPC = "https://api.mainnet-beta.solana.com"
 # Fallback APY если API недоступен (Marinade native ~7.1%, Jito ~7.5%)
 SOLANA_FALLBACK_APY = 6.8
+SOLANA_JITO_API = "https://kobe.mainnet.jito.network/api/v1/validators/apy"
 
 SUPPORTED_NETWORKS = ["Polygon", "Base", "Arbitrum", "Solana"]
 
@@ -53,7 +55,7 @@ class AIOSSmartLiquidityRouter:
     def _get_arbitrum_aave_apy(self) -> float:
         """Live APY Arbitrum Aave V3 USDC (on-chain). Fallback 4.15 если RPC недоступен."""
         try:
-            rpcs = PUBLIC_RPC_NODES.get("arbitrum", [ARBITRUM_RPC_FALLBACK])
+            rpcs = PUBLIC_RPC_NODES.get("arbitrum", [ARBITRUM_RPC_FALLBACK, ARBITRUM_RPC_BACKUP, "https://arbitrum.drpc.org"])
             w3 = None
             for rpc in rpcs:
                 try:
@@ -76,46 +78,48 @@ class AIOSSmartLiquidityRouter:
             return 4.15
 
     def _get_solana_apy(self) -> float:
-        """Live APY Solana Marinade (APY API). Fallback 6.8"""
-        try:
-            # Marinade APY endpoint
-            req = urllib.request.Request(SOLANA_MARINADE_API, headers={"User-Agent": "AIOS/19.1"})
-            with urllib.request.urlopen(req, timeout=7) as resp:
-                data = json.loads(resp.read().decode())
-                # API returns {"apy": 0.07} or {"value": 7.1}
-                if isinstance(data, dict):
-                    for k in ["apy", "value", "staking_apy", "avg_apy"]:
+        """Live APY Solana Jito 7.5% + Marinade 6.8% (v20 live)."""
+        for api_url, name in [(SOLANA_JITO_API, "Jito"), (SOLANA_MARINADE_API, "Marinade")]:
+            try:
+                req = urllib.request.Request(api_url, headers={"User-Agent": "AIOS/20.0"})
+                with urllib.request.urlopen(req, timeout=7) as resp:
+                    data = json.loads(resp.read().decode())
+                    for k in ["avg_apy", "apy", "value", "staking_apy"]:
                         if k in data:
                             v = float(data[k])
-                            # if 0.07 → 7%
                             if v < 1:
                                 v *= 100
-                            return round(v, 2)
-                    # nested
+                            if 5 < v < 15:
+                                logger.info(f"Solana {name} live APY {v:.2f}%")
+                                return round(v, 2)
                     if "data" in data and isinstance(data["data"], dict):
-                        for k in ["apy"]:
+                        for k in ["apy", "avg_apy"]:
                             if k in data["data"]:
                                 v = float(data["data"][k])
                                 if v < 1:
                                     v *= 100
                                 return round(v, 2)
-                return SOLANA_FALLBACK_APY
-        except Exception as e:
-            logger.debug(f"Solana Marinade API unavailable: {e}, using fallback {SOLANA_FALLBACK_APY}")
-            # Fallback: try Jito API
-            try:
-                req2 = urllib.request.Request("https://kobe.mainnet.jito.network/api/v1/validators/apy", headers={"User-Agent": "AIOS/19.1"})
-                with urllib.request.urlopen(req2, timeout=5) as r2:
-                    d2 = json.loads(r2.read().decode())
-                    # Jito returns array or avg
-                    if isinstance(d2, dict) and "apy" in d2:
-                        v = float(d2["apy"])
-                        if v < 1:
-                            v *= 100
-                        return round(v, 2)
-            except Exception:
-                pass
-            return SOLANA_FALLBACK_APY
+                    if isinstance(data, list) and data:
+                        vals = []
+                        for item in data[:20]:
+                            if isinstance(item, dict):
+                                for k in ["apy", "avg_apy"]:
+                                    if k in item:
+                                        try:
+                                            v = float(item[k])
+                                            if v < 1:
+                                                v *= 100
+                                            if 5 < v < 15:
+                                                vals.append(v)
+                                        except:
+                                            pass
+                        if vals:
+                            avg = sum(vals)/len(vals)
+                            return round(avg, 2)
+            except Exception as e:
+                logger.debug(f"Solana {name} API unavailable: {e}")
+                continue
+        return SOLANA_FALLBACK_APY
 
     def _get_bridge_quote(self, from_network: str, to_network: str, amount_usd: float) -> Dict[str, Any]:
         """Оценка стоимости моста Stargate/Across/LiFi. v19.1 dry-run stub с live оценкой через LiFi если доступен."""
