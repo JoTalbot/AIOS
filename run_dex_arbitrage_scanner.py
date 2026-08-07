@@ -26,6 +26,43 @@ from aios_core.dex_arbitrage_scanner import AIOSFlashLoanArbitrageEngine, AIOSDE
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("AIOS.RunArbitrageScanner")
 
+# -- v20.0 Activation: TG-алерт при viable окне (антиспам 1/час) --------------
+_LAST_ALERT_TS = [0.0]
+
+def _load_env_var(name):
+    import os
+    v = os.getenv(name)
+    if v:
+        return v
+    env = Path("/root/AIOS/.env")
+    if env.exists():
+        for line in env.read_text(encoding="utf-8").splitlines():
+            if line.startswith(name + "="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return None
+
+def send_telegram_alert(text, cooldown_sec=3600):
+    import urllib.request
+    now = time.time()
+    if now - _LAST_ALERT_TS[0] < cooldown_sec:
+        return False
+    token, chat = _load_env_var("TELEGRAM_BOT_TOKEN"), _load_env_var("TELEGRAM_CHAT_ID")
+    if not token or not chat:
+        return False
+    payload = {"chat_id": int(chat), "text": text, "parse_mode": "HTML"}
+    try:
+        req = urllib.request.Request(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=10):
+            _LAST_ALERT_TS[0] = now
+            return True
+    except Exception:
+        return False
+# ------------------------------------------------------------------------------
+
+
+
 def main():
     parser = argparse.ArgumentParser(description="AIOS Flash-Loan Arbitrage v19.2")
     parser.add_argument("--cross", action="store_true", help="Cross-DEX/CEX scan (kraken/binance/cg/uni)")
@@ -52,6 +89,13 @@ def main():
                     logger.info(f"📊 Best {best['pair']} {best['spread_pct']}% net10k ${best['flash_sim_10k']['net_profit_usd']} viable {best['viable']} | total viable {viable}")
                 else:
                     logger.info(f"📊 No opportunities viable {viable}")
+                if viable > 0:
+                    opps = [o for o in res.get("opportunities", []) if o.get("viable")][:3]
+                    if not opps and best:
+                        opps = [best]
+                    lines = [f"• {o['pair']}: spread {o['spread_pct']}% → net10k +${o['flash_sim_10k']['net_profit_usd']}" for o in opps]
+                    if send_telegram_alert("🚨 <b>FLASH-ARB WINDOW</b>\n" + "\n".join(lines) + "\n#арбитраж"):
+                        logger.info("🚨 TG-алерт отправлен")
                 time.sleep(args.interval)
             except Exception as e:
                 logger.error(f"Daemon error: {e}")

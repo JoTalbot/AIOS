@@ -157,7 +157,7 @@ class AIOSWalletManager:
             elif token_symbol.upper() == 'USDC':
                 contract_addr = '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359'
             elif token_symbol.upper() == 'APOLUSDT':
-                contract_addr = '0x6ab707Aca953e11f07b2210a415E9817594e7725'
+                contract_addr = '0x6ab707Aca953eDAeFBc4fD23bA73294241490620'
         elif network == 'base':
             if token_symbol.upper() == 'USDC':
                 contract_addr = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
