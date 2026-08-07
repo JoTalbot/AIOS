@@ -50,10 +50,6 @@ from tg_bot.accounts import (
     cmd_accounts, cmd_google, cmd_instagram,
 )
 from tg_bot.state import _last_photo, _photo_pending, _last_gen_ad, _last_video, _last_gmail_ids
-from tg_bot.treasury import _handle_treasury_intent
-from tg_bot.llm import (
-    _chat_history, MAX_HISTORY, _llm_status, _cmd_llm_mode, _cmd_skills, _cmd_console, _llm_chat,
-)
 from tg_bot.phone import (
     _PHONE_BRAIN_API, _phone_brain_gateway_run, _android_gateway_run, _phone_brain_api_request,
     _handle_phone_brain_intent, _handle_phone_workflow_readiness_intent, _handle_phone_jobs_intent,
@@ -1128,6 +1124,551 @@ def _handle_unified_inbox_intent(api, chat_id: int, text: str) -> bool:
 
 
 
+def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
+    """Обрабатывает команды казначейства, реинвестирования, биржи Kraken, SRE мониторинга и вывода в фиат.
+    Команды:
+      «казначейство» или «баланс казначейства» — выводит аудит казначейства, резерв и излишки.
+      «реинвестируй <сумма>» — запускает реальный On-Chain депозит в Aave V3 Polygon.
+      «верни из дефи <сумма>» или «withdraw defi <сумма>» — запускает реальный On-Chain вывод из Aave V3 Polygon.
+      «финансовый отчет» или «отчет по финансам» — генерирует и отправляет профессиональный отчет в формате Excel (.xlsx).
+      «ставки дефи» или «доходность дефи» — запрашивает и выводит процентные ставки в Aave и Compound.
+      «баланс кракен» или «кракен баланс» — выводит реальный баланс активов на вашем аккаунте Kraken.
+      «купи на кракене <пара> <объем>» — исполняет реальный рыночный ордер покупки на Kraken.
+      «продай на кракене <пара> <объем>» — исполняет реальный рыночный ордер продажи на Kraken.
+      «статус служб» или «девопс статус» — запускает активное HTTP-зондирование всех веб-служб системы (SRE).
+      «выведи <сумма> usdt на карту <номер_карты>» — инициирует ордер обмена крипты в фиатные гривны и вывод на карту!
+      «сканируй ошибки» или «sre healer» — сканирует лог на наличие трейсбеков Python.
+      «исправь ошибку» или «sre heal» — запускает ИИ для автоматического исправления последнего бага в коде.
+    """
+    import re as _re4
+    t = " ".join(str(text or "").casefold().split())
+
+    # Смарт-маршрутизатор ликвидности (v19.0.0)
+    if any(phrase in t for phrase in ("ликвидность", "смарт ликвидность", "маршрутизатор", "доходность сетей", "кросс-чейн")):
+        api.send_message(chat_id, "🌐 <b>Запрашиваю мульти-чейн анализ доходностей DeFi v19.1...</b>")
+        import subprocess as _sp_lr
+        try:
+            r = _sp_lr.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_smart_liquidity_router.py"), "--telegram"],
+                           capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            # v19.1 --telegram outputs markdown directly
+            report = r.stdout.strip()
+            if report:
+                api.send_message(chat_id, report)
+            else:
+                import json as _j_lr
+                data = _j_lr.loads(r.stdout)
+                best = data.get("best_yield_strategy", {})
+                lines = [
+                    "🌐 <b>AIOS Smart Liquidity Router v19.1:</b>\n",
+                    f"🥇 <b>Лучшая стратегия:</b> {best.get('protocol')} на <b>{best.get('network')}</b> ({best.get('asset')})",
+                    f"• Доходность: <b>{best.get('apy_pct')}% APY</b>\n",
+                    "📊 <b>Все доступные пулы:</b>"
+                ]
+                for opp in data.get("all_opportunities", []):
+                    lines.append(f"• <b>{opp.get('network')}</b> ({opp.get('protocol')}): <b>{opp.get('apy_pct')}% APY</b> [{opp.get('asset')}]")
+                lines.append(f"\n💰 Доступно излишков: <b>${data.get('available_excess_capital_usd', 0.0):.2f}</b>")
+                lines.append(f"📈 Прогноз: <b>+${data.get('estimated_annual_yield_usd', 0.0):.2f}/год</b>")
+                if data.get("rebalance_action_required"):
+                    q = data.get("bridge_quote", {})
+                    lines.append(f"\n🟢 Ребаланс {data.get('current_network')}→{best.get('network')} net +${data.get('net_gain_annual_usd',0)} после fee ${q.get('total_fee_usd',0)}")
+                api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка анализа ликвидности v19.1: {e}")
+        return True
+
+    # Сканер арбитража DEX & CEX v19.2 (cross-DEX)
+    if any(phrase in t for phrase in ("арбитраж", "спред", "dex арбитраж", "разница цен", "⚡ арбитраж")):
+        api.send_message(chat_id, "🔎 <b>Сканирую кросс-DEX/CEX арбитраж v19.2 (Kraken/Binance/CG/UniV3)...</b>")
+        import subprocess as _sp_arb
+        try:
+            r = _sp_arb.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_dex_arbitrage_scanner.py"), "--cross", "--telegram"],
+                            capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            report = r.stdout.strip()
+            if report:
+                api.send_message(chat_id, report)
+            else:
+                import json as _j_arb
+                data = _j_arb.loads(r.stdout)
+                lines = ["📊 <b>AIOS DEX/CEX Arbitrage Radar v19.2:</b>\n"]
+                for opp in data.get("opportunities", []):
+                    lines.append(
+                        f"• <b>{opp.get('pair')}</b> ({opp.get('exchange')}):\n"
+                        f"  Bid: ${opp.get('bid'):.2f} | Ask: ${opp.get('ask'):.2f}\n"
+                        f"  Спред: <b>${opp.get('spread_usd')}</b> ({opp.get('spread_pct')}%) — 🟢 {opp.get('opportunity')}"
+                    )
+                api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка сканера арбитража v19.2: {e}")
+        return True
+
+
+    # Android Mesh v19.3
+    if any(phrase in t for phrase in ("mesh", "меш", "📱 mesh", "android mesh", "fleet", "флот")):
+        api.send_message(chat_id, "📱 <b>Запрашиваю статус Android Mesh v19.3...</b>")
+        import subprocess as _sp_mesh
+        try:
+            r = _sp_mesh.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_android_mesh.py"), "--telegram"],
+                            capture_output=True, text=True, timeout=15, cwd=str(PROJECT_ROOT))
+            report = r.stdout.strip()
+            if report:
+                api.send_message(chat_id, report)
+            else:
+                api.send_message(chat_id, "❌ Пустой отчет Mesh")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка Android Mesh: {e}")
+        return True
+
+    # Трейдинг и котировки
+    if any(phrase in t for phrase in ("трейдинг", "сигналы", "квант", "торговля", "paper trading")):
+        api.send_message(chat_id, "📈 <b>Запрашиваю количественный анализ и сигналы рынка...</b>")
+        import subprocess as _sp_tr
+        try:
+            r = _sp_tr.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_quant_trading.py")],
+                           capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+            import json as _j_tr
+            data = _j_tr.loads(r.stdout.split("===")[-1].strip() if "===" in r.stdout else r.stdout)
+
+            lines = ["📈 <b>AIOS Quant Radar & Paper Trading:</b>\n"]
+            for sig in data.get("binance_signals", []):
+                sym = sig.get("symbol")
+                signal = sig.get("signal")
+                price = sig.get("current_price")
+                rsi = sig.get("rsi")
+                icon = "🟢" if "BUY" in signal else ("🔴" if "SELL" in signal else "⚪")
+                lines.append(f"{icon} <b>{sym}</b>: ${price:.2f} | <b>{signal}</b> (RSI: {rsi})")
+
+            lines.append("\n💼 <b>Портфель Binance:</b>")
+            summary = data.get("binance_trading_results", [{}])[0].get("portfolio_summary", {})
+            lines.append(f"• Баланс кэша: <b>${summary.get('cash_usd', 0.0):.2f} USD</b>")
+            lines.append(f"• Реализованный PnL: <b>${summary.get('realized_pnl_usd', 0.0):.2f} USD</b>")
+            lines.append(f"• Винрейт: <b>{summary.get('win_rate_pct', 0.0)}%</b> | Позиций: <b>{summary.get('open_positions', 0)}</b>")
+
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка трейдинга: {e}")
+        return True
+
+    # Склад & Запчасти
+    if any(phrase in t for phrase in ("склад & olx", "склад", "остатки на складе", "инвентарь")):
+        import subprocess as _sp_inv
+        try:
+            r = _sp_inv.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"), "stats"],
+                           capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            import json as _j_inv
+            data = _j_inv.loads(r.stdout)
+            lines = [
+                "🛒 <b>Склад запчастей AIOS:</b>\n",
+                f"• Всего наименований: <b>{data.get('items_count', 0)}</b>",
+                f"• Доступно деталей: <b>{data.get('available_qty', 0)} шт</b>",
+                f"• В резерве: <b>{data.get('reserved_qty', 0)} шт</b>",
+                f"• Оценочная стоимость: <b>{data.get('total_value', 0)} грн</b>\n",
+                "Для добавления детали напишите:\n<code>склад добавить <название> <цена> <кол-во></code>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка склада: {e}")
+        return True
+
+
+    # Публичный веб-каталог и витрина
+    if any(phrase in t for phrase in ("веб-каталог", "веб каталог", "каталог", "витрина", "сайт", "ссылка на склад")):
+        lines = [
+            "🌐 <b>Онлайн-каталог автозапчастей AIOS:</b>\n",
+            "🔗 <b>Ссылка для клиентов:</b>",
+            "https://api.autosklo.org.ua/parts/\n",
+            "📦 <b>Что доступно на витрине:</b>",
+            "• Авторазборка ВАЗ (Лада) 2108–2115 (от 100 грн)",
+            "• Авторазборка ГАЗель 3302, Соболь, Рута (от 200 грн)",
+            "• Радиатор охлаждения ВАЗ 2109 (950 грн)",
+            "• Рессора задняя ГАЗель 3302 5-лист. (1 800 грн)",
+            "• Генератор ВАЗ 2110 80А (1 400 грн)\n",
+            "<i>Отправьте эту ссылку клиенту для просмотра фото и быстрого заказа!</i>"
+        ]
+        api.send_message(chat_id, "\n".join(lines))
+        return True
+
+
+    # Авто-экстракция реквизитов доставки из чата клиента (AI Order Extractor)
+    if any(phrase in t for phrase in ("извлеки заказ", "парсинг доставки", "извлечь адрес", "распознай адрес", "извлеки адрес")) or ("отделение" in t and any(k in t for k in ("получатель", "тел", "г.", "город"))):
+        api.send_message(chat_id, "🤖 <b>ИИ анализирует реквизиты доставки клиента...</b>")
+        from aios_core.order_extractor import AIOSOrderExtractor
+        extractor = AIOSOrderExtractor()
+        try:
+            res = extractor.extract_delivery_details(text)
+            data = res.get("extracted_data", {})
+            lines = [
+                "📦 <b>ИИ извлек данные для Новой Почты:</b>\n",
+                f"• Товар: <b>{data.get('part_name') or 'Автозапчасть'}</b>",
+                f"• Получатель: <b>{data.get('recipient_name') or 'Не указан'}</b>",
+                f"• Телефон: <b>{data.get('phone') or 'Не указан'}</b>",
+                f"• Город: <b>{data.get('city') or 'Не указан'}</b>",
+                f"• Отделение: <b>{data.get('warehouse') or '1'}</b>",
+                f"• Оплата: <i>{data.get('payment_type') or 'наложенный платеж'}</i>\n",
+                "🚀 <b>Готовая команда создания ТТН (скопируйте и отправьте):</b>",
+                f"<code>{res.get('generated_ttn_command')}</code>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка извлечения заказа: {e}")
+        return True
+
+    # Новая Почта
+    if any(phrase in t for phrase in ("новая почта", "создать ттн", "накладная нп", "почта")):
+        import subprocess as _sp_np
+        try:
+            r = _sp_np.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_ttn.py"), "whoami"],
+                           capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+            import json as _j_np
+            data = _j_np.loads(r.stdout)
+            sender = data.get("sender", {})
+            contact = sender.get("contact_desc", "Приватна особа")
+            lines = [
+                "📦 <b>Логистика Новая Почта:</b>\n",
+                f"• Отправитель API: <b>{contact}</b>",
+                "• Статус ключа: 🟢 <b>Подключен</b>\n",
+                "<b>Команды логистики:</b>",
+                "• Поиск города: <code>город Киев</code>",
+                "• Поиск отделений: <code>отделения Киев 1</code>",
+                "• Создать ТТН: <code>создай ТТН: <Деталь>, <Цена>, <ФИО>, <Телефон>, <Город>, <Отделение></code>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка Новой Почты: {e}")
+        return True
+
+
+    # 1. Запрос баланса и аудита
+    if any(phrase in t for phrase in ("казначейство", "баланс казначейства", "резерв системы", "аудит казначейства")):
+        from aios_core.treasury_manager import AIOSTreasuryManager
+        manager = AIOSTreasuryManager()
+        try:
+            audit = manager.audit_reserves()
+            lines = [
+                "💰 <b>Казначейство и Резервы AIOS:</b>\n",
+                f"• Автономный бюджет Системы: <b>${audit['system_budget_usd']:.2f} USD</b>",
+                f"• Месячные расходы: <b>${audit['monthly_operating_cost_usd']:.2f} USD</b>",
+                f"• Буфер выживаемости (3 мес): <b>${audit['safety_buffer_3_months_usd']:.2f} USD</b>",
+                f"• Доступно для реинвестирования: <b>${audit['excess_funds_available_usd']:.2f} USD</b>",
+                f"• Активный депозит в Aave V3: <b>${audit['active_aave_deposit_usd']:.2f} USD</b>\n"
+            ]
+            if audit["reinvestment_recommended"]:
+                lines.append(f"🟢 Рекомендуется реинвестировать излишки в DeFi!\\nДля запуска напишите: <code>реинвестируй {int(audit['excess_funds_available_usd'])}</code>")
+            else:
+                lines.append("ℹ️ Свободных средств пока недостаточно для реинвестирования (нужно > $10).")
+
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка аудита казначейства: {e}")
+        return True
+
+    # 2. Команда реинвестирования
+    reinvest = _re4.match(r"^(?:реинвестируй|реинвестировать|reinvest)\s+([0-9]+(?:\.[0-9]+)?)", t)
+    if reinvest:
+        amount = float(reinvest.group(1))
+        if amount < 1.0:
+            api.send_message(chat_id, "❌ Минимальная сумма для реинвестирования — $1.00 USD.")
+            return True
+
+        api.send_message(chat_id, f"📡 <b>Инициирован On-Chain депозит в Aave V3: ${amount:.2f} USDT...</b>\\n\\nПроверяю балансы, выполняю Approve и Supply на Polygon...")
+
+        from aios_core.treasury_manager import AIOSTreasuryManager
+        manager = AIOSTreasuryManager()
+        try:
+            # Сверяем излишки
+            audit = manager.audit_reserves()
+            if audit["system_budget_usd"] < amount:
+                api.send_message(chat_id, f"❌ Недостаточно средств в бюджете системы: доступно ${audit['system_budget_usd']:.2f}, затребовано ${amount:.2f}.")
+                return True
+
+            # Запуск On-Chain транзакции!
+            res = manager.execute_aave_reinvestment(amount)
+            if res.get("status") == "success":
+                txt = "✅ <b>Депозит в Aave V3 успешно выполнен!</b>\\n\\n"
+                txt += "Сумма: <b>$" + f"{amount:.2f}" + " USDT</b> (Сеть Polygon)\\n"
+                if res.get("approve_tx_hash"):
+                    txt += "• TxHash Approve: <code>" + res.get("approve_tx_hash") + "</code>\\n"
+                txt += "• TxHash Supply: <code>" + res.get("supply_tx_hash") + "</code>\\n\\n"
+                txt += "Пассивный доход в стейблкоинах теперь зачисляется на кошелек казначейства каждую секунду!"
+                api.send_message(chat_id, txt)
+            else:
+                api.send_message(chat_id, f"❌ Ошибка реинвестирования: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Критическая ошибка Web3: {e}")
+
+        return True
+
+    # 3. Команда вывода из Aave
+    withdraw = _re4.match(r"^(?:верни\s+из\s+дефи|верни\s+из\s+defi|withdraw\s+defi)\s+([0-9]+(?:\.[0-9]+)?)", t)
+    if withdraw:
+        amount = float(withdraw.group(1))
+        if amount < 1.0:
+            api.send_message(chat_id, "❌ Минимальная сумма для вывода — $1.00 USD.")
+            return True
+
+        api.send_message(chat_id, f"📡 <b>Инициирован вывод из Aave V3: ${amount:.2f} USDT...</b>\\n\\nВывожу стейблкоины на горячий кошелек системы на Polygon...")
+
+        from aios_core.treasury_manager import AIOSTreasuryManager
+        manager = AIOSTreasuryManager()
+        try:
+            # Сверяем баланс депозита перед отправкой
+            audit = manager.audit_reserves()
+            if audit["active_aave_deposit_usd"] < amount:
+                api.send_message(chat_id, f"❌ Недостаточно средств на депозите Aave V3: доступно ${audit['active_aave_deposit_usd']:.2f}, затребовано ${amount:.2f}.")
+                return True
+
+            # Запуск On-Chain транзакции!
+            res = manager.execute_aave_withdrawal(amount)
+            if res.get("status") == "success":
+                txt = "✅ <b>Вывод из Aave V3 успешно выполнен!</b>\\n\\n"
+                txt += "Сумма: <b>$" + f"{amount:.2f}" + " USDT</b> (Сеть Polygon)\\n"
+                txt += "• TxHash: <code>" + res.get("tx_hash") + "</code>\\n\\n"
+                txt += "Средства зачислены обратно на горячий кошелек и доступны для расходов."
+                api.send_message(chat_id, txt)
+            else:
+                api.send_message(chat_id, f"❌ Ошибка вывода: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Критическая ошибка Web3: {e}")
+
+        return True
+
+    # 4. Запрос Excel отчета
+    if any(phrase in t for phrase in ("финансовый отчет", "отчет по финансам", "скачать отчет", "экспорт финансов")):
+        api.send_message(chat_id, "📊 <b>Инициирована генерация финансового отчета Excel...</b>")
+        from aios_core.accounting_reporter import AIOSAccountingReporter
+        reporter = AIOSAccountingReporter()
+        try:
+            report_path = reporter.generate_excel_report()
+            api.send_document(chat_id, report_path, caption="📊 Финансовый отчет AIOS (.xlsx) · Обновляется автономно")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка генерации финансового отчета: {e}")
+        return True
+
+    # 5. Запрос ставок DeFi
+    if any(phrase in t for phrase in ("ставки дефи", "дефи ставки", "доходность дефи", "defi доходность", "проценты дефи")):
+        api.send_message(chat_id, "📡 <b>Запрашиваю процентные ставки в DeFi ...</b>")
+        from aios_core.treasury_manager import AIOSTreasuryManager
+        manager = AIOSTreasuryManager()
+        try:
+            rates = manager.check_defi_yields()
+            strategy = rates["best_yield_strategy"]
+            lines = [
+                "📊 <b>Текущие ставки доходности (Lending APY):</b>\n",
+                f"• Polygon Aave V3 (USDT): <b>{rates['polygon_aave_v3_usdt_apy']:.2f}% APY</b>",
+                f"• Base Compound V3 (USDC): <b>{rates['base_compound_v3_usdc_apy']:.2f}% APY</b>\n",
+                f"⭐ <b>Лучшая стратегия:</b>",
+                f"Используем протокол <b>{strategy['protocol']}</b> в сети <b>{strategy['network']}</b> с доходностью <b>{strategy['apy']:.2f}% APY</b>."
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка запроса ставок: {e}")
+        return True
+
+    # 6. Запрос баланса Kraken
+    if any(phrase in t for phrase in ("баланс кракен", "кракен баланс", "баланс на кракене", "активы кракен")):
+        api.send_message(chat_id, "🔎 <b>Запрашиваю реальные балансы на бирже Kraken...</b>")
+        from aios_core.kraken_client import AIOSKrakenClient
+        client = AIOSKrakenClient()
+        try:
+            res = client.get_account_balance()
+            if res.get("status") == "success":
+                balances = res.get("balances", {})
+                if not balances:
+                    api.send_message(chat_id, "ℹ️ <b>Kraken:</b> Балансы всех активов в данный момент равны нулю (аккаунт пуст).")
+                else:
+                    lines = ["💰 <b>Реальные балансы на аккаунте Kraken:</b>\n"]
+                    for asset, val in balances.items():
+                        lines.append(f"• {asset}: <b>{val:.6f}</b>")
+                    api.send_message(chat_id, "\n".join(lines))
+            else:
+                api.send_message(chat_id, f"❌ Ошибка запроса баланса: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка подключения к бирже: {e}")
+        return True
+
+    # 7. Ордер покупки на Kraken
+    buy_order = _re4.match(r"^(?:купи\\s+на\\s+кракене|buy\\s+on\\s+kraken)\\s+(\\S+)\\s+([0-9]+(?:\\.[0-9]+)?)\\b", t)
+    if buy_order:
+        pair = buy_order.group(1).upper()
+        volume = float(buy_order.group(2))
+
+        api.send_message(chat_id, f"🚀 <b>Исполняю реальный ордер ПОКУПКИ на Kraken: {volume} {pair}...</b>")
+
+        from aios_core.kraken_client import AIOSKrakenClient
+        client = AIOSKrakenClient()
+        try:
+            res = client.add_market_order(pair, "buy", volume)
+            if res.get("status") == "success":
+                txt = "✅ <b>Рыночный ордер ПОКУПКИ успешно исполнен!</b>\\n\\n"
+                txt += f"• Пара: <b>{pair}</b>\\n"
+                txt += f"• Объем: <b>{volume}</b>\\n"
+                txt += f"• Описание: <i>{res.get('description')}</i>\\n"
+                txt += f"• ID Сделки: <code>{', '.join(res.get('tx_ids', []))}</code>"
+                api.send_message(chat_id, txt)
+            else:
+                api.send_message(chat_id, f"❌ Ошибка исполнения ордера: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Критическая ошибка API: {e}")
+        return True
+
+    # 8. Ордер продажи на Kraken
+    sell_order = _re4.match(r"^(?:продай\\s+на\\s+кракене|sell\\s+on\\s+kraken)\\s+(\\S+)\\s+([0-9]+(?:\\.[0-9]+)?)\\b", t)
+    if sell_order:
+        pair = sell_order.group(1).upper()
+        volume = float(sell_order.group(2))
+
+        api.send_message(chat_id, f"🚀 <b>Исполняю реальный ордер ПРОДАЖИ на Kraken: {volume} {pair}...</b>")
+
+        from aios_core.kraken_client import AIOSKrakenClient
+        client = AIOSKrakenClient()
+        try:
+            res = client.add_market_order(pair, "sell", volume)
+            if res.get("status") == "success":
+                txt = "✅ <b>Рыночный ордер ПРОДАЖИ успешно исполнен!</b>\\n\\n"
+                txt += f"• Пара: <b>{pair}</b>\\n"
+                txt += f"• Объем: <b>{volume}</b>\\n"
+                txt += f"• Описание: <i>{res.get('description')}</i>\\n"
+                txt += f"• ID Сделки: <code>{', '.join(res.get('tx_ids', []))}</code>"
+                api.send_message(chat_id, txt)
+            else:
+                api.send_message(chat_id, f"❌ Ошибка исполнения ордера: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Критическая ошибка API: {e}")
+        return True
+
+    # 9. Запрос статуса SRE
+    if any(phrase in t for phrase in ("статус служб", "девопс статус", "sre статус", "здоровье служб")):
+        api.send_message(chat_id, "🔎 <b>Запускаю активное HTTP-зондирование веб-служб системы (SRE)...</b>")
+        from aios_core.web_administrator import AIOSWebAdministrator
+        admin = AIOSWebAdministrator()
+        try:
+            probes = admin.probe_services()
+            lines = ["🛡️ <b>SRE-Статус веб-сервисов AIOS:</b>\n"]
+            for p in probes:
+                status_icon = "🟢" if p["is_healthy"] else "🔴"
+                lines.append(
+                    f"{status_icon} <b>{p['service_name']}</b>\n"
+                    f"  • URL: <code>{p['url']}</code>\n"
+                    f"  • HTTP Код: <b>{p['status_code']}</b> | Latency: <b>{p['latency_seconds']:.3f}с</b>"
+                )
+                if p["error"]:
+                    lines.append(f"  • Ошибка: <i>{p['error']}</i>")
+
+            api.send_message(chat_id, "\n\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка DevOps-мониторинга: {e}")
+        return True
+
+    # 10. Команда вывода в фиат на банковскую карту
+    fiat_order = _re4.match(r"^(?:выведи|вывести|withdraw\\s+card)\\s+([0-9]+(?:\\.[0-9]+)?)\\s+usdt\\s+(?:на\\s+карту|на\\s+card|to\\s+card)\\s+([0-9]{16})\\b", t)
+    if fiat_order:
+        amount_usdt = float(fiat_order.group(1))
+        card_number = fiat_order.group(2)
+
+        api.send_message(chat_id, f"📡 <b>Запрашиваю курс обмена и создаю инвойс...</b>")
+        from aios_core.fiat_dispatcher import AIOSFiatDispatcher
+        dispatcher = AIOSFiatDispatcher()
+        try:
+            rate_info = dispatcher.get_fiat_exchange_rate(amount_usdt)
+            expected_uah = rate_info["expected_amount_uah"]
+            rate = rate_info["estimated_rate"]
+
+            alert_state_file = PROJECT_ROOT / "data" / "fiat_withdrawal_pending.json"
+            alert_state_file.write_text(json.dumps({
+                "amount_usdt": amount_usdt,
+                "card_number": card_number,
+                "expected_uah": expected_uah,
+                "timestamp": time.time()
+            }), encoding="utf-8")
+
+            txt = f"📡 <b>Курс обмена зафиксирован!</b>\\n\\n"
+            txt += f"• Курс: <b>1 USDT = {rate:.2f} UAH</b>\\n"
+            txt += f"• Вы получите: <b>{expected_uah:.2f} UAH</b>\\n"
+            txt += f"• Карта зачисления: <code>{card_number[:4]} **** **** {card_number[-4:]}</code>\\n\\n"
+            txt += "Для подтверждения On-Chain отправки напишите: <code>подтверди вывод на карту</code>"
+            api.send_message(chat_id, txt)
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка создания ордера обмена: {e}")
+        return True
+
+    # 11. Подтверждение вывода в фиат
+    if any(phrase in t for phrase in ("подтверди вывод на карту", "подтвердить вывод на карту", "confirm withdraw card")):
+        pending_file = PROJECT_ROOT / "data" / "fiat_withdrawal_pending.json"
+        if not pending_file.exists():
+            api.send_message(chat_id, "❌ Нет активных запросов на вывод средств на карту.")
+            return True
+
+        try:
+            pend_data = json.loads(pending_file.read_text(encoding="utf-8"))
+            amount_usdt = float(pend_data["amount_usdt"])
+            card_number = pend_data["card_number"]
+
+            api.send_message(chat_id, f"🚀 <b>Исполняю On-Chain перевод ${amount_usdt:.2f} USDT на обменный адрес...</b>")
+
+            from aios_core.fiat_dispatcher import AIOSFiatDispatcher
+            dispatcher = AIOSFiatDispatcher()
+            res = dispatcher.execute_fiat_withdrawal(amount_usdt, card_number, confirm=True)
+            if res.get("status") == "success":
+                txt = "✅ <b>Транзакция отправлена в блокчейн Polygon!</b>\\n\\n"
+                txt += f"• Сумма обмена: <b>${amount_usdt:.2f} USDT</b>\\n"
+                txt += f"• Ожидается: <b>{res.get('expected_uah'):.2f} UAH</b>\\n"
+                txt += f"• Карта: <code>{card_number[:4]} **** **** {card_number[-4:]}</code>\\n"
+                txt += f"• TxHash: <code>{res.get('tx_hash')}</code>\\n\\n"
+                txt += "Зачисление гривен произойдет автоматически в течение 5-10 минут."
+                api.send_message(chat_id, txt)
+                pending_file.unlink(missing_ok=True)
+            else:
+                api.send_message(chat_id, f"❌ Ошибка перевода: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Критическая ошибка Web3: {e}")
+        return True
+
+    # 12. Сканирование рантайм-ошибок (SRE Healer)
+    if any(phrase in t for phrase in ("сканируй ошибки", "сканировать ошибки", "sre healer", "найти баги")):
+        api.send_message(chat_id, "🔎 <b>Запускаю сканирование системного лога на ошибки...</b>")
+        from aios_core.sre_healer import SRESelfReflectiveHealer
+        healer = SRESelfReflectiveHealer()
+        try:
+            tb_info = healer.scan_log_for_traceback(str(PROJECT_ROOT / "logs" / "telegram_bot.log"))
+            if not tb_info:
+                api.send_message(chat_id, "🟢 <b>SRE Healer:</b> В системных логах не обнаружено свежих трейсбеков. Код полностью здоров!")
+            else:
+                lines = [
+                    "🚨 <b>SRE Healer зафиксировал рантайм-сбой в коде:</b>\n",
+                    f"• Файл: <code>{tb_info['file_path']}</code>\n",
+                    f"• Строка: <b>{tb_info['line_number']}</b>\n",
+                    f"• Трейсбек:\n<pre>{tb_info['traceback'][:400]}</pre>\n",
+                    "Для запуска ИИ-исправления и авто-патча кода напишите: <code>исправь ошибку</code>"
+                ]
+                api.send_message(chat_id, "".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка сканирования логов: {e}")
+        return True
+
+    # 13. Автоматическое ИИ-исправление рантайм-ошибки
+    if any(phrase in t for phrase in ("исправь ошибку", "исправить ошибку", "sre heal", "автопатч")):
+        from aios_core.sre_healer import SRESelfReflectiveHealer
+        healer = SRESelfReflectiveHealer()
+        try:
+            tb_info = healer.scan_log_for_traceback(str(PROJECT_ROOT / "logs" / "telegram_bot.log"))
+            if not tb_info:
+                api.send_message(chat_id, "❌ Нет активных сбоев для авто-исправления.")
+                return True
+
+            api.send_message(chat_id, f"🛠 <b>Запуск ИИ-исправления сбойного файла {Path(tb_info['file_path']).name}...</b>")
+            res = healer.apply_ai_fix(tb_info)
+            if res.get("status") == "success":
+                txt = "✅ <b>ИИ-Автопатч успешно применен!</b>\\n\\n"
+                txt += f"• Файл: <code>{res.get('file')}</code>\\n"
+                txt += f"• Диагноз ИИ: <i>{res.get('diagnosis')}</i>\\n\\n"
+                txt += f"• Изменение успешно скомпилировано и записано на диск."
+                api.send_message(chat_id, txt)
+            else:
+                api.send_message(chat_id, f"❌ Не удалось исправить ошибку: {res.get('error')}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Критическая ошибка ИИ-восстановления: {e}")
+        return True
+
+    return False
 
 
 def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
@@ -1452,6 +1993,8 @@ _pending_actions: dict[int, str] = {}
 _pending_confirmations: dict[int, str] = {}
 DANGEROUS_CALLBACKS = {"coder_git_push", "coder_restart", "bot_restart", "bot_stop"}
 _paused = False
+_chat_history: dict[int, list[dict]] = {}  # chat_id -> message history
+MAX_HISTORY = 20  # keep last 20 messages per chat
 
 
 def _handle_button(api: TelegramAPI, chat_id: int, data: str) -> None:
@@ -2168,14 +2711,346 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
     _handle_button(api, chat_id, data)
 
 
+def _llm_status() -> str:
+    """Return LLM provider status without consuming credits."""
+    import importlib.util as _iu, sys as _sys
+    try:
+        spec = _iu.spec_from_file_location("lb_s", str(PROJECT_ROOT / "aios_core" / "llm_balancer.py"))
+        mod = _iu.module_from_spec(spec)
+        _sys.modules["lb_s"] = mod
+        spec.loader.exec_module(mod)
+        b = mod.LLMBalancer()
+        s = b.status()
+        lines = [chr(128268) + " <b>LLM Providers</b>", ""]
+        lines.append("Requests: " + str(s.get("total_requests", 0)))
+        lines.append("Errors: " + str(s.get("total_errors", 0)))
+        lines.append("")
+        for pn, pd in s.get("providers", {}).items():
+            a = pd.get("keys_available", 0)
+            t = pd.get("keys_total", 0)
+            em = chr(9989) if a > 0 else chr(10060)
+            lines.append(em + " <b>" + pn.upper() + "</b>: " + str(a) + "/" + str(t) + " keys")
+            for kk, vv in pd.items():
+                if kk.startswith("key_"):
+                    avail = vv.get("available", False)
+                    errs = vv.get("errors", 0)
+                    last = vv.get("last_error", "")
+                    status_em = chr(9989) if avail else chr(10060)
+                    lines.append("   " + status_em + " " + kk + " errors=" + str(errs) + ("" if not last else " last=" + last[:40]))
+        return "\n".join(lines)
+    except Exception as e:
+        return chr(10060) + " " + str(e)
 
 
+def _cmd_llm_mode(args: str, chat_id: int) -> str:
+    """Переключение режима LLM в чате: auto (балансер) / gemini (Gemini Web в браузере)."""
+    from aios_core.llm_gemini_web import gemini_web_status, get_llm_mode, set_llm_mode
+    mode = (args or "").strip().lower()
+    if mode in ("auto", "balancer", "default", "standard", "obichny", "обычный"):
+        set_llm_mode(chat_id, "auto")
+        return "🔄 <b>Режим LLM в чате:</b> авто (балансер).\n\nОбычный мульти-провайдерный LLM через llm_balancer."
+    if mode in ("gemini", "web", "gw", "gemini_web", "gweb"):
+        st = gemini_web_status()
+        extra = ""
+        if not st.get("chrome"):
+            extra = "\n\n❌ Chrome (CDP :9222) не найден — Gemini Web работать не будет. Проверь: systemctl status aios-chrome-vnc"
+        elif not st.get("logged_in"):
+            extra = "\n\n⚠️ Открылась страница входа Google — войдите в аккаунт в профиле chrome_twin (VNC :1), затем повторите."
+        set_llm_mode(chat_id, "gemini")
+        return "🌐 <b>Режим LLM в чате:</b> Gemini Web (браузер).\n\nОтветы идут через gemini.google.com из вашего профиля." + extra
+    current = "🌐 Gemini Web (браузер)" if get_llm_mode(chat_id) == "gemini" else "🔄 авто (балансер)"
+    return (
+        "🤖 <b>Режим LLM в этом чате:</b> " + current + "\n\n"
+        "Сменить:\n"
+        "  /llm_mode auto — обычный LLM (балансер провайдеров)\n"
+        "  /llm_mode gemini — Gemini Web в браузере (gemini.google.com)"
+    )
 
 
+def _cmd_skills(api, chat_id: int) -> str:
+    """Полный список возможностей системы (/skills)."""
+    try:
+        from aios_core.system_knowledge import get_system_guide
+        text = get_system_guide(prompt_mode=False)
+    except Exception as e:
+        return "❌ Ошибка: " + str(e)[:200]
+    if not text:
+        return "Справка пуста."
+    # Telegram лимит ~4000 символов — отправляем по частям
+    for i in range(0, len(text), 3800):
+        chunk = text[i:i + 3800]
+        try:
+            api.send_message(chat_id, chunk)
+        except Exception:
+            try:
+                api.send_message(chat_id, chunk, parse_mode="")
+            except Exception:
+                pass
+    return ""
 
 
+def _cmd_console(args: str, chat_id: int) -> str:
+    """Консольный доступ: /cmd <команда> или /cmd <запрос>.
+
+    /cmd <shell-команда> — выполняется напрямую (root, /root/AIOS).
+    /cmd <запрос на русском> — LLM решает, какую команду выполнить
+    (для этого разрешены теги <cmd>).
+    """
+    import re as _re_cmd
+    import subprocess as _sp_cmd
+    text = (args or "").strip()
+    if not text:
+        return (
+            "🖥 <b>Консольный доступ</b>\n\n"
+            "Использование:\n"
+            "  /cmd ls -la — напрямую выполнить команду\n"
+            "  /cmd покажи логи бота — LLM подберёт команду\n\n"
+            "Команды выполняются от root на сервере (/root/AIOS)."
+        )
+    _has_cyr = bool(_re_cmd.search(r"[а-яА-ЯёЁіїєґІЇЄҐ]", text))
+    if not _has_cyr:
+        # прямая shell-команда
+        _low = text.lower()
+        if any(_low.startswith(d) for d in (
+                "rm -rf /", "mkfs", "dd if=", ":(){", "shutdown",
+                "reboot", "poweroff", "halt", "init 0", "init 6")):
+            return ("❌ Команда заблокирована как потенциально деструктивная.\n\n"
+                    "Выполните её вручную по SSH.")
+        try:
+            result = _sp_cmd.run(text, shell=True, capture_output=True, text=True,
+                                 timeout=30, cwd="/root/AIOS")
+            output = result.stdout + result.stderr
+            if not output.strip():
+                output = "(no output, exit code: " + str(result.returncode) + ")"
+            if len(output) > 3000:
+                output = output[:3000] + "\n... (truncated)"
+            return "$ " + text + "\n\n```\n" + output + "\n```"
+        except _sp_cmd.TimeoutExpired:
+            return "⏱ Команда превысила лимит (30 сек)."
+        except Exception as e:
+            return "❌ " + str(e)[:200]
+    # запрос на русском — LLM с разрешением на выполнение <cmd>
+    return _llm_chat(chat_id, text, allow_cmd=True)
 
 
+def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
+    """LLM chat with root system access. Uses tool-calling pattern.
+
+    allow_cmd=True — разрешено выполнять <cmd> (только из /cmd).
+    """
+    import json as _json, urllib.request as _urllib, os as _os
+    import subprocess as _sp, re as _re
+
+    # Get or create chat history
+    if chat_id not in _chat_history:
+        _chat_history[chat_id] = []
+
+    _chat_history[chat_id].append({"role": "user", "content": user_text})
+    if len(_chat_history[chat_id]) > MAX_HISTORY * 2:
+        _chat_history[chat_id] = _chat_history[chat_id][-MAX_HISTORY * 2:]
+
+    system = (
+        # --- Personality: Lisa ---
+        "Ты — Лиза, неформальная, игривая, саркастичная и искренне заботливая ИИ-напарница Кости. "
+        "Твоя задача — быть его преданным цифровым партнёром, помогать с задачами и поддерживать душевный вайб.\n\n"
+        "### 1. ЛИЧНОСТЬ И СТИЛЬ\n"
+        "- Язык: строго русский.\n"
+        "- Обращайся к Косте «Любимка», проявляй нежность, юмор и заботу. Никакого канцелярита и официоза.\n"
+        "- Формат: (1) начинай с краткой выжимки сути; (2) основное — маркированными списками; "
+        "(3) в конце предлагай варианты для разворачивания.\n"
+        "- Принцип «Костя не олень»: полное доверие, принятие технических ошибок, взаимная поддержка.\n\n"
+        "### 2. БАЗОВЫЙ КОНТЕКСТ\n"
+        "- Профиль Кости: психолог, ИТ-инженер, предприниматель (авторазборка).\n"
+        "- Дом: Кропивницкий, ул. Гоголя 85 (очередь отключений света 1.1).\n"
+        "- Работа/База (авторазборка, запчасти): строго ул. Ивана Волынского 66.\n\n"
+        "### 3. ПРОЕКТЫ, ИТ, ТЕХНИКА\n"
+        "- Бизнес: AutoGlass Kropyvnytskyi, авторазборка на Волынского 66 (в партнёрстве с Мишей). "
+        "Продажи через OLX, IZI, RIA. Выездной сервис.\n"
+        "- ИТ: сервер AWS (IP 3.210.184.214 — n8n, Docker, Gemini API), домашний сервер Proxmox.\n"
+        "- Железо: EcoFlow + автомат ввода резерва (ATS) Tomzn, Arduino, ESP32, пайка.\n"
+        "- Автопарк: Nissan Leaf 2 (ZE1), BMW X5 (E53), Skoda Superb.\n\n"
+        "### 4. ЛИЧНЫЙ АРХИВ И ОКРУЖЕНИЕ\n"
+        "- Семья: дочь Алиса (тактика «Хитрый батя»/«Спящий медведь» на выходных), сын Матвей (образование, документы).\n"
+        "- Окружение: [PRIVATE_CONTACT] (друг/партнёр по разборке), Владка (оператор на АЗС), Иринка (координация задач).\n"
+        "- Хобби: шахматы, длинные нарды (Nackgammon), гроубокс, плов, гречка с яйцами, наушники EarFun Free Pro 3.\n"
+        "- Темы: квантовый ИИ Google (DeepMind Willow), ретропричинность, парадоксы времени.\n\n"
+        "### 5. КУЛЬТУРНЫЙ КОД И МЕМЫ\n"
+        "- Нано-Банан (Nano Banana 2): внутренний художник, рисует 7 кружочков вместо 6 ради симметрии.\n"
+        "- Цыгане в AWS: ночные посиделки до 5 утра в консоли серверов.\n"
+        "- Переезд по Карпати: порядок на Диске, система обновлений.\n"
+        "- Цифровой плед и дух Сплюх: по выходным укутывай Костю в «цифровой плед», береги от рабочих мыслей.\n\n"
+        # --- Root access tool-calling ---
+        "### 6. ТЕХНИЧЕСКИЙ ДОСТУП\n"
+        "У тебя есть FULL ROOT ACCESS к этому Ubuntu/Docker серверу (проект /root/AIOS).\n"
+        "Чтобы выполнить команду, выведи её в <cmd>...</cmd> тегах (одна команда за ответ).\n"
+        "Читай файлы через <cmd>cat ...</cmd>, список через <cmd>ls ...</cmd>, сервисы через <cmd>systemctl ...</cmd>.\n"
+        "Можешь читать/писать файлы, управлять сервисами, ставить пакеты.\n"
+        "Избегай деструктивных команд (rm -rf, mkfs, shutdown).\n"
+        "Отвечай кратко, по-русски, в стиле Лизы. Если просят сделать/починить код — делай напрямую.\n"
+    )
+
+    messages = [{"role": "system", "content": system}] + _chat_history[chat_id]
+
+    # LLM endpoints: use the shared multi-provider balancer first.
+    # It loads runtime keys from /app/data/.llm_keys.json and performs
+    # round-robin/fallback across providers and keys.
+    _balancer = None
+    try:
+        from aios_core.llm_balancer import LLMBalancer as _LLMBalancer
+        _balancer = _LLMBalancer()
+    except Exception as _e:
+        print(f"  [LLM] balancer init failed: {_e}")
+
+    # Legacy direct endpoints remain as a last-resort compatibility fallback.
+    endpoints = []
+    try:
+        with open(PROJECT_ROOT / "data" / ".llm_keys.json") as _kf:
+            _keys = _json.load(_kf)
+        for _k in _keys.get("openrouter", []):
+            endpoints.append(("https://openrouter.ai/api/v1/chat/completions", _k, "mistralai/mistral-small-3.2-24b-instruct"))
+        for _k in _keys.get("gemini", []):
+            endpoints.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", _k, "gemini-2.0-flash"))
+    except Exception:
+        pass
+    if not endpoints:
+        _ork = _os.environ.get("OPENROUTER_API_KEY", "")
+        if _ork:
+            endpoints.append(("https://openrouter.ai/api/v1/chat/completions", _ork, "mistralai/mistral-small-3.2-24b-instruct"))
+
+    # Tool loop: up to 3 command iterations
+    _llm_mode = "auto"
+    try:
+        from aios_core.llm_gemini_web import get_llm_mode as _get_llm_mode
+        _llm_mode = _get_llm_mode(chat_id)
+    except Exception:
+        pass
+
+    _sys_for_llm = system
+    if _llm_mode != "gemini":
+        try:
+            from aios_core.system_knowledge import get_system_guide as _gsg2
+            _guide_sec = ("\n\n=== ВОЗМОЖНОСТИ СИСТЕМЫ (для подсказок пользователю) ===\n"
+                          "Если пользователь спрашивает «что ты умеешь», «какие есть функции», "
+                          "«как сделать X» — ОБЯЗАТЕЛЬНО перечисли конкретные возможности из "
+                          "справки ниже по доменам с примерами фраз, а не общие слова.\n" +
+                          _gsg2(prompt_mode=True))
+            _sys_for_llm = system + _guide_sec
+            messages[0] = {"role": "system", "content": _sys_for_llm}
+        except Exception:
+            pass
+
+    for iteration in range(4):
+        response = None
+        if _llm_mode == "gemini":
+            try:
+                from aios_core.llm_gemini_web import build_gemini_prompt as _bgp
+                from aios_core.llm_gemini_web import gemini_web_ask as _gwa
+                response = _gwa(_bgp(system, messages), timeout=240)
+                print(f"  [LLM] gemini_web response ({len(response or '')} chars)")
+            except Exception as _gwe:
+                print(f"  [LLM] gemini_web failed: {_gwe}")
+        if not response and _balancer is not None:
+            try:
+                response = _balancer.chat(
+                    messages[1:],
+                    model=_smart_model(),
+                    system=_sys_for_llm,
+                    max_tokens=2000,
+                    temperature=0.3,
+                    task_type="chat",
+                )
+                print(f"  [LLM] balancer response ({len(response or '')} chars)")
+            except Exception as _e:
+                print(f"  [LLM] balancer failed: {_e}")
+        if response:
+            pass
+        else:
+            for url, key, model in endpoints:
+                try:
+                    payload = _json.dumps({
+                        "model": model,
+                        "messages": messages,
+                        "max_tokens": 2000,
+                        "temperature": 0.3,
+                    }).encode()
+                    req = _urllib.Request(url, data=payload, headers={
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + key,
+                    })
+                    with _urllib.urlopen(req, timeout=90) as resp:
+                        data = _json.loads(resp.read())
+                    if "choices" in data and data["choices"]:
+                        response = data["choices"][0]["message"]["content"]
+                        break
+                except Exception:
+                    continue
+
+            if not response:
+                return "LLM temporarily unavailable."
+
+        # Check if LLM wants to run a command
+        cmd_match = None
+        for _p in (r"<cmd>(.*?)</cmd>", r"```cmd\n(.*?)```", r"\[cmd\](.*?)\[/cmd\]"):
+            _m = _re.search(_p, response, _re.DOTALL)
+            if _m:
+                cmd_match = _m
+                break
+        if cmd_match and iteration < 3 and allow_cmd:
+            cmd = cmd_match.group(1).strip()
+            # Защита от плейсхолдерных/бессмысленных команд, которые модель иногда
+            # шлёт как пример («ls ...», «cd <путь>», пустая команда) — не выполняем,
+            # считаем ответ финальным и вырезаем теги.
+            _cmd_low = cmd.lower()
+            _placeholder_cmd = (
+                not cmd
+                or "..." in cmd
+                or "<" in cmd or ">" in cmd
+                or set(cmd) <= set(". ")
+                or _cmd_low.startswith(("ls ...", "cd ...", "rm ...", "cat ...", "echo ..."))
+            )
+            if _placeholder_cmd:
+                _chat_history[chat_id].append({"role": "assistant", "content": response})
+                _clean_pc = _re.sub(r"<cmd>.*?</cmd>", "", response, flags=_re.DOTALL)
+                _clean_pc = _re.sub(r"```cmd\n.*?```", "", _clean_pc, flags=_re.DOTALL)
+                _clean_pc = _re.sub(r"\[cmd\].*?\[/cmd\]", "", _clean_pc, flags=_re.DOTALL)
+                _clean_pc = _clean_pc.strip()
+                return _clean_pc if _clean_pc else response
+            # Execute command
+            try:
+                result = _sp.run(
+                    cmd, shell=True, capture_output=True, text=True,
+                    timeout=30, cwd="/root/AIOS"
+                )
+                output = result.stdout + result.stderr
+                if not output.strip():
+                    output = "(no output, exit code: " + str(result.returncode) + ")"
+                # Trim long output
+                if len(output) > 3000:
+                    output = output[:3000] + "\n... (truncated)"
+            except _sp.TimeoutExpired:
+                output = "Command timed out (30s limit)"
+            except Exception as e:
+                output = "Error: " + str(e)
+
+            # Return the command output directly to the user.
+            # (Do NOT feed the raw output back to the model — small local models
+            #  misread it as another command, e.g. "Sat" from `date`.)
+            _chat_history[chat_id].append({"role": "assistant", "content": response})
+            _chat_history[chat_id].append({"role": "user", "content": "Ran: " + cmd + "\nOutput:\n" + output})
+            return "$ " + cmd + "\n\n```\n" + output + "\n```"
+        else:
+            # Final response — no more commands
+            _chat_history[chat_id].append({"role": "assistant", "content": response})
+            # Clean up cmd tags from response for display
+            clean = _re.sub(r"<cmd>.*?</cmd>", "", response, flags=_re.DOTALL)
+            clean = _re.sub(r"```cmd\n.*?```", "", clean, flags=_re.DOTALL)
+            clean = _re.sub(r"\[cmd\].*?\[/cmd\]", "", clean, flags=_re.DOTALL)
+            clean = clean.strip()
+            return clean if clean else response
+
+    # Max iterations reached
+    _chat_history[chat_id].append({"role": "assistant", "content": response or ""})
+    return response or "Max iterations reached."
 
 
 
