@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [19.2.0] — 2026-08-07 — AIOS Flash-Loan Arbitrage v19.2 (Cross-DEX Uniswap/QuickSwap + CEX)
+
+### Added
+- **Flash-Loan Arbitrage Engine v19.2** (`aios_core/dex_arbitrage_scanner.py` 80→385 lines):
+  - 4 пары: `WETH/USDC`, `WBTC/USDC`, `WMATIC/USDC`, `SOL/USD` — кросс-DEX/CEX цены `kraken + binance + coingecko + Uniswap V3 Polygon` (on-chain `slot0` + `matic-network` fix).
+  - `fetch_all_prices()` — 5 venue, `scan_cross_dex_opportunities(min_spread_pct=0.8, flash_amount=10k)` — спред, `flash_sim_10k/50k` (fee 0.05% Aave + gas $0.02 + slippage 0.3% = 0.35%), `viable` если spread≥0.8% и net>$5, фильтр data error >15%.
+  - `simulate_flash_loan(buy,sell,symbol,amount)` — buy low → sell high симуляция, `net = gross - (flash_fee+gas+slippage)`.
+  - `execute_flash_arbitrage(..., dry_run=True)` — dry_run safe, `AIOS_FLASH_LIVE=1` gate + приватный ключ check, stub для `AaveFlashArb.sol`.
+  - `generate_telegram_report()` — `Viable 0/3 Best WETH 0.07% net -$27 (cost 0.35%)` — honest для calm market.
+  - Legacy `scan_arbitrage_opportunities()` + alias `AIOSDEXArbitrageScanner = AIOSFlashLoanArbitrageEngine`.
+- **Runner v19.2** (`run_dex_arbitrage_scanner.py`):
+  - Args: `--cross`, `--telegram`, `--simulate SYMBOL BUY SELL --amount 10000`, `--execute`, `--daemon --interval 300`, `--min-spread 0.8`.
+  - Daemon: loop 300s + state `data/flash_arbitrage_state.json`.
+  - Safety: `AIOS_FLASH_LIVE=0` блокирует live.
+- **Solidity** (`contracts/AaveFlashArb.sol`): Aave V3 `flashLoanSimple` stub, `FLASH_FEE_BPS 5`, `dryRun` + `executeOperation` buy/sell via low-level call, `owner` only, `ArbitrageExecuted` event. Live требует аудита.
+
+### Test
+- Cross scan: `WETH 0.07%, WBTC 0.05%, SOL 0.06%` — viable 0 (нормально, calm), `WMATIC` 405% filtered as data error.
+- Simulate 10k WETH kraken→binance `net -$27.45` (gross $7.57 - cost $35.02), execute blocked без `AIOS_FLASH_LIVE=1` ✅.
+
 ## [19.1.0] — 2026-08-07 — AIOS Smart Liquidity Router v19.1 (Cross-Chain Solana/Arbitrum)
 
 ### Added
