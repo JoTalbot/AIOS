@@ -23,10 +23,10 @@ logger = logging.getLogger("AIOS.LiquidityRouter")
 # --- Константы сетей v19.1 ---
 # Arbitrum Aave V3
 ARBITRUM_Aave_POOL = "0x794a61358D6845594F94dc1DB02A252b5b4814aD"  # Aave V3 Pool same address cross-chain
-ARBITRUM_DATA_PROVIDER = "0x69FA688f67A5d2A16F17a7b3F3aCF0DBB3B47967"  # Arbitrum DataProvider
-ARBITRUM_USDC = "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"  # USDC on Arbitrum
-ARBITRUM_RPC_FALLBACK = "https://arbitrum-one-rpc.publicnode.com"
-ARBITRUM_RPC_BACKUP = "https://arb1.arbitrum.io/rpc"
+ARBITRUM_DATA_PROVIDER = "0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654"  # Aave V3 ProtocolDataProvider Arbitrum (verified 2026-08-08, old addr had 0 code)
+ARBITRUM_USDC = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"  # native USDC Arbitrum, main Aave market ~$171M TVL
+ARBITRUM_RPC_FALLBACK = "https://arbitrum.drpc.org"
+ARBITRUM_RPC_BACKUP = "https://arbitrum-one.publicnode.com"
 
 # Solana
 SOLANA_MARINADE_API = "https://api.marinade.finance/apy"
@@ -53,29 +53,29 @@ class AIOSSmartLiquidityRouter:
 
     # --- Live APY fetchers ---
     def _get_arbitrum_aave_apy(self) -> float:
-        """Live APY Arbitrum Aave V3 USDC (on-chain). Fallback 4.15 если RPC недоступен."""
-        try:
-            rpcs = PUBLIC_RPC_NODES.get("arbitrum", [ARBITRUM_RPC_FALLBACK, ARBITRUM_RPC_BACKUP, "https://arbitrum.drpc.org"])
-            w3 = None
-            for rpc in rpcs:
-                try:
-                    temp = Web3(Web3.HTTPProvider(rpc, request_kwargs={'timeout': 5}))
-                    if temp.is_connected():
-                        w3 = temp
-                        break
-                except Exception:
+        """Live APY Arbitrum Aave V3 USDC (on-chain). Per-RPC retry (v20.6). Fallback 4.15 если все RPC недоступны."""
+        rpcs = PUBLIC_RPC_NODES.get("arbitrum", [ARBITRUM_RPC_FALLBACK, ARBITRUM_RPC_BACKUP, "https://arbitrum-one.publicnode.com"])
+        abi = [{"inputs": [{"internalType": "address", "name": "asset", "type": "address"}], "name": "getReserveData", "outputs": [{"internalType": "uint256", "name": "unbacked", "type": "uint256"}, {"internalType": "uint256", "name": "accruedToTreasuryScaled", "type": "uint256"}, {"internalType": "uint256", "name": "totalAToken", "type": "uint256"}, {"internalType": "uint256", "name": "totalStableDebt", "type": "uint256"}, {"internalType": "uint256", "name": "totalVariableDebt", "type": "uint256"}, {"internalType": "uint256", "name": "liquidityRate", "type": "uint256"}, {"internalType": "uint256", "name": "variableBorrowRate", "type": "uint256"}, {"internalType": "uint256", "name": "stableBorrowRate", "type": "uint256"}, {"internalType": "uint256", "name": "averageStableBorrowRate", "type": "uint256"}, {"internalType": "uint256", "name": "liquidityIndex", "type": "uint256"}, {"internalType": "uint256", "name": "variableBorrowIndex", "type": "uint256"}, {"internalType": "uint40", "name": "lastUpdateTimestamp", "type": "uint40"}], "stateMutability": "view", "type": "function"}]
+        last_err = None
+        for rpc in rpcs:
+            try:
+                w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={'timeout': 5}))
+                if not w3.is_connected():
                     continue
-            if not w3:
-                return 4.15
-            abi = [{"inputs": [{"internalType": "address", "name": "asset", "type": "address"}], "name": "getReserveData", "outputs": [{"internalType": "uint256", "name": "unbacked", "type": "uint256"}, {"internalType": "uint256", "name": "accruedToTreasuryScaled", "type": "uint256"}, {"internalType": "uint256", "name": "totalAToken", "type": "uint256"}, {"internalType": "uint256", "name": "totalStableDebt", "type": "uint256"}, {"internalType": "uint256", "name": "totalVariableDebt", "type": "uint256"}, {"internalType": "uint256", "name": "liquidityRate", "type": "uint256"}, {"internalType": "uint256", "name": "variableBorrowRate", "type": "uint256"}, {"internalType": "uint256", "name": "stableBorrowRate", "type": "uint256"}, {"internalType": "uint256", "name": "averageStableBorrowRate", "type": "uint256"}, {"internalType": "uint256", "name": "liquidityIndex", "type": "uint256"}, {"internalType": "uint256", "name": "variableBorrowIndex", "type": "uint256"}, {"internalType": "uint40", "name": "lastUpdateTimestamp", "type": "uint40"}], "stateMutability": "view", "type": "function"}]
-            contract = w3.eth.contract(address=Web3.to_checksum_address(ARBITRUM_DATA_PROVIDER), abi=abi)
-            data = contract.functions.getReserveData(Web3.to_checksum_address(ARBITRUM_USDC)).call()
-            liquidity_rate = data[5]
-            apy = (liquidity_rate / 10**27) * 100
-            return round(apy, 2) if apy > 0 else 4.15
-        except Exception as e:
-            logger.warning(f"Arbitrum APY fetch failed: {e}")
-            return 4.15
+                contract = w3.eth.contract(address=Web3.to_checksum_address(ARBITRUM_DATA_PROVIDER), abi=abi)
+                data = contract.functions.getReserveData(Web3.to_checksum_address(ARBITRUM_USDC)).call()
+                liquidity_rate = data[5]
+                apy = (liquidity_rate / 10**27) * 100
+                if apy > 0:
+                    logger.info(f"Arbitrum Aave V3 USDC live APY {apy:.2f}% via {rpc}")
+                    return round(apy, 2)
+            except Exception as e:
+                last_err = e
+                logger.debug(f"Arbitrum RPC {rpc} failed: {str(e)[:120]}")
+                continue
+        if last_err:
+            logger.warning(f"Arbitrum APY fetch failed on all RPCs: {str(last_err)[:160]}")
+        return 4.15
 
     def _get_solana_apy(self) -> float:
         """Live APY Solana Jito 7.5% + Marinade 6.8% (v20 live)."""
