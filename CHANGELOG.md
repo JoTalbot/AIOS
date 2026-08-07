@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [19.4.0] — 2026-08-07 — AIOS Telegram Control v19.4 (Liquidity/Flash/Mesh Buttons)
+
+### Added
+- **Telegram Control v19.4** (`run_telegram_bot.py` 8718 lines):
+  - `MAIN_MENU_KEYBOARD` обновлено: 6 рядов `💰 Казначейство/📈 Трейдинг` → `💧 Ликвидность/⚡ Арбитраж` → `📱 Mesh/🛒 Склад & OLX` → `📦 Новая Почта/🌐 Веб-каталог` → `📲 Телефон & Банки/🛡 SRE` → `❓ Помощь`.
+  - `_handle_treasury_intent` liquidity блок: теперь `run_smart_liquidity_router.py --telegram` v19.1 (Solana 6.8% best, net +25.13, bridge quote) вместо ручной сборки.
+  - `_handle_treasury_intent` arbitrage блок: теперь `run_dex_arbitrage_scanner.py --cross --telegram` v19.2 (5 venues, viable 0 honest, 10k/50k sim).
+  - Новый `Android Mesh v19.3` блок: `mesh/меш/📱 mesh` → `run_android_mesh.py --telegram` (1 Online 1 Idle 🔋90% или 2 parallel).
+  - Эмодзи-триггеры `💧/⚡/📱` уже покрыты substring check (`ликвидность/арбитраж/mesh`), меню полностью кликабельно.
+
+### Test
+- MockAPI direct call: `💧 Ликвидность` → Solana 6.8% report ✅, `⚡ Арбитраж` → cross 4 пары viable 0 ✅, `📱 Mesh` → 1 Online 1 Idle 🔋90% ✅
+- `systemctl restart aios-telegram-bot` → active running ✅, `py_compile OK` 8718 lines
+
 ## [19.3.0] — 2026-08-07 — AIOS Android Mesh v19.3 (Multi-Device Fleet)
 
 ### Added

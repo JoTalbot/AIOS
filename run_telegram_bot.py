@@ -261,9 +261,11 @@ def cmd_start() -> str:
 MAIN_MENU_KEYBOARD = {
     "keyboard": [
         [{"text": "💰 Казначейство"}, {"text": "📈 Трейдинг"}],
-        [{"text": "🛒 Склад & OLX"}, {"text": "📦 Новая Почта"}],
-        [{"text": "🌐 Веб-каталог"}, {"text": "📲 Телефон & Банки"}],
-        [{"text": "🛡 SRE Статус"}, {"text": "❓ Помощь"}],
+        [{"text": "💧 Ликвидность"}, {"text": "⚡ Арбитраж"}],
+        [{"text": "📱 Mesh"}, {"text": "🛒 Склад & OLX"}],
+        [{"text": "📦 Новая Почта"}, {"text": "🌐 Веб-каталог"}],
+        [{"text": "📲 Телефон & Банки"}, {"text": "🛡 SRE Статус"}],
+        [{"text": "❓ Помощь"}],
     ],
     "resize_keyboard": True,
     "one_time_keyboard": False,
@@ -2261,52 +2263,77 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
 
     # Смарт-маршрутизатор ликвидности (v19.0.0)
     if any(phrase in t for phrase in ("ликвидность", "смарт ликвидность", "маршрутизатор", "доходность сетей", "кросс-чейн")):
-        api.send_message(chat_id, "🌐 <b>Запрашиваю мульти-чейн анализ доходностей DeFi...</b>")
+        api.send_message(chat_id, "🌐 <b>Запрашиваю мульти-чейн анализ доходностей DeFi v19.1...</b>")
         import subprocess as _sp_lr
         try:
-            r = _sp_lr.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_smart_liquidity_router.py")],
+            r = _sp_lr.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_smart_liquidity_router.py"), "--telegram"],
                            capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
-            import json as _j_lr
-            data = _j_lr.loads(r.stdout)
-            best = data.get("best_yield_strategy", {})
-            lines = [
-                "🌐 <b>AIOS Smart Liquidity Router (v19.0.0):</b>\n",
-                f"🥇 <b>Лучшая стратегия:</b> {best.get('protocol')} на <b>{best.get('network')}</b> ({best.get('asset')})",
-                f"• Доходность: <b>{best.get('apy_pct')}% APY</b>\n",
-                "📊 <b>Все доступные пулы:</b>"
-            ]
-            for opp in data.get("all_opportunities", []):
-                lines.append(f"• <b>{opp.get('network')}</b> ({opp.get('protocol')}): <b>{opp.get('apy_pct')}% APY</b> [{opp.get('asset')}]")
-
-            lines.append(f"\n💰 Доступно излишков казначейства: <b>${data.get('available_excess_capital_usd', 0.0):.2f} USD</b>")
-            lines.append(f"📈 Прогнозный доход: <b>+${data.get('estimated_annual_yield_usd', 0.0):.2f}/год</b>")
-            if data.get("rebalance_action_required"):
-                lines.append("\n🟢 <i>Рекомендуется направить свободный капитал в пул Base Compound V3.</i>")
-
-            api.send_message(chat_id, "\n".join(lines))
+            # v19.1 --telegram outputs markdown directly
+            report = r.stdout.strip()
+            if report:
+                api.send_message(chat_id, report)
+            else:
+                import json as _j_lr
+                data = _j_lr.loads(r.stdout)
+                best = data.get("best_yield_strategy", {})
+                lines = [
+                    "🌐 <b>AIOS Smart Liquidity Router v19.1:</b>\n",
+                    f"🥇 <b>Лучшая стратегия:</b> {best.get('protocol')} на <b>{best.get('network')}</b> ({best.get('asset')})",
+                    f"• Доходность: <b>{best.get('apy_pct')}% APY</b>\n",
+                    "📊 <b>Все доступные пулы:</b>"
+                ]
+                for opp in data.get("all_opportunities", []):
+                    lines.append(f"• <b>{opp.get('network')}</b> ({opp.get('protocol')}): <b>{opp.get('apy_pct')}% APY</b> [{opp.get('asset')}]")
+                lines.append(f"\n💰 Доступно излишков: <b>${data.get('available_excess_capital_usd', 0.0):.2f}</b>")
+                lines.append(f"📈 Прогноз: <b>+${data.get('estimated_annual_yield_usd', 0.0):.2f}/год</b>")
+                if data.get("rebalance_action_required"):
+                    q = data.get("bridge_quote", {})
+                    lines.append(f"\n🟢 Ребаланс {data.get('current_network')}→{best.get('network')} net +${data.get('net_gain_annual_usd',0)} после fee ${q.get('total_fee_usd',0)}")
+                api.send_message(chat_id, "\n".join(lines))
         except Exception as e:
-            api.send_message(chat_id, f"❌ Ошибка анализа ликвидности: {e}")
+            api.send_message(chat_id, f"❌ Ошибка анализа ликвидности v19.1: {e}")
         return True
 
-    # Сканер арбитража DEX & CEX
-    if any(phrase in t for phrase in ("арбитраж", "спред", "dex арбитраж", "разница цен")):
-        api.send_message(chat_id, "🔎 <b>Сканирую спреды и арбитражные возможности...</b>")
+    # Сканер арбитража DEX & CEX v19.2 (cross-DEX)
+    if any(phrase in t for phrase in ("арбитраж", "спред", "dex арбитраж", "разница цен", "⚡ арбитраж")):
+        api.send_message(chat_id, "🔎 <b>Сканирую кросс-DEX/CEX арбитраж v19.2 (Kraken/Binance/CG/UniV3)...</b>")
         import subprocess as _sp_arb
         try:
-            r = _sp_arb.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_dex_arbitrage_scanner.py")],
+            r = _sp_arb.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_dex_arbitrage_scanner.py"), "--cross", "--telegram"],
                             capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
-            import json as _j_arb
-            data = _j_arb.loads(r.stdout)
-            lines = ["📊 <b>AIOS DEX/CEX Arbitrage Radar:</b>\n"]
-            for opp in data.get("opportunities", []):
-                lines.append(
-                    f"• <b>{opp.get('pair')}</b> ({opp.get('exchange')}):\n"
-                    f"  Bid: ${opp.get('bid'):.2f} | Ask: ${opp.get('ask'):.2f}\n"
-                    f"  Спред: <b>${opp.get('spread_usd')}</b> ({opp.get('spread_pct')}%) — 🟢 {opp.get('opportunity')}"
-                )
-            api.send_message(chat_id, "\n".join(lines))
+            report = r.stdout.strip()
+            if report:
+                api.send_message(chat_id, report)
+            else:
+                import json as _j_arb
+                data = _j_arb.loads(r.stdout)
+                lines = ["📊 <b>AIOS DEX/CEX Arbitrage Radar v19.2:</b>\n"]
+                for opp in data.get("opportunities", []):
+                    lines.append(
+                        f"• <b>{opp.get('pair')}</b> ({opp.get('exchange')}):\n"
+                        f"  Bid: ${opp.get('bid'):.2f} | Ask: ${opp.get('ask'):.2f}\n"
+                        f"  Спред: <b>${opp.get('spread_usd')}</b> ({opp.get('spread_pct')}%) — 🟢 {opp.get('opportunity')}"
+                    )
+                api.send_message(chat_id, "\n".join(lines))
         except Exception as e:
-            api.send_message(chat_id, f"❌ Ошибка сканера арбитража: {e}")
+            api.send_message(chat_id, f"❌ Ошибка сканера арбитража v19.2: {e}")
+        return True
+
+
+    # Android Mesh v19.3
+    if any(phrase in t for phrase in ("mesh", "меш", "📱 mesh", "android mesh", "fleet", "флот")):
+        api.send_message(chat_id, "📱 <b>Запрашиваю статус Android Mesh v19.3...</b>")
+        import subprocess as _sp_mesh
+        try:
+            r = _sp_mesh.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_android_mesh.py"), "--telegram"],
+                            capture_output=True, text=True, timeout=15, cwd=str(PROJECT_ROOT))
+            report = r.stdout.strip()
+            if report:
+                api.send_message(chat_id, report)
+            else:
+                api.send_message(chat_id, "❌ Пустой отчет Mesh")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка Android Mesh: {e}")
         return True
 
     # Трейдинг и котировки
