@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [19.3.0] — 2026-08-07 — AIOS Android Mesh v19.3 (Multi-Device Fleet)
+
+### Added
+- **Android Mesh v19.3** (`aios_core/android_mesh.py` 321 lines, `run_android_mesh.py` 122 lines):
+  - `MeshDevice` dataclass: serial, name, model, android, wireguard_ip, status idle/busy/offline, leased_to, capabilities, battery, heartbeat, task_count.
+  - `AndroidMeshFleet`: `register_device`, `list_devices`, `get_device`, `lease_device` (least-loaded + app filter + battery <15% skip), `release_device`, `heartbeat`, `reap_stale(600s)`, `stats`, `health_report`, `route_task`, `generate_telegram_report`.
+  - Fleet file `data/android_gateway/fleet.json` (auto-migrate legacy `device.json` G1), `ANDROID_MESH_*` env, WireGuard mesh ready for G2/G3.
+  - Runner `run_android_mesh.py`: `--status/--telegram/--list/--register/--remove/--lease/--release/--heartbeat/--route/--daemon 60`, lease example `G1→olx, G2→whatsapp` parallel.
+  - Telegram report: `Устройств 1 Online 1 Idle 1` → `✅ G1 idle 🔋87%` или `2 devices parallel ready`.
+
+### Test
+- Auto-migrate legacy G1 `10.203.0.2:46037` → fleet 1 device idle ✅
+- Register G2 mock `10.203.0.3:46038` → 2 devices, lease `olx→G1` + `whatsapp→G2` parallel ✅, release, heartbeat 87, reap stale ✅
+- Fleet JSON persisted `data/android_gateway/fleet.json` 1.2K, clean after G2 remove → 1 device ✅
+
 ## [19.2.0] — 2026-08-07 — AIOS Flash-Loan Arbitrage v19.2 (Cross-DEX Uniswap/QuickSwap + CEX)
 
 ### Added
