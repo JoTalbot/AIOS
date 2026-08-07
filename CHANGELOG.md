@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [19.5.0] — 2026-08-07 — AIOS Freelance Browser v19.5 (Playwright Fallback)
+
+### Added
+- **Freelance Browser Fallback v19.5** (`aios_core/freelance_brain.py` 603→786 lines):
+  - `HAS_PLAYWRIGHT` + `from playwright.async_api import async_playwright` — headless Chrome `launch_persistent_context` с `/tmp/aios_*_browser`, stealth args.
+  - `_fetch_freelancehunt_via_browser()` — `https://freelancehunt.com/projects` → `querySelectorAll('a[href*="/project/"]')` 7 links, dedup, `fh_browser_*` tasks (bypass 403 RSS/HTML Cloudflare).
+  - `_fetch_upwork_via_browser()` — `https://www.upwork.com/nx/jobs/search/?q=python` → `a[href*="/jobs/"]` 5 links, `upwork_browser_*` tasks.
+  - `fetch_freelancehunt_jobs()` и `fetch_upwork_jobs()` теперь при `RSS+HTML 403` → `if not tasks and HAS_PLAYWRIGHT` → browser fallback с `logger.info` и `asyncio.run` (ThreadPool fallback если loop running).
+  - Graceful Cloudflare handling: `Just a moment...` → 5s wait, `try/except` + `ctx.close/p.stop` в `finally`, 0 tasks если blocked (не крашит цикл).
+  - `VERSION` 19.4.0→19.5.0, `pyproject` 19.5.0.
+
+### Test
+- RSS 403 → HTML 403 → `🌐 FH RSS+HTML blocked (403), пробую browser fallback...` → 0 tasks (Cloudflare `Just a moment` challenge, headless detected) — graceful, не падает
+- Upwork RSS 403 → `🌐 Upwork RSS blocked, пробую browser` → 0 tasks (Target closed, но `try/except` ловит) — graceful
+- Общий цикл `run_freelance_brain` → `7 tasks scanned` (github 3 + seed 3 + fiverr 1) → `1 evaluated` → `financial 2027%` — жив, несмотря на 403
+- Playwright `headless` `example.com` → `title: Example Domain` `browser launch ok` ✅
+- `py_compile OK` 786 lines
+
+### Note
+- Cloudflare на Freelancehunt требует `stealth` / `playwright-stealth` или `undetected-chromedriver` для полного bypass — пока best-effort, RSS остается primary, browser fallback — опциональный `AIOS_BROWSER_FETCH=1` в будущем.
+
 ## [19.4.0] — 2026-08-07 — AIOS Telegram Control v19.4 (Liquidity/Flash/Mesh Buttons)
 
 ### Added

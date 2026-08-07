@@ -16,6 +16,12 @@ import json
 import time
 import logging
 import urllib.request
+try:
+    from playwright.async_api import async_playwright
+    HAS_PLAYWRIGHT = True
+except ImportError:
+    HAS_PLAYWRIGHT = False
+    async_playwright = None
 from dataclasses import dataclass, asdict, field
 from typing import List, Dict, Any, Optional
 from pathlib import Path
@@ -116,6 +122,16 @@ class FreelanceMarketRadar:
                         ))
         except Exception as e:
             logger.warning(f"⚠️ Ошибка парсинга Upwork RSS: {e}")
+        # Browser fallback v19.4
+        if not tasks and HAS_PLAYWRIGHT:
+            try:
+                logger.info("🌐 Upwork RSS blocked, пробую browser fallback...")
+                bt = self._fetch_upwork_via_browser()
+                if bt:
+                    logger.info(f"✅ Browser Upwork нашел {len(bt)}")
+                    tasks.extend(bt)
+            except Exception as e:
+                logger.warning(f"Browser Upwork outer error: {e}")
             
         return tasks
 
@@ -207,6 +223,16 @@ class FreelanceMarketRadar:
                         ))
             except Exception as e:
                 logger.warning(f"⚠️ Freelancehunt HTML fallback ошибка: {e}")
+        # Browser fallback v19.4: если все еще 0 и есть Playwright — пробуем реальный Chrome
+        if not tasks and HAS_PLAYWRIGHT:
+            try:
+                logger.info("🌐 FH RSS+HTML blocked (403), пробую browser fallback...")
+                browser_tasks = self._fetch_freelancehunt_via_browser()
+                if browser_tasks:
+                    logger.info(f"✅ Browser FH нашел {len(browser_tasks)} проектов")
+                    tasks.extend(browser_tasks)
+            except Exception as e:
+                logger.warning(f"Browser FH outer error: {e}")
         return tasks
 
     def fetch_fiverr_gigs(self) -> List[FreelanceTask]:
@@ -246,6 +272,163 @@ class FreelanceMarketRadar:
                 url="https://www.fiverr.com/search?query=python+telegram+bot"
             ))
         return tasks
+
+    def _fetch_freelancehunt_via_browser(self) -> list:
+        """Fallback: fetch Freelancehunt projects via real Chrome (bypass 403). v19.4 browser"""
+        if not HAS_PLAYWRIGHT:
+            return []
+        try:
+            import asyncio
+            tasks = []
+            async def _run():
+                p = await async_playwright().start()
+                ctx = None
+                try:
+                    ctx = await p.chromium.launch_persistent_context(
+                        user_data_dir="/tmp/aios_fh_browser",
+                        headless=True,
+                        args=["--no-sandbox","--disable-dev-shm-usage","--disable-blink-features=AutomationControlled"],
+                        viewport={"width": 1280, "height": 900}
+                    )
+                    page = await ctx.new_page()
+                    await page.goto("https://freelancehunt.com/projects", timeout=30000, wait_until="domcontentloaded")
+                    await page.wait_for_timeout(3000)
+                    # Try to find project links
+                    links = await page.evaluate("""() => {
+                        const els = Array.from(document.querySelectorAll('a[href*="/project/"]'));
+                        const out = [];
+                        for (const a of els) {
+                            const href = a.href;
+                            if (href.includes('/project/') && !href.includes('#') && href.length < 200) {
+                                const title = (a.textContent || '').trim().substring(0,120);
+                                if (title.length > 10) out.push({href, title});
+                            }
+                        }
+                        // dedup
+                        const seen = new Set();
+                        return out.filter(x => { if(seen.has(x.href)) return false; seen.add(x.href); return true; }).slice(0,7);
+                    }""")
+                    for item in links or []:
+                        href = item.get("href","")
+                        title = item.get("title","").strip()
+                        if not href or not title:
+                            continue
+                        # Filter out non-project pages
+                        if "/project/" not in href or "freelancehunt.com" not in href:
+                            continue
+                        task_id = f"fh_browser_{abs(hash(href)) % 1000000}"
+                        tasks.append(FreelanceTask(
+                            id=task_id,
+                            title=title[:150],
+                            description=f"Freelancehunt project via browser: {title}",
+                            budget_usd=40.0,
+                            category="python_scripting",
+                            source="freelancehunt",
+                            url=href
+                        ))
+                except Exception as e:
+                    logger.warning(f"Browser FH fetch error: {e}")
+                finally:
+                    try:
+                        if ctx:
+                            await ctx.close()
+                    except Exception:
+                        pass
+                    try:
+                        await p.stop()
+                    except Exception:
+                        pass
+                return tasks
+            # Run async from sync
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as pool:
+                        tasks = pool.submit(asyncio.run, _run()).result(timeout=40)
+                else:
+                    tasks = asyncio.run(_run())
+            except RuntimeError:
+                tasks = asyncio.run(_run())
+            return tasks
+        except Exception as e:
+            logger.warning(f"FH browser fallback failed: {e}")
+            return []
+
+    def _fetch_upwork_via_browser(self) -> list:
+        """Fallback: fetch Upwork via browser (bypass RSS 403)."""
+        if not HAS_PLAYWRIGHT:
+            return []
+        try:
+            import asyncio
+            tasks = []
+            async def _run():
+                p = await async_playwright().start()
+                ctx = None
+                try:
+                    ctx = await p.chromium.launch_persistent_context(
+                        user_data_dir="/tmp/aios_upwork_browser",
+                        headless=True,
+                        args=["--no-sandbox","--disable-dev-shm-usage"]
+                    )
+                    page = await ctx.new_page()
+                    await page.goto("https://www.upwork.com/nx/jobs/search/?q=python&sort=recency", timeout=30000, wait_until="domcontentloaded")
+                    await page.wait_for_timeout(4000)
+                    links = await page.evaluate("""() => {
+                        const els = Array.from(document.querySelectorAll('a[href*="/jobs/"]'));
+                        const out = [];
+                        for (const a of els) {
+                            const href = a.href;
+                            const title = (a.textContent || '').trim().substring(0,120);
+                            if (href.includes('/jobs/') && title.length > 15) out.push({href, title});
+                        }
+                        const seen = new Set();
+                        return out.filter(x=>{ if(seen.has(x.href)) return false; seen.add(x.href); return true; }).slice(0,5);
+                    }""")
+                    for item in links or []:
+                        href = item.get("href","")
+                        title = item.get("title","").strip()
+                        if not href or not title:
+                            continue
+                        if "upwork.com" not in href:
+                            href = "https://www.upwork.com" + href if href.startswith("/") else href
+                        task_id = f"upwork_browser_{abs(hash(href)) % 1000000}"
+                        tasks.append(FreelanceTask(
+                            id=task_id,
+                            title=title[:150],
+                            description=f"Upwork via browser: {title[:500]}",
+                            budget_usd=120.0,
+                            category="web_scraping",
+                            source="upwork",
+                            url=href
+                        ))
+                except Exception as e:
+                    logger.warning(f"Browser Upwork error: {e}")
+                finally:
+                    try:
+                        if ctx:
+                            await ctx.close()
+                    except Exception:
+                        pass
+                    try:
+                        await p.stop()
+                    except Exception:
+                        pass
+                return tasks
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as pool:
+                        tasks = pool.submit(asyncio.run, _run()).result(timeout=45)
+                else:
+                    tasks = asyncio.run(_run())
+            except RuntimeError:
+                tasks = asyncio.run(_run())
+            return tasks
+        except Exception as e:
+            logger.warning(f"Upwork browser fallback failed: {e}")
+            return []
 
     def fetch_github_bounties(self) -> List[FreelanceTask]:
         """Сбор задач с GitHub Bounties / Help Wanted."""
