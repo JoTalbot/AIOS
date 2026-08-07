@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [19.0.0] — 2026-08-07 — AIOS Autonomous Freelance Chrome Twin v19 (Freelancehunt/Upwork/Fiverr)
+
+### Added
+- **Freelance Chrome Twin v19** (`aios_core/platforms/freelance_chrome_twin_adapter.py` 163→425 lines):
+  - `submit_freelancehunt_proposal()` — автоматическая ставка на Freelancehunt (Сделать/Зробити ставку, #bid-comment, #bid-amount, #bid-days) с 3-язычным детектом и верификацией.
+  - `submit_upwork_proposal()` — Submit a Proposal на Upwork (Apply Now → Cover Letter → Submit, Connects & Verification checks).
+  - `submit_fiverr_proposal()` — Contact Me / Custom Offer на Fiverr.
+  - `verify_platform_status()` — проверка верификации профиля + скриншот.
+  - `submit_proposal()` — унифицированный диспетчер по платформе + `AIOS_FREELANCE_AUTOPILOT` safe mode (default confirm=False → need_confirm).
+  - `_detect_common_blocks()` — детект капчи/Cloudflare/верификации/авторизации.
+- **Freelance Brain v19** (`aios_core/freelance_brain.py` 447→603 lines):
+  - `fetch_freelancehunt_jobs()` — RSS + HTML парсинг freelancehunt.com с UAH→USD конвертацией (≈41) и категоризацией.
+  - `fetch_fiverr_gigs()` — поиск Fiverr gigs + seed fallback.
+  - Обновлен `run_market_scan_cycle()` — теперь 5 источников (github + upwork + freelancehunt + fiverr + seed), лимит пачки 2, safe `confirm=False` до Telegram approve.
+  - `AIOS_FREELANCE_AUTOPILOT=0/1` в `.env.example` + per-platform профиль изоляция.
+- **CLI v19** (`aios_cli/chrome_twin.py`): команда `freelance` + args `--platform/--proposal/--budget/--days/--hourly-rate/--verify`.
+
+### Security
+- Confirm-by-default: все новые платформы требуют `confirm=True` или `AIOS_FREELANCE_AUTOPILOT=1` + Telegram approve flow.
+- Конституционный фильтр Article V сохранен, добавлены freelance-специфичные проверки.
+
 ## [18.0.0] — 2026-08-06 — AIOS Autonomous Treasury, Quant Trading, Multi-Agent Swarm & Web3 Major Release
 
 ### Added

@@ -56,6 +56,18 @@ def run_chrome_twin(args):
             result = asyncio.run(screenshot())
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return True
+        elif cmd == "freelance":
+            # v19: freelance submit via Chrome Twin
+            from aios_core.platforms.freelance_chrome_twin_adapter import FreelanceChromeTwinAdapter
+            async def freelance_submit():
+                adapter = FreelanceChromeTwinAdapter(profile_id=args.profile)
+                # verify mode
+                if args.verify:
+                    return await adapter.verify_platform_status(args.platform, args.url)
+                return await adapter.submit_proposal(args.platform, args.url, args.proposal, confirm=args.confirm, budget=args.budget, days=args.days, hourly_rate=args.hourly_rate)
+            result = asyncio.run(freelance_submit())
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return True
 
     except Exception as e:
         print(f"Error: {e}")
@@ -76,6 +88,12 @@ if __name__ == "__main__":
     parser.add_argument("--instruction", default="", help="Custom instruction")
     parser.add_argument("--output", default=None, help="Screenshot output path")
     parser.add_argument("--confirm", action="store_true", help="Confirm action (e.g., actually send email)")
-    parser.add_argument("chrome_twin_command", nargs="?", default="doctor", help="Command: doctor, navigate, gmail_send, custom, screenshot")
+    parser.add_argument("--platform", default="freelancehunt", help="Freelance platform: habr, kwork, freelancehunt, upwork, fiverr")
+    parser.add_argument("--proposal", default="", help="Proposal text for freelance")
+    parser.add_argument("--budget", type=float, default=None, help="Budget for freelancehunt (UAH->USD)")
+    parser.add_argument("--days", type=int, default=None, help="Days for freelancehunt")
+    parser.add_argument("--hourly-rate", type=float, default=None, dest="hourly_rate", help="Hourly rate for Upwork")
+    parser.add_argument("--verify", action="store_true", help="Verify platform auth instead of submit")
+    parser.add_argument("chrome_twin_command", nargs="?", default="doctor", help="Command: doctor, navigate, gmail_send, custom, screenshot, freelance")
     args = parser.parse_args()
     run_chrome_twin(args)
