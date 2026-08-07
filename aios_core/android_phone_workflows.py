@@ -622,7 +622,7 @@ class MessengerDraftAdapter(ActiveAppAdapter):
         # modifying text is a separate destructive UI action for the owner.
         return {"status": "cancelled", "draft_id": str(draft_id)}
 
-    def read_visible_chat(self, limit: int = 8) -> dict:
+    def read_visible_chat(self, limit: int = 50) -> dict:
         """Return explicitly requested visible messages, with secret masking."""
         snapshot = self._active_ui(include_text=True)
         if snapshot.get("status") != "ok":
@@ -647,7 +647,7 @@ class MessengerDraftAdapter(ActiveAppAdapter):
                 continue
             seen.add(key)
             values.append(_mask_sensitive(text))
-        return {"status": "ok", "messages": values[-max(1, min(int(limit), 12)):], "count": len(values)}
+        return {"status": "ok", "messages": values[-max(1, min(int(limit), 80)):], "count": len(values)}
 
 
 class WhatsAppPhoneAdapter(MessengerDraftAdapter):

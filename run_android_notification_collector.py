@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import subprocess
 import json
 import os
 import re
@@ -108,6 +109,18 @@ def collect() -> dict:
         bank_result = AndroidBankMonitor(ROOT).sync_tasks()
     except Exception:
         pass
+    # Триггер harvester при новых уведомлениях мессенджеров
+    if added > 0:
+        try:
+            subprocess.Popen(
+                ["/opt/aios/.venv/bin/python", str(ROOT / "run_converge_harvester.py")],
+                cwd=str(ROOT),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        except Exception:
+            pass
     return {"status": "ok", "added": added, "duplicates": duplicates, "total": len(existing),
             "lead_candidates_added": int(lead_result.get("added") or 0),
             "bank_tasks_added": int(bank_result.get("added") or 0)}

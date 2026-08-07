@@ -241,7 +241,7 @@ def chats() -> dict:
 
 
 @_serialized
-def read_chat(chat: str, limit: int = 15) -> dict:
+def read_chat(chat: str, limit: int = 50) -> dict:
     wid = _activate()
     if not wid:
         return {"status": "error", "error": "Окно Signal не найдено"}
@@ -253,7 +253,6 @@ def read_chat(chat: str, limit: int = 15) -> dict:
     words = _ocr(path)
     pos = _find_phrase(words, chat, region=left_region)
     if not pos:
-        # ищем одиночное слово (имя может быть одним словом)
         for w in words:
             if w["text"].lower() == chat.lower() and left_x0 <= w["cx"] <= left_x1:
                 pos = (w["cx"], w["cy"])
@@ -262,28 +261,41 @@ def read_chat(chat: str, limit: int = 15) -> dict:
         return {"status": "error", "error": f"Чат «{chat}» не найден в списке",
                 "screenshot": path}
     _click(pos[0], pos[1])
-    time.sleep(1.5)
-    path2 = _shot("read")
-    words2 = _ocr(path2)
-    # сообщения — правая область (x > 640), выводим строки
-    lines = {}
-    for w in words2:
-        if w["cx"] < left_x1:
-            continue
-        key = w["y0"] // 25  # группировка по строкам
-        lines.setdefault(key, []).append((w["x0"], w["text"]))
-    msgs = []
-    for key in sorted(lines):
-        row_words = sorted(lines[key])
-        row = " ".join(t for _, t in row_words)
-        if len(row) > 1:
-            # В Signal входящие пузыри находятся слева, исходящие — справа.
-            # Это эвристика для автоответа; при сомнении считаем сообщение входящим.
-            avg_x = sum(x for x, _ in row_words) / len(row_words)
-            mine_boundary = geometry["x"] + geometry["width"] * 0.70
-            msgs.append({"text": row, "mine": avg_x >= mine_boundary})
-    return {"status": "ok", "chat": chat, "messages": msgs[-limit:],
-            "screenshot": path2}
+    time.sleep(1.8)
+    collected = {}
+    last_hash = None
+    scroll_attempts = max(1, min(6, (limit + 12) // 13))
+    for attempt in range(scroll_attempts):
+        path2 = _shot(f"read_{attempt}")
+        words2 = _ocr(path2)
+        lines = {}
+        for w in words2:
+            if w["cx"] < left_x1:
+                continue
+            key = w["y0"] // 25
+            lines.setdefault(key, []).append((w["x0"], w["text"]))
+        for key in sorted(lines):
+            row_words = sorted(lines[key])
+            row = " ".join(t for _, t in row_words)
+            if len(row) > 1:
+                avg_x = sum(x for x, _ in row_words) / len(row_words)
+                mine_boundary = geometry["x"] + geometry["width"] * 0.70
+                if row not in collected:
+                    collected[row] = {"text": row, "mine": avg_x >= mine_boundary, "y": int(key)}
+        cur_hash = hash(tuple(sorted(collected.keys())[-10:])) if collected else 0
+        if attempt < scroll_attempts - 1:
+            _run(["xdotool", "mousemove", str(geometry["x"] + int(geometry["width"]*0.65)), str(geometry["y"] + int(geometry["height"]*0.5))])
+            _run(["xdotool", "click", "1"])
+            time.sleep(0.4)
+            _run(["xdotool", "key", "Page_Up"])
+            time.sleep(1.2)
+            if cur_hash == last_hash:
+                break
+            last_hash = cur_hash
+    msgs = list(collected.values())
+    msgs = msgs[-limit:] if len(msgs) > limit else msgs
+    return {"status": "ok", "chat": chat, "messages": msgs,
+            "screenshot": path2, "collected": len(msgs), "scrolls": scroll_attempts}
 
 
 @_serialized

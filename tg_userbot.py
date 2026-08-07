@@ -70,7 +70,7 @@ async def _client() -> TelegramClient:
     return client
 
 
-async def dialogs(limit: int = 15) -> dict:
+async def dialogs(limit: int = 30) -> dict:
     client = await _client()
     try:
         out = []
@@ -123,7 +123,7 @@ async def _resolve(client, ref: str):
     raise ValueError(f"Диалог «{ref}» не найден")
 
 
-async def read_dialog(ref: str, limit: int = 12) -> dict:
+async def read_dialog(ref: str, limit: int = 50) -> dict:
     client = await _client()
     try:
         entity = await _resolve(client, ref)
@@ -136,9 +136,15 @@ async def read_dialog(ref: str, limit: int = 12) -> dict:
                     sender = getattr(sender_ent, "first_name", "") or getattr(sender_ent, "title", "") or str(m.sender_id)
             except Exception:
                 sender = str(m.sender_id) if m.sender_id else ""
-            text = (m.message or "")[:300]
+            text = (m.message or "")[:1000]
+            if not text and getattr(m, "media", None):
+                try:
+                    text = "[media: " + type(m.media).__name__ + "]"
+                except:
+                    text = "[media]"
             msgs.append({"from": sender, "text": text, "out": bool(m.out),
-                         "date": str(m.date)[:16] if m.date else ""})
+                         "date": str(m.date)[:16] if m.date else "", "id": str(m.id)})
+        msgs.reverse()
         return {"status": "ok", "dialog": ref, "messages": msgs}
     finally:
         await client.disconnect()
@@ -183,7 +189,7 @@ async def main():
             print(json.dumps(await dialogs(n), ensure_ascii=False, default=str))
         elif action == "read":
             ref = sys.argv[2]
-            limit = int(sys.argv[3]) if len(sys.argv) > 3 else 12
+            limit = int(sys.argv[3]) if len(sys.argv) > 3 else 50
             print(json.dumps(await read_dialog(ref, limit), ensure_ascii=False, default=str))
         elif action == "send":
             ref, text = sys.argv[2], sys.argv[3]

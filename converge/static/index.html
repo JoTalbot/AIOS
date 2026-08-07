@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ru" class="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Converge — AIOS</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#5970c0",
+                        "on-secondary-fixed": "#002112",
+                        "surface-bright": "#faf8ff",
+                        "background": "#faf8ff",
+                        "surface-dim": "#d2d9f4",
+                        "surface-container-high": "#e2e7ff",
+                        "on-secondary-container": "#007149",
+                        "surface": "#faf8ff",
+                        "secondary-fixed-dim": "#5edda0",
+                        "on-tertiary-fixed-variant": "#28418e",
+                        "surface-tint": "#005bc1",
+                        "error": "#ba1a1a",
+                        "surface-container-highest": "#dae2fd",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#005234",
+                        "surface-variant": "#dae2fd",
+                        "secondary-fixed": "#7cfabb",
+                        "inverse-primary": "#adc6ff",
+                        "on-background": "#131b2e",
+                        "inverse-surface": "#283044",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed": "#001a41",
+                        "on-surface": "#131b2e",
+                        "tertiary-fixed-dim": "#b6c4ff",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-primary-container": "#fefcff",
+                        "on-primary-fixed-variant": "#004493",
+                        "primary-fixed": "#d8e2ff",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#dce1ff",
+                        "surface-container-low": "#f2f3ff",
+                        "primary-container": "#0070eb",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#414755",
+                        "secondary-container": "#79f7b8",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-container": "#eaedff",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#717786",
+                        "on-tertiary-fixed": "#00164f",
+                        "inverse-on-surface": "#eef0ff",
+                        "on-error": "#ffffff",
+                        "primary": "#0058bc",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#c1c6d7",
+                        "tertiary": "#4057a5",
+                        "secondary": "#006c46"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "message-gap": "8px",
+                        "stack-padding": "24px",
+                        "container-padding": "16px",
+                        "sidebar-width": "280px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "message-body-mobile": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "message-body": ["Inter"],
+                        "timestamp": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "message-body-mobile": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "message-body": ["15px", {"lineHeight": "22px", "fontWeight": "400"}],
+                        "timestamp": ["11px", {"lineHeight": "14px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect rx='16' width='64' height='64' fill='%230058bc'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-size='32' fill='white' font-family='sans-serif' font-weight='700'%3EC%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="static/app.css?v=8" />
+</head>
+<body class="bg-background text-on-background font-message-body min-h-screen flex flex-col antialiased">
+  <div id="app">
+    <!-- ===== TOP APP BAR ===== -->
+    <header class="topbar" id="topbar">
+      <div class="topbar-inner">
+        <div class="topbar-left">
+          <button type="button" class="icon-btn hidden" id="btn-back" aria-label="Назад">
+            <span class="ms">arrow_back</span>
+          </button>
+          <div class="brand" id="brand">
+            <div class="brand-avatar" id="brand-avatar">A</div>
+            <h1 class="brand-title">Converge</h1>
+          </div>
+          <div class="chat-head hidden" id="chat-head">
+            <div class="avatar-wrap">
+              <div class="avatar md" id="chat-avatar">?</div>
+              <span class="channel-badge" id="chat-channel-badge"><span class="ms xs">send</span></span>
+            </div>
+            <div class="chat-head-text">
+              <div class="chat-title" id="chat-title">Чат</div>
+              <div class="chat-sub" id="chat-sub">online</div>
+            </div>
+          </div>
+        </div>
+        <div class="topbar-right" id="topbar-actions">
+          <button type="button" class="icon-btn" id="btn-refresh" title="Обновить" aria-label="Обновить">
+            <span class="ms">sync</span>
+          </button>
+          <button type="button" class="icon-btn" id="btn-search-toggle" title="Поиск" aria-label="Поиск">
+            <span class="ms">search</span>
+          </button>
+          <div class="thread-actions hidden" id="thread-actions">
+            <button type="button" class="icon-btn" disabled aria-label="Видео"><span class="ms">videocam</span></button>
+            <button type="button" class="icon-btn" disabled aria-label="Звонок"><span class="ms">call</span></button>
+            <button type="button" class="icon-btn" id="btn-thread-search" aria-label="Поиск"><span class="ms">search</span></button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ===== MAIN ===== -->
+    <main id="main">
+      <!-- CHATS -->
+      <section class="view active" id="view-chats" data-view="chats">
+        <div class="canvas-search">
+          <div class="search-field">
+            <span class="ms search-ico">search</span>
+            <input id="search-chats" type="search" placeholder="Поиск чатов…" autocomplete="off" enterkeyhint="search" />
+          </div>
+        </div>
+        <div class="chips" id="chips-chats"></div>
+        <div class="chat-list" id="list-chats"></div>
+        <div class="empty hidden" id="empty-chats">
+          <span class="ms xl">forum</span>
+          <p class="empty-title">Нет чатов</p>
+          <p class="empty-hint">Кэш инбокса пуст. Обновите каналы.</p>
+          <button type="button" class="btn primary" id="btn-empty-refresh">Обновить инбокс</button>
+        </div>
+      </section>
+
+      <!-- SERVICES -->
+      <section class="view" id="view-services" data-view="services">
+        <div class="page-header">
+          <h2 class="page-title">Integration Hub</h2>
+          <p class="page-desc">Подключите мессенджеры. Управление автоответами и шлюзами AIOS.</p>
+        </div>
+        <div class="service-grid" id="list-services"></div>
+      </section>
+
+      <!-- CONTACTS -->
+      <section class="view" id="view-contacts" data-view="contacts">
+        <div class="canvas-search">
+          <div class="search-field">
+            <span class="ms search-ico">search</span>
+            <input id="search-contacts" type="search" placeholder="Поиск контактов…" autocomplete="off" />
+          </div>
+        </div>
+        <div class="chips" id="chips-contacts"></div>
+        <div id="list-contacts"></div>
+        <div class="empty hidden" id="empty-contacts">
+          <span class="ms xl">contacts</span>
+          <p class="empty-title">Нет контактов</p>
+          <p class="empty-hint">Появятся из инбокса, CRM и OLX</p>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view" id="view-settings" data-view="settings">
+        <div class="settings-layout">
+          <div class="profile-bento" id="profile-card"></div>
+          <div class="settings-panel">
+            <div class="settings-list" id="settings-list"></div>
+            <div class="stats-grid" id="stats-grid"></div>
+          </div>
+        </div>
+      </section>
+
+            <!-- THREAD - Stitch Template (code.html) -->
+      <section class="view" id="view-thread" data-view="thread">
+        <!-- TopAppBar inside thread (template style) -->
+        <header class="thread-header hidden" id="thread-header" style="position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(18,19,23,0.85);backdrop-filter:blur(16px);border-bottom:1px solid rgba(67,71,78,0.2);">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button type="button" class="icon-btn" id="btn-back" aria-label="Назад"><span class="ms">arrow_back</span></button>
+            <div class="avatar-wrap" style="position:relative;">
+              <div class="avatar md" id="chat-avatar" style="width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#1f2024;color:#fff;font-weight:600;">?</div>
+              <span class="channel-badge" id="chat-channel-badge" style="position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:#9ecaff;display:grid;place-items:center;border:2px solid #121317;"><span class="ms xs" style="font-size:10px;color:#fff;">send</span></span>
+            </div>
+            <div>
+              <div class="chat-title" id="chat-title" style="font-family:Hanken Grotesk,sans-serif;font-size:16px;font-weight:600;color:#e2e2e5;">Чат</div>
+              <div class="chat-sub" id="chat-sub" style="font-size:11px;color:#b5c9dc;">Online</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;color:#c4c6cf;">
+            <button type="button" class="icon-btn" disabled><span class="ms">videocam</span></button>
+            <button type="button" class="icon-btn" disabled><span class="ms">call</span></button>
+            <button type="button" class="icon-btn" id="btn-thread-search"><span class="ms">search</span></button>
+            <button type="button" class="icon-btn" id="btn-open-variants" title="Стили"><span class="ms">auto_awesome</span></button>
+          </div>
+        </header>
+        <div class="thread-scroll chat-bg-pattern" id="thread" style="flex:1;overflow-y:auto;padding:20px 16px 24px;display:flex;flex-direction:column;gap:8px;background-color:#121317;background-image:url(&quot;data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239ecaff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E&quot;);"></div>
+        <div class="reply-variants hidden" id="reply-variants" style="margin:12px 16px 8px;background:#1f2024;border:1px solid rgba(67,71,78,0.2);border-radius:12px;overflow:hidden;">
+          <div class="variants-header" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px;border-bottom:1px solid rgba(67,71,78,0.2);">
+            <span class="variants-title" style="font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#c4c6cf;">Стиль ответа</span>
+            <button type="button" class="icon-btn sm" id="btn-variants-refresh" title="Обновить"><span class="ms sm">refresh</span></button>
+          </div>
+          <div class="variants-loading hidden" id="variants-loading" style="display:flex;align-items:center;gap:10px;padding:16px;color:#c4c6cf;font-size:13px;">
+            <div class="spinner sm" style="width:18px;height:18px;border:2px solid rgba(67,71,78,0.2);border-top-color:#9ecaff;border-radius:50%;animation:spin .8s linear infinite;"></div>
+            <span>Генерирую 10 стилей...</span>
+          </div>
+          <div class="variants-grid" id="variants-grid" style="display:flex;flex-direction:column;gap:8px;padding:12px;max-height:38vh;overflow-y:auto;"></div>
+          <div class="variants-foot" style="padding:8px 16px 12px;font-size:11px;color:#8d9199;text-align:center;border-top:1px solid rgba(67,71,78,0.2);">На основе 50 сообщений · нажмите чтобы вставить</div>
+        </div>
+        <div class="templates-bar hidden" id="templates-bar"></div>
+        <div class="thread-toolbar hidden" id="thread-toolbar" style="display:flex;gap:8px;padding:8px 16px;border-top:1px solid rgba(67,71,78,0.2);background:#1a1b1f;">
+          <button type="button" class="tool-btn" id="btn-live-read" style="padding:6px 12px;border-radius:999px;background:#1f2024;border:1px solid rgba(67,71,78,0.2);color:#c4c6cf;font-size:12px;display:flex;align-items:center;gap:6px;"><span class="ms sm">sync</span> Читать</button>
+          <button type="button" class="tool-btn" id="btn-retry-send" style="padding:6px 12px;border-radius:999px;background:#1f2024;border:1px solid rgba(67,71,78,0.2);color:#c4c6cf;font-size:12px;display:flex;align-items:center;gap:6px;"><span class="ms sm">replay</span> Повтор</button>
+          <button type="button" class="tool-btn" id="btn-biz-ttn" style="padding:6px 12px;border-radius:999px;background:#1f2024;border:1px solid rgba(67,71,78,0.2);color:#c4c6cf;font-size:12px;display:flex;align-items:center;gap:6px;"><span class="ms sm">local_shipping</span> ТТН</button>
+        </div>
+        <!-- Bottom Input Area (Template: AI Suggestion + Style Mini-Panel + Input) -->
+        <div class="fixed bottom-0 left-0 w-full bg-surface/90 backdrop-blur-md border-t border-outline-variant/20 pt-2 pb-6 px-4 md:px-8 z-40 flex flex-col gap-3" id="bottom-input-area" style="position:sticky;bottom:0;background:rgba(18,19,23,0.9);">
+          <div class="max-w-4xl mx-auto w-full relative" style="max-width:672px;margin:0 auto;width:100%;position:relative;">
+            <!-- AI Suggestion / Ghost Message Panel (from template) -->
+            <div class="absolute bottom-full mb-3 left-0 w-full flex items-end gap-2 animate-fade-in-up" id="ai-suggestion-panel" style="display:flex;align-items:flex-end;gap:8px;position:absolute;bottom:100%;margin-bottom:12px;left:0;width:100%;">
+              <div class="flex-1 glass-panel rounded-2xl p-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-primary-fixed/30 relative overflow-hidden group" style="flex:1;background:rgba(255,255,255,0.7);backdrop-filter:blur(20px);border:1px solid rgba(209,228,255,0.5);border-radius:16px;padding:12px;position:relative;overflow:hidden;flex:1;">
+                <div class="absolute inset-0 bg-gradient-to-r from-primary-fixed/10 via-surface-bright/50 to-primary-fixed/10 opacity-50 translate-x-[-100%] group-hover:animate-[shimmer_2s_infinite]" style="position:absolute;inset:0;background:linear-gradient(to right, rgba(209,228,255,0.1), rgba(250,248,255,0.5), rgba(209,228,255,0.1));opacity:0.5;"></div>
+                <div class="relative z-10 flex flex-col gap-2" style="position:relative;z-index:10;display:flex;flex-direction:column;gap:8px;">
+                  <div class="flex items-center justify-between" style="display:flex;align-items:center;justify-content:space-between;">
+                    <span class="font-label-sm text-label-sm text-primary flex items-center gap-1 font-semibold" style="font-size:12px;color:#0058bc;display:flex;align-items:center;gap:4px;font-weight:600;">
+                      <span class="material-symbols-outlined text-[16px]" style="font-size:16px;">auto_awesome</span> AI Suggestion
+                    </span>
+                    <div class="flex gap-1" style="display:flex;gap:4px;">
+                      <button type="button" class="w-6 h-6 rounded-full flex items-center justify-center bg-surface-container hover:bg-surface-variant text-on-surface-variant transition-colors" id="btn-ai-refresh" style="width:24px;height:24px;border-radius:50%;background:#eaedff;display:grid;place-items:center;border:none;cursor:pointer;"><span class="material-symbols-outlined text-[14px]" style="font-size:14px;">refresh</span></button>
+                      <button type="button" class="w-6 h-6 rounded-full flex items-center justify-center bg-surface-container hover:bg-surface-variant text-on-surface-variant transition-colors" id="btn-ai-close" style="width:24px;height:24px;border-radius:50%;background:#eaedff;display:grid;place-items:center;border:none;cursor:pointer;"><span class="material-symbols-outlined text-[14px]" style="font-size:14px;">close</span></button>
+                    </div>
+                  </div>
+                  <p class="font-message-body text-on-surface italic opacity-80" id="ai-suggestion-text" style="font-size:15px;color:#131b2e;opacity:0.8;font-style:italic;">Выберите стиль слева — AI подберёт ответ на основе 50 сообщений...</p>
+                </div>
+              </div>
+              <!-- Style Selector Mini-Panel (3 quick styles + more) -->
+              <div class="flex flex-col gap-1.5 shrink-0 glass-panel p-2 rounded-xl border border-outline-variant/30 shadow-sm w-40" id="style-mini-panel" style="display:flex;flex-direction:column;gap:6px;background:rgba(255,255,255,0.7);backdrop-filter:blur(20px);border:1px solid rgba(193,198,215,0.5);border-radius:12px;padding:8px;width:160px;flex-shrink:0;">
+                <button type="button" class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-primary-container text-on-primary-container text-left transition-colors w-full style-mini-btn active" data-style="delovoy" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:#0070eb;color:#fefcff;border:none;cursor:pointer;width:100%;text-align:left;"><span class="material-symbols-outlined text-[16px]" style="font-size:16px;">work</span><div style="display:flex;flex-direction:column;"><span style="font-size:12px;font-weight:500;line-height:1;">Professional</span><span style="font-size:10px;opacity:0.7;">Formal & clear</span></div></button>
+                <button type="button" class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-variant text-on-surface-variant text-left transition-colors w-full style-mini-btn" data-style="druzheskiy" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:transparent;border:none;cursor:pointer;width:100%;text-align:left;color:#414755;"><span class="material-symbols-outlined text-[16px]" style="font-size:16px;">mood</span><div style="display:flex;flex-direction:column;"><span style="font-size:12px;font-weight:500;">Casual</span><span style="font-size:10px;opacity:0.7;">Friendly & relaxed</span></div></button>
+                <button type="button" class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-variant text-on-surface-variant text-left transition-colors w-full style-mini-btn" data-style="sarkazm" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:transparent;border:none;cursor:pointer;width:100%;text-align:left;color:#414755;"><span class="material-symbols-outlined text-[16px]" style="font-size:16px;">theater_comedy</span><div style="display:flex;flex-direction:column;"><span style="font-size:12px;font-weight:500;">Sarcastic</span><span style="font-size:10px;opacity:0.7;">Witty & sharp</span></div></button>
+                <button type="button" class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-variant text-on-surface-variant text-left transition-colors w-full" id="btn-open-variants" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:transparent;border:1px dashed #c1c6d7;cursor:pointer;width:100%;text-align:left;color:#0058bc;justify-content:center;font-size:11px;"><span class="material-symbols-outlined text-[14px]" style="font-size:14px;">auto_awesome</span> Ещё 7 стилей</button>
+              </div>
+              <button type="button" class="shrink-0 w-10 h-10 rounded-full bg-surface hover:bg-surface-container-high border border-outline-variant/40 shadow-sm flex items-center justify-center text-primary transition-transform hover:scale-105 active:scale-95" id="btn-edit-suggestion" style="width:40px;height:40px;border-radius:50%;background:#f2f3ff;border:1px solid #c1c6d7;display:grid;place-items:center;flex-shrink:0;cursor:pointer;"><span class="material-symbols-outlined text-[20px]" style="font-size:20px;color:#0058bc;">edit</span></button>
+            </div>
+            <!-- Input Bar -->
+            <div class="flex items-end gap-2 bg-surface-container rounded-3xl p-2 shadow-inner border border-outline-variant/20" style="display:flex;align-items:flex-end;gap:8px;background:#f2f3ff;border-radius:24px;padding:8px;border:1px solid #e2e7ff;">
+              <button type="button" class="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full shrink-0" style="padding:8px;color:#414755;background:none;border:none;cursor:pointer;"><span class="material-symbols-outlined">add_circle</span></button>
+              <div class="flex-1 relative" style="flex:1;position:relative;">
+                <textarea id="composer-input" class="w-full bg-transparent border-none focus:ring-0 resize-none max-h-32 min-h-[40px] py-2 px-1 font-message-body-mobile md:font-message-body text-on-surface placeholder:text-on-surface-variant/60" placeholder="Type a message..." rows="1" style="width:100%;background:transparent;border:none;outline:none;resize:none;max-height:128px;min-height:40px;padding:8px 4px;font-size:15px;color:#131b2e;"></textarea>
+              </div>
+              <button type="button" class="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full shrink-0" style="padding:8px;color:#414755;background:none;border:none;cursor:pointer;"><span class="material-symbols-outlined">sentiment_satisfied</span></button>
+              <button type="submit" form="composer" class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center shrink-0 hover:bg-primary/90 transition-transform active:scale-95 shadow-md" style="width:40px;height:40px;border-radius:50%;background:#0058bc;color:#fff;display:grid;place-items:center;border:none;cursor:pointer;"><span class="material-symbols-outlined">send</span></button>
+            </div>
+          </div>
+        </div>
+        <form class="composer hidden" id="composer" autocomplete="off">
+          <input type="hidden" />
+        </form>
+      </section>
+    </main>
+
+    <!-- ===== BOTTOM NAV (Stitch) ===== -->
+    <nav class="bottom-nav" id="bottom-nav" aria-label="Основная навигация">
+      <button type="button" class="nav-item active" data-tab="chats">
+        <span class="nav-ico"><span class="ms">chat</span><span class="nav-badge hidden" id="nav-unread">0</span></span>
+        <span class="nav-label">Чаты</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="services">
+        <span class="nav-ico"><span class="ms">grid_view</span></span>
+        <span class="nav-label">Сервисы</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="contacts">
+        <span class="nav-ico"><span class="ms">contacts</span></span>
+        <span class="nav-label">Контакты</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="settings">
+        <span class="nav-ico"><span class="ms">settings</span></span>
+        <span class="nav-label">Ещё</span>
+      </button>
+    </nav>
+
+    
+    
+    <!-- TTN sheet -->
+    <div class="send-overlay hidden" id="ttn-overlay"></div>
+    <div class="confirm-sheet hidden" id="ttn-sheet" role="dialog">
+      <div class="confirm-title">Создать ТТН (Нова Пошта)</div>
+      <div class="confirm-meta">Заполните поля · создание только после подтверждения</div>
+      <div class="ttn-form" id="ttn-form">
+        <input id="ttn-detail" placeholder="Деталь / описание" />
+        <input id="ttn-cost" placeholder="Оценка (грн)" inputmode="decimal" />
+        <input id="ttn-recipient" placeholder="ФИО получателя" />
+        <input id="ttn-phone" placeholder="Телефон +380…" inputmode="tel" />
+        <input id="ttn-city" placeholder="Город" />
+        <input id="ttn-warehouse" placeholder="Отделение НП" />
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="btn ghost" id="btn-ttn-cancel">Отмена</button>
+        <button type="button" class="btn primary" id="btn-ttn-create">Создать ТТН</button>
+      </div>
+    </div>
+    <!-- Confirm send sheet -->
+    <div class="send-overlay hidden" id="send-overlay"></div>
+    <div class="confirm-sheet hidden" id="confirm-sheet" role="dialog" aria-modal="true">
+      <div class="confirm-title">Отправить сообщение?</div>
+      <div class="confirm-meta" id="confirm-meta">—</div>
+      <div class="confirm-text" id="confirm-text"></div>
+      <div class="confirm-actions">
+        <button type="button" class="btn ghost" id="btn-confirm-cancel">Отмена</button>
+        <button type="button" class="btn primary" id="btn-confirm-send">
+          <span class="ms sm fill" style="vertical-align:-3px">send</span> Отправить
+        </button>
+      </div>
+    </div>
+
+    <div class="toast hidden" id="toast" role="status"></div>
+    <!-- Stitch Sidebar: Варианты ответа (10 стилей, боковое меню) -->
+    <aside class="variants-sidebar hidden" id="variants-sidebar" aria-label="Варианты ответа">
+      <div class="sidebar-header">
+        <div>
+          <div class="sidebar-title">Стиль ответа</div>
+          <div class="sidebar-sub">10 вариантов на основе 50 сообщений</div>
+        </div>
+        <button type="button" class="icon-btn" id="btn-close-variants" aria-label="Закрыть"><span class="ms">close</span></button>
+      </div>
+      <div class="variants-loading hidden" id="sidebar-variants-loading">
+        <div class="spinner sm"></div>
+        <span>Генерирую 10 стилей...</span>
+      </div>
+      <div class="sidebar-variants-grid" id="sidebar-variants-grid"></div>
+      <div class="sidebar-foot">Нажмите на вариант чтобы вставить в поле ввода</div>
+    </aside>
+    <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
+    <div class="loading hidden" id="loading" aria-hidden="true"><div class="spinner"></div></div>
+  </div>
+  <script src="static/app.js?v=8"></script>
+</body>
+</html>

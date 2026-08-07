@@ -1269,13 +1269,13 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
     # 1) Telegram — только личные переписки (без групп/каналов/супергрупп)
     if _want("tg"):
         try:
-            tg = _run_account_control(["tg", "dialogs", "10"])
+            tg = _run_account_control(["tg", "dialogs", "200"])
             if tg.get("status") == "ok" and tg.get("dialogs"):
                 _is_personal_tg = lambda d: (d.get("type") or "user") == "user"  # без ботов
                 personal_tg = [d for d in tg["dialogs"] if _is_personal_tg(d)]
                 unread_d = [d for d in personal_tg if d.get("unread")]
                 src = unread_d if unread_only else personal_tg
-                for d in src[:6]:
+                for d in src[:20]:
                     items.append({
                         "channel": "tg",
                         "ref": d.get("name") or str(d.get("id")),
@@ -1649,7 +1649,7 @@ def _inbox_search(api, chat_id: int, q: str) -> None:
         pass
     # Telegram (топ диалогов)
     try:
-        tg = _run_account_control(["tg", "dialogs", "8"])
+        tg = _run_account_control(["tg", "dialogs", "50"])
         if tg.get("status") == "ok" and tg.get("dialogs"):
             for d in tg["dialogs"][:6]:
                 name = d.get("name") or ""
