@@ -54,3 +54,9 @@ _last_phone_crm_tasks: dict[int, list[dict]] = {}
 
 
 _last_bank_tasks: dict[int, list[dict]] = {}
+
+
+_pending_actions: dict[int, str] = {}
+
+
+_pending_confirmations: dict[int, str] = {}
