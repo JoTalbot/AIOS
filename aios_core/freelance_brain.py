@@ -57,6 +57,7 @@ class FreelanceTask:
     rejection_reason: str = ""
     submit_attempts: int = 0  # v21.22: число попыток отправки ставки
     last_submit_attempt: float = 0.0  # v21.22: ts последней попытки (для cooldown)
+    approval_notified: bool = False  # v21.23: уведомление об approve уже отправлено в TG
 
 
 # ── v21.0 Multi-Niche: таксономия ниш с весами + RU-ярлыки ──────────────────
@@ -859,6 +860,8 @@ class FreelanceBrainManager:
                     )
                 except Exception as _e:
                     logger.debug(f"TG notify failed: {_e}")
+                else:
+                    task.approval_notified = True  # v21.23: уведомили один раз, ждём ручного approve
 
             logger.info(f"📊 [Autopilot] Результат автоматической отправки: {p_res}")
             return p_res
@@ -870,7 +873,11 @@ class FreelanceBrainManager:
         """v21.22: повторные попытки отправки для застрявших PROPOSAL_READY задач.
         Не более batch задач за цикл; на задачу max_retries попыток с cooldown между ними."""
         tasks = self.radar.load_tasks()
+        autopilot_enabled = os.getenv("AIOS_FREELANCE_AUTOPILOT", "0") == "1"
         pending = [t for t in tasks if t.get("status") == "PROPOSAL_READY"]
+        if not autopilot_enabled:
+            # v21.23: в ручном режиме не повторяем уведомления — задача уже ждёт approve в TG
+            pending = [t for t in pending if not t.get("approval_notified")]
         pending.sort(key=lambda t: float(t.get("last_submit_attempt") or 0))
         now = time.time()
         processed = 0
@@ -890,7 +897,6 @@ class FreelanceBrainManager:
             task = FreelanceTask(**{k: v for k, v in t.items() if k in fnames})
             task.submit_attempts = attempts + 1
             task.last_submit_attempt = now
-            autopilot_enabled = os.getenv("AIOS_FREELANCE_AUTOPILOT", "0") == "1"
             logger.info(f"🔁 [Retry {task.submit_attempts}/{max_retries}] повторная отправка: {task.title[:60]} ({task.source})")
             p_res = self._submit_proposal(task, autopilot_enabled)
             if isinstance(p_res, dict) and p_res.get("status") == "success":
