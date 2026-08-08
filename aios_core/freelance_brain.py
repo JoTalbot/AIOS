@@ -240,7 +240,7 @@ class FreelanceMarketRadar:
                                 except Exception:
                                     pass
                             proj_id = item.get("id")
-                            link = f"https://freelancehunt.com/project/{proj_id}"
+                            link = item.get("links", {}).get("self", {}).get("web") or f"https://freelancehunt.com/project/{proj_id}.html"
                             skills = [s.get("name","").lower() for s in attr.get("skills",[])]
                             skills_str = " ".join(skills)
                             tl = (title + " " + clean_desc + " " + skills_str).lower()
@@ -888,6 +888,16 @@ class FreelanceBrainManager:
                             elif task.source == "freelancehunt":
                                 # Бюджет и сроки из таска, если есть
                                 p_res = _run_async(adapter.submit_freelancehunt_proposal(task.url, task.proposal_text, budget=task.budget_usd, days=7, confirm=confirm_flag))
+                                # v22.3 fallback to UC if Cloudflare blocks Playwright
+                                if isinstance(p_res, dict) and p_res.get("status") == "need_manual" and confirm_flag:
+                                    logger.info("Playwright blocked by CF, trying UC fallback...")
+                                    try:
+                                        p_res_uc = _run_async(adapter.submit_freelancehunt_proposal_uc(task.url, task.proposal_text, budget=task.budget_usd, days=7))
+                                        if p_res_uc.get("status") == "success":
+                                            p_res = p_res_uc
+                                            logger.info(f"UC fallback success: {p_res_uc}")
+                                    except Exception as e_uc:
+                                        logger.warning(f"UC fallback failed: {e_uc}")
                             elif task.source == "upwork":
                                 p_res = _run_async(adapter.submit_upwork_proposal(task.url, task.proposal_text, hourly_rate=35.0, confirm=confirm_flag))
                             elif task.source == "fiverr":

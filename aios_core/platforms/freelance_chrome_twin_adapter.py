@@ -25,6 +25,12 @@ from typing import Any, Dict, List, Optional
 from pathlib import Path
 
 from .chrome_twin_adapter import ChromeTwinAdapter
+try:
+    from playwright_stealth import stealth_async
+    HAS_STEALTH=True
+except ImportError:
+    HAS_STEALTH=False
+    stealth_async=None
 
 logger = logging.getLogger("AIOS.FreelanceChromeTwin")
 
@@ -34,6 +40,13 @@ class FreelanceChromeTwinAdapter(ChromeTwinAdapter):
 
     def __init__(self, profile_id: str = "default"):
         super().__init__({"profile": profile_id})
+        # v21.15 fix: freelancehunt должен использовать свой профиль, а не CDP default (иначе cf_clearance не совпадает)
+        if profile_id == "freelancehunt":
+            self.cdp_url = ""  # локальный запуск с freelancehunt профилем, чтобы FlareSolverr UA совпал
+            self.headless = False
+            self.config["headless"] = False
+            self.config["slow_mo"] = 150
+            self.slow_mo = 150
         self.platform_profiles = {
             "habr": "default",
             "kwork": "default",
@@ -43,14 +56,28 @@ class FreelanceChromeTwinAdapter(ChromeTwinAdapter):
         }
 
     async def _detect_common_blocks(self, page) -> Optional[Dict[str, str]]:
-        """Детект общих блокеров: капча, Cloudflare, верификация, лимиты"""
+        """Detect common blocks v22.3 - wait for CF challenge"""
         try:
             title = await page.title()
             content = await page.content()
             content_lower = content.lower()
             title_lower = title.lower()
-            if any(x in content_lower for x in ["captcha", "капча", "cf-challenge", "checking if the site connection is secure", "cloudflare"]):
-                return {"status": "need_manual", "reason": "captcha_detected", "title": title}
+            if any(x in content_lower for x in ["checking if the site connection is secure", "just a moment", "please wait while we check", "трохи зачекайте", "зачекайте", "tрохи зачекайте"]):
+                try:
+                    for _ in range(20):
+                        await asyncio.sleep(1)
+                        content = await page.content()
+                        if "checking if the site connection is secure" not in content.lower() and "just a moment" not in content.lower():
+                            break
+                    content_lower = content.lower()
+                    title = await page.title()
+                except Exception:
+                    pass
+                if any(x in content_lower for x in ["checking if the site connection is secure", "just a moment", "трохи зачекайте", "зачекайте"]):
+                    return {"status": "need_manual", "reason": "cloudflare_challenge", "title": title}
+            if any(x in content_lower for x in ["captcha", "капча", "cf-challenge", "cloudflare"]):
+                if "captcha" in content_lower or "капча" in content_lower or "cf-challenge" in content_lower:
+                    return {"status": "need_manual", "reason": "captcha_detected", "title": title}
             if any(x in content_lower for x in ["верификация", "верифікуйте", "verify your identity", "verification required", "подтвердите личность", "підтвердіть особу"]):
                 return {"status": "need_verification", "reason": "verification_required", "title": title}
             if any(x in title_lower for x in ["вход", "вхід", "авторизація", "авторизация", "sign in", "log in"]) and "project" in (page.url or "").lower():
@@ -102,7 +129,7 @@ class FreelanceChromeTwinAdapter(ChromeTwinAdapter):
         if not page:
             return {"status": "error", "error": "Не удалось запустить браузер."}
         try:
-            await page.goto(task_url, timeout=30000, wait_until="networkidle")
+            await page.goto(task_url, timeout=30000, wait_until="domcontentloaded")
             await asyncio.sleep(2)
             block = await self._detect_common_blocks(page)
             if block and block["status"] in ("need_manual", "need_verification"):
@@ -147,7 +174,7 @@ class FreelanceChromeTwinAdapter(ChromeTwinAdapter):
         if not page:
             return {"status": "error", "error": "Не удалось запустить браузер."}
         try:
-            await page.goto(task_url, timeout=30000, wait_until="networkidle")
+            await page.goto(task_url, timeout=30000, wait_until="domcontentloaded")
             await asyncio.sleep(2)
             block = await self._detect_common_blocks(page)
             if block and block["status"] in ("need_manual", "need_verification"):
@@ -201,8 +228,55 @@ class FreelanceChromeTwinAdapter(ChromeTwinAdapter):
         page = await self._ensure_browser()
         if not page:
             return {"status": "error", "error": "Не удалось запустить браузер."}
+        if HAS_STEALTH and stealth_async:
+            try:
+                await stealth_async(page)
+                await page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            except Exception:
+                pass
+        # FlareSolverr bypass v22.3 - cookies + UA + wait
         try:
-            await page.goto(task_url, timeout=30000, wait_until="networkidle")
+            import json as _js, urllib.request as _ur
+            _payload = _js.dumps({"cmd":"request.get","url":task_url,"maxTimeout":60000}).encode()
+            _req = _ur.Request('http://127.0.0.1:8191/v1', data=_payload, headers={'Content-Type':'application/json'})
+            with _ur.urlopen(_req, timeout=70) as _r:
+                _j = _js.loads(_r.read().decode())
+                _sol = _j.get('solution',{})
+                _cookies = _sol.get('cookies',[])
+                _ua = _sol.get('userAgent','')
+                if _cookies:
+                    _pw=[]
+                    for _c in _cookies:
+                        try:
+                            _pc={'name':_c['name'],'value':_c['value'],'domain':_c.get('domain','.freelancehunt.com'),'path':_c.get('path','/'),'secure':bool(_c.get('secure',False)),'httpOnly':bool(_c.get('httpOnly',False))}
+                            _ss=_c.get('sameSite','Lax')
+                            if _ss in ['Strict','Lax','None']:
+                                _pc['sameSite']=_ss
+                            if 'expiry' in _c:
+                                _pc['expires']=_c['expiry']
+                            _pw.append(_pc)
+                        except Exception:
+                            continue
+                    try:
+                        await page.context.clear_cookies()
+                    except:
+                        pass
+                    try:
+                        await page.context.add_cookies(_pw)
+                        logger.info(f"CF cookies injected {len(_pw)} for {task_url[:40]}")
+                    except Exception as _e:
+                        logger.debug(f"CF cookie inject fail: {_e}")
+                if _ua:
+                    try:
+                        await page.set_extra_http_headers({"User-Agent": _ua})
+                        await page.add_init_script(f"Object.defineProperty(navigator, 'userAgent', {{get: () => '{_ua}'}});")
+                        logger.info(f"CF UA set: {_ua[:60]}")
+                    except Exception as _e:
+                        logger.debug(f"CF UA set fail: {_e}")
+        except Exception as _e:
+            logger.debug(f"CF bypass fail: {_e}")
+        try:
+            await page.goto(task_url, timeout=45000, wait_until="domcontentloaded")
             await asyncio.sleep(2.5)
             block = await self._detect_common_blocks(page)
             if block:
@@ -285,7 +359,7 @@ class FreelanceChromeTwinAdapter(ChromeTwinAdapter):
         if not page:
             return {"status": "error", "error": "Browser not available"}
         try:
-            await page.goto(task_url, timeout=35000, wait_until="networkidle")
+            await page.goto(task_url, timeout=35000, wait_until="domcontentloaded")
             await asyncio.sleep(3)
             block = await self._detect_common_blocks(page)
             if block:
@@ -354,7 +428,7 @@ class FreelanceChromeTwinAdapter(ChromeTwinAdapter):
         if not page:
             return {"status": "error", "error": "Browser not available"}
         try:
-            await page.goto(gig_url, timeout=35000, wait_until="networkidle")
+            await page.goto(gig_url, timeout=35000, wait_until="domcontentloaded")
             await asyncio.sleep(3)
             block = await self._detect_common_blocks(page)
             if block:
@@ -398,6 +472,80 @@ class FreelanceChromeTwinAdapter(ChromeTwinAdapter):
                 return {"status": "error", "error": str(e), "screenshot": err_shot}
             except Exception:
                 return {"status": "error", "error": str(e)}
+
+
+    async def submit_freelancehunt_proposal_uc(self, task_url: str, proposal_text: str, budget: float = None, days: int = None) -> dict:
+        # Fallback via undetected-chromedriver (Selenium) - bypasses Cloudflare better than Playwright
+        try:
+            import undetected_chromedriver as uc
+            import time as _time
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
+            import os
+            os.environ["DISPLAY"] = os.environ.get("DISPLAY", ":99")
+            options = uc.ChromeOptions()
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_argument("--user-data-dir=/root/AIOS/data/chrome_twin/default")
+            options.add_argument("--window-size=1920,1080")
+            driver = uc.Chrome(options=options, headless=False, use_subprocess=False)
+            driver.get(task_url)
+            _time.sleep(5)
+            if "Just a moment" in driver.page_source or "Checking if the site" in driver.page_source:
+                logger.info("UC: waiting for Cloudflare challenge...")
+                _time.sleep(10)
+            try:
+                btn = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(),'Сделать ставку') or contains(text(),'Зробити ставку')]")))
+                btn.click()
+                _time.sleep(2)
+            except Exception as e:
+                driver.quit()
+                return {"status": "error", "error": f"Bid button not found: {e}", "url": task_url}
+            try:
+                textarea = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "textarea#bid-comment, textarea[name='comment']")))
+                textarea.clear()
+                textarea.send_keys(proposal_text)
+                _time.sleep(0.5)
+            except Exception as e:
+                driver.quit()
+                return {"status": "error", "error": f"Textarea not found: {e}"}
+            if budget:
+                try:
+                    amount_input = driver.find_element(By.CSS_SELECTOR, "input#bid-amount, input[name='amount']")
+                    amount_input.clear()
+                    amount_input.send_keys(str(int(budget)))
+                except Exception:
+                    pass
+            if days:
+                try:
+                    days_input = driver.find_element(By.CSS_SELECTOR, "input#bid-days, input[name='days']")
+                    days_input.clear()
+                    days_input.send_keys(str(int(days)))
+                except Exception:
+                    pass
+            try:
+                submit = driver.find_element(By.XPATH, "//button[contains(text(),'Сделать ставку') or contains(text(),'Зробити ставку')]")
+                submit.click()
+                _time.sleep(4)
+                screenshot = f"/tmp/fh_uc_{int(_time.time())}.png"
+                driver.save_screenshot(screenshot)
+                driver.quit()
+                return {"status": "success", "platform": "freelancehunt", "url": task_url, "screenshot": screenshot}
+            except Exception as e:
+                screenshot = f"/tmp/fh_uc_error_{int(_time.time())}.png"
+                try:
+                    driver.save_screenshot(screenshot)
+                except:
+                    screenshot = None
+                driver.quit()
+                return {"status": "error", "error": str(e), "screenshot": screenshot}
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"status": "error", "error": f"UC exception: {e}"}
+
 
     # ================= UNIFIED DISPATCHER v19 =================
     async def submit_proposal(self, platform: str, url: str, proposal_text: str, confirm: bool = False, **kwargs) -> Dict[str, Any]:

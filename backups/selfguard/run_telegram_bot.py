@@ -37,6 +37,231 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
+# === Inventory by photo v22.1 helpers ===
+import random as _rnd
+
+def _generate_draft_id(chat_id: int) -> str:
+    return f"{chat_id}_{int(time.time()*1000)}_{_rnd.randint(1000,9999)}"
+
+def _build_inventory_keyboard(draft_id: str, price, photos_len: int):
+    try:
+        price_int = int(float(price))
+        price_label = f"{price_int} грн" if float(price).is_integer() else f"{price} грн"
+    except:
+        price_label = f"{price} грн"
+    return {
+        "inline_keyboard": [
+            [
+                {"text": f"✅ Подтвердить {price_label}", "callback_data": f"inv_confirm_{draft_id}"},
+                {"text": "❌ Отмена", "callback_data": f"inv_cancel_{draft_id}"}
+            ],
+            [
+                {"text": f"✅+📢 Склад+OLX ({price_label})", "callback_data": f"inv_confirm_olx_{draft_id}"},
+                {"text": f"📢 Только OLX", "callback_data": f"inv_olx_{draft_id}"}
+            ],
+            [
+                {"text": "✏️ Цена", "callback_data": f"inv_edit_price_{draft_id}"},
+                {"text": "✏️ Название", "callback_data": f"inv_edit_name_{draft_id}"},
+                {"text": "✏️ Кол-во", "callback_data": f"inv_edit_qty_{draft_id}"}
+            ],
+            [
+                {"text": f"📸 +фото ({photos_len} шт)", "callback_data": f"inv_add_photo_{draft_id}"},
+                {"text": "🏷 Категория", "callback_data": f"inv_edit_category_{draft_id}"}
+            ]
+        ]
+    }
+
+def _process_expired_albums(api):
+    """Обработать альбомы Telegram, которые уже полностью пришли (>2.5 сек без новых фото)."""
+    try:
+        now = time.time()
+        to_process = []
+        for mg_id, album in list(_photo_albums.items()):
+            if album.get("processed"):
+                continue
+            if now - album.get("ts", 0) > 2.5:
+                to_process.append((mg_id, album))
+        for mg_id, album in to_process:
+            if len(album.get("photos", [])) == 0:
+                _photo_albums.pop(mg_id, None)
+                continue
+            album["processed"] = True
+            chat_id = album.get("chat_id")
+            photos = album.get("photos", [])
+            caption = album.get("caption") or ""
+            # если этот альбом был для добавления фото к существующему черновику
+            if chat_id in _pending_add_photo:
+                draft_id = _pending_add_photo.get(chat_id)
+                draft = _inventory_drafts.get(draft_id)
+                if draft:
+                    # добавляем фото к черновику
+                    for p in photos:
+                        if p not in draft["photos"]:
+                            draft["photos"].append(p)
+                    _last_photo[chat_id] = photos[-1]
+                    api.send_message(chat_id,
+                        f"📸 Добавил {len(photos)} фото к черновику «{draft.get('name')[:40]}» (теперь {len(draft['photos'])} шт).\nОтправьте ещё или нажмите ✅ Подтвердить.",
+                        reply_markup=_build_inventory_keyboard(draft_id, draft.get('price',0), len(draft['photos'])))
+                    _photo_albums.pop(mg_id, None)
+                    continue
+            # иначе создаём новый черновик из альбома
+            _create_inventory_draft_and_ask_confirmation(api, chat_id, photos, caption)
+            _photo_albums.pop(mg_id, None)
+    except Exception as e:
+        print(f"  [ALBUM PROCESS ERR] {e}")
+        import traceback; traceback.print_exc()
+
+def _create_inventory_draft_and_ask_confirmation(api, chat_id: int, photos: list, caption: str):
+    """Создать черновик товара из фото(й) и отправить клавиатуру подтверждения."""
+    if not photos:
+        return
+    first_photo = photos[0]
+    # --- Vision ---
+    recog = {"status":"error"}
+    try:
+        import subprocess as _sp2
+        r = _sp2.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_photo_recognition.py"), first_photo],
+                     capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT))
+        out = (r.stdout or "").strip()
+        for line in reversed(out.splitlines()):
+            if "{" in line and "}" in line:
+                try:
+                    import json as _js
+                    recog = _js.loads(line[line.find("{"):line.rfind("}")+1])
+                    break
+                except:
+                    continue
+        if recog.get("status")!="ok":
+            try:
+                import json as _js
+                recog = _js.loads(out.splitlines()[-1])
+            except:
+                pass
+    except Exception as e:
+        recog = {"status":"error","error":str(e)}
+
+    part_name = ""
+    price_rec = 0
+    condition = ""
+    compatible = ""
+    notes = ""
+    provider = recog.get("provider","?")
+    if recog.get("status")=="ok":
+        part_name = (recog.get("part") or "").strip()
+        try:
+            price_rec = float(recog.get("price") or 0)
+        except:
+            price_rec = 0
+        condition = recog.get("condition") or ""
+        compatible = recog.get("compatible") or ""
+        notes = recog.get("notes") or ""
+
+    if caption:
+        cap_clean = re.sub(r"^(добавь( на склад)?|создай товар|товар на склад|деталь|запчасть)\s*:?\s*", "", caption, flags=re.IGNORECASE).strip()
+        if len(cap_clean)>=2:
+            if not part_name or len(cap_clean) > len(part_name):
+                part_name = cap_clean
+            elif cap_clean.lower() not in part_name.lower():
+                part_name = f"{part_name} {cap_clean}".strip()
+
+    if not part_name:
+        part_name = caption or "Автозапчасть с фото"
+
+    qty = 1
+    price = price_rec
+    text_for_parse = caption or ""
+    m_qty = re.search(r"(\d+)\s*шт", text_for_parse, re.IGNORECASE)
+    if m_qty:
+        try:
+            qty = max(1, int(m_qty.group(1)))
+        except:
+            qty = 1
+    m_price = re.search(r"(\d[\d\s.,]*)\s*(грн|uah|₴)", text_for_parse, re.IGNORECASE)
+    if m_price:
+        try:
+            price = float(m_price.group(1).replace(" ","").replace(",","."))
+        except:
+            pass
+    else:
+        m_price2 = re.search(r"\b(\d{3,6})\b\s*$", text_for_parse)
+        if m_price2 and price_rec==0:
+            try:
+                v=int(m_price2.group(1))
+                if 100 <= v <= 50000:
+                    price = float(v)
+            except:
+                pass
+
+    category = "общее"
+    try:
+        from tg_bot.accounts import _llm_chat_direct as _llm_direct
+        cat_prompt = f"Деталь: «{part_name}». Определи категорию из списка (двигатель, кузов, оптика, подвеска, тормоза, электрика, салон, трансмиссия, расходники, система охлаждения, другое) и верни ТОЛЬКО JSON {{\"category\":\"...\"}}."
+        cat_resp = _llm_direct(cat_prompt)
+        start = cat_resp.find("{")
+        end = cat_resp.rfind("}")+1
+        if start>=0 and end>start:
+            import json as _js
+            cj = _js.loads(cat_resp[start:end])
+            category = (cj.get("category") or "общее").strip()[:40]
+    except Exception:
+        low = part_name.lower()
+        if any(w in low for w in ("фара","фонарь","оптика","лампа","поворотник")):
+            category="оптика"
+        elif any(w in low for w in ("радиатор","охлаждение","термостат")):
+            category="Система охлаждения"
+        elif any(w in low for w in ("рессора","пружина","аморт","подвеска","рычаг","сайлент")):
+            category="Подвеска"
+        elif any(w in low for w in ("генератор","стартер","проводка","датчик")):
+            category="Электрооборудование"
+        elif any(w in low for w in ("бампер","капот","крыло","дверь","кузов")):
+            category="Кузов"
+        elif any(w in low for w in ("тормоз","колодка","диск тормоз")):
+            category="Тормоза"
+        elif any(w in low for w in ("кпп","коробка","трансмиссия")):
+            category="Трансмиссия"
+
+    draft_id = _generate_draft_id(chat_id)
+    draft = {
+        "draft_id": draft_id,
+        "name": part_name[:120],
+        "qty": qty,
+        "price": price or 0,
+        "category": category,
+        "photos": photos,
+        "condition": condition,
+        "compatible": compatible,
+        "notes": notes,
+        "provider": provider,
+        "caption": caption,
+        "chat_id": chat_id,
+        "ts": time.time(),
+    }
+    _inventory_drafts[draft_id] = draft
+
+    kb = _build_inventory_keyboard(draft_id, draft["price"], len(photos))
+
+    lines = [
+        f"🔍 <b>Черновик товара (vision: {provider})</b>",
+        f"📦 <b>{_esc_tg(draft['name'])}</b>",
+        f"🔢 Кол-во: {qty} шт",
+        f"💰 Цена: {int(price) if float(price).is_integer() else price} грн" + (f" (AI оценил {int(price_rec)} грн)" if price_rec and abs(float(price)-float(price_rec))>1 else ""),
+        f"🏷 Категория: {_esc_tg(category)}",
+    ]
+    if condition:
+        lines.append(f"📋 Состояние: {_esc_tg(condition)}")
+    if compatible:
+        lines.append(f"🚗 Совместимость: {_esc_tg(compatible)}")
+    if notes:
+        lines.append(f"📝 {_esc_tg(notes)}")
+    lines.append(f"📸 Фото: {len(photos)} шт.")
+    lines.append("")
+    lines.append("Подтвердите или отредактируйте:")
+
+    api.send_message(chat_id, "\n".join(lines), reply_markup=kb)
+
+# === end helpers ===
+
+
 
 
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -49,7 +274,7 @@ from tg_bot.accounts import (
     _llm_extract_json, _llm_extract_gmail, _llm_extract_calendar, _handle_account_intent,
     cmd_accounts, cmd_google, cmd_instagram,
 )
-from tg_bot.state import _last_photo, _photo_pending, _last_gen_ad, _last_video, _last_gmail_ids
+from tg_bot.state import _last_photo, _photo_pending, _last_gen_ad, _last_video, _last_gmail_ids, _photo_albums, _inventory_drafts, _pending_inventory_edits, _pending_add_photo
 from tg_bot.state import _pending_actions, _pending_confirmations
 from tg_bot.treasury import _handle_treasury_intent
 from tg_bot.keyboards import (
@@ -1518,6 +1743,11 @@ def run_bot(token: str) -> None:
 
     while True:
         try:
+            # периодическая обработка альбомов (галерея)
+            try:
+                _process_expired_albums(api)
+            except Exception:
+                pass
             # проверка созревших напоминаний (раз в 60 сек)
             if time.time() - _last_reminder_check >= 60:
                 try:
@@ -1621,24 +1851,135 @@ def run_bot(token: str) -> None:
                             pass
                     continue
 
-                # Фото от пользователя — сохранить для будущих действий (сторис и т.п.)
-                if msg.get("photo") and not text:
+                                # Фото от пользователя — создание товара на складе по фото (v22.1 с галереей и подтверждением)
+                if msg.get("photo"):
                     try:
                         file_id = msg["photo"][-1].get("file_id", "")
-                        if file_id:
-                            path = api.download_file_by_id(file_id)
-                            _last_photo[chat_id] = path
-                            api.send_message(chat_id, "📸 Фото получил и сохранил!")
-                        else:
+                        caption = (msg.get("caption") or "").strip()
+                        text_from_caption = caption or text
+                        media_group_id = msg.get("media_group_id")  # для альбомов
+                        if not file_id:
                             api.send_message(chat_id, "❌ Не смог получить фото.")
+                            continue
+                        path = api.download_file_by_id(file_id)
+                        _last_photo[chat_id] = path
+
+                        # Если пользователь сейчас добавляет фото к существующему черновику
+                        if chat_id in _pending_add_photo and not media_group_id:
+                            d_id = _pending_add_photo.get(chat_id)
+                            draft = _inventory_drafts.get(d_id)
+                            if draft:
+                                if path not in draft["photos"]:
+                                    draft["photos"].append(path)
+                                api.send_message(chat_id,
+                                    f"📸 Добавил фото к черновику «{_esc_tg(draft.get('name')[:40])}» (теперь {len(draft['photos'])} шт).\n"
+                                    f"Пришлите ещё или нажмите ✅ Подтвердить.",
+                                    reply_markup=_build_inventory_keyboard(d_id, draft.get("price",0), len(draft["photos"])))
+                                continue
+                            else:
+                                _pending_add_photo.pop(chat_id, None)
+
+                        # Альбомы: собираем в _photo_albums и ждём 2.5 сек
+                        if media_group_id:
+                            album = _photo_albums.get(media_group_id)
+                            if not album:
+                                _photo_albums[media_group_id] = {"chat_id": chat_id, "photos": [path], "caption": caption, "ts": time.time(), "processed": False}
+                            else:
+                                if path not in album["photos"]:
+                                    album["photos"].append(path)
+                                if caption and not album.get("caption"):
+                                    album["caption"] = caption
+                                album["ts"] = time.time()
+                            # если это альбом для добавления к черновику, обработается в _process_expired_albums
+                            # пока просто ждём
+                            continue
+
+                        # Проверка явного запроса объявления (не склада)
+                        lc = (text_from_caption or "").lower()
+                        explicit_ad = any(w in lc for w in ("объявление из фото","объявление по фото","выложи по фото","сделай объявление из фото"))
+                        if explicit_ad and "склад" not in lc and "деталь" not in lc and "товар" not in lc and "запчасть" not in lc:
+                            api.send_message(chat_id, "📸 Фото получил и сохранил! Опишите деталь — сгенерирую объявление.")
+                            _photo_pending[chat_id] = True
+                            continue
+
+                        # Одиночное фото — создаём черновик с подтверждением
+                        api.send_message(chat_id, "📸 Фото получил! Распознаю деталь... ⏳ ~10-20 сек")
+                        _create_inventory_draft_and_ask_confirmation(api, chat_id, [path], caption)
+
                     except Exception as ph_err:
-                        print(f"  [PHOTO] error: {ph_err}")
+                        print(f"  [PHOTO_INV v22.1] error: {ph_err}")
+                        import traceback as _tb; _tb.print_exc()
                         try:
-                            api.send_message(chat_id, f"❌ Ошибка загрузки фото: {ph_err}")
-                        except Exception:
+                            api.send_message(chat_id, f"❌ Ошибка обработки фото: {_esc_tg(str(ph_err)[:200])}")
+                        except:
                             pass
                     continue
 
+                # Обработка истёкших альбомов (галерея) — делаем после каждого сообщения тоже
+                try:
+                    _process_expired_albums(api)
+                except Exception as ae:
+                    print(f"album process err: {ae}")
+
+                if not text:
+                    continue
+
+                # ---- Редактирование полей черновика склада (цена/название/кол-во/категория) ----
+                if chat_id in _pending_inventory_edits and text:
+                    try:
+                        edit_info = _pending_inventory_edits.get(chat_id, {})
+                        draft_id = edit_info.get("draft_id")
+                        field = edit_info.get("field")
+                        draft = _inventory_drafts.get(draft_id)
+                        if not draft:
+                            _pending_inventory_edits.pop(chat_id, None)
+                            api.send_message(chat_id, "❌ Черновик не найден (истёк). Пришлите фото заново.")
+                            continue
+                        new_val = text.strip()
+                        if field == "price":
+                            # принимаем "1500", "1 500 грн", "1,5k" не поддерживаем, просто число
+                            cleaned = re.sub(r"[^\d.,]", "", new_val).replace(",", ".")
+                            try:
+                                price = float(cleaned)
+                                if price < 0 or price > 1000000:
+                                    raise ValueError("цена вне диапазона")
+                                draft["price"] = price
+                            except Exception as e:
+                                api.send_message(chat_id, f"❌ Не понял цену «{new_val}». Введите число, например: 1500")
+                                continue
+                        elif field == "qty":
+                            m = re.search(r"\d+", new_val)
+                            if not m:
+                                api.send_message(chat_id, f"❌ Не понял количество «{new_val}». Введите число, например: 2")
+                                continue
+                            draft["qty"] = max(1, int(m.group()))
+                        elif field == "name":
+                            if len(new_val) < 2:
+                                api.send_message(chat_id, "❌ Название слишком короткое.")
+                                continue
+                            draft["name"] = new_val[:120]
+                        elif field == "category":
+                            draft["category"] = new_val[:40]
+                        else:
+                            api.send_message(chat_id, f"❌ Неизвестное поле {field}")
+                            continue
+                        _pending_inventory_edits.pop(chat_id, None)
+                        # показываем обновлённый черновик
+                        kb = _build_inventory_keyboard(draft_id, draft["price"], len(draft["photos"]))
+                        lines = [
+                            f"✏️ Обновил <b>{field}</b>: {_esc_tg(str(new_val)[:80])}",
+                            f"📦 <b>{_esc_tg(draft['name'])}</b> · {draft['qty']} шт · {draft['price']} грн",
+                            f"🏷 { _esc_tg(draft['category']) } · 📸 {len(draft['photos'])} фото",
+                            "",
+                            "Подтвердите:"
+                        ]
+                        api.send_message(chat_id, "\n".join(lines), reply_markup=kb)
+                    except Exception as e_edit:
+                        print(f"edit err {e_edit}")
+                        api.send_message(chat_id, f"❌ Ошибка редактирования: {e_edit}")
+                    continue
+
+                # Handle pending actions from inline buttons
                 if not text:
                     continue
 
