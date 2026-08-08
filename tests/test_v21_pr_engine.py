@@ -410,3 +410,99 @@ def test_v218c_unknown_explicit_kept_for_fetch_verification():
     r = eng.solve_and_pr(bty, dry_run=True)
     assert r["status"] == "dry_run"
     assert "src/unknown/hidden_module.cpp" in b.requested
+
+
+# ---------------- v21.9: гейт конкуренции ----------------
+
+class FakeBuilderGated(FakeBuilder):
+    """Issue #52328 с кастомными assignees/таймлайном/PR."""
+
+    def __init__(self, assignees=(), timeline=(), pulls=None, issue_state="open"):
+        super().__init__()
+        self._assignees = assignees
+        self._timeline = timeline
+        self._pulls = pulls or {}
+        self._issue_state = issue_state
+
+    def me(self):
+        return "aios-bot"
+
+    def gh(self, method, path, payload=None, timeout=20):
+        if "/issues/" in path and "timeline" in path:
+            return list(self._timeline), None
+        if "/issues/" in path:
+            return {"title": "T", "body": "crash", "state": self._issue_state,
+                    "assignees": [{"login": a} for a in self._assignees],
+                    "html_url": "https://github.com/owner/repo/issues/52328"}, None
+        if "/pulls/" in path:
+            for n, pr in self._pulls.items():
+                if path.endswith(f"/pulls/{n}"):
+                    return pr, None
+            return None, {"status": 404}
+        return super().gh(method, path, payload, timeout)
+
+
+BOUNTY_G = dict(BOUNTY, number=52328,
+                html_url="https://github.com/owner/repo/issues/52328")
+
+
+def _xr(num):
+    return {"event": "cross-referenced",
+            "source": {"issue": {"number": num,
+                                 "pull_request": {"html_url": f"https://x/pull/{num}"}}}}
+
+
+def test_v219_gate_closed_issue():
+    b = FakeBuilderGated(issue_state="closed")
+    bal = FakeBalancer()
+    eng = BountySolutionEngine(balancer=bal, pr_builder=b)
+    r = eng.solve_and_pr(BOUNTY_G, dry_run=True)
+    assert r["status"] == "skipped" and "closed" in r["reason"]
+    assert bal.last_messages is None  # LLM не вызывался — токены сэкономлены
+
+
+def test_v219_gate_foreign_assignee():
+    b = FakeBuilderGated(assignees=["AJ0070"])
+    bal = FakeBalancer()
+    eng = BountySolutionEngine(balancer=bal, pr_builder=b)
+    r = eng.solve_and_pr(BOUNTY_G, dry_run=True)
+    assert r["status"] == "skipped" and "AJ0070" in r["reason"]
+    assert bal.last_messages is None
+
+
+def test_v219_gate_self_assignee_passes():
+    b = FakeBuilderGated(assignees=["aios-bot"])
+    eng = BountySolutionEngine(balancer=FakeBalancer(), pr_builder=b)
+    r = eng.solve_and_pr(BOUNTY_G, dry_run=True)
+    assert r["status"] == "dry_run"
+
+
+def test_v219_gate_competing_open_pr():
+    b = FakeBuilderGated(timeline=[_xr(52380)],
+                         pulls={52380: {"state": "open", "merged_at": None,
+                                        "user": {"login": "AJ0070"}}})
+    bal = FakeBalancer()
+    eng = BountySolutionEngine(balancer=bal, pr_builder=b)
+    r = eng.solve_and_pr(BOUNTY_G, dry_run=True)
+    assert r["status"] == "skipped" and r.get("competing_pr") == 52380
+    assert bal.last_messages is None
+
+
+def test_v219_gate_merged_pr():
+    b = FakeBuilderGated(timeline=[_xr(52380)],
+                         pulls={52380: {"state": "closed", "merged_at": "2026-08-08",
+                                        "user": {"login": "AJ0070"}}})
+    eng = BountySolutionEngine(balancer=FakeBalancer(), pr_builder=b)
+    r = eng.solve_and_pr(BOUNTY_G, dry_run=True)
+    assert r["status"] == "skipped" and r.get("merged_pr") == 52380
+
+
+def test_v219_gate_closed_unmerged_and_own_pr_passes():
+    b = FakeBuilderGated(timeline=[_xr(52365), _xr(52999)],
+                         pulls={52365: {"state": "closed", "merged_at": None,
+                                        "user": {"login": "loser1"}},
+                                52999: {"state": "open", "merged_at": None,
+                                        "user": {"login": "aios-bot"}}})
+    eng = BountySolutionEngine(balancer=FakeBalancer(), pr_builder=b)
+    r = eng.solve_and_pr(BOUNTY_G, dry_run=True)
+    assert r["status"] == "dry_run"  # закрытый немёрдженный + наш PR — не стоп

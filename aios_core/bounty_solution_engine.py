@@ -221,10 +221,59 @@ class BountySolutionEngine:
             "repository_url": f"https://api.github.com/repos/{to}/{trepo}",
             "html_url": issue.get("html_url") or bounty.get("html_url"),
             "bounty_source_url": bounty.get("html_url"),
+            "target_issue_number": int(inum),
         })
         logger.info("🎯 целевой репозиторий: %s/%s issue #%s (host %s/%s #%s)",
                     to, trepo, inum, owner, repo, bounty.get("number"))
         return to, trepo, merged
+
+    # ---------------- v21.9: гейт конкуренции ----------------
+    def competition_check(self, owner: str, repo: str, issue_num: int) -> Dict[str, Any]:
+        """Не тратим LLM/PR на гонки, где уже проиграли:
+        issue закрыт / назначен чужой assignee / есть открытый чужой PR /
+        issue закрыт мёрджем чужого PR. Мягкий ok при ошибках фетча."""
+        issue, err = self.builder.gh("GET", f"/repos/{owner}/{repo}/issues/{issue_num}")
+        if err or not isinstance(issue, dict):
+            return {"status": "ok", "note": f"issue fetch failed: {err}"}
+        if issue.get("pull_request"):
+            return {"status": "skip", "reason": "цель — PR, а не issue"}
+        if (issue.get("state") or "open") != "open":
+            return {"status": "skip", "reason": f"issue #{issue_num} {issue.get('state')}"}
+        me = ""
+        try:
+            me = self.builder.me() or ""
+        except Exception:
+            pass
+        assignees = [a.get("login") for a in issue.get("assignees", []) if a.get("login")]
+        if any(a != me for a in assignees):
+            return {"status": "skip", "reason": f"assignee: {assignees}"}
+        tl, err = self.builder.gh(
+            "GET", f"/repos/{owner}/{repo}/issues/{issue_num}/timeline?per_page=100")
+        pr_nums: List[int] = []
+        if isinstance(tl, list):
+            for ev in tl:
+                if ev.get("event") != "cross-referenced":
+                    continue
+                src = (ev.get("source") or {}).get("issue") or {}
+                if src.get("pull_request") and src.get("number"):
+                    if int(src["number"]) not in pr_nums:
+                        pr_nums.append(int(src["number"]))
+        for n in pr_nums[:5]:
+            pr, _ = self.builder.gh("GET", f"/repos/{owner}/{repo}/pulls/{n}")
+            if not isinstance(pr, dict):
+                continue
+            author = (pr.get("user") or {}).get("login") or ""
+            if author and author == me:
+                continue  # наш PR — builder сам вернёт already_exists
+            if pr.get("merged_at"):
+                return {"status": "skip",
+                        "reason": f"закрыт мёрджем чужого PR #{n} (@{author})",
+                        "merged_pr": n}
+            if (pr.get("state") or "") == "open":
+                return {"status": "skip",
+                        "reason": f"конкуренция: открыт PR #{n} (@{author})",
+                        "competing_pr": n}
+        return {"status": "ok"}
 
     # ---------------- LLM plan ----------------
     def plan_file_changes(self, bounty: Dict[str, Any], root_paths: List[str],
@@ -375,6 +424,22 @@ ANALYSIS: 2-3 предложения сути проблемы и подхода
 
         # v21.8: bounty-платформа? идём в целевой репозиторий кода
         owner, repo, bounty = self.resolve_target(bounty, owner, repo)
+
+        # v21.9: гейт конкуренции ДО траты LLM-токенов
+        try:
+            issue_num = int(bounty.get("target_issue_number") or bounty.get("number"))
+        except (TypeError, ValueError):
+            issue_num = None
+        if issue_num:
+            gate_res = self.competition_check(owner, repo, issue_num)
+            if gate_res.get("status") == "skip":
+                logger.info("⏭️ гейт конкуренции #%s: %s", issue_num, gate_res.get("reason"))
+                out = {"status": "skipped", "reason": gate_res.get("reason"),
+                       "target_repo": f"{owner}/{repo}", "branch": f"aios/bounty-{issue_num}"}
+                for k in ("merged_pr", "competing_pr"):
+                    if k in gate_res:
+                        out[k] = gate_res[k]
+                return out
 
         branch_base, root_paths, err = self.repo_meta(owner, repo)
         if err:
