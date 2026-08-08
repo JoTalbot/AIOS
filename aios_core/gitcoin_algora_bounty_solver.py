@@ -43,6 +43,11 @@ def _get_github_token() -> str:
 RADAR_MAX_RESULTS = int(os.environ.get("AIOS_BOUNTY_RADAR_TOP", "10"))
 RADAR_FRESH_HOURS = float(os.environ.get("AIOS_BOUNTY_RADAR_FRESH_HOURS", "120"))
 RADAR_MIN_PRIZE = float(os.environ.get("AIOS_BOUNTY_RADAR_MIN_PRIZE", "50"))
+RADAR_MIN_SCORE = int(os.environ.get("AIOS_BOUNTY_RADAR_MIN_SCORE", "40"))
+
+# намёки на фермы-генераторы в имени ЦЕЛЕВОГО репо (их «баунти» почти не платят)
+FARM_NAME_HINTS = ("bountyscout", "bounty-scout", "bounty_scout", "bountyfarm",
+                   "bounty-farm", "bountyplaza", "bounty-plaza", "issuefarm")
 
 RADAR_QUERIES_DEFAULT = [
     "label:bounty language:python type:issue",
@@ -99,6 +104,43 @@ def extract_prize_usd(title: str, body: str = "") -> float:
         if 5.0 <= v <= 100000.0:
             return v
     return 100.0
+
+
+def legitimacy_score(prize: float, age_h: Optional[float],
+                     quality: Dict[str, Any], gate: Dict[str, Any]) -> int:
+    """v21.14: скоринг легитимности баунти (0..85). Состав:
+    звёзды целевого репо (до +45) + приз (до +25) + свежесть (до +15)
+    − нейм-маски ферм (−25, если репо не набрал 50⭐)."""
+    s = 0
+    st = quality.get("stars")
+    if isinstance(st, int):
+        if st >= 1000:
+            s += 45
+        elif st >= 100:
+            s += 30
+        elif st >= 20:
+            s += 18
+        elif st >= 5:
+            s += 8
+        else:
+            s -= 10
+    if prize >= 500:
+        s += 25
+    elif prize >= 100:
+        s += 15
+    elif prize >= 50:
+        s += 10
+    if age_h is not None:
+        if age_h <= 24:
+            s += 15
+        elif age_h <= 72:
+            s += 10
+        elif age_h <= 120:
+            s += 5
+    tref = str((gate or {}).get("target_repo", "")).lower()
+    if any(h in tref for h in FARM_NAME_HINTS) and (not isinstance(st, int) or st < 50):
+        s -= 25
+    return s
 
 
 def quality_line(quality: Dict[str, Any]) -> str:
@@ -309,11 +351,16 @@ class GitcoinAlgoraMasterSolver:
             if quality.get("archived"):
                 rec["gate"] = "skip: archived repo"
                 continue
+            score = legitimacy_score(prize, age_h, quality, gate)
+            if score < RADAR_MIN_SCORE:
+                rec["gate"] = f"low_score {score}"
+                continue
             rec["alerted"] = True
             rec["gate"] = "ok"
             rec["stars"] = quality.get("stars")
+            rec["score"] = score
             fresh_hits.append({"bounty": b, "prize": prize, "age_h": age_h,
-                               "gate": gate, "quality": quality})
+                               "gate": gate, "quality": quality, "score": score})
 
         try:
             state_file.write_text(json.dumps(state, ensure_ascii=False, indent=1),
@@ -321,12 +368,14 @@ class GitcoinAlgoraMasterSolver:
         except Exception as e:
             logger.warning(f"radar state save: {e}")
 
+        fresh_hits.sort(key=lambda h: -h.get("score", 0))
+
         def _hit_line(hit: Dict[str, Any]) -> str:
             q = hit.get("quality") or {}
             st = q.get("stars")
             star_txt = f"⭐{st}" if isinstance(st, int) else ""
             num = hit["gate"].get("issue_num", hit["bounty"].get("number"))
-            return (f"• ~${hit['prize']:,.0f} · {hit['age_h']:.0f}ч {star_txt}\n"
+            return (f"• ~${hit['prize']:,.0f} · {hit['age_h']:.0f}ч {star_txt} 🏆{hit.get('score', '?')}\n"
                     f"  {hit['gate'].get('target_repo', '')}#{num} — "
                     f"{hit['bounty'].get('title', '')[:70]}\n"
                     f"  {hit['bounty'].get('html_url', '')}")
@@ -346,6 +395,7 @@ class GitcoinAlgoraMasterSolver:
                 b = hit["bounty"]
                 txt = (
                     "🚨 <b>Свежее бесконкурентное баунти</b>\n"
+                    f"🏆 легитимность: {hit.get('score', '?')}\n"
                     f"💰 ~${hit['prize']:,.0f} · возраст {hit['age_h']:.0f}ч{quality_line(hit.get('quality') or {})}\n"
                     f"🔗 {hit['gate'].get('target_repo', '')}#{hit['gate'].get('issue_num', b.get('number'))}\n"
                     f"📝 {b.get('title', '')[:140]}\n"

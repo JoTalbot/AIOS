@@ -224,7 +224,7 @@ def test_radar_stars_recorded_and_line_in_alert(tmp_path, monkeypatch):
 def test_radar_digest_when_three_plus(tmp_path, monkeypatch):
     solver = GitcoinAlgoraMasterSolver(data_dir=str(tmp_path))
     eng = _EngineWithQuality({"status": "ok", "target_repo": "a/b", "issue_num": 9},
-                             {"stars": 7, "archived": False})
+                             {"stars": 70, "archived": False})
     monkeypatch.setattr(solver, "_radar_engine", lambda: eng)
     sent = []
     monkeypatch.setattr(solver, "_notify", lambda text: sent.append(text))
@@ -308,3 +308,57 @@ def test_cycle_fallback_legacy_when_no_hits(tmp_path, monkeypatch):
 
     res = solver.run_bounty_cycle(max_batch=1)
     assert res["solved_results"][0]["bounty_id"] == "legacy_1"
+
+
+# ---------------- v21.14: скоринг легитимности ----------------
+
+def test_legitimacy_score_components():
+    from aios_core.gitcoin_algora_bounty_solver import legitimacy_score as ls
+    gate = {"target_repo": "tenstorrent/tt-metal"}
+    assert ls(1500, 2, {"stars": 1618}, gate) == 45 + 25 + 15      # 85 потолок
+    assert ls(100, 100, {"stars": 75}, gate) == 18 + 15 + 5        # 20..99⭐ тир, старше 72ч
+    assert ls(100, 100, {"stars": 150}, gate) == 30 + 15 + 5       # 100..999⭐ тир
+    assert ls(30, 10, {"stars": 3}, gate) == -10 + 0 + 15          # копеечный приз не в счёт
+    # ферма-нейминг: срез баллов при мелком репо
+    farm = {"target_repo": "vansh-09/BountyScout"}
+    legit = {"target_repo": "acme/realrepo"}
+    q = {"stars": 5}
+    assert ls(100, 10, q, farm) == ls(100, 10, q, legit) - 25
+    # звёзды неизвестны (качество не фетчилось) — без штрафа за них
+    assert ls(1500, 2, {}, gate) == 25 + 15
+
+
+def test_radar_low_score_filtered(tmp_path, monkeypatch):
+    """Ферма-мусор: мелкое репо + дефолтный приз + ферм-нейминг → без алерта."""
+    solver = GitcoinAlgoraMasterSolver(data_dir=str(tmp_path))
+    eng = _EngineWithQuality({"status": "ok", "target_repo": "x/BountyScout", "issue_num": 9},
+                             {"stars": 3, "archived": False})
+    monkeypatch.setattr(solver, "_radar_engine", lambda: eng)
+    sent = []
+    monkeypatch.setattr(solver, "_notify", lambda text: sent.append(text))
+    b = _fresh(hours=1.0, prize_line="quick task")  # приз дефолт 100
+    r = solver.radar_sweep(bounties=[b])
+    assert r["fresh_uncontested"] == 0 and len(sent) == 0
+    st = json.loads((tmp_path / "bounty_radar.json").read_text(encoding="utf-8"))
+    assert "low_score" in st["seen"][b["id"]]["gate"]
+
+
+def test_radar_digest_sorted_by_score_and_badge(tmp_path, monkeypatch):
+    solver = GitcoinAlgoraMasterSolver(data_dir=str(tmp_path))
+    eng = _EngineWithQuality({"status": "ok", "target_repo": "a/b", "issue_num": 9},
+                             {"stars": 120, "archived": False})
+    monkeypatch.setattr(solver, "_radar_engine", lambda: eng)
+    sent = []
+    monkeypatch.setattr(solver, "_notify", lambda text: sent.append(text))
+    bs = [_fresh(hours=100.0, prize_line="[Bounty $100] slow"),      # 30+15+5 = 50
+          _fresh(hours=2.0, prize_line="[Bounty $100] urgent"),      # 30+15+15 = 60
+          _fresh(hours=48.0, prize_line="[Bounty $100] mid")]        # 30+15+10 = 55
+    r = solver.radar_sweep(bounties=bs)
+    assert r["fresh_uncontested"] == 3
+    assert len(sent) == 1
+    body = sent[0]
+    assert body.index("urgent") < body.index("mid") < body.index("slow")
+    assert "🏆60" in body
+    st = json.loads((tmp_path / "bounty_radar.json").read_text(encoding="utf-8"))
+    scores = sorted(v.get("score") for v in st["seen"].values() if v.get("score"))
+    assert scores == [50, 55, 60]
