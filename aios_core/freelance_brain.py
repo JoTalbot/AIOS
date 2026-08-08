@@ -387,7 +387,7 @@ class FreelanceMarketRadar:
                     ctx = await p.chromium.launch_persistent_context(
                         user_data_dir="/tmp/aios_fh_browser",
                         headless=True,
-                        args=["--no-sandbox","--disable-dev-shm-usage","--disable-blink-features=AutomationControlled"],
+                        args=["--no-sandbox","--disable-dev-shm-usage","--disable-blink-features=AutomationControlled","--renderer-process-limit=4"],
                         viewport={"width": 1280, "height": 900},
                         user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                     )
@@ -483,7 +483,7 @@ class FreelanceMarketRadar:
                     ctx = await p.chromium.launch_persistent_context(
                         user_data_dir="/tmp/aios_upwork_browser",
                         headless=True,
-                        args=["--no-sandbox","--disable-dev-shm-usage"],
+                        args=["--no-sandbox","--disable-dev-shm-usage","--renderer-process-limit=4"],
                         viewport={"width": 1280, "height": 900},
                         user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                     )
