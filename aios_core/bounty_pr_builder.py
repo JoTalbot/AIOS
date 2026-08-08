@@ -44,14 +44,30 @@ def _load_token() -> str:
     raise RuntimeError("GITHUB_API_KEY not found")
 
 
+def _resolve_pr_live() -> bool:
+    """Единая точка live-гейта: legacy AIOS_BOUNTY_PR_MODE=1 ИЛИ
+    AIOS_BOUNTY_PR=live (os.environ или .env fallback — systemd env не инжектит)."""
+    if os.environ.get("AIOS_BOUNTY_PR_MODE", "").strip() == "1":
+        return True
+    raw = os.environ.get("AIOS_BOUNTY_PR", "")
+    if not raw.strip() and os.path.exists(DEFAULT_ENV_FILE):
+        try:
+            for line in open(DEFAULT_ENV_FILE):
+                if line.startswith("AIOS_BOUNTY_PR="):
+                    raw = line.split("=", 1)[1]
+                    break
+        except Exception:
+            pass
+    return (raw.split("#")[0].strip().split() or ["off"])[0].lower() == "live"
+
+
 class BountyPRBuilder:
     """Создание PR через REST API GitHub без локального клона."""
 
     def __init__(self, github_token: Optional[str] = None,
                  dry_run: Optional[bool] = None, api_base: str = "https://api.github.com"):
         self.token = github_token or _load_token()
-        env_mode = os.environ.get("AIOS_BOUNTY_PR_MODE", "0").strip()
-        self.dry_run = (env_mode != "1") if dry_run is None else dry_run
+        self.dry_run = (not _resolve_pr_live()) if dry_run is None else dry_run
         self.api_base = api_base
         self._me: Optional[str] = None
 

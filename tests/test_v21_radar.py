@@ -27,6 +27,7 @@ def _fresh(hours=1.0, prize_line="[Bounty $1,500] Fix X", prize_usd=None):
          "body": "",
          "html_url": "https://github.com/a/b/issues/9",
          "repository_url": "https://api.github.com/repos/a/b",
+         "comments_url": "https://api.github.com/repos/a/b/issues/9/comments",
          "number": 9,
          "created_at": (datetime.now(timezone.utc)
                         - timedelta(hours=hours)).isoformat().replace("+00:00", "Z")}
@@ -233,3 +234,77 @@ def test_radar_digest_when_three_plus(tmp_path, monkeypatch):
     assert len(sent) == 1, "дайджест — одно сообщение"
     assert "Свежие бесконкурентные баунти: 3" in sent[0]
     assert sent[0].count("github.com/a/b/issues/9") == 3
+
+
+# ---------------- v21.13: расширение радара + замкнутая петля ----------------
+
+def test_radar_queries_expanded(monkeypatch):
+    import importlib
+    import aios_core.gitcoin_algora_bounty_solver as sol
+    importlib.reload(sol)  # дефолтный watchlist подхватить
+    monkeypatch.delenv("AIOS_BOUNTY_RADAR_QUERIES", raising=False)
+    monkeypatch.delenv("AIOS_BOUNTY_WATCH_REPOS", raising=False)
+    qs = sol.radar_queries()
+    assert any("label:algora" in q for q in qs)
+    assert any("/bounty in:body" in q for q in qs)
+    assert any("repo:Ikalus1988/MisakaNet" in q for q in qs)
+
+
+def test_cycle_prefers_radar_hit(tmp_path, monkeypatch):
+    """Свежий бесконкурентный хит радара становится целью цикла (замкнутая петля)."""
+    solver = GitcoinAlgoraMasterSolver(data_dir=str(tmp_path))
+    monkeypatch.setenv("AIOS_BOUNTY_PR", "off")
+
+    fresh = _fresh(hours=1.0, prize_line="[Bounty $300] urgent fix")
+    eng = _EngineWithQuality({"status": "ok", "target_repo": "a/b", "issue_num": 9},
+                             {"stars": 200, "archived": False})
+    monkeypatch.setattr(solver, "_radar_engine", lambda: eng)
+    sent = []
+    monkeypatch.setattr(solver, "_notify", lambda text: sent.append(text))
+
+    class FakeAll:
+        def search_all(self, max_results=10):
+            return [fresh]
+
+        def search_live_bounties(self, query="", max_results=1):
+            return [{"id": "legacy_1", "number": 5, "title": "old", "body": "",
+                     "html_url": "https://github.com/x/y/issues/5",
+                     "repository_url": "https://api.github.com/repos/x/y",
+                     "comments_url": "https://api.github.com/repos/x/y/issues/5/comments"}]
+
+    solver.scanner = FakeAll()
+    monkeypatch.setattr(solver.balancer, "chat", lambda m, task_type="general": "решение")
+    monkeypatch.setattr(solver.submitter, "post_issue_solution_comment",
+                        lambda **kw: {"status": "success"})
+    monkeypatch.setattr(solver.wallet, "record_income", lambda **kw: {})
+    monkeypatch.setattr(solver.wallet, "get_financial_summary", lambda: {})
+
+    res = solver.run_bounty_cycle(max_batch=1)
+    one = res["solved_results"][0]
+    assert one["bounty_id"] == fresh["id"], "цикл взял хит радара, а не legacy"
+    assert one["potential_usd"] == 300.0
+
+
+def test_cycle_fallback_legacy_when_no_hits(tmp_path, monkeypatch):
+    solver = GitcoinAlgoraMasterSolver(data_dir=str(tmp_path))
+    monkeypatch.setenv("AIOS_BOUNTY_PR", "off")
+
+    class FakeAll:
+        def search_all(self, max_results=10):
+            return []
+
+        def search_live_bounties(self, query="", max_results=1):
+            return [{"id": "legacy_1", "number": 5, "title": "t", "body": "b",
+                     "html_url": "https://github.com/x/y/issues/5",
+                     "repository_url": "https://api.github.com/repos/x/y",
+                     "comments_url": "https://api.github.com/repos/x/y/issues/5/comments"}]
+
+    solver.scanner = FakeAll()
+    monkeypatch.setattr(solver.balancer, "chat", lambda m, task_type="general": "ok")
+    monkeypatch.setattr(solver.submitter, "post_issue_solution_comment",
+                        lambda **kw: {"status": "success"})
+    monkeypatch.setattr(solver.wallet, "record_income", lambda **kw: {})
+    monkeypatch.setattr(solver.wallet, "get_financial_summary", lambda: {})
+
+    res = solver.run_bounty_cycle(max_batch=1)
+    assert res["solved_results"][0]["bounty_id"] == "legacy_1"
