@@ -371,6 +371,10 @@ def cmd_help() -> str:
     return _f()
 
 
+TEMPLATES_FILE = PROJECT_ROOT / "data" / "templates.json"
+REMINDERS_FILE = PROJECT_ROOT / "data" / "reminders.json"
+
+
 def _load_templates() -> dict:
     from tg_bot.reminders import _load_templates as _f
     return _f()
