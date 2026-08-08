@@ -63,7 +63,7 @@
 
 - 🔲 **SaaS-пилот**: AIOS-как-сервис для 1-2 внешних клиентов (multi-tenancy из aios_core/multitenancy.py)
 - 🟡 **API-монетизация**: groundwork 2026-08-08 — /api/v2/mon/* (olx-price $0.10 live, audit, summarize, balance), key store + bearer allowlist; Phase B пилот за approve владельца
-- 🔲 **White-label OLX-автоматизация** для автоназборок (проверенная ниша)
+- 🟡 **White-label OLX-автоматизация** для автоназборок: groundwork 2026-08-08 — tenant-конфиги брендов + изолированные черновики (markup/квота), публикация за approve
 
 ---
 
