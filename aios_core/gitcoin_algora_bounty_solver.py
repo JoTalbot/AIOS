@@ -48,6 +48,9 @@ RADAR_QUERIES_DEFAULT = [
     "label:bounty language:python type:issue",
     "label:bounty type:issue",
     "bounty in:title type:issue",
+    "label:algora type:issue",
+    "label:opire type:issue",
+    "/bounty in:body type:issue",
 ]
 
 
@@ -58,8 +61,10 @@ def radar_queries() -> List[str]:
     if q.strip():
         return [x.strip() for x in q.split(";;") if x.strip()]
     queries = list(RADAR_QUERIES_DEFAULT)
-    watch = os.environ.get("AIOS_BOUNTY_WATCH_REPOS",
-                           "zhangjiayang6835-cyber/bounty-plaza")
+    watch = os.environ.get(
+        "AIOS_BOUNTY_WATCH_REPOS",
+        "zhangjiayang6835-cyber/bounty-plaza,Ikalus1988/MisakaNet,"
+        "moorcheh-ai/memanto,vansh-09/BountyScout,relayhop/sn-monetization-runtime")
     for repo in [r.strip() for r in watch.split(",") if r.strip()]:
         queries.append(f"repo:{repo} type:issue")
     return queries
@@ -355,6 +360,7 @@ class GitcoinAlgoraMasterSolver:
 
         return {"scanned": len(bounties), "seen_total": len(seen),
                 "fresh_uncontested": len(fresh_hits),
+                "hits": fresh_hits,
                 "alerts": [h["bounty"].get("html_url") for h in fresh_hits]}
 
     def run_bounty_cycle(self, max_batch: int = 1) -> Dict[str, Any]:
@@ -367,7 +373,14 @@ class GitcoinAlgoraMasterSolver:
             radar = {"error": str(_r_e)[:120]}
             logger.warning(f"radar sweep: {_r_e}")
 
-        bounties = self.scanner.search_live_bounties(max_results=max_batch)
+        # v21.13: замкнутая петля — радар нашёл свежее бесконкурентное → цель цикла
+        hits = (radar.get("hits") or [])[:max_batch]
+        bounties = [h["bounty"] for h in hits]
+        if not bounties:
+            bounties = self.scanner.search_live_bounties(max_results=max_batch)
+        for h in hits:
+            logger.info(f"🎯 Radar→Cycle target: {h['bounty'].get('html_url')} "
+                        f"(~${h['prize']:.0f}, {h['age_h']:.0f}ч)")
         solved_results = []
         total_bounty_usd = 0.0
 

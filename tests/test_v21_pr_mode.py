@@ -77,3 +77,41 @@ def test_validation_rejects_bad_input():
     assert b.build_pr("o", "r", "main", {"../evil": "x"}, "aios/x", "t", "b")["status"] == "error"
     assert b.build_pr("o", "r", "main", {"a.py": "   "}, "aios/x", "t", "b")["status"] == "error"
     assert b.build_pr("o", "r", "main", {"a.py": "x\n"}, "bad branch!", "t", "b")["status"] == "error"
+
+
+class TestLiveGateResolution:
+    """v21.13: единый live-гейт (plan→live по одобрению владельца)."""
+
+    def test_live_via_env(self, monkeypatch):
+        monkeypatch.setenv("AIOS_BOUNTY_PR", "live")
+        monkeypatch.delenv("AIOS_BOUNTY_PR_MODE", raising=False)
+        b = BountyPRBuilder(github_token="t")
+        assert b.dry_run is False
+
+    def test_plan_via_env(self, monkeypatch):
+        monkeypatch.setenv("AIOS_BOUNTY_PR", "plan")
+        monkeypatch.delenv("AIOS_BOUNTY_PR_MODE", raising=False)
+        b = BountyPRBuilder(github_token="t")
+        assert b.dry_run is True
+
+    def test_live_via_dotenv_fallback(self, monkeypatch, tmp_path):
+        import aios_core.bounty_pr_builder as bpb
+        monkeypatch.delenv("AIOS_BOUNTY_PR", raising=False)
+        monkeypatch.delenv("AIOS_BOUNTY_PR_MODE", raising=False)
+        env = tmp_path / ".env"
+        env.write_text("# comment line\nAIOS_BOUNTY_PR=live\n", encoding="utf-8")
+        monkeypatch.setattr(bpb, "DEFAULT_ENV_FILE", str(env))
+        b = BountyPRBuilder(github_token="t")
+        assert b.dry_run is False
+
+    def test_live_with_trailing_comment(self, monkeypatch):
+        monkeypatch.setenv("AIOS_BOUNTY_PR", "live  # approved")
+        monkeypatch.delenv("AIOS_BOUNTY_PR_MODE", raising=False)
+        b = BountyPRBuilder(github_token="t")
+        assert b.dry_run is False
+
+    def test_legacy_mode_still_works(self, monkeypatch):
+        monkeypatch.setenv("AIOS_BOUNTY_PR_MODE", "1")
+        monkeypatch.delenv("AIOS_BOUNTY_PR", raising=False)
+        b = BountyPRBuilder(github_token="t")
+        assert b.dry_run is False
