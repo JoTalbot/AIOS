@@ -14,7 +14,7 @@ CATALOG_HTML = ROOT / "data" / "inventory_catalog.html"
 
 _TRIGGERS = (
     "склад", "каталог", "товары на складе", "что на складе", "наличие на складе",
-    "📦 склад", "витрина", "каталог склада",
+    "📦 склад", "витрина", "каталог склада", "товары", "позиции на складе",
 )
 
 _DESIGN_TRIGGERS = (
@@ -98,9 +98,12 @@ def _handle_catalog_intent(api, chat_id: int, text: str) -> bool:
         lines.append("🌐 HTML-каталог доступен локально (data/inventory_catalog.html) и в Stitch.")
 
     try:
-        api.send_message(chat_id, "\n".join(lines)[:3900])
+        api.send_message(chat_id, "\n".join(lines)[:3900], reply_markup=_catalog_inline_keyboard())
     except Exception:
-        api.send_message(chat_id, "\n".join(lines)[:3900], parse_mode="")
+        try:
+            api.send_message(chat_id, "\n".join(lines)[:3900], parse_mode="", reply_markup=_catalog_inline_keyboard())
+        except Exception:
+            api.send_message(chat_id, "\n".join(lines)[:3900], parse_mode="")
     return True
 
 
@@ -146,4 +149,68 @@ def _handle_catalog_design_intent(api, chat_id: int, text: str) -> bool:
         "🏬 Склад: команда «склад» — статистика и наличие.\n"
         "📦 OLX: 3 товара не опубликованы (Колесо 2200, Диски Шкода 7000, Кузов 10000).",
     )
+    return True
+
+
+def _catalog_inline_keyboard() -> dict:
+    """Inline-кнопки быстрой навигации по каталогу."""
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "🏬 Склад", "callback_data": "cat_warehouse"},
+                {"text": "🆚 Конкуренты", "callback_data": "cat_competitors"},
+            ],
+            [
+                {"text": "🎨 Дизайн", "callback_data": "cat_design"},
+                {"text": "💼 Фриланс", "callback_data": "cat_freelance"},
+            ],
+        ]
+    }
+
+
+def _handle_competitors_intent(api, chat_id: int, text: str) -> bool:
+    """«конкуренты», «цены конкурентов», «мониторинг цен» — отчёт по конкурентам."""
+    t = " ".join(str(text or "").casefold().split())
+    if not any(ph in t for ph in ("конкурент", "цены конкурент", "мониторинг цен", "рынок", "🆚")):
+        return False
+    mon_path = ROOT / "data" / "competitor_monitor.json"
+    if not mon_path.exists():
+        api.send_message(chat_id, "⚠️ Нет данных мониторинга. Запусти: python run_competitor_monitor.py")
+        return True
+    try:
+        mon = json.loads(mon_path.read_text(encoding="utf-8"))
+    except Exception:
+        api.send_message(chat_id, "⚠️ Ошибка чтения мониторинга.")
+        return True
+
+    items = mon.get("items", [])
+    below = [i for i in items if i["position"] == "below_market"]
+    above = [i for i in items if i["position"] == "above_market"]
+    no_comp = [i for i in items if i.get("competitors", 0) == 0]
+
+    lines = [
+        "🆚 <b>Конкуренты (OLX)</b>",
+        f"🔎 Позиций с конкурентами: <b>{mon.get('positions_with_competitors', 0)}</b> из {mon.get('positions', 0)}",
+        f"⬇️ Наша цена ниже рынка: <b>{len(below)}</b> · ⬆️ выше: <b>{len(above)}</b> · без конкуренции: <b>{len(no_comp)}</b>",
+        "",
+    ]
+    if below:
+        lines.append("<b>Можно поднять цену:</b>")
+        for i in sorted(below, key=lambda x: -x.get("our_price", 0))[:5]:
+            lines.append(
+                f"  • {_esc(i['name'][:45])} — мы {i['our_price']:.0f}, рынок {i.get('market_min', 0):.0f}–{i.get('market_max', 0):.0f}"
+            )
+    if above:
+        lines.append("")
+        lines.append("<b>Мы дороже рынка:</b>")
+        for i in sorted(above, key=lambda x: -x.get("our_price", 0))[:3]:
+            lines.append(f"  ⚠️ {_esc(i['name'][:45])} — мы {i['our_price']:.0f}, рынок до {i.get('market_max', 0):.0f}")
+    lines.append("")
+    lines.append(f"📅 Обновлено: {mon.get('generated_at', '—')}")
+    lines.append("💡 Сводка по позициям — в HTML-отчёте data/competitor_monitor.html")
+
+    try:
+        api.send_message(chat_id, "\n".join(lines), reply_markup=_catalog_inline_keyboard())
+    except Exception:
+        api.send_message(chat_id, "\n".join(lines).replace("<b>", "").replace("</b>", ""))
     return True

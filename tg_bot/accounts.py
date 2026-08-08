@@ -651,6 +651,14 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
+    # Фриланс-сводка (v22.7): «фриланс», «что по фрилансу» — до treasury, т.к. широкая фраза
+    try:
+        from tg_bot.dashboard import _handle_freelance_summary_intent as _hfs
+        if _hfs(api, chat_id, text):
+            return True
+    except Exception:
+        pass
+
     # Workflow readiness, jobs, inventory, metrics, bank monitor, recovery, reports and leads precede broad CRM words.
     if _m()._handle_treasury_intent(api, chat_id, text):
         return True
@@ -664,6 +672,22 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         return True
     if _m()._handle_phone_inventory_intent(api, chat_id, text):
         return True
+    # Сводка AIOS (v22.7): «сводка», «дашборд», «итоги» — живая сводка по направлениям
+    try:
+        from tg_bot.dashboard import _handle_dashboard_intent as _hdi
+        if _hdi(api, chat_id, text):
+            return True
+    except Exception:
+        pass
+
+    # Конкуренты (v22.7): «конкуренты», «цены конкурентов», «рынок»
+    try:
+        from tg_bot.catalog import _handle_competitors_intent as _hc
+        if _hc(api, chat_id, text):
+            return True
+    except Exception:
+        pass
+
     # Каталог склада (v22.1): «склад», «каталог», «что на складе»
     try:
         from tg_bot.catalog import _handle_catalog_intent as _hci
