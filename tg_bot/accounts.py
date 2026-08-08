@@ -672,6 +672,32 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         return True
     if _m()._handle_phone_inventory_intent(api, chat_id, text):
         return True
+    # Inline-меню (v22.8): «🧭 меню», «меню» — красивая inline-навигация
+    t_low = " ".join(str(text or "").casefold().split())
+    if t_low in ("🧭 меню", "меню", "навигация"):
+        try:
+            from tg_bot.keyboards import MAIN_MENU_INLINE
+            api.send_message(chat_id, "🧭 <b>Навигация AIOS</b> — выберите раздел:", reply_markup=MAIN_MENU_INLINE)
+        except Exception:
+            pass
+        return True
+
+    # Товары склада с пагинацией (v22.8): «товары», «список товаров»
+    try:
+        from tg_bot.catalog import _handle_items_intent as _hii
+        if _hii(api, chat_id, text):
+            return True
+    except Exception:
+        pass
+
+    # Карточка товара (v22.8): «товар <название>», «деталь <название>»
+    try:
+        from tg_bot.catalog import _handle_item_card_intent as _hic
+        if _hic(api, chat_id, text):
+            return True
+    except Exception:
+        pass
+
     # Сводка AIOS (v22.7): «сводка», «дашборд», «итоги» — живая сводка по направлениям
     try:
         from tg_bot.dashboard import _handle_dashboard_intent as _hdi

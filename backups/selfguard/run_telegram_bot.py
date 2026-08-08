@@ -278,7 +278,7 @@ from tg_bot.state import _last_photo, _photo_pending, _last_gen_ad, _last_video,
 from tg_bot.state import _pending_actions, _pending_confirmations
 from tg_bot.treasury import _handle_treasury_intent
 from tg_bot.keyboards import (
-    MAIN_MENU_KEYBOARD, CODER_MENU_KEYBOARD, OLX_MENU_KEYBOARD, ACCOUNTS_MENU_KEYBOARD,
+    MAIN_MENU_KEYBOARD, MAIN_MENU_INLINE, CODER_MENU_KEYBOARD, OLX_MENU_KEYBOARD, ACCOUNTS_MENU_KEYBOARD,
     PHONE_MENU_KEYBOARD, GOOGLE_MENU_KEYBOARD, INSTAGRAM_MENU_KEYBOARD, BOT_MENU_KEYBOARD,
     DANGEROUS_CALLBACKS,
 )
@@ -488,13 +488,19 @@ def cmd_alert_history() -> str:
     return "🚨 <b>Alert History</b>\n\n" + ("✅ Текущие проверки в норме" if not failed else "❌ Проблемы: " + ", ".join(failed))
 
 
-def cmd_start() -> str:
-    """Приветствие с живой сводкой по направлениям."""
+def cmd_start(first_name: str | None = None) -> str:
+    """Приветствие с именем и живой сводкой по направлениям."""
     try:
         from tg_bot.dashboard import render_dashboard
         dash = render_dashboard()
+        try:
+            from tg_bot.common import _esc_tg as _esc_n
+        except Exception:
+            _esc_n = lambda x: str(x).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        hi = f"👋 Привет, {_esc_n(first_name)}!" if first_name else "👋 Привет!"
         return (
             "🤖 <b>AIOS Control Panel</b>\n"
+            f"{hi}\n"
             "Бот управления бизнесом и системой. Нажми кнопку меню или напиши текстом.\n\n"
             f"{dash}\n\n"
             "👇 <b>Разделы:</b> кнопки ниже"
@@ -2103,8 +2109,8 @@ def run_bot(token: str) -> None:
                 keyboard = None
 
                 if cmd == "/start" or cmd == "/menu":
-                    reply = cmd_start()
-                    keyboard = MAIN_MENU_KEYBOARD
+                    reply = cmd_start(first_name)
+                    keyboard = MAIN_MENU_INLINE
                 elif cmd == "/stats":
                     reply = cmd_stats()
                 elif cmd in ("/status", "/platforms"):

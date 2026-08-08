@@ -1039,6 +1039,14 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
         return
 
     # ---- Inventory draft (фича v22.1) — перехватываем до общего answer_callback, иначе лишний спам ----
+    if data in ("noop",):
+        api.answer_callback(cb_id, "…")
+        return
+
+    if data.startswith("nav_") or data.startswith("olx_") or data.startswith("cat_items_"):
+        _handle_nav_callback(api, chat_id, cb_id, data)
+        return
+
     if data.startswith("inv_"):
         # не шлём общий "Обрабатываю", т.к. _handle_inventory_callback сам ответит
         if _handle_inventory_callback(api, chat_id, cb_id, data, msg_id):
@@ -1096,3 +1104,69 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
 
     # ---- Остальные кнопки меню (опасные — с подтверждением) ----
     _handle_button(api, chat_id, data)
+
+
+def _handle_nav_callback(api, chat_id: int, cb_id: str, data: str) -> None:
+    """Навигация по inline-меню (v22.8): nav_*, olx_*, cat_items_*."""
+    api.answer_callback(cb_id, "⏳ Открываю…")
+    try:
+        import run_telegram_bot as _bot
+        if data == "nav_dashboard":
+            from tg_bot.dashboard import _handle_dashboard_intent
+            _handle_dashboard_intent(api, chat_id, "сводка")
+        elif data == "nav_catalog":
+            from tg_bot.catalog import _handle_catalog_intent
+            _handle_catalog_intent(api, chat_id, "склад")
+        elif data == "nav_competitors":
+            from tg_bot.catalog import _handle_competitors_intent
+            _handle_competitors_intent(api, chat_id, "конкуренты")
+        elif data == "nav_olx":
+            from tg_bot.keyboards import OLX_ACTIONS_INLINE
+            api.send_message(chat_id, "🛒 <b>OLX</b> — выберите действие:", reply_markup=OLX_ACTIONS_INLINE)
+        elif data == "nav_freelance":
+            from tg_bot.dashboard import _handle_freelance_summary_intent
+            _handle_freelance_summary_intent(api, chat_id, "фриланс")
+        elif data == "nav_treasury":
+            from tg_bot.treasury import _handle_treasury_intent as _hti
+            _hti(api, chat_id, "казначейство и резервы")
+        elif data == "nav_trading":
+            from tg_bot.treasury import _handle_treasury_intent as _hti
+            _hti(api, chat_id, "трейдинг и котировки")
+        elif data == "nav_np":
+            from tg_bot.treasury import _handle_treasury_intent as _hti
+            _hti(api, chat_id, "логистика новая почта")
+        elif data == "nav_phone":
+            from tg_bot.phone import _handle_phone_control_center_intent as _hpc
+            _hpc(api, chat_id, "центр телефона")
+        elif data == "nav_sre":
+            try:
+                api.send_message(chat_id, _bot.cmd_system_health())
+            except Exception as _e_sre:
+                api.send_message(chat_id, f"🛡 SRE: временно недоступно ({_e_sre})")
+        elif data == "nav_help":
+            api.send_message(chat_id, _bot.cmd_help())
+        elif data == "olx_stats":
+            api.send_message(chat_id, _bot.cmd_olx(""))
+        elif data == "olx_latest":
+            api.send_message(chat_id, _bot.cmd_olx_latest("запчасти ваз б/у", chat_id))
+        elif data == "olx_analytics":
+            try:
+                api.send_message(chat_id, _bot.cmd_olx_analytics("запчасти ваз"))
+            except Exception as _e_olx:
+                api.send_message(chat_id, f"⚠️ Аналитика OLX: {_e_olx}")
+        elif data == "olx_subs":
+            api.send_message(chat_id, _bot.cmd_olx_list(chat_id))
+        elif data.startswith("cat_items_"):
+            try:
+                offset = int(data.split("_")[-1])
+            except Exception:
+                offset = 0
+            from tg_bot.catalog import _send_items_page
+            _send_items_page(api, chat_id, offset)
+        else:
+            api.answer_callback(cb_id, "Неизвестное действие")
+    except Exception as e:
+        try:
+            api.send_message(chat_id, f"⚠️ Ошибка навигации: {e}")
+        except Exception:
+            pass

@@ -9,10 +9,40 @@ MAIN_MENU_KEYBOARD = {
         [{"text": "💼 Фриланс"}, {"text": "💰 Казначейство"}],
         [{"text": "📈 Трейдинг"}, {"text": "📦 Новая Почта"}],
         [{"text": "📲 Телефон & Банки"}, {"text": "🛡 SRE Статус"}],
-        [{"text": "❓ Помощь"}],
+        [{"text": "❓ Помощь"}, {"text": "🧭 Меню"}],
     ],
     "resize_keyboard": True,
     "one_time_keyboard": False,
+}
+
+
+# Inline-главное меню (v22.8): красивая навигация кнопками под сообщением
+MAIN_MENU_INLINE = {
+    "inline_keyboard": [
+        [{"text": "📊 Сводка", "callback_data": "nav_dashboard"},
+         {"text": "🏬 Каталог", "callback_data": "nav_catalog"}],
+        [{"text": "🆚 Конкуренты", "callback_data": "nav_competitors"},
+         {"text": "🛒 OLX", "callback_data": "nav_olx"}],
+        [{"text": "💼 Фриланс", "callback_data": "nav_freelance"},
+         {"text": "💰 Казначейство", "callback_data": "nav_treasury"}],
+        [{"text": "📈 Трейдинг", "callback_data": "nav_trading"},
+         {"text": "📦 Новая Почта", "callback_data": "nav_np"}],
+        [{"text": "📲 Телефон & Банки", "callback_data": "nav_phone"},
+         {"text": "🛡 SRE", "callback_data": "nav_sre"}],
+        [{"text": "❓ Помощь", "callback_data": "nav_help"}],
+    ]
+}
+
+
+# Быстрые действия OLX (v22.8): кнопки под сообщением раздела
+OLX_ACTIONS_INLINE = {
+    "inline_keyboard": [
+        [{"text": "📊 Статистика", "callback_data": "olx_stats"},
+         {"text": "🆕 Последние", "callback_data": "olx_latest"}],
+        [{"text": "📈 Аналитика цен", "callback_data": "olx_analytics"},
+         {"text": "📋 Подписки", "callback_data": "olx_subs"}],
+        [{"text": "🏬 Склад", "callback_data": "nav_catalog"}],
+    ]
 }
 
 
