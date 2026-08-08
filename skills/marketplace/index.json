@@ -854,6 +854,81 @@
       "name": "knowledge-linker",
       "path": "research/knowledge-linker",
       "category": "research"
+    },
+    {
+      "name": "stitch::code-to-design",
+      "path": "stitch/design/skills/code-to-design",
+      "category": "stitch_design"
+    },
+    {
+      "name": "stitch::extract-design-md",
+      "path": "stitch/design/skills/extract-design-md",
+      "category": "stitch_design"
+    },
+    {
+      "name": "stitch::extract-static-html",
+      "path": "stitch/design/skills/extract-static-html",
+      "category": "stitch_design"
+    },
+    {
+      "name": "stitch::generate-design",
+      "path": "stitch/design/skills/generate-design",
+      "category": "stitch_design"
+    },
+    {
+      "name": "stitch::manage-design-system",
+      "path": "stitch/design/skills/manage-design-system",
+      "category": "stitch_design"
+    },
+    {
+      "name": "stitch::upload-to-stitch",
+      "path": "stitch/design/skills/upload-to-stitch",
+      "category": "stitch_design"
+    },
+    {
+      "name": "stitch::react-components",
+      "path": "stitch/build/skills/react-components",
+      "category": "stitch_build"
+    },
+    {
+      "name": "stitch::react-native",
+      "path": "stitch/build/skills/react-native",
+      "category": "stitch_build"
+    },
+    {
+      "name": "react-vite-dashboard",
+      "path": "stitch/build/skills/react-vite-dashboard",
+      "category": "stitch_build"
+    },
+    {
+      "name": "remotion",
+      "path": "stitch/build/skills/remotion",
+      "category": "stitch_build"
+    },
+    {
+      "name": "shadcn-ui",
+      "path": "stitch/build/skills/shadcn-ui",
+      "category": "stitch_build"
+    },
+    {
+      "name": "design-md",
+      "path": "stitch/utilities/skills/design-md",
+      "category": "stitch_utilities"
+    },
+    {
+      "name": "enhance-prompt",
+      "path": "stitch/utilities/skills/enhance-prompt",
+      "category": "stitch_utilities"
+    },
+    {
+      "name": "stitch-loop",
+      "path": "stitch/utilities/skills/stitch-loop",
+      "category": "stitch_utilities"
+    },
+    {
+      "name": "taste-design",
+      "path": "stitch/utilities/skills/taste-design",
+      "category": "stitch_utilities"
     }
   ]
 }
