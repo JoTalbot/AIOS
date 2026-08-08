@@ -161,3 +161,75 @@ def test_radar_sweep_prefers_search_all(tmp_path, monkeypatch):
     solver.scanner = FakeAll()
     r = solver.radar_sweep()
     assert called.get("n") == 10 and r["scanned"] == 0
+
+
+# ---------------- v21.12: качество сигнала ----------------
+
+def test_prize_crypto_templates():
+    assert extract_prize_usd("Fix bug", "Reward: 100 USDC via algora") == 100.0
+    assert extract_prize_usd("Fix bug", "pays 250 USDT") == 250.0
+    assert extract_prize_usd("Bounty 1,500 USDC", "") == 1500.0
+    assert extract_prize_usd("$75 title wins", "999 USDC in body") == 75.0  # $ приоритет
+    assert extract_prize_usd("nothing") == 100.0
+
+
+def test_quality_line_tags():
+    from aios_core.gitcoin_algora_bounty_solver import quality_line
+    assert "🟢 топ-репо" in quality_line({"stars": 2500})
+    assert "12.3k" in quality_line({"stars": 12345})
+    assert "🟢 живой" in quality_line({"stars": 120})
+    assert "🟡 мелкий" in quality_line({"stars": 3})
+    assert quality_line({}) == ""
+
+
+class _EngineWithQuality(FakeRadarEngine):
+    def __init__(self, gate, quality):
+        super().__init__(gate)
+        self.quality = quality
+
+    def repo_quality(self, owner, repo):
+        return self.quality
+
+
+def test_radar_archived_repo_skipped(tmp_path, monkeypatch):
+    solver = GitcoinAlgoraMasterSolver(data_dir=str(tmp_path))
+    eng = _EngineWithQuality({"status": "ok", "target_repo": "a/b", "issue_num": 9},
+                             {"stars": 5, "archived": True})
+    monkeypatch.setattr(solver, "_radar_engine", lambda: eng)
+    sent = []
+    monkeypatch.setattr(solver, "_notify", lambda text: sent.append(text))
+    b = _fresh(hours=1.0)
+    r = solver.radar_sweep(bounties=[b])
+    assert r["fresh_uncontested"] == 0 and len(sent) == 0
+    st = json.loads((tmp_path / "bounty_radar.json").read_text(encoding="utf-8"))
+    assert "archived" in st["seen"][b["id"]]["gate"]
+
+
+def test_radar_stars_recorded_and_line_in_alert(tmp_path, monkeypatch):
+    solver = GitcoinAlgoraMasterSolver(data_dir=str(tmp_path))
+    eng = _EngineWithQuality({"status": "ok", "target_repo": "a/b", "issue_num": 9},
+                             {"stars": 1500, "archived": False})
+    monkeypatch.setattr(solver, "_radar_engine", lambda: eng)
+    sent = []
+    monkeypatch.setattr(solver, "_notify", lambda text: sent.append(text))
+    b = _fresh(hours=1.0)
+    r = solver.radar_sweep(bounties=[b])
+    assert r["fresh_uncontested"] == 1 and len(sent) == 1
+    assert "⭐1.5k" in sent[0] and "🟢 топ-репо" in sent[0]
+    st = json.loads((tmp_path / "bounty_radar.json").read_text(encoding="utf-8"))
+    assert st["seen"][b["id"]]["stars"] == 1500
+
+
+def test_radar_digest_when_three_plus(tmp_path, monkeypatch):
+    solver = GitcoinAlgoraMasterSolver(data_dir=str(tmp_path))
+    eng = _EngineWithQuality({"status": "ok", "target_repo": "a/b", "issue_num": 9},
+                             {"stars": 7, "archived": False})
+    monkeypatch.setattr(solver, "_radar_engine", lambda: eng)
+    sent = []
+    monkeypatch.setattr(solver, "_notify", lambda text: sent.append(text))
+    bs = [_fresh(hours=float(i), prize_line=f"[Bounty $100] Fix {i}") for i in (1, 2, 3)]
+    r = solver.radar_sweep(bounties=bs)
+    assert r["fresh_uncontested"] == 3
+    assert len(sent) == 1, "дайджест — одно сообщение"
+    assert "Свежие бесконкурентные баунти: 3" in sent[0]
+    assert sent[0].count("github.com/a/b/issues/9") == 3
