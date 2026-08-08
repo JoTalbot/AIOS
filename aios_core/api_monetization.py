@@ -95,8 +95,9 @@ class APIMonetizationManager:
             "transaction": tx
         }
 
-    def verify_and_charge(self, api_key: str, cost_usd: float = 0.05) -> bool:
-        """Проверяет баланс API-ключа и списывает кредиты за запуск микросервиса."""
+    def verify_and_charge(self, api_key: str, cost_usd: float = 0.05, product: str = "generic") -> bool:
+        """Проверяет баланс API-ключа и списывает кредиты за запуск микросервиса.
+        v22-B: пишет usage-ledger (JSONL) для ежедневного отчёта API-выручки."""
         keys = self.load_keys()
         if api_key not in keys:
             return False
@@ -110,6 +111,16 @@ class APIMonetizationManager:
         keys[api_key] = client_info
         self.save_keys(keys)
 
+        try:
+            ledger = self.data_dir / "api_usage_ledger.jsonl"
+            with open(ledger, "a", encoding="utf-8") as lf:
+                lf.write(json.dumps({
+                    "ts": time.time(), "client": client_info.get("client_name", "?"),
+                    "key8": api_key[-8:], "product": product, "cost_usd": cost_usd,
+                }, ensure_ascii=False) + "\n")
+        except Exception as _le:
+            logger.debug(f"usage ledger write failed: {_le}")
+
         return True
 
     # -------------------------------------------------------------------
@@ -119,7 +130,7 @@ class APIMonetizationManager:
     def process_code_audit(self, api_key: str, code_snippet: str) -> Dict[str, Any]:
         """1. Микросервис ИИ-аудита безопасности и качества Python-кода."""
         cost = 0.10
-        if not self.verify_and_charge(api_key, cost_usd=cost):
+        if not self.verify_and_charge(api_key, cost_usd=cost, product="code_audit"):
             return {"status": "error", "message": "Недействительный API-ключ или недостаточно кредитов."}
 
         prompt = f"""
@@ -149,7 +160,7 @@ class APIMonetizationManager:
     def process_text_summarization(self, api_key: str, text: str) -> Dict[str, Any]:
         """2. Микросервис экспресс-суммаризации и извлечения сущностей."""
         cost = 0.05
-        if not self.verify_and_charge(api_key, cost_usd=cost):
+        if not self.verify_and_charge(api_key, cost_usd=cost, product="summarize"):
             return {"status": "error", "message": "Недействительный API-ключ или недостаточно кредитов."}
 
         prompt = f"Выдели главные тезисы, ключевые факты и краткое резюме следующего текста:\n{text[:4000]}"

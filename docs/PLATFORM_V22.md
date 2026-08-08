@@ -39,8 +39,8 @@ Auth: заголовок `X-API-Key` (коммерческий ключ `aios_li
 
 1. **Key store — JSON file** (`api_keys_monetization.json`): load+save на запрос, race при параллельности. Пилот-скейл ок (<10 rps), затем → sqlite/aios.sqlite.
 2. **Порт 127.0.0.1:8000** — для внешних клиентов нужен reverse proxy (nginx/caddy) + `AIOS_API_AUTH_REQUIRED=0` конфликт middleware решить allowlist'ом `/api/v2/mon/*`.
-3. **Rate limiting** нет (средство: только платёжный барьер). Phase B: токен-бакет per-key.
-4. **Analytics** по клиентам: `total_requests` есть; Phase B — daily usage отчёт в TG.
+3. ~~Rate limiting~~ ✅ v22-B: token bucket per-key, 30 req/мин (env `AIOS_MON_RATE_LIMIT_RPM`), 429 при превышении.
+4. ~~Analytics~~ ✅ v22-B: JSONL ledger `api_usage_ledger.jsonl` на каждое списание (клиент/продукт/сумма) + `scripts/api_usage_report.py` — TG-дайджест выручки, cron 21:05.
 5. **Выдача ключей** ручная (оператор после депозита) — Phase B: webhook USDT→ключ автоматом.
 
 ## Phase B (пилот) — чеклист за approve владельца

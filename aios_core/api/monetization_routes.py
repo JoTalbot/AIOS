@@ -18,6 +18,7 @@ import logging
 import os
 import sqlite3
 import statistics
+import time
 import threading
 from typing import Any, Dict, List, Optional
 
@@ -50,6 +51,27 @@ PRODUCTS_CATALOG = {
 
 _manager = None
 _manager_lock = threading.Lock()
+
+# v22-B: per-key token bucket rate limit (защита платных endpoint'ов)
+_RATE_RPM = float(os.environ.get("AIOS_MON_RATE_LIMIT_RPM", "30"))  # запросов в минуту на ключ
+_buckets: Dict[str, List[float]] = {}
+_buckets_lock = threading.Lock()
+
+
+def _rate_ok(key: str) -> bool:
+    """Token bucket: capacity/refill = _RATE_RPM в минуту. False -> 429."""
+    if _RATE_RPM <= 0:
+        return True
+    now = time.time()
+    refill_per_sec = _RATE_RPM / 60.0
+    with _buckets_lock:
+        tokens, last = _buckets.get(key, (_RATE_RPM, now))
+        tokens = min(_RATE_RPM, tokens + (now - last) * refill_per_sec)
+        if tokens < 1.0:
+            _buckets[key] = (tokens, now)
+            return False
+        _buckets[key] = (tokens - 1.0, now)
+        return True
 
 
 def _mgr():
@@ -128,7 +150,10 @@ async def mon_products(request: Request) -> JSONResponse:
 
 async def mon_olx_price(request: Request) -> JSONResponse:
     key = _key(request)
-    if not _mgr().verify_and_charge(key, OLX_PRICE_COST_USD):
+    if not _rate_ok(key):
+        return JSONResponse({"status": "error", "error": "rate limit exceeded",
+                             "limit": f"{_RATE_RPM:g} req/min per key"}, status_code=429)
+    if not _mgr().verify_and_charge(key, OLX_PRICE_COST_USD, product="olx_price"):
         return JSONResponse({
             "status": "error",
             "error": "invalid or unpaid api key",
@@ -148,6 +173,8 @@ async def mon_code_audit(request: Request) -> JSONResponse:
     code = str(body.get("code") or "")
     if not code.strip():
         return JSONResponse({"status": "error", "error": "body.code is empty"}, status_code=400)
+    if not _rate_ok(_key(request)):
+        return JSONResponse({"status": "error", "error": "rate limit exceeded"}, status_code=429)
     res = _mgr().process_code_audit(api_key=_key(request), code_snippet=code)
     status = 200 if res.get("status") == "success" else 402
     return JSONResponse(res, status_code=status)
@@ -161,6 +188,8 @@ async def mon_summarize(request: Request) -> JSONResponse:
     text = str(body.get("text") or "")
     if not text.strip():
         return JSONResponse({"status": "error", "error": "body.text is empty"}, status_code=400)
+    if not _rate_ok(_key(request)):
+        return JSONResponse({"status": "error", "error": "rate limit exceeded"}, status_code=429)
     res = _mgr().process_text_summarization(api_key=_key(request), text=text)
     status = 200 if res.get("status") == "success" else 402
     return JSONResponse(res, status_code=status)
