@@ -46,6 +46,8 @@ def _save(items: list[dict], data_path: Path | str | None = None) -> None:
     tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
     tmp.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(tmp, target)
+    # v22.1: авто-регенерация HTML-каталога при изменении инвентаря (с hash-проверкой)
+    _maybe_regen_catalog(items)
 
 
 def _find(items: list[dict], name: str) -> dict | None:
@@ -378,6 +380,26 @@ def stats(data_path: Path | str | None = None) -> dict:
         "available_qty": total_available, "reserved_qty": total_reserved,
         "total_value": round(total_value, 2), "out_of_stock": zero,
     }
+
+
+_catalog_last_hash = None
+
+
+def _maybe_regen_catalog(items: list[dict]) -> None:
+    """Перегенерировать data/inventory_catalog.html, только если данные изменились."""
+    global _catalog_last_hash
+    try:
+        import hashlib
+        h = hashlib.sha256(json.dumps(items, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+        if h == _catalog_last_hash:
+            return
+        _catalog_last_hash = h
+        from aios_core.inventory_catalog import normalize_items, render_catalog_html
+        cat_html = ROOT / "data" / "inventory_catalog.html"
+        cat_html.write_text(render_catalog_html(normalize_items(items)), encoding="utf-8")
+    except Exception:
+        import traceback
+        traceback.print_exc()
 
 
 def main() -> None:
