@@ -40,6 +40,7 @@ services:
       - .:/app
       - aios-data:/app/data
       - aios-logs:/app/logs
+      - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -70,6 +71,7 @@ services:
       - .:/app
       - aios-data:/app/data
       - aios-logs:/app/logs
+      - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
     depends_on:
       aios-api: {condition: service_healthy}
     restart: unless-stopped
@@ -127,6 +129,7 @@ services:
       - .:/app
       - aios-data:/app/data
       - aios-logs:/app/logs
+      - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
     depends_on:
       aios-api: {condition: service_healthy}
     restart: unless-stopped
@@ -159,6 +162,7 @@ services:
       - .:/app
       - aios-data:/app/data
       - aios-logs:/app/logs
+      - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
     restart: unless-stopped
     deploy:
       resources:

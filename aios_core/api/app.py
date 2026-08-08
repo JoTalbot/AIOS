@@ -213,6 +213,18 @@ class AIOSAPI(OLXHandlersMixin, DevicesShardsMixin, PlatformsModulesMixin, CoreH
         init_admin_routes(db_path=self.db.db_path)
         routes.extend(get_admin_routes())
 
+        # v22 Platform: коммерческие платные endpoint'ы /api/v2/mon/*
+        # (выключается env AIOS_MONETIZATION_ENABLED=0)
+        if os.environ.get("AIOS_MONETIZATION_ENABLED", "1").strip().lower() not in {"0", "false", "no"}:
+            try:
+                import logging as _lg
+                from aios_core.api.monetization_routes import get_monetization_routes
+                routes.extend(get_monetization_routes())
+                _lg.getLogger("AIOS.API").info("💰 monetization routes registered: /api/v2/mon/*")
+            except Exception as _mon_exc:
+                import logging as _lg
+                _lg.getLogger("AIOS.API").warning(f"⚠️ monetization routes not loaded: {_mon_exc}")
+
         async def _value_error_response(request: Request, exc: ValueError):
             # Например: неизвестный профиль платформы (?profile=...).
             return JSONResponse({"error": str(exc)}, status_code=400)

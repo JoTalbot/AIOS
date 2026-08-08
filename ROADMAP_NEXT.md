@@ -62,7 +62,7 @@
 ## 🌐 v22.0.0 — «Platform»: продукт наружу
 
 - 🔲 **SaaS-пилот**: AIOS-как-сервис для 1-2 внешних клиентов (multi-tenancy из aios_core/multitenancy.py)
-- 🔲 **API-монетизация**: api_monetization.py → реальные платные ключи
+- 🟡 **API-монетизация**: groundwork 2026-08-08 — /api/v2/mon/* (olx-price $0.10 live, audit, summarize, balance), key store + bearer allowlist; Phase B пилот за approve владельца
 - 🔲 **White-label OLX-автоматизация** для автоназборок (проверенная ниша)
 
 ---
