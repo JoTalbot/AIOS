@@ -490,6 +490,7 @@ class FreelanceChromeTwinAdapter(ChromeTwinAdapter):
             options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_argument("--user-data-dir=/root/AIOS/data/chrome_twin/default")
             options.add_argument("--window-size=1920,1080")
+            options.add_argument("--renderer-process-limit=6")
             driver = uc.Chrome(options=options, headless=False, use_subprocess=False)
             driver.get(task_url)
             _time.sleep(5)
