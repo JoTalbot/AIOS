@@ -40,291 +40,38 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 # === Inventory by photo v22.1 helpers ===
 import random as _rnd
 
-def _generate_draft_id(chat_id: int) -> str:
-    return f"{chat_id}_{int(time.time()*1000)}_{_rnd.randint(1000,9999)}"
-
-def _build_inventory_keyboard(draft_id: str, price, photos_len: int):
-    try:
-        price_int = int(float(price))
-        price_label = f"{price_int} грн" if float(price).is_integer() else f"{price} грн"
-    except:
-        price_label = f"{price} грн"
-    return {
-        "inline_keyboard": [
-            [
-                {"text": f"✅ Подтвердить {price_label}", "callback_data": f"inv_confirm_{draft_id}"},
-                {"text": "❌ Отмена", "callback_data": f"inv_cancel_{draft_id}"}
-            ],
-            [
-                {"text": f"✅+📢 Склад+OLX ({price_label})", "callback_data": f"inv_confirm_olx_{draft_id}"},
-                {"text": f"📢 Только OLX", "callback_data": f"inv_olx_{draft_id}"}
-            ],
-            [
-                {"text": "✏️ Цена", "callback_data": f"inv_edit_price_{draft_id}"},
-                {"text": "✏️ Название", "callback_data": f"inv_edit_name_{draft_id}"},
-                {"text": "✏️ Кол-во", "callback_data": f"inv_edit_qty_{draft_id}"}
-            ],
-            [
-                {"text": f"📸 +фото ({photos_len} шт)", "callback_data": f"inv_add_photo_{draft_id}"},
-                {"text": "🏷 Категория", "callback_data": f"inv_edit_category_{draft_id}"}
-            ]
-        ]
-    }
-
-def _process_expired_albums(api):
-    """Обработать альбомы Telegram, которые уже полностью пришли (>2.5 сек без новых фото)."""
-    try:
-        now = time.time()
-        to_process = []
-        for mg_id, album in list(_photo_albums.items()):
-            if album.get("processed"):
-                continue
-            if now - album.get("ts", 0) > 2.5:
-                to_process.append((mg_id, album))
-        for mg_id, album in to_process:
-            if len(album.get("photos", [])) == 0:
-                _photo_albums.pop(mg_id, None)
-                continue
-            album["processed"] = True
-            chat_id = album.get("chat_id")
-            photos = album.get("photos", [])
-            caption = album.get("caption") or ""
-            # если этот альбом был для добавления фото к существующему черновику
-            if chat_id in _pending_add_photo:
-                draft_id = _pending_add_photo.get(chat_id)
-                draft = _inventory_drafts.get(draft_id)
-                if draft:
-                    # добавляем фото к черновику
-                    for p in photos:
-                        if p not in draft["photos"]:
-                            draft["photos"].append(p)
-                    _last_photo[chat_id] = photos[-1]
-                    api.send_message(chat_id,
-                        f"📸 Добавил {len(photos)} фото к черновику «{draft.get('name')[:40]}» (теперь {len(draft['photos'])} шт).\nОтправьте ещё или нажмите ✅ Подтвердить.",
-                        reply_markup=_build_inventory_keyboard(draft_id, draft.get('price',0), len(draft['photos'])))
-                    _photo_albums.pop(mg_id, None)
-                    continue
-            # иначе создаём новый черновик из альбома
-            _create_inventory_draft_and_ask_confirmation(api, chat_id, photos, caption)
-            _photo_albums.pop(mg_id, None)
-    except Exception as e:
-        print(f"  [ALBUM PROCESS ERR] {e}")
-        import traceback; traceback.print_exc()
-
-def _create_inventory_draft_and_ask_confirmation(api, chat_id: int, photos: list, caption: str):
-    """Создать черновик товара из фото(й) и отправить клавиатуру подтверждения."""
-    if not photos:
-        return
-    first_photo = photos[0]
-    # --- Vision ---
-    recog = {"status":"error"}
-    try:
-        import subprocess as _sp2
-        r = _sp2.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_photo_recognition.py"), first_photo],
-                     capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT))
-        out = (r.stdout or "").strip()
-        for line in reversed(out.splitlines()):
-            if "{" in line and "}" in line:
-                try:
-                    import json as _js
-                    recog = _js.loads(line[line.find("{"):line.rfind("}")+1])
-                    break
-                except:
-                    continue
-        if recog.get("status")!="ok":
-            try:
-                import json as _js
-                recog = _js.loads(out.splitlines()[-1])
-            except:
-                pass
-    except Exception as e:
-        recog = {"status":"error","error":str(e)}
-
-    part_name = ""
-    price_rec = 0
-    condition = ""
-    compatible = ""
-    notes = ""
-    provider = recog.get("provider","?")
-    if recog.get("status")=="ok":
-        part_name = (recog.get("part") or "").strip()
-        try:
-            price_rec = float(recog.get("price") or 0)
-        except:
-            price_rec = 0
-        condition = recog.get("condition") or ""
-        compatible = recog.get("compatible") or ""
-        notes = recog.get("notes") or ""
-
-    if caption:
-        cap_clean = re.sub(r"^(добавь( на склад)?|создай товар|товар на склад|деталь|запчасть)\s*:?\s*", "", caption, flags=re.IGNORECASE).strip()
-        if len(cap_clean)>=2:
-            if not part_name or len(cap_clean) > len(part_name):
-                part_name = cap_clean
-            elif cap_clean.lower() not in part_name.lower():
-                part_name = f"{part_name} {cap_clean}".strip()
-
-    if not part_name:
-        part_name = caption or "Автозапчасть с фото"
-
-    qty = 1
-    price = price_rec
-    text_for_parse = caption or ""
-    m_qty = re.search(r"(\d+)\s*шт", text_for_parse, re.IGNORECASE)
-    if m_qty:
-        try:
-            qty = max(1, int(m_qty.group(1)))
-        except:
-            qty = 1
-    m_price = re.search(r"(\d[\d\s.,]*)\s*(грн|uah|₴)", text_for_parse, re.IGNORECASE)
-    if m_price:
-        try:
-            price = float(m_price.group(1).replace(" ","").replace(",","."))
-        except:
-            pass
-    else:
-        m_price2 = re.search(r"\b(\d{3,6})\b\s*$", text_for_parse)
-        if m_price2 and price_rec==0:
-            try:
-                v=int(m_price2.group(1))
-                if 100 <= v <= 50000:
-                    price = float(v)
-            except:
-                pass
-
-    category = "общее"
-    try:
-        from tg_bot.accounts import _llm_chat_direct as _llm_direct
-        cat_prompt = f"Деталь: «{part_name}». Определи категорию из списка (двигатель, кузов, оптика, подвеска, тормоза, электрика, салон, трансмиссия, расходники, система охлаждения, другое) и верни ТОЛЬКО JSON {{\"category\":\"...\"}}."
-        cat_resp = _llm_direct(cat_prompt)
-        start = cat_resp.find("{")
-        end = cat_resp.rfind("}")+1
-        if start>=0 and end>start:
-            import json as _js
-            cj = _js.loads(cat_resp[start:end])
-            category = (cj.get("category") or "общее").strip()[:40]
-    except Exception:
-        low = part_name.lower()
-        if any(w in low for w in ("фара","фонарь","оптика","лампа","поворотник")):
-            category="оптика"
-        elif any(w in low for w in ("радиатор","охлаждение","термостат")):
-            category="Система охлаждения"
-        elif any(w in low for w in ("рессора","пружина","аморт","подвеска","рычаг","сайлент")):
-            category="Подвеска"
-        elif any(w in low for w in ("генератор","стартер","проводка","датчик")):
-            category="Электрооборудование"
-        elif any(w in low for w in ("бампер","капот","крыло","дверь","кузов")):
-            category="Кузов"
-        elif any(w in low for w in ("тормоз","колодка","диск тормоз")):
-            category="Тормоза"
-        elif any(w in low for w in ("кпп","коробка","трансмиссия")):
-            category="Трансмиссия"
-
-    draft_id = _generate_draft_id(chat_id)
-    draft = {
-        "draft_id": draft_id,
-        "name": part_name[:120],
-        "qty": qty,
-        "price": price or 0,
-        "category": category,
-        "photos": photos,
-        "condition": condition,
-        "compatible": compatible,
-        "notes": notes,
-        "provider": provider,
-        "caption": caption,
-        "chat_id": chat_id,
-        "ts": time.time(),
-    }
-    _inventory_drafts[draft_id] = draft
-
-    kb = _build_inventory_keyboard(draft_id, draft["price"], len(photos))
-
-    lines = [
-        f"🔍 <b>Черновик товара (vision: {provider})</b>",
-        f"📦 <b>{_esc_tg(draft['name'])}</b>",
-        f"🔢 Кол-во: {qty} шт",
-        f"💰 Цена: {int(price) if float(price).is_integer() else price} грн" + (f" (AI оценил {int(price_rec)} грн)" if price_rec and abs(float(price)-float(price_rec))>1 else ""),
-        f"🏷 Категория: {_esc_tg(category)}",
-    ]
-    if condition:
-        lines.append(f"📋 Состояние: {_esc_tg(condition)}")
-    if compatible:
-        lines.append(f"🚗 Совместимость: {_esc_tg(compatible)}")
-    if notes:
-        lines.append(f"📝 {_esc_tg(notes)}")
-    lines.append(f"📸 Фото: {len(photos)} шт.")
-    lines.append("")
-    lines.append("Подтвердите или отредактируйте:")
-
-    api.send_message(chat_id, "\n".join(lines), reply_markup=kb)
-
-# === end helpers ===
-
-
-
-
-sys.path.insert(0, str(PROJECT_ROOT))
-
-# ── v20.5 Hygiene: модули вынесены в tg_bot/ (имена импортируются обратно) ──
-from tg_bot.common import _safe, _esc_tg, _smart_model, _local_api_json, _run_account_control
-from tg_bot.state import _pending_confirm, _last_inbox, _last_inbox_filters, _CHANNELS
-from tg_bot.accounts import (
-    _fmt_gmail_list, _acct_send_result, _run_acct_cmd, _acct_google, _acct_instagram,
-    _llm_extract_json, _llm_extract_gmail, _llm_extract_calendar, _handle_account_intent,
-    cmd_accounts, cmd_google, cmd_instagram,
-)
-from tg_bot.state import _last_photo, _photo_pending, _last_gen_ad, _last_video, _last_gmail_ids, _photo_albums, _inventory_drafts, _pending_inventory_edits, _pending_add_photo
-from tg_bot.state import _pending_actions, _pending_confirmations
-from tg_bot.treasury import _handle_treasury_intent
-from tg_bot.keyboards import (
-    MAIN_MENU_KEYBOARD, MAIN_MENU_INLINE, CODER_MENU_KEYBOARD, OLX_MENU_KEYBOARD, ACCOUNTS_MENU_KEYBOARD,
-    PHONE_MENU_KEYBOARD, GOOGLE_MENU_KEYBOARD, INSTAGRAM_MENU_KEYBOARD, BOT_MENU_KEYBOARD,
-    DANGEROUS_CALLBACKS,
-)
-from tg_bot.callbacks import (
-    _handle_button, _handle_button_inner, _handle_inbox_callback, _handle_olx_send_callback,
-    _handle_autonomy_callback, _handle_viber_draft_callback, _handle_signal_draft_callback, _handle_callback,
-)
-from tg_bot.llm import (
-    _chat_history, MAX_HISTORY, _llm_status, _cmd_llm_mode, _cmd_skills, _cmd_console, _llm_chat,
-)
-from tg_bot.phone import (
-    _PHONE_BRAIN_API, _phone_brain_gateway_run, _android_gateway_run, _phone_brain_api_request,
-    _handle_phone_brain_intent, _handle_phone_workflow_readiness_intent, _handle_phone_jobs_intent,
-    _handle_phone_inventory_intent, _handle_phone_metrics_intent, _handle_phone_bank_monitor_intent,
-    _handle_phone_recovery_intent, _handle_phone_weekly_report_intent, _handle_phone_control_center_intent,
-    _handle_phone_audit_intent, _phone_lead_queue, _followup_templates, _handle_phone_lead_intent,
-    _phone_adapter, _phone_error, _mask_android_notification, _send_phone_status,
-    _uklon_route_field_allowed, _uklon_route_field_label, _uklon_next_route_field,
-    _parse_uklon_route_request, _handle_android_phone_workflow_intent,
-    _cancel_phone_pending, _confirm_phone_pending, _handle_android_gateway_intent,
-)
-from tg_bot.voice import VOICE_REPLY_FILE, _voice_enabled, _set_voice_enabled, _send_voice_reply, _transcribe_audio
-from tg_bot.inbox import (
-    INBOX_SCHEDULE_FILE, INBOX_CACHE_FILE, _inbox_cache_load, _inbox_cache_save,
-    _inbox_refresh_now, _is_service_preview, _parse_inbox_filters, _collect_inbox,
-    _format_inbox, _inbox_keyboard, _inbox_summarize, _llm_chat_direct, _inbox_reply,
-    _inbox_voice, _inbox_search, _inbox_mark_read, _inbox_schedule_cmd, _run_due_inbox,
+from tg_bot.inventory_photos import (  # noqa: E402
+    _generate_draft_id, _build_inventory_keyboard, _process_expired_albums,
+    _create_inventory_draft_and_ask_confirmation,
 )
 
 
+from tg_bot.common import _safe  # noqa: E402
+from tg_bot.common import _run_account_control  # noqa: E402
+from tg_bot.inbox import _llm_chat_direct  # noqa: E402
+from tg_bot.accounts import _handle_account_intent, _llm_extract_gmail  # noqa: E402
+from tg_bot.inbox import _parse_inbox_filters, _inbox_keyboard, INBOX_SCHEDULE_FILE  # noqa: E402
+from tg_bot.voice import VOICE_REPLY_FILE, _voice_enabled, _set_voice_enabled  # noqa: E402
+from tg_bot.accounts import _llm_extract_calendar  # noqa: E402
+from tg_bot.treasury import _handle_treasury_intent  # noqa: E402
+from tg_bot.phone import (  # noqa: E402
+    _cancel_phone_pending, _confirm_phone_pending, _android_gateway_run,
 
-_env_path = PROJECT_ROOT / ".env"
-if _env_path.exists():
-    for _line in _env_path.read_text(encoding="utf-8").splitlines():
-        _line = _line.strip()
-        if not _line or _line.startswith("#") or "=" not in _line:
-            continue
-        _key, _, _value = _line.partition("=")
-        _key = _key.strip()
-        _value = _value.strip().strip('\"').strip("'")
-        if _key and _key not in os.environ:
-            os.environ[_key] = _value
-
-# ---------------------------------------------------------------------------
-# Telegram API helpers (zero-dependency)
-# ---------------------------------------------------------------------------
+    _handle_phone_brain_intent, _handle_phone_workflow_readiness_intent,
+    _handle_phone_jobs_intent, _handle_phone_inventory_intent,
+    _handle_phone_metrics_intent, _handle_phone_bank_monitor_intent,
+    _handle_phone_recovery_intent, _handle_phone_weekly_report_intent,
+    _handle_phone_control_center_intent, _handle_phone_audit_intent,
+    _handle_phone_lead_intent, _handle_android_phone_workflow_intent,
+    _handle_android_gateway_intent,
+)
+from tg_bot.inbox_router import _handle_unified_inbox_intent, _send_unified_inbox  # noqa: E402
+from tg_bot.state import (  # noqa: E402
+    _pending_confirm, _last_inbox, _last_inbox_filters, _last_photo,
+    _photo_pending, _pending_actions, _pending_confirmations, _CHANNELS,
+    _photo_albums, _inventory_drafts, _pending_inventory_edits, _pending_add_photo,
+    _last_gen_ad, _last_video,
+)
 
 
 from tg_bot.api import TelegramAPI  # noqa: E402
