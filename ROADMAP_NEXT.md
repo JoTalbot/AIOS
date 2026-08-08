@@ -47,10 +47,10 @@
 ## 🔧 v20.5.0 — «Hygiene»: технический долг
 
 - 🔲 **Разбор монолита** `run_telegram_bot.py` (511 КБ, 8700+ строк) → модули `tg/handlers/*`
-- 🔲 **Чистка `.bak` файлов** (llm_balancer ×5, telegram_bot ×3 и др.) → единый attic/
-- 🔲 **Диск 76%**: ротация chroma_db, архивация старых backups, включён disk_cleanup — проверить его эффективность
-- 🔲 **Тесты**: покрытие run_*.py раннеров (сейчас тесты в основном на aios_core)
-- 🔲 **Dependabot**: 10 открытых PR-веток (pip deps) — мердж или закрытие
+- ✅ **Чистка `.bak` файлов** → единый attic/bak_cleanup_20260808 (19 файлов, 1.6 МБ перенесено; .bak в .gitignore)
+- ✅ **Диск 76% → 74%**: старые backups (1.4 ГБ) удалены по ротации; swap 4G + swappiness=10; health-check OK 18/18
+- 🟡 **Тесты**: покрытие run_*.py раннеров — добавлены test_phone_sync_status (7) и test_run_swarm_backtester (2); всего покрыто ~30 из 105 раннеров
+- ✅ **Dependabot**: 18 осиротевших remote-веток вычищены (git remote prune origin), открытых PR — 0
 
 ## 📈 v21.0.0 — «Scale»: масштабирование работающего
 
