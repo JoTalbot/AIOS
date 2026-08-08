@@ -1,9 +1,9 @@
 {
   "version": "3.1",
-  "timestamp": "2026-07-16T12:17:38.068360+00:00",
+  "timestamp": "2026-08-08T18:00:00+00:00",
   "audit": {
-    "total": 284,
-    "unique_names": 277,
+    "total": 299,
+    "unique_names": 292,
     "real_skills": 284,
     "stubs": 0,
     "stub_ids": [],
@@ -5911,6 +5911,216 @@
       "has_code": true,
       "has_tests": true,
       "stub": false
+    },
+    "stitch/design/code-to-design": {
+      "id": "stitch/design/code-to-design",
+      "name": "stitch::code-to-design",
+      "version": "1.0",
+      "description": "Convert frontend code (Vite, React, Angular, Vue, etc.) to a Stitch Design by chaining static HTML extraction, design system extraction, and file upload. **ALWAYS** use this skill when the user's intent is to move existing web apps or React/Angular/Vue components into Stitch (e.g., requests to \"save",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_design",
+      "path": "stitch/design/skills/code-to-design"
+    },
+    "stitch/design/extract-design-md": {
+      "id": "stitch/design/extract-design-md",
+      "name": "stitch::extract-design-md",
+      "version": "1.0",
+      "description": "Extract a comprehensive design system (DESIGN.md) directly from frontend source code — React, Vue, Svelte, Angular, plain HTML/CSS, or any web framework. Analyzes component files, stylesheets, Tailwind configs, theme definitions, and design tokens to produce a rich, Stitch-compatible design system d",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_design",
+      "path": "stitch/design/skills/extract-design-md"
+    },
+    "stitch/design/extract-static-html": {
+      "id": "stitch/design/extract-static-html",
+      "name": "stitch::extract-static-html",
+      "version": "1.0",
+      "description": "Extract self-contained static HTML from a built web application or React components by inlining CSS and images. Use this skill whenever you need to capture a specific UI state, share a static version of a page, or prepare assets for Stitch upload, even if the user just asks to 'save the HTML' or 'mo",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_design",
+      "path": "stitch/design/skills/extract-static-html"
+    },
+    "stitch/design/generate-design": {
+      "id": "stitch/design/generate-design",
+      "name": "stitch::generate-design",
+      "version": "1.0",
+      "description": "Generate new screens from text prompts or images, edit existing screens with prompts and design system tokens, and generate design variants using Stitch MCP. Includes prompt enhancement pipeline, design mappings, professional UI/UX terminology, design tokens and theme system capabilities.",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_design",
+      "path": "stitch/design/skills/generate-design"
+    },
+    "stitch/design/manage-design-system": {
+      "id": "stitch/design/manage-design-system",
+      "name": "stitch::manage-design-system",
+      "version": "1.0",
+      "description": "Manage design systems in Stitch using MCP tools. Includes retrieval of assets, creating/updating design systems in Stitch, and applying them to screens.",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_design",
+      "path": "stitch/design/skills/manage-design-system"
+    },
+    "stitch/design/upload-to-stitch": {
+      "id": "stitch/design/upload-to-stitch",
+      "name": "stitch::upload-to-stitch",
+      "version": "1.0",
+      "description": "Upload local assets (images, mockups, extracted HTML, design markdown) to a Stitch project. ALWAYS use this skill when you need to upload visual assets, HTML pages, or design docs to Stitch, particularly when direct MCP tool calls fail or truncate due to base64 token limits.",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_design",
+      "path": "stitch/design/skills/upload-to-stitch"
+    },
+    "stitch/build/react-components": {
+      "id": "stitch/build/react-components",
+      "name": "stitch::react-components",
+      "version": "1.0",
+      "description": "Converts Stitch designs into modular Vite and React components, or syncs/updates existing React components to align with the latest Stitch designs, using system-level networking and AST-based validation.",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_build",
+      "path": "stitch/build/skills/react-components"
+    },
+    "stitch/build/react-native": {
+      "id": "stitch/build/react-native",
+      "name": "stitch::react-native",
+      "version": "1.0",
+      "description": "Convert Stitch HTML designs to React Native components, or syncs/updates existing native components to align with the latest Stitch designs, using StyleSheet.",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_build",
+      "path": "stitch/build/skills/react-native"
+    },
+    "stitch/build/react-vite-dashboard": {
+      "id": "stitch/build/react-vite-dashboard",
+      "name": "react-vite-dashboard",
+      "version": "1.0",
+      "description": "Stitch skill: react-vite-dashboard",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_build",
+      "path": "stitch/build/skills/react-vite-dashboard"
+    },
+    "stitch/build/remotion": {
+      "id": "stitch/build/remotion",
+      "name": "remotion",
+      "version": "1.0",
+      "description": "Stitch skill: remotion",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_build",
+      "path": "stitch/build/skills/remotion"
+    },
+    "stitch/build/shadcn-ui": {
+      "id": "stitch/build/shadcn-ui",
+      "name": "shadcn-ui",
+      "version": "1.0",
+      "description": "Stitch skill: shadcn-ui",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_build",
+      "path": "stitch/build/skills/shadcn-ui"
+    },
+    "stitch/utilities/design-md": {
+      "id": "stitch/utilities/design-md",
+      "name": "design-md",
+      "version": "1.0",
+      "description": "Stitch skill: design-md",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_utilities",
+      "path": "stitch/utilities/skills/design-md"
+    },
+    "stitch/utilities/enhance-prompt": {
+      "id": "stitch/utilities/enhance-prompt",
+      "name": "enhance-prompt",
+      "version": "1.0",
+      "description": "Stitch skill: enhance-prompt",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_utilities",
+      "path": "stitch/utilities/skills/enhance-prompt"
+    },
+    "stitch/utilities/stitch-loop": {
+      "id": "stitch/utilities/stitch-loop",
+      "name": "stitch-loop",
+      "version": "1.0",
+      "description": "Stitch skill: stitch-loop",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_utilities",
+      "path": "stitch/utilities/skills/stitch-loop"
+    },
+    "stitch/utilities/taste-design": {
+      "id": "stitch/utilities/taste-design",
+      "name": "taste-design",
+      "version": "1.0",
+      "description": "Stitch skill: taste-design",
+      "triggers": [],
+      "dependencies": [],
+      "llm_required": false,
+      "mcp_tools": [
+        "stitch:*"
+      ],
+      "category": "stitch_utilities",
+      "path": "stitch/utilities/skills/taste-design"
     }
   },
   "skills_by_name": {
