@@ -556,208 +556,46 @@ def cmd_platforms() -> str:
 
 
 def _get_ads_db():
-    import sqlite3
-
-    db_path = os.environ.get("AIOS_OLX_HTTP_DB", "/root/AIOS/data/olx_http.sqlite")
-    if not Path(db_path).exists():
-        return None, f"⚠️ База OLX не найдена по пути {db_path}"
-    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-    conn.row_factory = sqlite3.Row
-    return conn, None
+    from tg_bot.olx_cmds import _get_ads_db as _f
+    return _f()
 
 
 @_safe
 def cmd_olx(args: str = "") -> str:
-    conn, err = _get_ads_db()
-    if err:
-        return err
-    try:
-        total = conn.execute("SELECT COUNT(*) FROM ads").fetchone()[0]
-        active = conn.execute("SELECT COUNT(*) FROM ads WHERE active=1").fetchone()[0]
-        if total == 0:
-            return "📭 База OLX пуста."
-        queries = conn.execute(
-            "SELECT query, COUNT(*) as cnt FROM ads WHERE active=1 GROUP BY query ORDER BY cnt DESC LIMIT 10"
-        ).fetchall()
-        price_row = conn.execute(
-            "SELECT MIN(price_value), MAX(price_value), AVG(price_value) FROM ads "
-            "WHERE price_value > 0 AND price_currency='UAH'"
-        ).fetchone()
-        last_run = conn.execute("SELECT ts, parsed FROM collection_runs ORDER BY ts DESC LIMIT 1").fetchone()
-        qlines = "\n".join(f"  • <code>{q['query']}</code>: {q['cnt']}" for q in queries)
-        return (
-            f"🛒 <b>OLX Статистика</b>\n\n"
-            f"  Всего собрано: <b>{total:,}</b>\n"
-            f"  Активных: <b>{active:,}</b>\n"
-            f"  Цены (грн): мин <b>{int(price_row[0]):,}</b> · макс <b>{int(price_row[1]):,}</b> · "
-            f"сред <b>{price_row[2]:,.0f}</b>\n"
-            f"  Последний цикл: {last_run['ts'][:19] if last_run else '—'} "
-            f"({last_run['parsed'] if last_run else 0} объявлений)\n\n"
-            f"📋 <b>По запросам:</b>\n{qlines}"
-        )
-    finally:
-        conn.close()
+    from tg_bot.olx_cmds import cmd_olx as _f
+    return _f(args)
 
 
 @_safe
 def cmd_olx_sub(args: str, chat_id: int, username: str | None, first_name: str | None) -> str:
-    import olx_alerts
-
-    parts = args.strip().split()
-    if not parts:
-        return "ℹ️ Использование: <code>/olx_sub iPhone 5000 20000</code>\n(запрос [мин_цена макс_цена])"
-    # Parse optional min/max price at end (numeric)
-    min_p = max_p = None
-    if len(parts) >= 3:
-        try:
-            min_p = float(parts[-2].replace(",", "."))
-            max_p = float(parts[-1].replace(",", "."))
-            parts = parts[:-2]
-        except ValueError:
-            pass
-    if len(parts) >= 2:
-        with contextlib.suppress(ValueError):
-            float(parts[-1].replace(",", "."))
-    query = " ".join(parts)
-    if not query:
-        return "❌ Укажите поисковый запрос."
-    subs = olx_alerts.init_subs_db()
-    olx_alerts.subscribe_chat(
-        subs, chat_id, query, username=username, first_name=first_name, min_price=min_p, max_price=max_p
-    )
-    filter_txt = ""
-    if min_p or max_p:
-        filter_txt = f"\n💵 Фильтр: {int(min_p) if min_p else 0} – {int(max_p) if max_p else '∞'} грн"
-    return f"✅ Подписка оформлена на «<b>{query}</b>».{filter_txt}\n🔔 Новые объявления будут приходить автоматически."
+    from tg_bot.olx_cmds import cmd_olx_sub as _f
+    return _f(args, chat_id, username, first_name)
 
 
 @_safe
 def cmd_olx_unsub(args: str, chat_id: int) -> str:
-    import olx_alerts
-
-    query = args.strip() or None
-    subs = olx_alerts.init_subs_db()
-    olx_alerts.unsubscribe_chat(subs, chat_id, query)
-    if query:
-        return f"🗑️ Подписка на «<b>{query}</b>» удалена."
-    return "🗑️ Все подписки удалены."
+    from tg_bot.olx_cmds import cmd_olx_unsub as _f
+    return _f(args, chat_id)
 
 
 @_safe
 def cmd_olx_list(chat_id: int) -> str:
-    import olx_alerts
-
-    subs = olx_alerts.init_subs_db()
-    items = olx_alerts.list_subscriptions(subs, chat_id)
-    if not items:
-        return "📭 У вас нет активных подписок.\nОформите: <code>/olx_sub &lt;запрос&gt;</code>"
-    lines = ["📋 <b>Ваши подписки:</b>\n"]
-    for it in items:
-        f = ""
-        if it["min_price"] or it["max_price"]:
-            f = f" · 💵 {int(it['min_price'] or 0)}-{int(it['max_price']) if it['max_price'] else '∞'} грн"
-        lines.append(f"  • <code>{it['query']}</code>{f}")
-    return "\n".join(lines)
+    from tg_bot.olx_cmds import cmd_olx_list as _f
+    return _f(chat_id)
 
 
 @_safe
 def cmd_olx_latest(args: str, chat_id: int) -> str:
-    parts = args.strip().split()
-    n = 5
-    if parts and parts[-1].isdigit():
-        n = min(int(parts[-1]), 15)
-        parts = parts[:-1]
-    query = " ".join(parts)
-    conn, err = _get_ads_db()
-    if err:
-        return err
-    try:
-        if query:
-            rows = conn.execute(
-                "SELECT * FROM ads WHERE query=? AND active=1 ORDER BY collected_at DESC LIMIT ?", (query, n)
-            ).fetchall()
-        else:
-            # Use first subscribed query
-            import olx_alerts
-
-            subs = olx_alerts.init_subs_db()
-            items = olx_alerts.list_subscriptions(subs, chat_id)
-            if not items:
-                return "ℹ️ Укажите запрос: <code>/olx_latest iPhone</code> или подпишитесь через /olx_sub"
-            query = items[0]["query"]
-            rows = conn.execute(
-                "SELECT * FROM ads WHERE query=? AND active=1 ORDER BY collected_at DESC LIMIT ?", (query, n)
-            ).fetchall()
-        if not rows:
-            return f"📭 Нет объявлений по запросу «{query}»"
-        import olx_alerts
-
-        stats = olx_alerts.compute_price_stats(conn, query)
-        out = [f"🛒 <b>Последние объявления</b> «{query}»:\n"]
-        for r in rows:
-            ad = dict(r)
-            price = ad.get("price_value")
-            cur = ad.get("price_currency") or "грн"
-            if price is None:
-                price_str = "💵 Договірна"
-            else:
-                tag = ""
-                if stats and cur == "UAH":
-                    tag = " " + olx_alerts.price_assessment(stats, price).split()[0]
-                price_str = f"💵 {int(price):,} {cur}{tag}".replace(",", " ")
-            title = (ad.get("title") or "(без назви)")[:80]
-            url = ad.get("url") or "#"
-            city = ad.get("city") or "?"
-            out.append(f'• <a href="{url}">{title}</a>\n  {price_str} · 📍{city}')
-        return "\n".join(out)
-    finally:
-        conn.close()
+    from tg_bot.olx_cmds import cmd_olx_latest as _f
+    return _f(args, chat_id)
 
 
 @_safe
 def cmd_olx_analytics(args: str) -> str:
-    parts = args.strip().split()
-    if parts and parts[-1].isdigit():
-        parts = parts[:-1]
-    query = " ".join(parts)
-    if not query:
-        return "ℹ️ Использование: <code>/olx_analytics iPhone</code>"
-    conn, err = _get_ads_db()
-    if err:
-        return err
-    try:
-        import olx_alerts
-
-        stats = olx_alerts.compute_price_stats(conn, query)
-        if not stats:
-            return f"📭 Нет данных по запросу «{query}». Попробуйте сначала собрать."
-        # Top 5 cheapest
-        cheapest = conn.execute(
-            "SELECT title, price_value, url, city FROM ads "
-            "WHERE query=? AND active=1 AND price_currency='UAH' AND price_value>0 "
-            "ORDER BY price_value ASC LIMIT 5",
-            (query,),
-        ).fetchall()
-        out = [
-            f"📊 <b>AI-аналитика цен</b> «{query}»:\n",
-            f"  📦 Объявлений в выборке: <b>{stats.count}</b>",
-            f"  💸 Мин: <b>{int(stats.min_p):,} грн</b>",
-            f"  📈 Макс: <b>{int(stats.max_p):,} грн</b>",
-            f"  ⚖️ Медиана: <b>{int(stats.median):,} грн</b>",
-            f"  📉 P10 (очень дёшево): <b>{int(stats.p10):,} грн</b>",
-            f"  📈 P90 (очень дорого): <b>{int(stats.p90):,} грн</b>",
-            f"  🧮 Средняя: <b>{stats.avg:,.0f} грн</b>\n",
-            "🔥 <b>ТОП-5 самых дешёвых:</b>",
-        ]
-        for r in cheapest:
-            title = (r["title"] or "")[:55]
-            out.append(f'  • <a href="{r["url"]}">{title}</a> — {int(r["price_value"]):,} грн ({r["city"]})')
-        return "\n".join(out).replace(",", " ")
-    finally:
-        conn.close()
+    from tg_bot.olx_cmds import cmd_olx_analytics as _f
+    return _f(args)
 
 
-@_safe
 def cmd_help() -> str:
     return (
         "🤖 <b>AIOS Telegram Bot — Команды</b>\n\n"
@@ -829,192 +667,37 @@ def cmd_help() -> str:
 
 # --------------------------------------------------------------- Шаблоны
 TEMPLATES_FILE = PROJECT_ROOT / "data" / "templates.json"
-
-
-def _load_templates() -> dict:
-    try:
-        return json.loads(TEMPLATES_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-
-def _save_templates(tpl: dict) -> None:
-    TEMPLATES_FILE.parent.mkdir(parents=True, exist_ok=True)
-    TEMPLATES_FILE.write_text(json.dumps(tpl, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-# --------------------------------------------------------------- Напоминания
 REMINDERS_FILE = PROJECT_ROOT / "data" / "reminders.json"
 
 
+def _load_templates() -> dict:
+    from tg_bot.reminders import _load_templates as _f
+    return _f()
+
+
+def _save_templates(tpl: dict) -> None:
+    from tg_bot.reminders import _save_templates as _f
+    _f(tpl)
+
+
 def _load_reminders() -> list[dict]:
-    try:
-        return json.loads(REMINDERS_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return []
+    from tg_bot.reminders import _load_reminders as _f
+    return _f()
 
 
 def _save_reminders(items: list[dict]) -> None:
-    REMINDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    REMINDERS_FILE.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+    from tg_bot.reminders import _save_reminders as _f
+    _f(items)
 
 
 def _handle_reminder(api, chat_id: int, text: str) -> None:
-    """«напомни [завтра/сегодня/в] <HH:MM> <текст>» + повторяющиеся («каждый день/неделю/месяц»)."""
-    import re as _re
-    text_clean = _re.sub(r"^(напомни|напоминание|remind)\s*:?\s*", "", text, flags=_re.IGNORECASE).strip()
-
-    # повторяющиеся: «напоминай каждый день в 09:00 ...»
-    m_repeat = _re.search(r"(каждый|каждую|раз в)\s+(день|неделю|месяц|утро|вечер)", text_clean.lower())
-    if m_repeat:
-        period = m_repeat.group(2)
-        m_time = _re.search(r"\b(\d{1,2})[:.](\d{2})\b", text_clean)
-        if m_time:
-            hh, mm = int(m_time.group(1)), int(m_time.group(2))
-            body = _re.sub(r"^(напоминай|напомни)\s*(каждый|каждую|раз в)\s*(день|неделю|месяц|утро|вечер)\s*", "", text_clean, flags=_re.IGNORECASE)
-            body = _re.sub(r"\b\d{1,2}[:.]\d{2}\b", "", body).strip()
-            if "утро" in period:
-                hh, mm = 9, 0
-            elif "вечер" in period:
-                hh, mm = 21, 0
-            reminders = _load_reminders()
-            reminders.append({
-                "chat_id": chat_id,
-                "at": datetime.now().replace(hour=hh, minute=mm, second=0, microsecond=0).isoformat(),
-                "text": body or "(напоминание)",
-                "repeat": period,  # день|неделю|месяц
-            })
-            _save_reminders(reminders)
-            api.send_message(chat_id, f"🔁 Напоминаю {period} в {hh:02d}:{mm:02d}: «{body[:100]}»")
-            return
-    # время HH:MM
-    m_time = _re.search(r"\b(\d{1,2})[:.](\d{2})\b", text_clean)
-    # день
-    day_off = 0
-    if any(w in text_clean.lower() for w in ("завтра", "tomorrow")):
-        day_off = 1
-    elif any(w in text_clean.lower() for w in ("послезавтра", "day after")):
-        day_off = 2
-    elif any(w in text_clean.lower() for w in ("сегодня", "today")):
-        day_off = 0
-    elif "через" in text_clean.lower():
-        m_h = _re.search(r"через\s+(\d+)\s*(час|ч|мин|минут)", text_clean.lower())
-        if m_h:
-            n = int(m_h.group(1))
-            unit = m_h.group(2)
-            now = datetime.now()
-            if unit.startswith("ч"):
-                target = now + timedelta(hours=n)
-            else:
-                target = now + timedelta(minutes=n)
-            body = _re.sub(r"через\s+\d+\s*(час|ч|мин|минут)\s*", "", text_clean, flags=_re.IGNORECASE).strip()
-            reminders = _load_reminders()
-            reminders.append({"chat_id": chat_id, "at": target.isoformat(), "text": body})
-            _save_reminders(reminders)
-            api.send_message(chat_id, f"⏰ Напомню через {n} {unit} (в {target.strftime('%H:%M')}): «{body[:100]}»")
-            return
-
-    if not m_time:
-        api.send_message(chat_id, "⏰ Формат: «напомни завтра в 15:00 позвонить Мише»\n"
-                                  "или «напомни через 30 минут выпить воды»")
-        return
-    hh, mm = int(m_time.group(1)), int(m_time.group(2))
-    body = _re.sub(r"\b\d{1,2}[:.]\d{2}\b", "", text_clean).strip()
-    body = _re.sub(r"^(завтра|сегодня|послезавтра|tomorrow|today)\s*", "", body, flags=_re.IGNORECASE).strip()
-    target = datetime.now() + timedelta(days=day_off)
-    target = target.replace(hour=hh, minute=mm, second=0, microsecond=0)
-    reminders = _load_reminders()
-    reminders.append({"chat_id": chat_id, "at": target.isoformat(), "text": body or "(напоминание)"})
-    _save_reminders(reminders)
-    api.send_message(chat_id, f"⏰ Напомню {target.strftime('%d.%m %H:%M')}: «{body[:100]}»")
+    from tg_bot.reminders import _handle_reminder as _f
+    _f(api, chat_id, text)
 
 
 def _run_due_reminders() -> int:
-    """Отправить созревшие напоминания (вызывается по таймеру и при старте бота)."""
-    import urllib.request as _urllib
-    token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("AIOS_TELEGRAM_TOKEN", "")
-    reminders = _load_reminders()
-    if not reminders:
-        return 0
-    now = datetime.now()
-    due = [r for r in reminders if datetime.fromisoformat(r["at"]) <= now]
-    if not due:
-        return 0
-    left = [r for r in reminders if datetime.fromisoformat(r["at"]) > now]
-    for r in due:
-        if not token:
-            continue
-        payload = json.dumps({"chat_id": r["chat_id"],
-                              "text": f"⏰ <b>Напоминание</b>: {_esc_tg(r.get('text', ''))}",
-                              "parse_mode": "HTML"}).encode()
-        try:
-            req = _urllib.Request(f"https://api.telegram.org/bot{token}/sendMessage",
-                                  data=payload, headers={"Content-Type": "application/json"})
-            with _urllib.urlopen(req, timeout=30):
-                pass
-            print(f"  [REMINDER] sent: {r.get('text', '')[:50]}")
-        except Exception as e:
-            print(f"  [REMINDER] err: {e}")
-            left.append(r)  # попробуем ещё раз в следующий цикл
-            continue
-        # повторяющиеся: переносим на следующий период
-        repeat = r.get("repeat")
-        if repeat:
-            base = datetime.fromisoformat(r["at"])
-            if repeat == "день":
-                nxt = base + timedelta(days=1)
-            elif repeat == "неделю":
-                nxt = base + timedelta(weeks=1)
-            else:  # месяц
-                try:
-                    nxt = base.replace(month=base.month + 1)
-                except ValueError:
-                    nxt = base.replace(year=base.year + 1, month=base.month % 12 + 1)
-            left.append({**r, "at": nxt.isoformat()})
-    _save_reminders(left)
-    return len(due)
-
-
-# ---------------------------------------------------------------------------
-# Единый инбокс — продвинутая версия
-# ---------------------------------------------------------------------------
-
-# Последний собранный инбокс по чатам: chat_id -> [items]
-
-
-
-
-
-
-
-# Каналы и их эмодзи
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    from tg_bot.reminders import _run_due_reminders as _f
+    return _f()
 
 
 
@@ -1503,101 +1186,33 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
 _coder_mod = None
 
 def _get_coder_module():
-    """Load MetaCognitiveCoder module."""
-    global _coder_mod
-    if _coder_mod is not None:
-        return _coder_mod
-    import importlib.util, sys
-    mod_name = "aios_core.meta_cognitive_self_coder"
-    spec = importlib.util.spec_from_file_location(
-        mod_name, str(PROJECT_ROOT / "aios_core" / "meta_cognitive_self_coder.py")
-    )
-    mod = importlib.util.module_from_spec(spec)
-    mod.__name__ = mod_name
-    sys.modules[mod_name] = mod
-    spec.loader.exec_module(mod)
-    _coder_mod = mod
-    return mod
+    from tg_bot.coder import _get_coder_module as _f
+    return _f()
 
 
 @_safe
 def cmd_coder_status() -> str:
-    mod = _get_coder_module()
-    coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
-    s = coder.status()
-    lines = []
-    lines.append("🧠 <b>MetaCognitiveCoder v" + str(s.get("version", "?")) + "</b>")
-    lines.append("")
-    lines.append("  🤖 Модель: <code>" + str(s.get("llm_model", "?")) + "</code>")
-    api_status = "✅ настроен" if s.get("llm_configured") else "❌ нет ключа"
-    lines.append("  🔑 API: " + api_status)
-    lines.append("  📁 Репозиторий: <code>" + str(s.get("repo_path", "?")) + "</code>")
-    lines.append("  📝 Изменений: " + str(s.get("changes_made", 0)))
-    lines.append("  🔄 Auto-commit: " + ("✅" if s.get("auto_commit") else "❌"))
-    lines.append("  🚀 Auto-push: " + ("✅" if s.get("auto_push") else "❌"))
-    return "\n".join(lines)
+    from tg_bot.coder import cmd_coder_status as _f
+    return _f()
 
 
 @_safe
 def cmd_code_generate(args: str) -> str:
-    if not args.strip():
-        return "ℹ️ Использование: <code>/code Generate a function that...</code>"
-    mod = _get_coder_module()
-    coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
-    change = coder.generate_code(args.strip())
-    safe_status = "✅ Безопасно" if change.safe else "⚠️ Опасно"
-    warn_list = change.warnings if change.warnings else ["Нет"]
-    code_preview = change.new_code[:300].replace("<", "&lt;").replace(">", "&gt;")
-    lines = []
-    lines.append("🧠 <b>Код сгенерирован</b>")
-    lines.append("")
-    lines.append("  Безопасность: " + safe_status)
-    lines.append("  Предупреждения:")
-    for w in warn_list:
-        lines.append("    • " + str(w))
-    lines.append("")
-    lines.append("<b>Код</b> (" + str(len(change.new_code)) + " символов):")
-    lines.append("<pre>" + code_preview + "...</pre>")
-    return "\n".join(lines)
+    from tg_bot.coder import cmd_code_generate as _f
+    return _f(args)
 
 
 @_safe
 def cmd_code_review(args: str) -> str:
-    file_path = args.strip()
-    if not file_path:
-        return "ℹ️ Использование: <code>/review run_telegram_bot.py</code>"
-    mod = _get_coder_module()
-    coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
-    review = coder.review_code(file_path)
-    lines = []
-    lines.append("📋 <b>Code Review: " + file_path + "</b>")
-    lines.append("")
-    lines.append(review[:3500])
-    return "\n".join(lines)
+    from tg_bot.coder import cmd_code_review as _f
+    return _f(args)
 
 
 @_safe
 def cmd_code_fix(args: str) -> str:
-    parts = args.strip().split(maxsplit=1)
-    if len(parts) < 2:
-        return "ℹ️ Использование: <code>/fix file.py описание бага или traceback</code>"
-    file_path, bug_desc = parts
-    mod = _get_coder_module()
-    coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
-    change = coder.fix_bug(file_path, bug_desc)
-    safe_status = "✅ Исправлено" if change.safe else "⚠️ Ошибка безопасности"
-    lines = []
-    lines.append("🔧 <b>Bug Fix: " + file_path + "</b>")
-    lines.append("")
-    lines.append("  Статус: " + safe_status)
-    lines.append("  Предупреждения: " + str(change.warnings or "Нет"))
-    lines.append("  Размер кода: " + str(len(change.new_code)) + " символов")
-    return "\n".join(lines)
+    from tg_bot.coder import cmd_code_fix as _f
+    return _f(args)
 
-
-# ---------------------------------------------------------------------------
-# Main polling loop
-# ---------------------------------------------------------------------------
 
 
 def parse_command(text: str) -> tuple[str, str]:

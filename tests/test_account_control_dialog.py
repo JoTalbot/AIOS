@@ -8,6 +8,18 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import run_telegram_bot as m
+import tg_bot.accounts as acc
+import tg_bot.common as tbc
+import tg_bot.inbox as tbi
+
+
+def _patch_run(monkeypatch, fake):
+    """Патч _run_account_control во всех модулях, где он импортирован по ссылке."""
+    monkeypatch.setattr(m, "_run_account_control", fake)
+    monkeypatch.setattr(acc, "_run_account_control", fake)
+    monkeypatch.setattr(tbi, "_run_account_control", fake)
+
+
 
 
 class FakeAPI:
@@ -66,7 +78,7 @@ def _fake(monkeypatch):
     def fake_run(args):
         return canned.get(tuple(args), {"status": "error", "error": f"no canned {args}"})
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     # v21.13-fx: реальная точка вызова NL-хендлера — tg_bot.accounts; патчим ОБА
     # пространства, иначе тест зависит от состояния живого chrome (флейк в suite)
     import tg_bot.accounts as _acct_mod
@@ -140,7 +152,7 @@ def test_pending_gmail_send_confirmation(monkeypatch):
             return {"status": "sent", "to": args[3], "subject": "Тема"}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     m._pending_confirm[1] = {"kind": "gmail",
                              "data": {"to": "a@b.com", "subject": "Тема", "body": "Текст"}}
     api = FakeAPI()
@@ -162,7 +174,7 @@ def test_calendar_add_flow(monkeypatch):
                     "end": "2026-08-03T15:00:00", "url": "https://calendar.google.com/"}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     monkeypatch.setattr(m, "_llm_extract_calendar",
                         lambda t: {"title": "Встреча", "date": "2026-08-03", "time": "14:00", "desc": ""})
     api = FakeAPI()
@@ -182,7 +194,7 @@ def test_facebook_intent(monkeypatch):
                                                  "notifications": 2}}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "покажи фейсбук") is True
     assert any("Facebook" in x for x in api.messages)
@@ -196,7 +208,7 @@ def test_tiktok_intent(monkeypatch):
                                                "following": 1, "likes": 0}}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "тикток") is True
     assert any("TikTok" in x for x in api.messages)
@@ -208,7 +220,7 @@ def test_olx_intent(monkeypatch):
             return {"status": "ok", "olx": {"name": "[PRIVATE_CONTACT]", "ads_count": 1, "balance": "0"}}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "покажи олх") is True
     assert any("OLX" in x for x in api.messages)
@@ -220,7 +232,7 @@ def test_viber_chats_intent(monkeypatch):
             return {"status": "ok", "chats": [{"name": "Мама"}, {"name": "Коллеги"}]}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "вайбер") is True
     assert any("Чаты Viber" in x for x in api.messages)
@@ -234,7 +246,7 @@ def test_viber_send_intent(monkeypatch):
             return {"status": "sent", "chat": "Мама", "text": "привет"}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "напиши в вайбер Мама: привет") is True
     assert any("Отправить" in x and "Viber" in x for x in api.messages)
@@ -249,7 +261,7 @@ def test_messenger_send_intent(monkeypatch):
             return {"status": "sent", "chat": "Саша", "text": "привет"}
         return {"status": "need_confirm"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "напиши в мессенджер Саша: привет") is True
     api2 = FakeAPI()
@@ -263,7 +275,7 @@ def test_tiktok_upload_intent(monkeypatch):
             return {"status": "published", "caption": "тест"}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     m._last_video[1] = "/tmp/test_video.mp4"
     Path("/tmp/test_video.mp4").write_bytes(b"0" * 64)
     api = FakeAPI()
@@ -280,7 +292,7 @@ def test_prom_intent(monkeypatch):
             return {"status": "ok", "shop": "Мой магазин", "products": 12, "orders": 3}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "пром") is True
     assert any("Prom" in x for x in api.messages)
@@ -294,7 +306,7 @@ def test_tg_dialogs_intent(monkeypatch):
                 {"name": "BotFather", "is_bot": True, "unread": 0}]}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "телеграм") is True
     assert any("Telegram" in x for x in api.messages)
@@ -306,7 +318,7 @@ def test_tg_send_intent(monkeypatch):
             return {"status": "sent", "dialog": "Мама", "text": "привет"}
         return {"status": "need_confirm"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "напиши в телеграм Мама: привет") is True
     api2 = FakeAPI()
@@ -320,7 +332,7 @@ def test_tg_bot_intent(monkeypatch):
             return {"status": "ok", "reply": [{"out": False, "text": "Привет!"}]}
         return {"status": "need_confirm"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "напиши боту @BotFather /start") is True
     api2 = FakeAPI()
@@ -334,7 +346,7 @@ def test_contacts_intent(monkeypatch):
             return {"status": "ok", "contacts": [{"name": "Алиса"}, {"name": "Мама"}], "count": 2}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "покажи контакты") is True
     assert any("Google Контакты" in x for x in api.messages)
@@ -346,7 +358,7 @@ def test_contacts_search_intent(monkeypatch):
             return {"status": "ok", "contacts": [{"name": "Алиса", "email": "alisa@x.com"}]}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "найди контакт Алиса") is True
     assert any("Алиса" in x for x in api.messages)
@@ -363,7 +375,7 @@ def test_novaposhta_track_intent(monkeypatch):
                                 "settlement": "Kropyvnytskyi"}]}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "отследи посылку 59000392260854") is True
     assert any("Новая Пошта" in x for x in api.messages)
@@ -375,7 +387,7 @@ def test_novaposhta_offices_intent(monkeypatch):
             return {"status": "ok", "offices": ["Відділення №1 Київ"]}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "отделение новой почты Киев") is True
     assert any("Отделения" in x for x in api.messages)
@@ -387,7 +399,7 @@ def test_tg_read_intent(monkeypatch):
             return {"status": "ok", "messages": [{"out": False, "text": "Привет"}, {"out": True, "text": "Здравствуй"}]}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "прочитай чат в телеге Мама") is True
     assert any("Telegram" in x for x in api.messages)
@@ -407,7 +419,7 @@ def test_inbox_intent(monkeypatch):
             return {"status": "ok", "olx": {"name": "[PRIVATE_CONTACT]", "ads_count": 1}}
         return {"status": "error", "error": f"no canned {args}"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "инбокс") is True
     joined = "\n".join(api.messages)
@@ -450,7 +462,7 @@ def test_inbox_reply_by_number(monkeypatch):
             return {"status": "need_confirm"}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "ответь на 1: привет мам") is True
     assert any("Ответ в Telegram" in x for x in api.messages)
@@ -471,7 +483,7 @@ def test_inbox_filters(monkeypatch):
             return {"status": "ok", "olx": {"name": "М"}}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "инбокс только непрочитанное") is True
     joined = "\n".join(api.messages)
@@ -509,7 +521,7 @@ def test_inbox_mark_read(monkeypatch):
             return {"status": "ok", "messages": []}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     import run_account_control as rac
     monkeypatch.setattr(rac, "app_password", lambda: "fake-pw")
     api = FakeAPI()
@@ -548,7 +560,7 @@ def test_analytics_intent(monkeypatch, tmp_path):
     def fake_run(args):
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     import subprocess
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: type("R", (), {"stdout": "", "stderr": "", "returncode": 0})())
     api = FakeAPI()
@@ -577,7 +589,7 @@ def test_ig_comments_intent(monkeypatch):
             return {"status": "ok", "code": "AbC123", "comments": [{"text": "сколько стоит?"}]}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "покажи комментарии к /p/AbC123/") is True
     assert any("Комментарии" in x for x in api.messages)
@@ -698,7 +710,7 @@ def test_inventory_add_intent(monkeypatch):
     def fake_run(*a, **k):
         return type("R", (), {"stdout": '{"status": "ok", "item": {"name": "Фара BMW", "qty": 2, "price": 2000}, "msg": "новая деталь"}', "stderr": "", "returncode": 0})
     monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr(m, "_llm_chat_direct", lambda p: '{"category": "оптика", "price": 2000}')
+    monkeypatch.setattr(tbi, "_llm_chat_direct", lambda p: '{"category": "оптика", "price": 2000}')
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "добавь деталь фара BMW, 2 шт по 2000") is True
     assert any("фара BMW" in x for x in api.messages)
@@ -821,7 +833,7 @@ def test_ig_like_flow(monkeypatch):
         return {"status": "error", "error": "?"}
 
     url = "https://www.instagram.com/p/AbC123/"
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, f"лайкни {url}") is True
     assert any("Поставить лайк" in x for x in api.messages)
@@ -838,7 +850,7 @@ def test_ig_follow_flow(monkeypatch):
             return {"status": "ok", "action": "follow", "username": "dawnrichard"}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "подпишись на @dawnrichard") is True
     assert any("подписаться на @dawnrichard" in x for x in api.messages)
@@ -853,7 +865,7 @@ def test_docs_intent(monkeypatch):
             return {"status": "ok", "url": "https://docs.google.com/document/d/x/"}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     monkeypatch.setattr(m, "_llm_extract_gmail",
                         lambda t: {"subject": "Тест", "body": "Текст документа"})
     api = FakeAPI()
@@ -868,7 +880,7 @@ def test_dm_list_intent(monkeypatch):
                 {"name": "Серега Потуроев", "preview": "Привет", "time": "1 год"}]}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "директ") is True
     assert any("Чаты Direct" in x for x in api.messages)
@@ -880,7 +892,7 @@ def test_dm_read_intent(monkeypatch):
             return {"status": "ok", "messages": [{"text": "привет"}, {"text": "как дела"}]}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "покажи чат Серега") is True
     assert any("Последние сообщения" in x for x in api.messages)
@@ -894,7 +906,7 @@ def test_dm_send_intent(monkeypatch):
             return {"status": "sent", "thread": "Серега", "text": "привет"}
         return {"status": "error", "error": "?"}
 
-    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    _patch_run(monkeypatch, fake_run)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "напиши в директ Серега: привет") is True
     assert any("Подтвердите" in x for x in api.messages)

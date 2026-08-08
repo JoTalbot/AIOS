@@ -330,8 +330,16 @@ def _handle_items_intent(api, chat_id: int, text: str) -> bool:
 
 
 def _handle_item_card_intent(api, chat_id: int, text: str) -> bool:
-    """«товар <название>», «деталь <название>» — карточка с фото."""
+    """«товар <название>», «деталь <название>» — карточка с фото.
+
+    Не перехватывает команды добавления/списания: «добавь деталь …»,
+    «спиши деталь …» и т.п. — они обрабатываются складскими интентами.
+    """
     t = " ".join(str(text or "").casefold().split())
+    # пропускаем действия со складом
+    for act in ("добавь", "создай", "спиши", "продай", "зарезервируй", "измен"):
+        if t.startswith(act):
+            return False
     for trig in _ITEM_CARD_TRIGGERS:
         if trig in t:
             query = t.split(trig, 1)[-1].strip()

@@ -11,14 +11,14 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-BOT_PATH = REPO_ROOT / "run_telegram_bot.py"
+PHONE_PATH = REPO_ROOT / "tg_bot" / "phone.py"
 
-SOURCE_FUNCS = ["_phone_brain_api_request", "_handle_phone_brain_intent", "_esc_tg"]
+SOURCE_FUNCS = ["_phone_brain_api_request", "_handle_phone_brain_intent"]
 
 
 def _load_funcs() -> dict:
-    """✂️ Вырезает функции и константу _PHONE_BRAIN_API из исходника бота."""
-    tree = ast.parse(BOT_PATH.read_text(encoding="utf-8"))
+    """Вырезает функции phone-brain из tg_bot/phone.py (AST, без импорта всего бота)."""
+    tree = ast.parse(PHONE_PATH.read_text(encoding="utf-8"))
     keep: list[ast.stmt] = []
     for node in tree.body:
         if isinstance(node, ast.FunctionDef) and node.name in SOURCE_FUNCS:
@@ -30,7 +30,7 @@ def _load_funcs() -> dict:
     found = [n.name for n in keep if isinstance(n, ast.FunctionDef)]
     for name in SOURCE_FUNCS:
         if name not in found:
-            raise RuntimeError(f"❌ Не найдена функция {name} в run_telegram_bot.py")
+            raise RuntimeError(f"❌ Не найдена функция {name} в tg_bot/phone.py")
     mod = ast.Module(body=keep, type_ignores=[])
     ast.fix_missing_locations(mod)
     import html
@@ -44,7 +44,10 @@ def _load_funcs() -> dict:
         "os": os, "re": re, "html": html, "json": json,
         "urllib.request": urllib.request, "urllib.error": urllib.error,
     }
-    exec(compile(mod, str(BOT_PATH), "exec"), ns)  # noqa: S102
+    exec(compile(mod, str(PHONE_PATH), "exec"), ns)  # noqa: S102
+    # _esc_tg берём из tg_bot.common напрямую
+    from tg_bot.common import _esc_tg
+    ns["_esc_tg"] = _esc_tg
     return ns
 
 
