@@ -1044,6 +1044,24 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
         if _handle_inventory_callback(api, chat_id, cb_id, data, msg_id):
             return
 
+    # ---- Каталог/навигация (v22.7): inline-кнопки сводки и склада ----
+    if data in ("cat_warehouse", "cat_competitors", "cat_design", "cat_freelance"):
+        api.answer_callback(cb_id, "Открываю…")
+        try:
+            from tg_bot.catalog import _handle_catalog_intent, _handle_catalog_design_intent, _handle_competitors_intent
+            if data == "cat_warehouse":
+                _handle_catalog_intent(api, chat_id, "склад")
+            elif data == "cat_competitors":
+                _handle_competitors_intent(api, chat_id, "конкуренты")
+            elif data == "cat_design":
+                _handle_catalog_design_intent(api, chat_id, "дизайн каталога")
+            elif data == "cat_freelance":
+                from tg_bot.dashboard import _handle_dashboard_intent
+                _handle_dashboard_intent(api, chat_id, "сводка фриланс")
+        except Exception as _e:
+            api.send_message(chat_id, f"⚠️ Ошибка навигации: {_e}")
+        return
+
     api.answer_callback(cb_id, "⏳ Обрабатываю...")
 
     # ---- Signal: черновик из фонового безопасного обработчика ----
