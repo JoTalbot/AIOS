@@ -327,347 +327,48 @@ if _env_path.exists():
 # ---------------------------------------------------------------------------
 
 
-class TelegramAPI:
-    """Minimal Telegram Bot API client (polling mode)."""
-
-    def __init__(self, token: str) -> None:
-        self._token = token
-        self._base = f"https://api.telegram.org/bot{token}"
-
-    def _request(self, method: str, data: dict | None = None) -> dict:
-        url = f"{self._base}/{method}"
-        body = json.dumps(data or {}).encode()
-        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            return json.loads(resp.read())
-
-    def get_updates(self, offset: int = 0) -> list[dict]:
-        result = self._request("getUpdates", {"offset": offset, "timeout": 30})
-        return result.get("result", [])
-
-    def send_message(
-        self, chat_id: int, text: str, parse_mode: str = "HTML", disable_web_page_preview: bool = True,
-        reply_markup: dict | None = None,
-    ) -> dict:
-        payload = {
-            "chat_id": chat_id,
-            "text": text[:4000],
-            "parse_mode": parse_mode,
-            "disable_web_page_preview": disable_web_page_preview,
-        }
-        if reply_markup:
-            payload["reply_markup"] = reply_markup
-        try:
-            return self._request("sendMessage", payload)
-        except urllib.error.HTTPError as e:
-            # Telegram 400 Bad Request: невалидный HTML (raw <...>) — повторяем как plain text
-            if e.code == 400 and parse_mode == "HTML":
-                payload["parse_mode"] = ""
-                return self._request("sendMessage", payload)
-            raise
-
-    def answer_callback(self, callback_query_id: str, text: str = "") -> dict:
-        return self._request("answerCallbackQuery", {
-            "callback_query_id": callback_query_id,
-            "text": text[:200],
-        })
-
-    def edit_message(self, chat_id: int, message_id: int, text: str,
-                     parse_mode: str = "HTML", reply_markup: dict | None = None) -> dict:
-        payload = {
-            "chat_id": chat_id,
-            "message_id": message_id,
-            "text": text[:4000],
-            "parse_mode": parse_mode,
-        }
-        if reply_markup:
-            payload["reply_markup"] = reply_markup
-        try:
-            return self._request("editMessageText", payload)
-        except urllib.error.HTTPError as e:
-            if e.code == 400 and parse_mode == "HTML":
-                payload["parse_mode"] = ""
-                return self._request("editMessageText", payload)
-            raise
-
-    def get_file(self, file_id: str) -> dict:
-        """Получить информацию о файле (file_path) по file_id."""
-        return self._request("getFile", {"file_id": file_id}).get("result", {})
-
-    def download_file_by_id(self, file_id: str, dest: str | None = None) -> str:
-        """Скачать файл (фото и т.п.) по file_id в локальный путь; вернуть путь."""
-        info = self.get_file(file_id)
-        path = info.get("file_path", "")
-        if not path:
-            raise ValueError(f"Нет file_path для file_id {file_id}")
-        url = f"https://api.telegram.org/file/bot{self._token}/{path}"
-        with urllib.request.urlopen(url, timeout=90) as resp:
-            data = resp.read()
-        if not dest:
-            ext = Path(path).suffix or ".jpg"
-            dest = f"/tmp/aios_tg_{int(time.time() * 1000)}{ext}"
-        Path(dest).write_bytes(data)
-        return dest
-
-    def _multipart(self, method: str, chat_id: int, field: str, file_path: str,
-                   caption: str = "") -> dict:
-        """Универсальная отправка файла (photo/document)."""
-        import mimetypes
-        boundary = "----aios" + str(int(time.time() * 1000))
-        content = Path(file_path).read_bytes()
-
-        def _field(name: str, value: str) -> bytes:
-            return (f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n"
-                    f"{value}\r\n").encode()
-
-        fn = Path(file_path).name
-        ct = mimetypes.guess_type(fn)[0] or "application/octet-stream"
-        body = b"".join([
-            _field("chat_id", str(chat_id)),
-            _field("caption", caption[:1000]) if caption else b"",
-            (f"--{boundary}\r\nContent-Disposition: form-data; name=\"{field}\"; filename=\"{fn}\"\r\n"
-             f"Content-Type: {ct}\r\n\r\n").encode(),
-            content,
-            f"\r\n--{boundary}--\r\n".encode(),
-        ])
-        req = urllib.request.Request(
-            f"{self._base}/{method}", data=body,
-            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
-        with urllib.request.urlopen(req, timeout=180) as resp:
-            return json.loads(resp.read())
-
-    def send_photo(self, chat_id: int, photo_path: str, caption: str = "") -> dict:
-        return self._multipart("sendPhoto", chat_id, "photo", photo_path, caption)
-
-    def send_document(self, chat_id: int, file_path: str, caption: str = "") -> dict:
-        return self._multipart("sendDocument", chat_id, "document", file_path, caption)
-
-    def send_voice(self, chat_id: int, voice_path: str, caption: str = "") -> dict:
-        return self._multipart("sendVoice", chat_id, "voice", voice_path, caption)
-
-
-# ---------------------------------------------------------------------------
-# Command handlers — каждая возвращает строку для отправки в чат
-# ---------------------------------------------------------------------------
-
-
-
-
+from tg_bot.api import TelegramAPI  # noqa: E402
 
 
 @_safe
 def cmd_system_health() -> str:
-    data = _local_api_json("/api/system-health")
-    lines = ["❤️ <b>System Health</b>", ""]
-    lines.append(f"CPU: {data.get('cpu_percent')}%")
-    lines.append(f"RAM: {data.get('memory_percent')}%")
-    lines.append(f"Disk: {data.get('disk_percent')}%")
-    for service in data.get("services", []):
-        mark = "✅" if service.get("status") == "ok" else "❌"
-        lines.append(f"{mark} {service.get('name')}: {service.get('status')}")
-    return "\n".join(lines)
-
-
-@_safe
-def cmd_last_backup() -> str:
-    data = _local_api_json("/api/backups")
-    backups = data.get("backups", [])
-    if not backups:
-        return "💾 <b>Backup</b>\n\nЛокальных копий пока нет."
-    item = backups[0]
-    return "💾 <b>Last Backup</b>\n\n" + f"ID: <code>{item.get('backup_id', item.get('id'))}</code>\n" + f"Created: {item.get('created_at', '—')}\n" + f"Verified: {'✅' if item.get('verified') else '❌'}"
-
-
-@_safe
-def cmd_alert_history() -> str:
-    path = Path("/var/lib/aios-health-alert/state.json")
-    if not path.exists():
-        return "🚨 <b>Alert History</b>\n\nНет сохранённых health-check данных."
-    state = json.loads(path.read_text())
-    failed = [name for name, value in state.items() if not value]
-    return "🚨 <b>Alert History</b>\n\n" + ("✅ Текущие проверки в норме" if not failed else "❌ Проблемы: " + ", ".join(failed))
-
-
-def cmd_start(first_name: str | None = None) -> str:
-    """Приветствие с именем и живой сводкой по направлениям."""
-    try:
-        from tg_bot.dashboard import render_dashboard
-        dash = render_dashboard()
-        try:
-            from tg_bot.common import _esc_tg as _esc_n
-        except Exception:
-            _esc_n = lambda x: str(x).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        hi = f"👋 Привет, {_esc_n(first_name)}!" if first_name else "👋 Привет!"
-        return (
-            "🤖 <b>AIOS Control Panel</b>\n"
-            f"{hi}\n"
-            "Бот управления бизнесом и системой. Нажми кнопку меню или напиши текстом.\n\n"
-            f"{dash}\n\n"
-            "👇 <b>Разделы:</b> кнопки ниже"
-        )
-    except Exception:
-        return "🤖 <b>AIOS Control Panel</b>\n\nВыберите раздел:"
-
-
-
-
-
-
-
-
-
-
-
-@_safe
-def cmd_stats() -> str:
-    from aios_core.container import container
-
-    db = container.db()
-    orch = container.orchestrator()
-    bm = container.backup_manager()
-    db_stats = db.stats()
-    orch_stats = orch.stats()
-    bu_health = bm.health_report()
-
-    tables_info = "\n".join(f"    <code>{t}</code>: {c} строк" for t, c in sorted(db_stats.get("tables", {}).items()))
-    return (
-        f"📊 <b>Статистика AIOS</b>\n\n"
-        f"🗄️ <b>База данных</b>\n"
-        f"  Путь: <code>{db_stats['db_path']}</code>\n"
-        f"  Диалект: <code>{db_stats['dialect']}</code>\n"
-        f"  Таблицы:\n{tables_info}\n\n"
-        f"⚙️ <b>Оркестратор</b>\n"
-        f"  Задач: {orch_stats.get('tasks', '?')}\n\n"
-        f"💾 <b>Бэкапы</b>\n"
-        f"  Всего: {bu_health['total_backups']}\n"
-        f"  Размер: {bu_health['total_size_mb']} MB\n"
-        f"  Директория: <code>{bu_health['backup_dir']}</code>"
-    )
-
-
-@_safe
-def cmd_platforms() -> str:
-    from aios_core.platforms import list_platforms
-
-    plats = list_platforms()
-    lines = [f"📱 <b>Платформы</b> ({len(plats)})\n"]
-    lines.extend(f"  • <code>{p.name}</code> — <code>{p.android_package}</code>" for p in plats)
-    return "\n".join(lines)
-
-
-def _get_ads_db():
-    from tg_bot.olx_cmds import _get_ads_db as _f
+    from tg_bot.syscmds import cmd_system_health as _f
     return _f()
 
 
 @_safe
-def cmd_olx(args: str = "") -> str:
-    from tg_bot.olx_cmds import cmd_olx as _f
-    return _f(args)
+def cmd_last_backup() -> str:
+    from tg_bot.syscmds import cmd_last_backup as _f
+    return _f()
 
 
 @_safe
-def cmd_olx_sub(args: str, chat_id: int, username: str | None, first_name: str | None) -> str:
-    from tg_bot.olx_cmds import cmd_olx_sub as _f
-    return _f(args, chat_id, username, first_name)
+def cmd_alert_history() -> str:
+    from tg_bot.syscmds import cmd_alert_history as _f
+    return _f()
+
+
+def cmd_start(first_name: str | None = None) -> str:
+    from tg_bot.syscmds import cmd_start as _f
+    return _f(first_name)
 
 
 @_safe
-def cmd_olx_unsub(args: str, chat_id: int) -> str:
-    from tg_bot.olx_cmds import cmd_olx_unsub as _f
-    return _f(args, chat_id)
+def cmd_stats() -> str:
+    from tg_bot.syscmds import cmd_stats as _f
+    return _f()
 
 
 @_safe
-def cmd_olx_list(chat_id: int) -> str:
-    from tg_bot.olx_cmds import cmd_olx_list as _f
-    return _f(chat_id)
+def cmd_platforms() -> str:
+    from tg_bot.syscmds import cmd_platforms as _f
+    return _f()
 
 
 @_safe
-def cmd_olx_latest(args: str, chat_id: int) -> str:
-    from tg_bot.olx_cmds import cmd_olx_latest as _f
-    return _f(args, chat_id)
-
-
-@_safe
-def cmd_olx_analytics(args: str) -> str:
-    from tg_bot.olx_cmds import cmd_olx_analytics as _f
-    return _f(args)
-
-
 def cmd_help() -> str:
-    return (
-        "🤖 <b>AIOS Telegram Bot — Команды</b>\n\n"
-        "  /start — приветствие\n"
-        "  /stats — статистика БД и оркестратора\n"
-        "  /status — зарегистрированные платформы\n"
-        "  /olx — общая статистика OLX\n"
-        "  /olx_sub &lt;запрос&gt; [min max] — подписка на новые объявления\n"
-        "  /olx_unsub [запрос] — отписка (без аргументов = все)\n"
-        "  /olx_list — мои подписки\n"
-        "  /olx_latest &lt;запрос&gt; [N] — последние N объявлений\n"
-        "  /olx_analytics &lt;запрос&gt; — AI-аналитика цен\n"
-        "  /accounts — управление Google и Instagram аккаунтами\n"
-        "  /google — быстрые команды Google (почта, календарь, диск)\n"
-        "  /instagram — быстрые команды Instagram (профиль, посты)\n"
-        "  /llm_mode [auto|gemini] — режим LLM в чате (балансер / Gemini Web)\n"
-        "  /cmd &lt;команда&gt; — выполнить команду на сервере (root, /root/AIOS)\n"
-        "  /skills — возможности системы (скилы, модули, адаптеры, команды)\n\n"
-        "<i>Просто напишите боту обычным текстом, например:</i>\n"
-        "  «проверь мою почту» · «сколько непрочитанных» · «кто я в гугле»\n"
-        "  «покажи календарь» · «покажи мой инстаграм» · «мои посты» · «отправь письмо ...»\n\n"
-        "<i>Бот работает в polling-режиме. Алерты приходят автоматически после каждого цикла сбора (каждые 30 мин).</i>"
-    )
-
-
-
-
-# ---------------------------------------------------------------------------
-# Account control — Google + Instagram через обычный диалог
-# ---------------------------------------------------------------------------
-
-# Последнее фото, присланное пользователем (для будущих действий): chat_id -> путь
-# Ждём описание детали после фото: chat_id -> True
-# Последнее сгенерированное объявление OLX: chat_id -> part
-# Последнее видео, присланное пользователем (для TikTok upload): chat_id -> путь
-# Последние id писем, показанных в чате: chat_id -> [ids...]
-# Ожидающие подтверждения действий: chat_id -> {"kind": ..., "data": ...}
-# Короткоживущая навигация по уже подтверждённым черновикам маршрутов.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# --------------------------------------------------------------- Голосовые ответы
-
-
-
-
-
-
-
-
-# --------------------------------------------------------------- Шаблоны
-TEMPLATES_FILE = PROJECT_ROOT / "data" / "templates.json"
-REMINDERS_FILE = PROJECT_ROOT / "data" / "reminders.json"
+    from tg_bot.syscmds import cmd_help as _f
+    return _f()
 
 
 def _load_templates() -> dict:
