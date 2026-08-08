@@ -111,7 +111,11 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
         """dispatch."""
         # These endpoints contain only public operational metadata and make
         # discovery/documentation possible before credentials are provisioned.
-        if request.url.path in {"/health", "/docs", "/openapi.json"} or not self.enabled:
+        # v22: /api/v2/mon/* — коммерческие endpoint'ы со своей платной ключ-авторизацией
+        # (verify_and_charge в APIMonetizationManager); bearer не применяем.
+        if (request.url.path in {"/health", "/docs", "/openapi.json"}
+                or request.url.path.startswith("/api/v2/mon/")
+                or not self.enabled):
             request.state.principal = Principal("development", frozenset({"admin"}))
             return await call_next(request)
         if not self.api_keys:
