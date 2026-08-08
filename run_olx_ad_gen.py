@@ -52,6 +52,17 @@ def _llm(prompt: str) -> str:
                 return r
         except Exception:
             pass
+    # v21.16: запасной путь через AIOS LoadBalancer (groq/gemini напрямую) —
+    # LLMBalancer периодически отдаёт пустоту на cooldown-штормах и генерация
+    # объявления валилась дальше по коду (инцидент: NameError 'create').
+    try:
+        from aios_core.ai_load_balancer import AILoadBalancer as _AB
+        r = _AB().chat([{"role": "user", "content": "Ты пишешь объявления для OLX. Отвечай на русском.\n\n" + prompt}],
+                       task_type="chat")
+        if r:
+            return r
+    except Exception:
+        pass
     try:
         key = _env("OPENROUTER_API_KEY")
         if key:
