@@ -87,7 +87,12 @@ async def _try_cdp_attach(playwright, cdp_url: str, site_keyword: str = ""):
                 if site_keyword in (p.url or ""):
                     page = p
                     break
-        if not page:
+            if not page:
+                # v21.15b: платформенной вкладки нет — открываем НОВУЮ вкладку.
+                # pages[0] недопустим: угон чужой вкладки (инцидент: OLX-форма
+                # полилась во вкладку messenger.com).
+                page = await ctx.new_page()
+        else:
             page = ctx.pages[0] if ctx.pages else await ctx.new_page()
         if page:
             try:
@@ -118,7 +123,13 @@ class ChromeTwinAdapter(PlatformAdapter):
         self._page = None
         self._vision = None
         # CDP attach: подключение к уже запущенному Chrome (VNC с --remote-debugging-port)
-        self.cdp_url = self.config.get("cdp_url") or os.getenv("AIOS_CHROME_CDP") or ""
+        # v21.15: по умолчанию — CDP к service-Chrome (aios-chrome-vnc). Локальный
+        # запуск с тем же профилем убивает service-Chrome (single-instance-per-profile,
+        # инцидент: 400+ SIGKILL/сутки). Локальный режим — только ЯВНЫМ cdp_url="".
+        if "cdp_url" in self.config:
+            self.cdp_url = self.config.get("cdp_url") or ""
+        else:
+            self.cdp_url = os.getenv("AIOS_CHROME_CDP") or "http://127.0.0.1:9222"
         self._site_keyword = self.config.get("site_keyword") or ""
         
         # Создать директорию профиля

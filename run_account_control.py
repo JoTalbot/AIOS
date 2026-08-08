@@ -90,7 +90,18 @@ def out(data) -> None:
 
 
 def _cleanup_browser_locks() -> None:
-    """Убрать lock-файлы Chrome-профиля (если остались после падения)."""
+    """Убрать lock-файлы Chrome-профиля (если остались после падения).
+
+    v21.15: pkill -9 chrome УДАЛЁН — он убивал service-Chrome aios-chrome-vnc
+    (400+ SIGKILL/сутки, инцидент 2026-08-08). Если системный Chrome жив —
+    lock-файлы НЕ трогаем (это локи ЖИВОГО профиля, не сироты)."""
+    try:
+        r = subprocess.run(["systemctl", "is-active", "--quiet", "aios-chrome-vnc"],
+                           capture_output=True, timeout=5)
+        if r.returncode == 0:
+            return  # сервисный Chrome жив — локи его, не трогаем
+    except Exception:
+        pass
     profile = ROOT / "data" / "chrome_twin" / "default"
     for f in list(profile.glob("Singleton*")) + [profile / "Default" / "LOCK"]:
         try:
@@ -98,7 +109,6 @@ def _cleanup_browser_locks() -> None:
                 f.unlink()
         except Exception:
             pass
-    subprocess.run(["pkill", "-9", "chrome"], capture_output=True)  # страховка
     for p in list(Path("/tmp").glob(".org.chromium.*")) + list(Path("/tmp").glob(".com.google.Chrome.*")) + list(Path("/tmp").glob("com.google.Chrome.*")):
         try:
             subprocess.run(["rm", "-rf", str(p)], capture_output=True)
@@ -416,40 +426,25 @@ def gmail_send(to: str, subject: str, body: str, confirm: bool, dry_run: bool = 
 # --------------------------------------------------------------------------
 
 async def _launch_google():
-    """ChromeTwinAdapter с исправленным _ensure_browser (системный Chrome + no-sandbox)."""
+    """CDP-аттач к системному Chrome (aios-chrome-vnc).
+
+    v21.15: старый monkey-patch _ensure_browser делал ЛОКАЛЬНЫЙ launch с тем же
+    профилем data/chrome_twin/default → single-instance-per-profile конфликт
+    убивал service-Chrome при каждом google-вызове. Теперь базовый адаптер
+    (cdp_url по умолчанию http://127.0.0.1:9222) — локального запуска нет."""
     from aios_core.platforms.chrome_twin_adapter import ChromeTwinAdapter
+    a = ChromeTwinAdapter({"site_keyword": ""})
+    _orig_ensure = a._ensure_browser
 
-    async def fixed_ensure(self):
-        if self._page and self._context:
-            return self._page
-        try:
-            from playwright.async_api import async_playwright
-        except ImportError:
-            raise RuntimeError("Playwright не установлен")
-        self._playwright = await async_playwright().start()
-        exe = "/usr/bin/google-chrome-stable"
-        for c in (exe, "/usr/bin/google-chrome", "/usr/bin/chromium-browser", "/usr/bin/chromium"):
-            if Path(c).exists():
-                exe = c
-                break
-        kwargs = dict(
-            user_data_dir=str((ROOT / "data" / "chrome_twin" / "default").resolve()),
-            executable_path=exe,
-            headless=False,
-            slow_mo=100,
-            args=["--disable-blink-features=AutomationControlled", "--no-first-run",
-                  "--no-default-browser-check", "--disable-dev-shm-usage", "--no-sandbox"],
-            viewport={"width": 1440, "height": 900},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                       "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
-        )
-        self._context = await self._playwright.chromium.launch_persistent_context(**kwargs)
-        self._browser = self._context
-        self._page = self._context.pages[0] if len(self._context.pages) > 0 else await self._context.new_page()
-        return self._page
+    async def _ensure_new_page():
+        # CDP-аттач к общему service-Chrome, но работа каждого потока — в СВОЕЙ
+        # вкладке: не угоняем вкладку Messages for Web у SMS-адаптера.
+        await _orig_ensure()
+        a._page = await a._context.new_page()
+        return a._page
 
-    ChromeTwinAdapter._ensure_browser = fixed_ensure
-    return ChromeTwinAdapter()
+    a._ensure_browser = _ensure_new_page
+    return a
 
 
 async def google_whoami() -> dict:
