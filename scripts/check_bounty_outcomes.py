@@ -74,10 +74,20 @@ for b in bids:
         if e:
             skipped_api += 1; continue
         ours = any((c.get("user") or {}).get("login") == MY_LOGIN for c in (cmts or []))
-        if ours:
-            kept.append((tid, url, "issue bid (our comment found)"))
-        else:
+        if not ours:
             decisions["INVALID_SOURCE"].append((tid, url, "no our comment on issue"))
+            continue
+        issue, e2 = gh(f"/repos/{owner}/{repo}/issues/{num}")
+        if e2 or not issue:
+            skipped_api += 1; continue
+        if issue.get("state") == "closed":
+            assignees = [a.get("login") for a in issue.get("assignees", [])]
+            if MY_LOGIN in assignees:
+                decisions["WON"].append((tid, url, "issue closed, assigned to us"))
+            else:
+                decisions["LOST"].append((tid, url, f"issue closed (assignees: {assignees or 'чужие PR'})"))
+        else:
+            kept.append((tid, url, "issue open, bid stands"))
 
 print(f"\n=== Decisions ===")
 for k, lst in decisions.items():
