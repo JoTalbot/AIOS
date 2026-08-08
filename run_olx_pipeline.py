@@ -117,7 +117,9 @@ def cmd_publish(confirm: bool) -> dict:
         if not confirm:
             results.append({"name": name, "status": "would_publish"})
             continue
-        r = adgen.create_ad(name, confirm=True, photo=it.get("photo") or None)
+        # мультифото: передаём все photos позиции, если есть (create_ad умеет галерею)
+        _photos = it.get("photos") or ([it["photo"]] if it.get("photo") else None)
+        r = adgen.create_ad(name, confirm=True, photo=_photos or None)
         ok = r.get("status") in ("ok", "published", "created") or r.get("ad_id")
         results.append({"name": name, "status": r.get("status"), "ad_id": r.get("ad_id"), "url": r.get("url")})
         if ok:
