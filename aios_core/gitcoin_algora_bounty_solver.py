@@ -179,20 +179,43 @@ class GitcoinAlgoraMasterSolver:
 
                 bounty_reward = bounty.get("estimated_bounty_usd", 100.0)
 
-                # 3. Фиксация выручки по правилу 4-х кошельков (25% каждому)
-                tx = self.wallet.record_income(
-                    amount_usd=bounty_reward,
-                    source=f"GitcoinAlgoraBounty:{bounty['id']}",
-                    task_id=bounty['id']
-                )
+                # v21.6: PR-mode hook (env AIOS_BOUNTY_PR=off|plan|live)
+                pr_result = None
+                pr_mode = os.environ.get("AIOS_BOUNTY_PR", "").strip().lower()
+                if not pr_mode:  # systemd не инжектит .env в процесс — читаем файл напрямую
+                    try:
+                        for _l in open("/root/AIOS/.env", encoding="utf-8"):
+                            if _l.startswith("AIOS_BOUNTY_PR="):
+                                pr_mode = _l.split("=", 1)[1].split("#")[0].strip().lower()
+                                break
+                    except Exception:
+                        pass
+                pr_mode = pr_mode or "off"
+                # нормализация против наивного dotenv-загрузчика (ловит инлайн-комменты в значении)
+                pr_mode = (pr_mode.split("#")[0].strip().split() or ["off"])[0]
+                if pr_mode in ("plan", "live"):
+                    try:
+                        from aios_core.bounty_solution_engine import BountySolutionEngine
+                        eng = BountySolutionEngine(balancer=self.balancer)
+                        pr_result = eng.solve_and_pr(bounty, dry_run=(pr_mode != "live"))
+                        logger.info(f"🔧 [PR-mode:{pr_mode}] {pr_result.get('status')} "
+                                    f"{pr_result.get('url') or pr_result.get('branch') or ''}")
+                    except Exception as _pr_e:
+                        pr_result = {"status": "error", "error": str(_pr_e)[:160]}
+                        logger.error(f"❌ PR-mode: {_pr_e}")
 
-                total_bounty_usd += bounty_reward
+                # 3. v21.6: ДОХОД БОЛЬШЕ НЕ НАЧИСЛЯЕТСЯ на отклик — это была фантомная
+                # выручка (считал $100 за каждый коммент без выигрыша). Реальный доход
+                # пишет check_bounty_outcomes при статусе WON. Здесь — только потенциал.
+                tx = {"status": "potential", "note": "income recorded on WON by outcome detector"}
+                logger.info(f"💤 [Bounty] Потенциал: ${bounty_reward:.0f} — доход запишется на WON")
                 solved_results.append({
                     "bounty_id": bounty['id'],
                     "title": bounty['title'],
                     "url": bounty['html_url'],
                     "post_result": post_res,
-                    "reward_usd": bounty_reward,
+                    "potential_usd": bounty_reward,
+                    "pr_result": pr_result,
                     "tx": tx
                 })
 
@@ -201,7 +224,7 @@ class GitcoinAlgoraMasterSolver:
 
         summary = self.wallet.get_financial_summary()
 
-        logger.info(f"✅ [Gitcoin/Algora] Завершено. Обработано баунти: {len(solved_results)}, Начислено: +${total_bounty_usd:.2f}")
+        logger.info(f"✅ [Gitcoin/Algora] Завершено. Обработано баунти: {len(solved_results)}, потенциал: ${total_bounty_usd:.2f} (доход на WON)")
 
         return {
             "bounties_scanned": len(bounties),
