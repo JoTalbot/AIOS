@@ -489,7 +489,18 @@ def cmd_alert_history() -> str:
 
 
 def cmd_start() -> str:
-    return "🤖 <b>AIOS Control Panel</b>\n\nВыберите раздел:"
+    """Приветствие с живой сводкой по направлениям."""
+    try:
+        from tg_bot.dashboard import render_dashboard
+        dash = render_dashboard()
+        return (
+            "🤖 <b>AIOS Control Panel</b>\n"
+            "Бот управления бизнесом и системой. Нажми кнопку меню или напиши текстом.\n\n"
+            f"{dash}\n\n"
+            "👇 <b>Разделы:</b> кнопки ниже"
+        )
+    except Exception:
+        return "🤖 <b>AIOS Control Panel</b>\n\nВыберите раздел:"
 
 
 
