@@ -28,7 +28,7 @@ try:
 except ImportError:
     HAS_STEALTH = False
     Stealth = None
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict, field, fields as dc_fields
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
@@ -55,6 +55,8 @@ class FreelanceTask:
     proposal_text: str = ""
     solution_code: str = ""
     rejection_reason: str = ""
+    submit_attempts: int = 0  # v21.22: число попыток отправки ставки
+    last_submit_attempt: float = 0.0  # v21.22: ts последней попытки (для cooldown)
 
 
 # ── v21.0 Multi-Niche: таксономия ниш с весами + RU-ярлыки ──────────────────
@@ -787,6 +789,126 @@ class FreelanceBrainManager:
         self.solver = FreelanceTaskSolver()
         self.wallet = AIOSWalletManager(data_dir)
 
+
+    def _submit_proposal(self, task: "FreelanceTask", autopilot_enabled: bool) -> Dict[str, Any]:
+        """v21.22: отправка ставки/отклика на платформу с обязательным закрытием браузера.
+        Возвращает dict-результат; при success выставляет task.status=BID_SUBMITTED."""
+        if task.source not in ["habr_freelance", "freelance_market", "kwork", "kwork_projects", "kwork_rss", "freelancehunt", "upwork", "fiverr"]:
+            return {"status": "skipped", "message": "Unknown source", "confirm": autopilot_enabled}
+        try:
+            from aios_core.platforms.freelance_chrome_twin_adapter import FreelanceChromeTwinAdapter
+            import asyncio
+
+            logger.info(f"🚀 [Autopilot] Инициирована автоматическая отправка отклика на {task.source} (URL: {task.url})...")
+
+            # v19: Только если включен автопилот, иначе confirm=False (Telegram approve)
+            confirm_flag = autopilot_enabled
+
+            def _run_async(coro):
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                return loop.run_until_complete(coro)
+
+            adapter = FreelanceChromeTwinAdapter(profile_id=task.source if task.source in ["freelancehunt", "upwork", "fiverr"] else "default")
+            try:
+                if task.source in ["habr_freelance", "freelance_market"]:
+                    p_res = _run_async(adapter.submit_habr_proposal(task.url, task.proposal_text, confirm=confirm_flag))
+                elif task.source in ["kwork", "kwork_projects", "kwork_rss"]:
+                    p_res = _run_async(adapter.submit_kwork_proposal(task.url, task.proposal_text, confirm=confirm_flag))
+                elif task.source == "freelancehunt":
+                    # Бюджет и сроки из таска, если есть
+                    p_res = _run_async(adapter.submit_freelancehunt_proposal(task.url, task.proposal_text, budget=task.budget_usd, days=7, confirm=confirm_flag))
+                    # v22.3 fallback to UC if Cloudflare blocks Playwright
+                    if isinstance(p_res, dict) and p_res.get("status") == "need_manual" and confirm_flag:
+                        logger.info("Playwright blocked by CF, trying UC fallback...")
+                        try:
+                            p_res_uc = _run_async(adapter.submit_freelancehunt_proposal_uc(task.url, task.proposal_text, budget=task.budget_usd, days=7))
+                            if p_res_uc.get("status") == "success":
+                                p_res = p_res_uc
+                                logger.info(f"UC fallback success: {p_res_uc}")
+                        except Exception as e_uc:
+                            logger.warning(f"UC fallback failed: {e_uc}")
+                elif task.source == "upwork":
+                    p_res = _run_async(adapter.submit_upwork_proposal(task.url, task.proposal_text, hourly_rate=35.0, confirm=confirm_flag))
+                elif task.source == "fiverr":
+                    p_res = _run_async(adapter.submit_fiverr_proposal(task.url, task.proposal_text, confirm=confirm_flag))
+                else:
+                    p_res = {"status": "skipped", "message": "Unknown source", "confirm": confirm_flag}
+            finally:
+                # v21.22 fix: ОБЯЗАТЕЛЬНО закрываем браузер/профиль, иначе следующая задача
+                # падает с "Opening in existing browser session" (профиль занят)
+                try:
+                    _run_async(asyncio.wait_for(adapter.close(), timeout=20))
+                except Exception:
+                    try:
+                        _run_async(adapter.close())
+                    except Exception:
+                        pass
+            # Если need_confirm — отправляем в Telegram на approve (если есть бот)
+            if p_res.get("status") == "need_confirm" and not confirm_flag:
+                try:
+                    logger.info(f"📨 [v19] Задача {task.id} требует подтверждения в Telegram: {task.url}")
+                    from run_freelance_funnel import send_tg as _send_tg
+                    _send_tg(
+                        f"📨 <b>Пропозал готов к отправке</b> ({task.source})\n"
+                        f"Проект: {task.title[:90]}\nБюджет: ${task.budget_usd:.0f}\n{task.url}\n"
+                        f"Approve: включи AIOS_FREELANCE_AUTOPILOT=1 в .env или отправь вручную"
+                    )
+                except Exception as _e:
+                    logger.debug(f"TG notify failed: {_e}")
+
+            logger.info(f"📊 [Autopilot] Результат автоматической отправки: {p_res}")
+            return p_res
+        except Exception as e:
+            logger.error(f"❌ [Autopilot] Ошибка авто-отправки отклика: {e}")
+            return {"status": "error", "error": str(e)[:300]}
+
+    def retry_pending_submissions(self, max_retries: int = 3, cooldown_sec: int = 1800, batch: int = 2) -> Dict[str, Any]:
+        """v21.22: повторные попытки отправки для застрявших PROPOSAL_READY задач.
+        Не более batch задач за цикл; на задачу max_retries попыток с cooldown между ними."""
+        tasks = self.radar.load_tasks()
+        pending = [t for t in tasks if t.get("status") == "PROPOSAL_READY"]
+        pending.sort(key=lambda t: float(t.get("last_submit_attempt") or 0))
+        now = time.time()
+        processed = 0
+        submitted = 0
+        for t in pending:
+            if processed >= batch:
+                break
+            attempts = int(t.get("submit_attempts") or 0)
+            last = float(t.get("last_submit_attempt") or 0)
+            if attempts >= max_retries:
+                continue
+            if now - last < cooldown_sec:
+                continue
+            # собрать FreelanceTask из dict
+            from dataclasses import fields
+            fnames = {f.name for f in dc_fields(FreelanceTask)}
+            task = FreelanceTask(**{k: v for k, v in t.items() if k in fnames})
+            task.submit_attempts = attempts + 1
+            task.last_submit_attempt = now
+            autopilot_enabled = os.getenv("AIOS_FREELANCE_AUTOPILOT", "0") == "1"
+            logger.info(f"🔁 [Retry {task.submit_attempts}/{max_retries}] повторная отправка: {task.title[:60]} ({task.source})")
+            p_res = self._submit_proposal(task, autopilot_enabled)
+            if isinstance(p_res, dict) and p_res.get("status") == "success":
+                task.status = "BID_SUBMITTED"
+                submitted += 1
+            # сохранить обновлённый таск
+            updated = {**t, **asdict(task)}
+            for i, old in enumerate(tasks):
+                if old.get("id") == task.id:
+                    tasks[i] = updated
+                    break
+            processed += 1
+        self.radar.save_tasks(tasks)
+        res = {"status": "ok", "retried": processed, "submitted": submitted}
+        logger.info(f"🔁 [Retry] Итог: обработано {processed}, отправлено {submitted}")
+        print(json.dumps(res, ensure_ascii=False))
+        return res
+
     def run_market_scan_cycle(self, max_process_batch: int = 2) -> Dict[str, Any]:
         """Запуск цикла отсканировать -> оценить -> подать заявку -> решить."""
         logger.info("🔍 [FreelanceBrain] Запуск цикла поиска и анализа фриланс-задач...")
@@ -863,65 +985,9 @@ class FreelanceBrainManager:
                         
                     # АВТОПИЛОТ v19: безопасная отправка с учетом AIOS_FREELANCE_AUTOPILOT и всех платформ
                     autopilot_enabled = os.getenv("AIOS_FREELANCE_AUTOPILOT", "0") == "1"
-                    if task.source in ["habr_freelance", "freelance_market", "kwork", "kwork_projects", "kwork_rss", "freelancehunt", "upwork", "fiverr"]:
-                        try:
-                            from aios_core.platforms.freelance_chrome_twin_adapter import FreelanceChromeTwinAdapter
-                            import asyncio
-                            
-                            logger.info(f"🚀 [Autopilot] Инициирована автоматическая отправка отклика на {task.source} (URL: {task.url})...")
-                            
-                            # v19: Только если включен автопилот, иначе confirm=False (Telegram approve)
-                            confirm_flag = autopilot_enabled
-                            def _run_async(coro):
-                                try:
-                                    loop = asyncio.get_event_loop()
-                                except RuntimeError:
-                                    loop = asyncio.new_event_loop()
-                                    asyncio.set_event_loop(loop)
-                                return loop.run_until_complete(coro)
-                                
-                            adapter = FreelanceChromeTwinAdapter(profile_id=task.source if task.source in ["freelancehunt","upwork","fiverr"] else "default")
-                            if task.source in ["habr_freelance", "freelance_market"]:
-                                p_res = _run_async(adapter.submit_habr_proposal(task.url, task.proposal_text, confirm=confirm_flag))
-                            elif task.source in ["kwork", "kwork_projects", "kwork_rss", "kwork_projects"]:
-                                p_res = _run_async(adapter.submit_kwork_proposal(task.url, task.proposal_text, confirm=confirm_flag))
-                            elif task.source == "freelancehunt":
-                                # Бюджет и сроки из таска, если есть
-                                p_res = _run_async(adapter.submit_freelancehunt_proposal(task.url, task.proposal_text, budget=task.budget_usd, days=7, confirm=confirm_flag))
-                                # v22.3 fallback to UC if Cloudflare blocks Playwright
-                                if isinstance(p_res, dict) and p_res.get("status") == "need_manual" and confirm_flag:
-                                    logger.info("Playwright blocked by CF, trying UC fallback...")
-                                    try:
-                                        p_res_uc = _run_async(adapter.submit_freelancehunt_proposal_uc(task.url, task.proposal_text, budget=task.budget_usd, days=7))
-                                        if p_res_uc.get("status") == "success":
-                                            p_res = p_res_uc
-                                            logger.info(f"UC fallback success: {p_res_uc}")
-                                    except Exception as e_uc:
-                                        logger.warning(f"UC fallback failed: {e_uc}")
-                            elif task.source == "upwork":
-                                p_res = _run_async(adapter.submit_upwork_proposal(task.url, task.proposal_text, hourly_rate=35.0, confirm=confirm_flag))
-                            elif task.source == "fiverr":
-                                p_res = _run_async(adapter.submit_fiverr_proposal(task.url, task.proposal_text, confirm=confirm_flag))
-                            else:
-                                p_res = {"status": "skipped", "message": "Unknown source", "confirm": confirm_flag}
-                            # Если need_confirm — отправляем в Telegram на approve (если есть бот)
-                            if p_res.get("status") == "need_confirm" and not confirm_flag:
-                                try:
-                                    logger.info(f"📨 [v19] Задача {task.id} требует подтверждения в Telegram: {task.url}")
-                                    from run_freelance_funnel import send_tg as _send_tg
-                                    _send_tg(
-                                        f"📨 <b>Пропозал готов к отправке</b> ({task.source})\n"
-                                        f"Проект: {task.title[:90]}\nБюджет: ${task.budget_usd:.0f}\n{task.url}\n"
-                                        f"Approve: включи AIOS_FREELANCE_AUTOPILOT=1 в .env или отправь вручную"
-                                    )
-                                except Exception as _e:
-                                    logger.debug(f"TG notify failed: {_e}")
-                                
-                            logger.info(f"📊 [Autopilot] Результат автоматической отправки: {p_res}")
-                            if isinstance(p_res, dict) and p_res.get("status") == "success":
-                                task.status = "BID_SUBMITTED"  # v21.2: реально доставлено платформе
-                        except Exception as e:
-                            logger.error(f"❌ [Autopilot] Ошибка авто-отправки отклика: {e}")
+                    p_res = self._submit_proposal(task, autopilot_enabled)
+                    if isinstance(p_res, dict) and p_res.get("status") == "success":
+                        task.status = "BID_SUBMITTED"  # v21.2: реально доставлено платформе
 
             updated_tasks_list.append(asdict(task))
             processed_in_cycle += 1
