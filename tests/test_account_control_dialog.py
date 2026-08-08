@@ -67,6 +67,10 @@ def _fake(monkeypatch):
         return canned.get(tuple(args), {"status": "error", "error": f"no canned {args}"})
 
     monkeypatch.setattr(m, "_run_account_control", fake_run)
+    # v21.13-fx: реальная точка вызова NL-хендлера — tg_bot.accounts; патчим ОБА
+    # пространства, иначе тест зависит от состояния живого chrome (флейк в suite)
+    import tg_bot.accounts as _acct_mod
+    monkeypatch.setattr(_acct_mod, "_run_account_control", fake_run)
     m._pending_confirm.clear()
     m._last_photo.clear()
     for p in ("/tmp/aios_acct_google_calendar_test.png", "/tmp/aios_acct_ig_test.png",
