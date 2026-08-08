@@ -244,7 +244,7 @@ def render_catalog_html(items: Optional[List[dict]] = None) -> str:
                 ext = Path(ph).suffix.lower().lstrip(".") or "jpg"
                 if ext == "jpeg":
                     ext = "jpg"
-                mime = "image/png" if ext == "png" else "image/jpeg"
+                mime = "image/png" if ext == "png" else ("image/svg+xml" if ext == "svg" else "image/jpeg")
                 return f'<img src="data:{mime};base64,{b64}" alt="" loading="lazy">'
             except Exception:
                 return '<div class="ph ph-empty">📷</div>'
