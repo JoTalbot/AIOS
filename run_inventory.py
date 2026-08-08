@@ -110,17 +110,38 @@ def _now() -> str:
 
 
 def add(name: str, qty: int, price: float, category: str = "", photo: str = "",
-        data_path: Path | str | None = None) -> dict:
+        photos: list[str] | None = None, data_path: Path | str | None = None) -> dict:
+    """Добавить деталь. Поддержка мульти-фото: photo (один путь) и photos (список)."""
     items = _load(data_path)
     it = _find(items, name)
-    photo_saved = ""
-    if photo and os.path.exists(photo):
-        photo_saved = _save_photo(photo, name, data_path)
+    src_list: list[str] = []
+    if photos:
+        src_list.extend([p for p in photos if isinstance(p, str)])
+    if photo and isinstance(photo, str):
+        if "," in photo:
+            src_list.extend([x.strip() for x in photo.split(",") if x.strip()])
+        elif photo not in src_list:
+            src_list.append(photo)
+    saved_photos = _save_photos(src_list, name, data_path) if src_list else []
+    photo_saved = saved_photos[0] if saved_photos else ""
     if it:
         it["qty"] = int(it.get("qty", 0)) + int(qty)
         if price:
             it["price"] = float(price)
-        if photo_saved:
+        if category:
+            it["category"] = category
+        existing_photos = []
+        if isinstance(it.get("photos"), list):
+            existing_photos = [p for p in it["photos"] if isinstance(p, str)]
+        elif it.get("photo"):
+            existing_photos = [it["photo"]]
+        for p in saved_photos:
+            if p not in existing_photos:
+                existing_photos.append(p)
+        if existing_photos:
+            it["photos"] = existing_photos
+            it["photo"] = existing_photos[0]
+        elif photo_saved:
             it["photo"] = photo_saved
         _refresh_reservation_summary(it)
         msg = f"добавлено (итого {it['qty']})"
@@ -133,30 +154,51 @@ def add(name: str, qty: int, price: float, category: str = "", photo: str = "",
             "added": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "reservations": [],
         }
-        if photo_saved:
+        if saved_photos:
+            it["photos"] = saved_photos
+            it["photo"] = saved_photos[0]
+        elif photo_saved:
             it["photo"] = photo_saved
         _refresh_reservation_summary(it)
         items.append(it)
         msg = "новая деталь"
     _save(items, data_path)
-    return {"status": "ok", "item": it, "msg": msg, "total": len(items)}
+    return {"status": "ok", "item": it, "msg": msg, "total": len(items), "photos": saved_photos if 'saved_photos' in locals() else []}
 
 
-def _save_photo(src: str, name: str, data_path: Path | str | None = None) -> str:
-    """Сохранить фото детали в data/photos/ и вернуть путь."""
+def _save_photo(src: str, name: str, data_path: Path | str | None = None, suffix: str = "") -> str:
+    """Сохранить фото детали в data/photos/ и вернуть путь. Поддержка мульти-фото через suffix."""
     import re as _re
     import shutil
+    import time as _time
 
     photos_dir = _path(data_path).parent / "photos"
     photos_dir.mkdir(parents=True, exist_ok=True)
     slug = _re.sub(r"[^\w\-а-яА-ЯіїєґІЇЄҐ ]", "", name).strip().replace(" ", "_")[:50] or "detail"
     ext = Path(src).suffix or ".jpg"
-    dest = photos_dir / f"{slug}{ext}"
+    if suffix:
+        dest = photos_dir / f"{slug}_{suffix}{ext}"
+    else:
+        dest = photos_dir / f"{slug}{ext}"
+        if dest.exists():
+            dest = photos_dir / f"{slug}_{int(_time.time())}{ext}"
     try:
         shutil.copyfile(src, dest)
         return str(dest)
     except Exception:
         return ""
+
+
+def _save_photos(src_list: list[str], name: str, data_path: Path | str | None = None) -> list[str]:
+    """Сохранить несколько фото и вернуть список путей."""
+    saved = []
+    for idx, src in enumerate(src_list or []):
+        if src and os.path.exists(src):
+            suf = f"{idx+1}" if len(src_list) > 1 else ""
+            p = _save_photo(src, name, data_path, suffix=suf)
+            if p and p not in saved:
+                saved.append(p)
+    return saved
 
 
 def reserve(name: str, qty: int = 1, sale_id: str = "", ttn: str = "",

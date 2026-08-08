@@ -41,6 +41,7 @@ from tg_bot.state import (
     _last_photo, _last_gen_ad, _last_gmail_ids,
     _last_phone_leads, _phone_brain_state, _CHANNELS,
     _pending_actions, _pending_confirmations,
+    _inventory_drafts, _pending_inventory_edits, _pending_add_photo, _photo_albums,
 )
 from tg_bot.treasury import _handle_treasury_intent
 from tg_bot.voice import _send_voice_reply, _set_voice_enabled, _voice_enabled
@@ -49,6 +50,312 @@ def _m():
     """Lazy-доступ к монолиту run_telegram_bot (cmd-функции, _paused)."""
     import run_telegram_bot
     return run_telegram_bot
+
+
+
+
+def _handle_inventory_callback(api: TelegramAPI, chat_id: int, cb_id: str, data: str, msg_id: int = 0) -> bool:
+    """Обработка инлайн-кнопок для черновиков склада по фото (фича v22.1)."""
+    try:
+        if data.startswith("inv_confirm_olx_"):
+            draft_id = data[len("inv_confirm_olx_"):]
+            return _inv_do_confirm_and_olx(api, chat_id, cb_id, draft_id, msg_id)
+        elif data.startswith("inv_olx_confirm_"):
+            # повторная попытка публикации после генерации
+            draft_id = data[len("inv_olx_confirm_"):]
+            return _inv_do_create_olx(api, chat_id, cb_id, draft_id, with_inventory=False)
+        elif data.startswith("inv_olx_"):
+            draft_id = data[len("inv_olx_"):]
+            return _inv_do_create_olx(api, chat_id, cb_id, draft_id, with_inventory=False)
+        elif data.startswith("inv_confirm_"):
+            draft_id = data[len("inv_confirm_"):]
+            return _inv_do_confirm(api, chat_id, cb_id, draft_id, msg_id)
+        elif data.startswith("inv_cancel_"):
+            draft_id = data[len("inv_cancel_"):]
+            return _inv_do_cancel(api, chat_id, cb_id, draft_id, msg_id)
+        elif data.startswith("inv_edit_price_"):
+            draft_id = data[len("inv_edit_price_"):]
+            return _inv_do_request_edit(api, chat_id, cb_id, draft_id, "price")
+        elif data.startswith("inv_edit_name_"):
+            draft_id = data[len("inv_edit_name_"):]
+            return _inv_do_request_edit(api, chat_id, cb_id, draft_id, "name")
+        elif data.startswith("inv_edit_qty_"):
+            draft_id = data[len("inv_edit_qty_"):]
+            return _inv_do_request_edit(api, chat_id, cb_id, draft_id, "qty")
+        elif data.startswith("inv_edit_category_"):
+            draft_id = data[len("inv_edit_category_"):]
+            return _inv_do_request_edit(api, chat_id, cb_id, draft_id, "category")
+        elif data.startswith("inv_add_photo_"):
+            draft_id = data[len("inv_add_photo_"):]
+            return _inv_do_request_add_photo(api, chat_id, cb_id, draft_id)
+        return False
+    except Exception as e:
+        print(f"  [INV CB ERR] {data}: {e}")
+        import traceback; traceback.print_exc()
+        return False
+
+
+def _inv_do_confirm(api, chat_id, cb_id, draft_id, msg_id=0):
+    draft = _inventory_drafts.get(draft_id)
+    if not draft:
+        try:
+            api.answer_callback(cb_id, "❌ Черновик не найден (истёк)")
+        except:
+            pass
+        return True
+    if draft.get("chat_id") != chat_id:
+        try:
+            api.answer_callback(cb_id, "❌ Чужой черновик")
+        except:
+            pass
+        return True
+    # создаём товар на складе
+    import subprocess as _sp
+    from pathlib import Path
+    PROJECT_ROOT = Path("/root/AIOS")
+    photos = draft.get("photos") or []
+    # если есть pending_add_photo и несколько фото добавлено позже — мерджим
+    # вызываем run_inventory.py add с мульти-фото
+    name = draft.get("name") or "Автозапчасть"
+    qty = draft.get("qty") or 1
+    price = draft.get("price") or 0
+    category = draft.get("category") or "общее"
+    # формируем команду — используем photos как запятые, т.к. новая версия поддерживает список через запятую в одном --photo? Лучше через несколько --photo? Упростим: первый идет как --photo, остальные как дополнительные файлы скопируем через _save_photos внутри, но CLI пока поддерживает только один --photo.
+    # Поэтому передадим все через запятую, а run_inventory.py теперь понимает запятую.
+    photo_arg = ",".join(photos) if photos else ""
+    cmd = ["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"), "add", name, str(qty), str(price), category]
+    if photo_arg:
+        cmd += ["--photo", photo_arg]
+    try:
+        r = _sp.run(cmd, capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+        out = (r.stdout or "").strip().splitlines()
+        last = out[-1] if out else ""
+        import json as _json
+        if "{" in last:
+            res = _json.loads(last[last.find("{"):])
+        else:
+            res = {"status":"error","error":last[:200]}
+    except Exception as e:
+        res = {"status":"error","error":str(e)[:200]}
+
+    if res.get("status")=="ok":
+        it = res.get("item",{})
+        try:
+            api.answer_callback(cb_id, f"✅ Создано: {name[:30]}")
+        except:
+            pass
+        try:
+            # убираем клавиатуру у сообщения
+            api.edit_message(chat_id, msg_id, f"✅ <b>Товар создан на складе!</b>\n📦 <b>{_esc_tg(it.get('name') or name)}</b>\n🔢 {it.get('qty')} шт · 💰 {it.get('price')} грн\n🏷 {it.get('category')}\n📸 Фото: {len(it.get('photos') or [it.get('photo')])} шт", parse_mode="HTML")
+        except:
+            pass
+        api.send_message(chat_id,
+            f"✅ <b>Товар создан!</b>\n📦 <b>{_esc_tg(it.get('name') or name)}</b>\n🔢 {it.get('qty')} шт · 💰 {it.get('price')} грн\n"
+            f"🏷 {_esc_tg(it.get('category') or category)}\n"
+            f"📸 Фото: {len(it.get('photos') or [it.get('photo') or '—'])} шт\n\n"
+            f"Команды: «найди деталь { _esc_tg(name[:25]) }» · «создай объявление: { _esc_tg(name[:35]) }»")
+        # удаляем черновик
+        _inventory_drafts.pop(draft_id, None)
+        _pending_add_photo.pop(chat_id, None)
+    else:
+        try:
+            api.answer_callback(cb_id, "❌ Ошибка")
+        except:
+            pass
+        api.send_message(chat_id, f"❌ Не удалось создать товар: {_esc_tg(res.get('error','?'))}")
+    return True
+
+
+def _inv_do_cancel(api, chat_id, cb_id, draft_id, msg_id=0):
+    draft = _inventory_drafts.pop(draft_id, None)
+    _pending_add_photo.pop(chat_id, None)
+    try:
+        api.answer_callback(cb_id, "❌ Отменено")
+    except:
+        pass
+    try:
+        api.edit_message(chat_id, msg_id, f"❌ <b>Черновик отменён</b>\n<i>{_esc_tg(draft.get('name')[:60] if draft else '')}</i>", parse_mode="HTML")
+    except:
+        api.send_message(chat_id, "❌ Черновик отменён.")
+    return True
+
+
+def _inv_do_request_edit(api, chat_id, cb_id, draft_id, field):
+    draft = _inventory_drafts.get(draft_id)
+    if not draft:
+        try:
+            api.answer_callback(cb_id, "❌ Черновик не найден")
+        except:
+            pass
+        return True
+    # помечаем ожидание редактирования
+    _pending_inventory_edits[chat_id] = {"draft_id": draft_id, "field": field}
+    try:
+        api.answer_callback(cb_id, f"✏️ Введите новое значение: {field}")
+    except:
+        pass
+    prompts = {
+        "price": "💰 Введите новую цену в грн (число), например: 1500",
+        "name": "📦 Введите новое название детали, например: Фара BMW X5 ксенон",
+        "qty": "🔢 Введите количество (число), например: 2",
+        "category": "🏷 Введите категорию: оптика, кузов, подвеска, тормоза, электрика, система охлаждения, трансмиссия, другое"
+    }
+    api.send_message(chat_id, prompts.get(field, f"✏️ Введите новое значение для {field}:"))
+    return True
+
+
+def _inv_do_request_add_photo(api, chat_id, cb_id, draft_id):
+    draft = _inventory_drafts.get(draft_id)
+    if not draft:
+        try:
+            api.answer_callback(cb_id, "❌ Черновик не найден")
+        except:
+            pass
+        return True
+    _pending_add_photo[chat_id] = draft_id
+    try:
+        api.answer_callback(cb_id, "📸 Пришлите ещё фото")
+    except:
+        pass
+    api.send_message(chat_id, "📸 Пришлите дополнительное фото для этого товара (как фото, не как файл).\nЯ добавлю его к галерее черновика.")
+    return True
+
+
+
+
+
+def _inv_do_create_olx(api, chat_id, cb_id, draft_id, with_inventory=False):
+    """Создать объявление OLX из черновика (опционально сначала создать на складе)."""
+    draft = _inventory_drafts.get(draft_id)
+    if not draft:
+        try:
+            api.answer_callback(cb_id, "❌ Черновик не найден")
+        except:
+            pass
+        return True
+    if draft.get("chat_id") != chat_id:
+        try:
+            api.answer_callback(cb_id, "❌ Чужой черновик")
+        except:
+            pass
+        return True
+
+    try:
+        api.answer_callback(cb_id, "📢 Создаю OLX...")
+    except:
+        pass
+
+    # ШАГ 1: если нужно, сначала создаём на складе
+    if with_inventory:
+        # вызываем логику confirm (но без повторного удаления черновика сразу)
+        import subprocess as _sp
+        from pathlib import Path
+        PROJECT_ROOT = Path("/root/AIOS")
+        photos = draft.get("photos") or []
+        name = draft.get("name") or "Автозапчасть"
+        qty = draft.get("qty") or 1
+        price = draft.get("price") or 0
+        category = draft.get("category") or "общее"
+        photo_arg = ",".join(photos) if photos else ""
+        cmd = ["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"), "add", name, str(qty), str(price), category]
+        if photo_arg:
+            cmd += ["--photo", photo_arg]
+        try:
+            r = _sp.run(cmd, capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+        except Exception as e:
+            api.send_message(chat_id, f"⚠️ Не удалось создать на складе: {e}, но продолжу с OLX...")
+
+    # ШАГ 2: создаём объявление OLX
+    import subprocess as _sp2
+    from pathlib import Path
+    PROJECT_ROOT = Path("/root/AIOS")
+    photos = draft.get("photos") or []
+    name = draft.get("name") or "Автозапчасть"
+    # Формируем строку для генератора объявления: название + цена + состояние
+    part_desc = name
+    if draft.get("condition"):
+        part_desc += f", {draft['condition']}"
+    if draft.get("compatible"):
+        part_desc += f", совместим с {draft['compatible']}"
+    # Берём первое фото для OLX (пока OWL адаптер поддерживает 1, но передадим все через запятую — мы обновим run_olx_ad_gen)
+    photo_arg = photos[0] if photos else ""
+    all_photos_arg = ",".join(photos) if photos else ""
+
+    api.send_message(chat_id, f"⏳ Генерирую объявление OLX для «{_esc_tg(name[:60])}» с {len(photos)} фото... ~30-60 сек (Chrome Twin)")
+
+    try:
+        # Генерация + публикация
+        cmd = ["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_olx_ad_gen.py"), "create", part_desc, "--confirm"]
+        if all_photos_arg:
+            cmd += ["--photo", all_photos_arg]
+        r = _sp2.run(cmd, capture_output=True, text=True, timeout=180, cwd=str(PROJECT_ROOT))
+        out = (r.stdout or "").strip()
+        # ищем последний JSON
+        import json as _js
+        res = {"status":"error","error":"пустой ответ"}
+        for line in reversed(out.splitlines()):
+            if "{" in line and "}" in line:
+                try:
+                    res = _js.loads(line[line.find("{"):line.rfind("}")+1])
+                    break
+                except:
+                    continue
+    except Exception as e:
+        res = {"status":"error","error":str(e)}
+
+    if res.get("status") in ("published","ok","draft_created","need_confirm"):
+        if res.get("status") == "published":
+            api.send_message(chat_id,
+                f"✅ <b>Опубликовано на OLX!</b>\n"
+                f"📦 <b>{_esc_tg(name)}</b>\n"
+                f"💰 {draft.get('price')} грн · 📸 {len(photos)} фото\n"
+                f"🔗 {res.get('url','')}\n"
+                f"🆔 ad_id: {res.get('ad_id','')}")
+            # удаляем черновик только если с with_inventory уже создан
+            if with_inventory:
+                _inventory_drafts.pop(draft_id, None)
+                _pending_add_photo.pop(chat_id, None)
+            else:
+                # оставляем черновик для склада, но можно показать кнопки снова
+                api.send_message(chat_id,
+                    f"Хочешь также добавить на склад? Нажми ✅ Подтвердить",
+                    reply_markup={
+                        "inline_keyboard": [[
+                            {"text": f"✅ На склад {draft.get('price')} грн", "callback_data": f"inv_confirm_{draft_id}"},
+                            {"text": "❌ Отмена", "callback_data": f"inv_cancel_{draft_id}"}
+                        ]]
+                    })
+        elif res.get("status") == "draft_created":
+            api.send_message(chat_id,
+                f"📝 <b>Черновик OLX создан (требует подтверждения телефона)</b>\n"
+                f"📦 { _esc_tg(name) }\n"
+                f"💰 {draft.get('price')} грн\n"
+                f"Заверши публикацию через VNC :1 (Chrome профиль)")
+        else:
+            # need_confirm или ok (сгенерировано, но не опубликовано)
+            title = res.get("title") or name
+            desc = res.get("description") or ""
+            price = res.get("price") or draft.get("price")
+            kb = {
+                "inline_keyboard": [[
+                    {"text": "📢 Опубликовать на OLX", "callback_data": f"inv_olx_confirm_{draft_id}"},
+                    {"text": "❌ Отмена", "callback_data": f"inv_cancel_{draft_id}"}
+                ]]
+            }
+            api.send_message(chat_id,
+                f"📝 <b>Объявление сгенерировано:</b>\n"
+                f"Заголовок: <b>{_esc_tg(title[:80])}</b>\n"
+                f"Цена: {price} грн\n"
+                f"Описание: {_esc_tg(desc[:400])}\n\n"
+                f"Публиковать?",
+                reply_markup=kb)
+    else:
+        api.send_message(chat_id, f"❌ Не удалось создать OLX: {_esc_tg(res.get('error','?')[:400])}")
+    return True
+
+
+def _inv_do_confirm_and_olx(api, chat_id, cb_id, draft_id, msg_id=0):
+    return _inv_do_create_olx(api, chat_id, cb_id, draft_id, with_inventory=True)
 
 
 
@@ -730,6 +1037,12 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
 
     if not chat_id or not data:
         return
+
+    # ---- Inventory draft (фича v22.1) — перехватываем до общего answer_callback, иначе лишний спам ----
+    if data.startswith("inv_"):
+        # не шлём общий "Обрабатываю", т.к. _handle_inventory_callback сам ответит
+        if _handle_inventory_callback(api, chat_id, cb_id, data, msg_id):
+            return
 
     api.answer_callback(cb_id, "⏳ Обрабатываю...")
 

@@ -260,7 +260,33 @@ def create_ad(part: str, confirm: bool, photo: str | None = None) -> dict:
     try:
         from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
         a = OLXChromeTwinAdapter(config={"olx_login": _env("OLX_LOGIN") or "959052288"})
-        _images = [photo] if (photo and Path(photo).exists()) else None
+        # поддержка мульти-фото (галерея): photo может быть строкой с запятыми или списком
+        _images = None
+        if photo:
+            if isinstance(photo, (list, tuple)):
+                _images = [str(p) for p in photo if p and Path(str(p)).exists()]
+            elif isinstance(photo, str) and "," in photo:
+                parts = [p.strip() for p in photo.split(",") if p.strip()]
+                _images = [p for p in parts if Path(p).exists()]
+            elif isinstance(photo, str) and Path(photo).exists():
+                _images = [photo]
+        if not _images:
+            # фото из склада: пробуем взять все photos из inventory, а не только первое
+            try:
+                inv = json.loads((ROOT / "data" / "inventory.json").read_text(encoding="utf-8"))
+                for it in inv if isinstance(inv, list) else []:
+                    if str(it.get("name") or "").strip().casefold() == part.strip().casefold():
+                        if isinstance(it.get("photos"), list) and it["photos"]:
+                            _images = [p for p in it["photos"] if Path(p).exists()]
+                            break
+                        elif it.get("photo") and Path(it["photo"]).exists():
+                            _images = [it["photo"]]
+                            break
+            except Exception:
+                pass
+        if _images:
+            # OLX лимит 8 фото, берём первые 8
+            _images = _images[:8]
 
         async def _run_publish():
             try:
@@ -315,14 +341,21 @@ def main() -> None:
         return
     elif cmd == "create":
         _args = list(sys.argv[2:])
-        photo = ""
-        if "--photo" in _args:
+        photos = []
+        # собираем все --photo аргументы (поддержка галереи)
+        while "--photo" in _args:
             _i = _args.index("--photo")
             if _i + 1 < len(_args):
-                photo = _args[_i + 1]
+                photos.append(_args[_i + 1])
                 _args = _args[:_i] + _args[_i + 2:]
+            else:
+                _args.pop(_i)
+        # объединяем запятыми для совместимости с create_ad (он умеет парсить запятые и списки)
+        photo = ",".join(photos) if photos else ""
         part = " ".join(_args).replace("--confirm", "").strip()
-        confirm = "--confirm" in _args
+        confirm = "--confirm" in sys.argv[2:] or "--confirm" in _args
+        # confirm уже удалён из _args, проверяем оригинальный sys.argv
+        confirm = "--confirm" in (" ".join(sys.argv))
         if not part:
             print(json.dumps({"status": "error", "error": "Укажите деталь"})); return
         print(json.dumps(create_ad(part, confirm, photo), ensure_ascii=False))
