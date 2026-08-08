@@ -110,4 +110,20 @@ if APPLY:
             ["/opt/aios/.venv/bin/python", f"{BASE}/run_freelance_funnel.py", "--mark", outcome] + ids,
             capture_output=True, text=True, cwd=BASE)
         print(out.stdout.strip(), out.stderr.strip())
+        # v21.6: реальный доход начисляется ТОЛЬКО на WON (бюджет из воронки)
+        if outcome == "WON":
+            try:
+                sys.path.insert(0, BASE)
+                from aios_core.crypto_wallet import AIOSWalletManager
+                wallet = AIOSWalletManager(f"{BASE}/data")
+                by_id = {str(t.get("id")): t for t in bids}
+                for tid, url, why in lst:
+                    task = by_id.get(str(tid)) or {}
+                    amt = float(task.get("budget_usd") or 100.0)
+                    wallet.record_income(amount_usd=amt,
+                                         source=f"GitHubBountyWon:{tid}",
+                                         task_id=str(tid))
+                    print(f"   💰 income +${amt:.2f} за WON {tid} ({why})")
+            except Exception as _we:
+                print(f"   ⚠️ wallet income failed: {_we}")
     print("APPLIED")
