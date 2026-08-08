@@ -296,6 +296,17 @@ class BountySolutionEngine:
         gate["issue_num"] = num
         return gate
 
+    def repo_quality(self, owner: str, repo: str) -> Dict[str, Any]:
+        """v21.12: метрики качества репо для радара (звёзды, архивность, активность)."""
+        meta, err = self.builder.gh("GET", f"/repos/{owner}/{repo}")
+        if err or not isinstance(meta, dict):
+            return {"stars": None, "archived": None, "note": f"meta failed: {str(err)[:60]}"}
+        return {"stars": meta.get("stargazers_count", 0),
+                "forks": meta.get("forks_count", 0),
+                "archived": bool(meta.get("archived")),
+                "pushed_at": meta.get("pushed_at"),
+                "language": meta.get("language")}
+
     # ---------------- LLM plan ----------------
     def plan_file_changes(self, bounty: Dict[str, Any], root_paths: List[str],
                           file_context: Optional[Dict[str, str]] = None) -> Dict[str, Any]:

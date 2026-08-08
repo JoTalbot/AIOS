@@ -65,10 +65,11 @@ def radar_queries() -> List[str]:
     return queries
 
 _PRIZE_RE = re.compile(r"\$\s?(\d[\d,]*(?:\.\d+)?)([kK]?)\b")
+_CRYPTO_PRIZE_RE = re.compile(r"\b(\d[\d,]*(?:\.\d+)?)\s*(?:USDC|USDT|USD)\b", re.I)
 
 
 def extract_prize_usd(title: str, body: str = "") -> float:
-    """Размер баунти из текста: '$1,500' / '$1500' / '$25k'. Дефолт 100."""
+    """Размер баунти из текста: '$1,500' / '$25k' / 'Reward: 100 USDC'. Дефолт 100."""
     for text in (title or "", (body or "")[:400]):
         m = _PRIZE_RE.search(text)
         if not m:
@@ -81,7 +82,28 @@ def extract_prize_usd(title: str, body: str = "") -> float:
             v *= 1000.0
         if 5.0 <= v <= 100000.0:
             return v
+    # платформенные шаблоны без $: '100 USDC', '250 USDT'
+    for text in (title or "", (body or "")[:600]):
+        m = _CRYPTO_PRIZE_RE.search(text)
+        if not m:
+            continue
+        try:
+            v = float(m.group(1).replace(",", ""))
+        except ValueError:
+            continue
+        if 5.0 <= v <= 100000.0:
+            return v
     return 100.0
+
+
+def quality_line(quality: Dict[str, Any]) -> str:
+    """Строка качества репо для алерта: ' · ⭐12.3k 🟢'."""
+    st = quality.get("stars")
+    if not isinstance(st, int):
+        return ""
+    stxt = (f"{st / 1000:.1f}k" if st >= 1000 else str(st))
+    tag = "🟢 топ-репо" if st >= 1000 else ("🟢 живой" if st >= 50 else "🟡 мелкий")
+    return f" · ⭐{stxt} {tag}"
 
 
 class AlgoraGitcoinBountyScanner:
@@ -271,9 +293,22 @@ class GitcoinAlgoraMasterSolver:
             if gate.get("status") != "ok":
                 rec["gate"] = f"skip: {str(gate.get('reason', ''))[:80]}"
                 continue
+            # v21.12: анти-фермерский скоринг ЦЕЛЕВОГО репо
+            quality: Dict[str, Any] = {}
+            tref = str(gate.get("target_repo") or "")
+            if "/" in tref:
+                try:
+                    quality = self._radar_engine().repo_quality(*tref.split("/", 1))
+                except Exception as e:
+                    quality = {"note": str(e)[:40]}
+            if quality.get("archived"):
+                rec["gate"] = "skip: archived repo"
+                continue
             rec["alerted"] = True
             rec["gate"] = "ok"
-            fresh_hits.append({"bounty": b, "prize": prize, "age_h": age_h, "gate": gate})
+            rec["stars"] = quality.get("stars")
+            fresh_hits.append({"bounty": b, "prize": prize, "age_h": age_h,
+                               "gate": gate, "quality": quality})
 
         try:
             state_file.write_text(json.dumps(state, ensure_ascii=False, indent=1),
@@ -281,21 +316,42 @@ class GitcoinAlgoraMasterSolver:
         except Exception as e:
             logger.warning(f"radar state save: {e}")
 
-        for hit in fresh_hits:
-            b = hit["bounty"]
-            txt = (
-                "🚨 <b>Свежее бесконкурентное баунти</b>\n"
-                f"💰 ~${hit['prize']:,.0f} · возраст {hit['age_h']:.0f}ч\n"
-                f"🔗 {hit['gate'].get('target_repo', '')}#{hit['gate'].get('issue_num', b.get('number'))}\n"
-                f"📝 {b.get('title', '')[:140]}\n"
-                f"{b.get('html_url', '')}\n"
-                "Гейт чист: без assignee и чужих PR."
-            )
+        def _hit_line(hit: Dict[str, Any]) -> str:
+            q = hit.get("quality") or {}
+            st = q.get("stars")
+            star_txt = f"⭐{st}" if isinstance(st, int) else ""
+            num = hit["gate"].get("issue_num", hit["bounty"].get("number"))
+            return (f"• ~${hit['prize']:,.0f} · {hit['age_h']:.0f}ч {star_txt}\n"
+                    f"  {hit['gate'].get('target_repo', '')}#{num} — "
+                    f"{hit['bounty'].get('title', '')[:70]}\n"
+                    f"  {hit['bounty'].get('html_url', '')}")
+
+        if len(fresh_hits) >= 3:
+            # один дайджест вместо ленты сообщений
+            txt = (f"🚨 <b>Свежие бесконкурентные баунти: {len(fresh_hits)}</b>\n\n"
+                   + "\n".join(_hit_line(h) for h in fresh_hits))[:4000]
             try:
                 self._notify(txt)
-                logger.info(f"🚨 Radar alert: {b.get('html_url')} (${hit['prize']:.0f})")
+                for h in fresh_hits:
+                    logger.info(f"🚨 Radar alert: {h['bounty'].get('html_url')} (${h['prize']:.0f})")
             except Exception as e:
                 logger.warning(f"radar notify: {e}")
+        else:
+            for hit in fresh_hits:
+                b = hit["bounty"]
+                txt = (
+                    "🚨 <b>Свежее бесконкурентное баунти</b>\n"
+                    f"💰 ~${hit['prize']:,.0f} · возраст {hit['age_h']:.0f}ч{quality_line(hit.get('quality') or {})}\n"
+                    f"🔗 {hit['gate'].get('target_repo', '')}#{hit['gate'].get('issue_num', b.get('number'))}\n"
+                    f"📝 {b.get('title', '')[:140]}\n"
+                    f"{b.get('html_url', '')}\n"
+                    "Гейт чист: без assignee и чужих PR."
+                )
+                try:
+                    self._notify(txt)
+                    logger.info(f"🚨 Radar alert: {b.get('html_url')} (${hit['prize']:.0f})")
+                except Exception as e:
+                    logger.warning(f"radar notify: {e}")
 
         return {"scanned": len(bounties), "seen_total": len(seen),
                 "fresh_uncontested": len(fresh_hits),
