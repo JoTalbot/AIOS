@@ -214,3 +214,131 @@ def _handle_competitors_intent(api, chat_id: int, text: str) -> bool:
     except Exception:
         api.send_message(chat_id, "\n".join(lines).replace("<b>", "").replace("</b>", ""))
     return True
+
+
+# ── Пагинация товаров и карточка товара (v22.8) ────────────────────────────
+_PAGE_SIZE = 10
+
+_ITEMS_TRIGGERS = (
+    "товары", "позиции на складе", "список товаров", "все товары", "что есть",
+)
+
+_ITEM_CARD_TRIGGERS = ("товар ", "деталь ", "карточка ")
+
+
+def _send_items_page(api, chat_id: int, offset: int = 0) -> None:
+    """Список товаров склада с пагинацией (inline-кнопки ⬅️/➡️)."""
+    items = _load()
+    if not items:
+        api.send_message(chat_id, "📦 Склад пуст.")
+        return
+    items = sorted(items, key=lambda x: -float(x.get("price", 0)))
+    total = len(items)
+    offset = max(0, min(offset, total - 1))
+    page = items[offset:offset + _PAGE_SIZE]
+    total_pages = max(1, (total + _PAGE_SIZE - 1) // _PAGE_SIZE)
+    cur_page = offset // _PAGE_SIZE + 1
+
+    lines = [
+        f"🏬 <b>Товары склада</b> ({total} поз.) — стр. {cur_page}/{total_pages}",
+        "",
+    ]
+    for i, it in enumerate(page, offset + 1):
+        avail = int(it.get("qty", 0)) - int(it.get("reserved_qty", 0))
+        lines.append(f"{i}. <b>{_esc(it.get('name', ''))}</b> — {it.get('price')} грн · {avail} шт")
+    lines.append("")
+    lines.append("ℹ️ «товар <название>» — карточка с фото и описанием")
+
+    row = []
+    if offset > 0:
+        row.append({"text": "⬅️", "callback_data": f"cat_items_{max(0, offset - _PAGE_SIZE)}"})
+    row.append({"text": f"{cur_page}/{total_pages}", "callback_data": "noop"})
+    if offset + _PAGE_SIZE < total:
+        row.append({"text": "➡️", "callback_data": f"cat_items_{offset + _PAGE_SIZE}"})
+    kb = {
+        "inline_keyboard": [
+            row,
+            [{"text": "🏬 Склад", "callback_data": "cat_warehouse"},
+             {"text": "🆚 Конкуренты", "callback_data": "cat_competitors"}],
+        ]
+    }
+    try:
+        api.send_message(chat_id, "\n".join(lines), reply_markup=kb)
+    except Exception:
+        api.send_message(chat_id, "\n".join(lines).replace("<b>", "").replace("</b>", ""))
+
+
+def _send_item_card(api, chat_id: int, query: str) -> None:
+    """Карточка товара: фото + цена + совместимость + описание."""
+    items = _load()
+    q = query.strip().casefold()
+    found = None
+    for it in items:
+        if it.get("name", "").strip().casefold() == q:
+            found = it
+            break
+    if not found:
+        for it in items:
+            name = it.get("name", "").strip().casefold()
+            compat = str(it.get("compatibility", "")).casefold()
+            if q in name or q in compat:
+                found = it
+                break
+    if not found:
+        api.send_message(chat_id, f"🔍 Товар «{query}» не найден. Напишите «товары» для списка.")
+        return
+
+    ph = found.get("photos") or ([found["photo"]] if found.get("photo") else [])
+    photo_path = next((str(p) for p in ph if Path(p).exists()), None)
+
+    lines = [
+        f"🏷 <b>{_esc(found.get('name', ''))}</b>",
+        f"💰 Цена: <b>{found.get('price')} грн</b>"
+        + (f" · опт от {found.get('price_min')}" if found.get("price_min") else ""),
+        f"📦 В наличии: {int(found.get('qty', 0)) - int(found.get('reserved_qty', 0))} шт",
+        f"🏷 {_esc(found.get('category', ''))}"
+        + (f" · {_esc(found.get('brand', ''))}" if found.get("brand") else ""),
+    ]
+    if found.get("compatibility"):
+        lines.append(f"🚗 Совместимость: {_esc(found['compatibility'])}")
+    if found.get("location"):
+        lines.append(f"📍 Место: {_esc(found['location'])}")
+    if found.get("description"):
+        lines.append(f"📝 {_esc(found['description'])}")
+    lines.append(f"🔖 SKU: {_esc(found.get('sku', ''))}")
+    caption = "\n".join(lines)[:950]
+
+    if photo_path:
+        try:
+            api.send_photo(chat_id, photo_path, caption=caption)
+            return
+        except Exception:
+            pass
+    api.send_message(chat_id, caption)
+
+
+def _handle_items_intent(api, chat_id: int, text: str) -> bool:
+    """«товары», «список товаров», «позиции на складе» — пагинированный список."""
+    t = " ".join(str(text or "").casefold().split())
+    if not any(ph in t for ph in _ITEMS_TRIGGERS):
+        return False
+    try:
+        _send_items_page(api, chat_id, 0)
+    except Exception as e:
+        api.send_message(chat_id, f"⚠️ Ошибка списка товаров: {e}")
+    return True
+
+
+def _handle_item_card_intent(api, chat_id: int, text: str) -> bool:
+    """«товар <название>», «деталь <название>» — карточка с фото."""
+    t = " ".join(str(text or "").casefold().split())
+    for trig in _ITEM_CARD_TRIGGERS:
+        if trig in t:
+            query = t.split(trig, 1)[-1].strip()
+            if len(query) >= 2:
+                try:
+                    _send_item_card(api, chat_id, query)
+                except Exception as e:
+                    api.send_message(chat_id, f"⚠️ Ошибка карточки: {e}")
+                return True
+    return False
