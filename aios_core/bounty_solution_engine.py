@@ -275,6 +275,27 @@ class BountySolutionEngine:
                         "competing_pr": n}
         return {"status": "ok"}
 
+    def gate_for_bounty(self, bounty: Dict[str, Any]) -> Dict[str, Any]:
+        """v21.10: resolve_target + competition_check БЕЗ LLM — радар свежих баунти.
+        Мягкий ok при любых ошибках фетча."""
+        repo_url = str(bounty.get("repository_url") or "")
+        m = re.search(r"repos/([^/]+)/([^/]+)$", repo_url)
+        if not m:
+            m = re.search(r"github\.com/([^/]+)/([^/]+)/(?:issues|pull)/\d+",
+                          str(bounty.get("html_url") or ""))
+        if not m:
+            return {"status": "ok", "note": "repo parse failed"}
+        owner, repo = m.group(1), m.group(2)
+        try:
+            owner, repo, merged = self.resolve_target(bounty, owner, repo)
+            num = int(merged.get("target_issue_number") or merged.get("number"))
+        except Exception as e:
+            return {"status": "ok", "note": f"resolve failed: {str(e)[:60]}"}
+        gate = self.competition_check(owner, repo, num)
+        gate["target_repo"] = f"{owner}/{repo}"
+        gate["issue_num"] = num
+        return gate
+
     # ---------------- LLM plan ----------------
     def plan_file_changes(self, bounty: Dict[str, Any], root_paths: List[str],
                           file_context: Optional[Dict[str, str]] = None) -> Dict[str, Any]:

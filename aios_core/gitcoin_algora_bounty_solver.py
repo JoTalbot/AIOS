@@ -39,6 +39,31 @@ def _get_github_token() -> str:
     return ""
 
 
+# ---------------- v21.10: Bounty Radar ----------------
+RADAR_MAX_RESULTS = int(os.environ.get("AIOS_BOUNTY_RADAR_TOP", "10"))
+RADAR_FRESH_HOURS = float(os.environ.get("AIOS_BOUNTY_RADAR_FRESH_HOURS", "120"))
+RADAR_MIN_PRIZE = float(os.environ.get("AIOS_BOUNTY_RADAR_MIN_PRIZE", "50"))
+
+_PRIZE_RE = re.compile(r"\$\s?(\d[\d,]*(?:\.\d+)?)([kK]?)\b")
+
+
+def extract_prize_usd(title: str, body: str = "") -> float:
+    """Размер баунти из текста: '$1,500' / '$1500' / '$25k'. Дефолт 100."""
+    for text in (title or "", (body or "")[:400]):
+        m = _PRIZE_RE.search(text)
+        if not m:
+            continue
+        try:
+            v = float(m.group(1).replace(",", ""))
+        except ValueError:
+            continue
+        if m.group(2).lower() == "k":
+            v *= 1000.0
+        if 5.0 <= v <= 100000.0:
+            return v
+    return 100.0
+
+
 class AlgoraGitcoinBountyScanner:
     """Сканер баунти-задач на GitHub / Algora / Gitcoin."""
 
@@ -72,7 +97,8 @@ class AlgoraGitcoinBountyScanner:
                         "comments_url": item.get("comments_url", ""),
                         "repository_url": item.get("repository_url", ""),
                         "number": item.get("number"),
-                        "estimated_bounty_usd": 100.0,
+                        "estimated_bounty_usd": extract_prize_usd(
+                            item.get("title", ""), item.get("body") or ""),
                         "created_at": item.get("created_at")
                     })
         except Exception as e:
@@ -141,10 +167,109 @@ class GitcoinAlgoraMasterSolver:
         self.submitter = BountyPRSubmitter()
         self.balancer = LLMBalancer()
         self.wallet = AIOSWalletManager(data_dir)
+        self.data_dir = data_dir
+        self._engine = None
+        try:
+            from run_freelance_funnel import send_tg as _send_tg
+            self._notify = _send_tg
+        except Exception:
+            self._notify = lambda text: False
+
+    def _radar_engine(self):
+        if self._engine is None:
+            from aios_core.bounty_solution_engine import BountySolutionEngine
+            self._engine = BountySolutionEngine(balancer=self.balancer)
+        return self._engine
+
+    def radar_sweep(self, bounties: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+        """v21.10: свежие (<=RADAR_FRESH_HOURS) баунти без конкурентов → один TG-алерт.
+
+        Фильтр ДО любой работы: created_at свежий + приз >= RADAR_MIN_PRIZE,
+        затем гейт конкуренции (без LLM). Состояние — data/bounty_radar.json."""
+        if bounties is None:
+            bounties = self.scanner.search_live_bounties(max_results=RADAR_MAX_RESULTS)
+        state_file = Path(self.data_dir) / "bounty_radar.json"
+        try:
+            state = json.loads(state_file.read_text(encoding="utf-8"))
+        except Exception:
+            state = {"seen": {}}
+        seen = state.setdefault("seen", {})
+
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        fresh_hits: List[Dict[str, Any]] = []
+        for b in bounties:
+            bid = str(b.get("id") or b.get("html_url") or "")
+            if not bid or bid in seen:
+                continue
+            rec: Dict[str, Any] = {"first_seen": now.isoformat(), "alerted": False}
+            seen[bid] = rec
+            ca = b.get("created_at")
+            age_h: Optional[float] = None
+            if ca:
+                try:
+                    dt = datetime.fromisoformat(str(ca).replace("Z", "+00:00"))
+                    age_h = (now - dt).total_seconds() / 3600.0
+                except Exception:
+                    age_h = None
+            if age_h is None:
+                rec["gate"] = "no_created_at"
+                continue
+            if age_h > RADAR_FRESH_HOURS:
+                rec["gate"] = f"stale {age_h:.0f}h"
+                continue
+            prize = float(b.get("estimated_bounty_usd")
+                          or extract_prize_usd(b.get("title", ""), b.get("body") or ""))
+            if prize < RADAR_MIN_PRIZE:
+                rec["gate"] = f"prize<{RADAR_MIN_PRIZE:.0f}"
+                continue
+            try:
+                gate = self._radar_engine().gate_for_bounty(b)
+            except Exception as e:
+                rec["gate"] = f"error: {str(e)[:60]}"
+                continue
+            if gate.get("status") != "ok":
+                rec["gate"] = f"skip: {str(gate.get('reason', ''))[:80]}"
+                continue
+            rec["alerted"] = True
+            rec["gate"] = "ok"
+            fresh_hits.append({"bounty": b, "prize": prize, "age_h": age_h, "gate": gate})
+
+        try:
+            state_file.write_text(json.dumps(state, ensure_ascii=False, indent=1),
+                                  encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"radar state save: {e}")
+
+        for hit in fresh_hits:
+            b = hit["bounty"]
+            txt = (
+                "🚨 <b>Свежее бесконкурентное баунти</b>\n"
+                f"💰 ~${hit['prize']:,.0f} · возраст {hit['age_h']:.0f}ч\n"
+                f"🔗 {hit['gate'].get('target_repo', '')}#{hit['gate'].get('issue_num', b.get('number'))}\n"
+                f"📝 {b.get('title', '')[:140]}\n"
+                f"{b.get('html_url', '')}\n"
+                "Гейт чист: без assignee и чужих PR."
+            )
+            try:
+                self._notify(txt)
+                logger.info(f"🚨 Radar alert: {b.get('html_url')} (${hit['prize']:.0f})")
+            except Exception as e:
+                logger.warning(f"radar notify: {e}")
+
+        return {"scanned": len(bounties), "seen_total": len(seen),
+                "fresh_uncontested": len(fresh_hits),
+                "alerts": [h["bounty"].get("html_url") for h in fresh_hits]}
 
     def run_bounty_cycle(self, max_batch: int = 1) -> Dict[str, Any]:
         """Запуск полного цикла: Найти баунти -> Решить -> Создать PR/Комментарий -> Зафиксировать доход."""
         logger.info("🎯 [Gitcoin/Algora] Запуск цикла поиска и авто-решения баунти...")
+
+        try:
+            radar = self.radar_sweep()
+        except Exception as _r_e:
+            radar = {"error": str(_r_e)[:120]}
+            logger.warning(f"radar sweep: {_r_e}")
 
         bounties = self.scanner.search_live_bounties(max_results=max_batch)
         solved_results = []
@@ -228,6 +353,7 @@ class GitcoinAlgoraMasterSolver:
 
         return {
             "bounties_scanned": len(bounties),
+            "radar": radar,
             "solved_results": solved_results,
             "total_earned_usd": total_bounty_usd,
             "financial_summary": summary
