@@ -670,21 +670,30 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
             return {"status": "error", "error": str(e)[:300]}
 
     async def _route_olx_fm(self, page):
-        """Перенаправляет olx.pl/fm/* -> olx.ua/fm/* (обход 403/ORB для датацентровых IP)."""
+        """Перенаправляет olx.pl/fm/* -> olx.ua/fm/* (обход 403/ORB для датацентровых IP).
+
+        v21.16: fulfill только при валидном JS-ответе (200 + javascript-ctype);
+        иначе до 3 ретраев с бэкоффом. Раньше fulfill'ился ЛЮБОЙ ответ CloudFront
+        (вкл. 403/HTML) либо одиночный timeout → форма /uk/adding/ белая.
+        """
         async def _handler(route):
             url = route.request.url
             if "olx.pl/fm/" in url:
                 new_url = url.replace("https://www.olx.pl/fm/", "https://www.olx.ua/fm/")
-                try:
-                    resp = await self._context.request.get(
-                        new_url, headers={"User-Agent": "Mozilla/5.0"})
-                    body = await resp.body()
-                    ct = resp.headers.get("content-type", "application/javascript")
-                    await route.fulfill(status=resp.status, headers={
-                        "content-type": ct, "access-control-allow-origin": "*"}, body=body)
-                    return
-                except Exception:
-                    pass
+                for attempt in range(3):
+                    try:
+                        resp = await self._context.request.get(
+                            new_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20000)
+                        ct = resp.headers.get("content-type", "")
+                        if resp.status == 200 and ("javascript" in ct or "octet-stream" in ct):
+                            body = await resp.body()
+                            await route.fulfill(status=200, headers={
+                                "content-type": ct or "application/javascript",
+                                "access-control-allow-origin": "*"}, body=body)
+                            return
+                    except Exception:
+                        pass
+                    await asyncio.sleep(1.0 * (attempt + 1))
             await route.continue_()
         await page.route("**/fm/**", _handler)
 
@@ -815,21 +824,98 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
     async def create_ad(self, title: str, description: str, price: str, category: str = "other", images: List[str] = None, publish: bool = False) -> Dict[str, Any]:
         """Создать объявление через Chrome Twin (пошаговая форма /uk/adding/)."""
         page = await self._ensure_browser()
+        own_tab = False
         try:
+            if self.cdp_url:
+                # v21.16: публикация — в НОВОЙ вкладке. Вкладка от _try_cdp_attach
+                # может быть захваченной чужой страницей (myaccount) с мусорным
+                # стейтом; своя вкладка — чистый renderer и безопасный close().
+                page = await self._context.new_page()
+                own_tab = True
             await self._route_olx_fm(page)
             await page.goto("https://www.olx.ua/uk/adding/", wait_until="domcontentloaded", timeout=20000)
-            await page.wait_for_timeout(8000)
+            # v21.16c: CloudFront WAF периодически отдаёт 403 на САМ документ
+            # (rate-limit датацентрового IP, простое перезагрузить-молотить
+            # только злит WAF). Детектим блок-страницу и ждём backoff-ом.
+            for _blk in range(3):
+                try:
+                    blk_txt = await page.inner_text("body")
+                except Exception:
+                    blk_txt = ""
+                if "Request blocked" not in blk_txt and "403 ERROR" not in blk_txt:
+                    break
+                await page.wait_for_timeout(45000 * (_blk + 1))  # 45с, 90с, 135с
+                await page.goto("https://www.olx.ua/uk/adding/", wait_until="domcontentloaded",
+                                timeout=20000)
+            else:
+                shot = f"/tmp/aios_acct_olx_add_{int(datetime.now().timestamp())}.png"
+                try:
+                    await page.screenshot(path=shot)
+                except Exception:
+                    shot = None
+                return {"status": "blocked_by_cloudfront",
+                        "error": f"CloudFront 403 на документ (WAF rate-limit), shot={shot}"}
+            # v21.16: не слепые sleep, а явное ожидание полей формы (до 30с) с
+            # релоадами ×3: под нагрузкой сервера (converge-харвестеры на 4 CPU)
+            # renderer фоновой вкладки глохнет и React не бутится (белая форма).
+            rendered = False
+            for _rl in range(3):
+                try:
+                    # v21.16e: ждём форму ИЛИ модалку черновика — при висящем
+                    # черновике OLX показывает ТОЛЬКО модалку (0 input), и это
+                    # НЕ «форма не отрендерилась» (корень серии фейлов рессоры).
+                    for _tick in range(30):
+                        b_now = await page.inner_text("body")
+                        if (await page.locator("input").count() > 0
+                                or "незакінчене оголошення" in b_now
+                                or "почати заново" in b_now):
+                            rendered = True
+                            break
+                        await page.wait_for_timeout(4000)
+                    if rendered:
+                        break
+                except Exception:
+                    pass
+                # v21.16d: зависший renderer не лечится reload'ом — открываем
+                # НОВУЮ вкладку (доказано пробами: свежий renderer монтирует
+                # posting-модуль, старый может глохнуть навсегда).
+                try:
+                    await page.close()
+                except Exception:
+                    pass
+                try:
+                    page = await self._context.new_page()
+                    await self._route_olx_fm(page)
+                    await page.goto("https://www.olx.ua/uk/adding/",
+                                    wait_until="domcontentloaded", timeout=25000)
+                except Exception:
+                    pass
+            if not rendered:
+                shot = f"/tmp/aios_acct_olx_add_{int(datetime.now().timestamp())}.png"
+                try:
+                    await page.screenshot(path=shot)
+                except Exception:
+                    shot = None
+                return {"status": "form_not_rendered",
+                        "error": f"форма /uk/adding/ не отрендерилась (3 reload), shot={shot}"}
             body = await page.inner_text("body")
             if any(k in body.lower() for k in ("підтвердіть", "подтвердите", "код підтвердження",
                                                "отримати код", "підтвердити свій")):
-                return {"status": "phone_not_confirmed",
-                        "error": "Нужно подтвердить телефон OLX (через VNC, команда «подтверди телефон OLX»)"}
-            # закрыть модалку черновика
+                        return {"status": "phone_not_confirmed",
+                                "error": "Нужно подтвердить телефон OLX (через VNC, команда «подтверди телефон OLX»)"}
+            # закрыть модалку черновика (до 3 всплытий) и дождаться полей формы
+            for _dm in range(3):
+                try:
+                    btn = page.get_by_role("button", name="Ні, почати заново").first
+                    if await btn.count():
+                        await btn.click(timeout=5000)
+                        await page.wait_for_timeout(4000)
+                        continue
+                    break
+                except Exception:
+                    break
             try:
-                btn = page.get_by_role("button", name="Ні, почати заново").first
-                if await btn.count():
-                    await btn.click(timeout=4000)
-                    await page.wait_for_timeout(4000)
+                await page.wait_for_selector("input", timeout=20000)
             except Exception:
                 pass
             # Шаг 1: заголовок + Продовжити (OLX требует минимум 16 символов)
@@ -957,6 +1043,13 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
         except Exception as e:
             print(f"Create ad failed: {e}")
             return {"status": "failed", "error": str(e)}
+        finally:
+            if own_tab:
+                # v21.16: свою вкладку закрываем — не копим мусор в service-Chrome
+                try:
+                    await page.close()
+                except Exception:
+                    pass
 
 # Alias for backward compat
 OLXChromeTwin = OLXChromeTwinAdapter
