@@ -671,6 +671,13 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             return True
     except Exception:
         pass
+    # Дизайн каталога (v22.2): «дизайн», «превью» — скриншот из Google Stitch
+    try:
+        from tg_bot.catalog import _handle_catalog_design_intent as _hcdi
+        if _hcdi(api, chat_id, text):
+            return True
+    except Exception:
+        pass
     if _m()._handle_phone_metrics_intent(api, chat_id, text):
         return True
     if _m()._handle_phone_bank_monitor_intent(api, chat_id, text):

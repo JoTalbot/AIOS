@@ -17,6 +17,16 @@ _TRIGGERS = (
     "📦 склад", "витрина", "каталог склада",
 )
 
+_DESIGN_TRIGGERS = (
+    "дизайн каталога", "дизайн склада", "превью каталога", "превью",
+    "покажи каталог", "покажи дизайн", "дизайн",
+)
+
+# скриншот, сгенерированный Google Stitch (generate_screen_from_text)
+STITCH_DESIGN_PNG = ROOT / "data" / "stitch_catalog_generated.png"
+# HTML-версия того же дизайна (для отправки как документ)
+STITCH_DESIGN_HTML = ROOT / "data" / "stitch_catalog_generated.html"
+
 
 def _load() -> list[dict]:
     if not DATA.exists():
@@ -91,4 +101,49 @@ def _handle_catalog_intent(api, chat_id: int, text: str) -> bool:
         api.send_message(chat_id, "\n".join(lines)[:3900])
     except Exception:
         api.send_message(chat_id, "\n".join(lines)[:3900], parse_mode="")
+    return True
+
+
+def _handle_catalog_design_intent(api, chat_id: int, text: str) -> bool:
+    """Отправляет превью сгенерированного Stitch-дизайна каталога склада.
+
+    Команды: «дизайн каталога», «превью», «покажи каталог» и т.п.
+    """
+    t = " ".join(str(text or "").casefold().split())
+    if not any(phrase in t for phrase in _DESIGN_TRIGGERS):
+        return False
+
+    if STITCH_DESIGN_PNG.exists():
+        try:
+            api.send_photo(
+                chat_id,
+                str(STITCH_DESIGN_PNG),
+                caption=(
+                    "🎨 Дизайн каталога (Google Stitch)\n"
+                    "Сгенерирован Stitch AI из DESIGN.md дизайн-системы.\n"
+                    "Проект: AIOS Warehouse Catalog"
+                ),
+            )
+        except Exception as e:
+            api.send_message(chat_id, f"⚠️ Не удалось отправить скриншот: {e}")
+    else:
+        api.send_message(chat_id, "⚠️ Превью дизайна ещё не сгенерировано.")
+
+    # HTML-версию отправляем как документ, если есть
+    if STITCH_DESIGN_HTML.exists():
+        try:
+            api.send_document(
+                chat_id,
+                str(STITCH_DESIGN_HTML),
+                caption="📄 HTML дизайна каталога (Stitch) — можно открыть в браузере",
+            )
+        except Exception:
+            pass
+
+    # подсказка (plain text, без HTML)
+    api.send_message(
+        chat_id,
+        "🏬 Склад: команда «склад» — статистика и наличие.\n"
+        "📦 OLX: 3 товара не опубликованы (Колесо 2200, Диски Шкода 7000, Кузов 10000).",
+    )
     return True
