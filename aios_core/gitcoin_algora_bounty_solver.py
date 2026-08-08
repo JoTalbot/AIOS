@@ -44,6 +44,26 @@ RADAR_MAX_RESULTS = int(os.environ.get("AIOS_BOUNTY_RADAR_TOP", "10"))
 RADAR_FRESH_HOURS = float(os.environ.get("AIOS_BOUNTY_RADAR_FRESH_HOURS", "120"))
 RADAR_MIN_PRIZE = float(os.environ.get("AIOS_BOUNTY_RADAR_MIN_PRIZE", "50"))
 
+RADAR_QUERIES_DEFAULT = [
+    "label:bounty language:python type:issue",
+    "label:bounty type:issue",
+    "bounty in:title type:issue",
+]
+
+
+def radar_queries() -> List[str]:
+    """Мультизапрос радара. ENV override: AIOS_BOUNTY_RADAR_QUERIES='q1;;q2'.
+    Watchlist репо-платформ: AIOS_BOUNTY_WATCH_REPOS='owner/repo[,...]'."""
+    q = os.environ.get("AIOS_BOUNTY_RADAR_QUERIES", "")
+    if q.strip():
+        return [x.strip() for x in q.split(";;") if x.strip()]
+    queries = list(RADAR_QUERIES_DEFAULT)
+    watch = os.environ.get("AIOS_BOUNTY_WATCH_REPOS",
+                           "zhangjiayang6835-cyber/bounty-plaza")
+    for repo in [r.strip() for r in watch.split(",") if r.strip()]:
+        queries.append(f"repo:{repo} type:issue")
+    return queries
+
 _PRIZE_RE = re.compile(r"\$\s?(\d[\d,]*(?:\.\d+)?)([kK]?)\b")
 
 
@@ -105,6 +125,22 @@ class AlgoraGitcoinBountyScanner:
             logger.warning(f"⚠️ Ошибка поиска GitHub Bounties: {e}")
 
         return bounties
+
+    def search_all(self, max_results: int = 10) -> List[Dict[str, Any]]:
+        """v21.11: мультизапрос с дедупом по url и сортировкой по свежести."""
+        merged: Dict[str, Dict[str, Any]] = {}
+        per = max(3, max_results // 2)
+        for q in radar_queries():
+            try:
+                for b in self.search_live_bounties(query=q, max_results=per):
+                    key = b.get("html_url") or b.get("id") or ""
+                    if key and key not in merged:
+                        merged[key] = b
+            except Exception as e:
+                logger.warning(f"radar query '{q[:40]}': {e}")
+        out = sorted(merged.values(),
+                     key=lambda x: str(x.get("created_at") or ""), reverse=True)
+        return out[:max_results]
 
 
 class BountyPRSubmitter:
@@ -187,7 +223,11 @@ class GitcoinAlgoraMasterSolver:
         Фильтр ДО любой работы: created_at свежий + приз >= RADAR_MIN_PRIZE,
         затем гейт конкуренции (без LLM). Состояние — data/bounty_radar.json."""
         if bounties is None:
-            bounties = self.scanner.search_live_bounties(max_results=RADAR_MAX_RESULTS)
+            search_all = getattr(self.scanner, "search_all", None)
+            if callable(search_all):
+                bounties = search_all(max_results=RADAR_MAX_RESULTS)
+            else:
+                bounties = self.scanner.search_live_bounties(max_results=RADAR_MAX_RESULTS)
         state_file = Path(self.data_dir) / "bounty_radar.json"
         try:
             state = json.loads(state_file.read_text(encoding="utf-8"))

@@ -112,3 +112,52 @@ def test_radar_in_cycle_result(tmp_path, monkeypatch):
     monkeypatch.setattr(solver.wallet, "get_financial_summary", lambda: {})
     res = solver.run_bounty_cycle(max_batch=1)
     assert "radar" in res and res["radar"]["fresh_uncontested"] == 0
+
+
+# ---------------- v21.11: мультизапрос радара ----------------
+
+def test_radar_queries_defaults_and_env(monkeypatch):
+    from aios_core import gitcoin_algora_bounty_solver as sol
+    monkeypatch.delenv("AIOS_BOUNTY_RADAR_QUERIES", raising=False)
+    monkeypatch.delenv("AIOS_BOUNTY_WATCH_REPOS", raising=False)
+    qs = sol.radar_queries()
+    assert any("label:bounty" in q for q in qs)
+    assert any("bounty in:title" in q for q in qs)
+    assert any(q.startswith("repo:zhangjiayang6835-cyber/bounty-plaza") for q in qs)
+    monkeypatch.setenv("AIOS_BOUNTY_RADAR_QUERIES", "label:x type:issue;; repo:y/z type:issue")
+    assert sol.radar_queries() == ["label:x type:issue", "repo:y/z type:issue"]
+
+
+def test_search_all_dedupe_newest_first(monkeypatch):
+    from aios_core import gitcoin_algora_bounty_solver as sol
+
+    class FakeScanner(sol.AlgoraGitcoinBountyScanner):
+        def search_live_bounties(self, query="", max_results=3):
+            base = {"title": "t", "body": "", "number": 1}
+            if "python" in query:
+                return [dict(base, id="a", html_url="u/a", created_at="2026-08-08T01:00:00Z"),
+                        dict(base, id="b", html_url="u/b", created_at="2026-08-08T05:00:00Z")]
+            return [dict(base, id="b2", html_url="u/b", created_at="2026-08-08T05:00:00Z"),  # дубль b
+                    dict(base, id="c", html_url="u/c", created_at="2026-08-08T03:00:00Z")]
+
+    monkeypatch.delenv("AIOS_BOUNTY_RADAR_QUERIES", raising=False)
+    res = FakeScanner().search_all(max_results=10)
+    keys = [b["id"] for b in res]
+    assert len(keys) == len(set(keys)) == 3          # дедуп по html_url
+    assert [b["created_at"] for b in res] == sorted(
+        [b["created_at"] for b in res], reverse=True)  # новые первыми
+
+
+def test_radar_sweep_prefers_search_all(tmp_path, monkeypatch):
+    """radar_sweep вызывает search_all, если он есть у сканера."""
+    solver = GitcoinAlgoraMasterSolver(data_dir=str(tmp_path))
+    called = {}
+
+    class FakeAll:
+        def search_all(self, max_results=10):
+            called["n"] = max_results
+            return []
+
+    solver.scanner = FakeAll()
+    r = solver.radar_sweep()
+    assert called.get("n") == 10 and r["scanned"] == 0
