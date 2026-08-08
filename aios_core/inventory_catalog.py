@@ -194,7 +194,17 @@ def catalog_stats(items: Optional[List[dict]] = None) -> Dict[str, Any]:
         b["value"] += float(it.get("price", 0)) * int(it.get("qty", 0))
     for b in by_cat.values():
         b["value"] = round(b["value"], 2)
-    published = sum(1 for it in items if it.get("olx_ad_id"))
+    # опубликованные на OLX — сверяем с data/olx_published.json (реальные ad_id)
+    published_names: set[str] = set()
+    pub_path = ROOT / "data" / "olx_published.json"
+    if pub_path.exists():
+        try:
+            for a in json.loads(pub_path.read_text(encoding="utf-8")):
+                if isinstance(a, dict) and a.get("name"):
+                    published_names.add(str(a["name"]).strip().casefold())
+        except Exception:
+            pass
+    published = sum(1 for it in items if str(it.get("name", "")).strip().casefold() in published_names)
     return {
         "positions": len(items),
         "total_qty": total_qty,
