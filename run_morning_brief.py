@@ -226,6 +226,17 @@ def build() -> str:
     except Exception:
         pass
 
+    # Крипто-Заработок ($5,000 Демо)
+    try:
+        from aios_core.quant_trading_engine import get_multi_exchange_demo_report
+        crypto_rep = get_multi_exchange_demo_report()
+        tot_eq = crypto_rep.get("total_equity_usd", 5000.0)
+        tot_pnl = crypto_rep.get("grand_total_pnl_usd", 0.0)
+        p_sign = "+" if tot_pnl > 0 else ""
+        lines.append(f"🚀 Крипто-Заработок (5 бирж $5k): Капитал ${tot_eq:,.2f} USD (PnL: {p_sign}${tot_pnl:.2f} USD)")
+    except Exception:
+        pass
+
     # напоминания на сегодня
     rem = _read(ROOT / "data" / "reminders.json", [])
     today = now.strftime("%Y-%m-%d")
