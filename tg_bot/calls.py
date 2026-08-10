@@ -22,7 +22,30 @@ def _handle_calls_intent(api, chat_id: int, text: str) -> bool:
     """Обрабатывает запросы пользователя, связанные со звонками и Whisper."""
     t_lower = (text or "").lower().strip()
 
-    keywords = ["звонок", "звонки", "whisper", "транскрипц", "расшифруй", "/calls", "аудиозапис"]
+    keywords = ["звонок", "звонки", "whisper", "транскрипц", "расшифруй", "/calls", "аудиозапис", "trycloudflare"]
+
+    # 0. Авто-регистрация ссылки trycloudflare.com
+    if "trycloudflare.com" in t_lower:
+        import re
+        match = re.search(r'https://[a-zA-Z0-9-]+\.trycloudflare\.com', text)
+        if match:
+            tunnel_url = match.group(0)
+            from scripts.register_colab_whisper import register_whisper_endpoint
+            api.send_message(chat_id, f"📡 Проверяю связь с Colab Whisper GPU по адресу:\n`{tunnel_url}`...", parse_mode="Markdown")
+            success = register_whisper_endpoint(tunnel_url)
+            if success:
+                msg = (
+                    f"🎉 **Google Colab Whisper GPU успешно зарегистрирован!**\n\n"
+                    f"🟢 **Статус**: ONLINE\n"
+                    f"🔗 **URL**: `{tunnel_url}`\n"
+                    f"🧠 **Модель**: `Whisper Large-v3 (T4 GPU)`\n\n"
+                    f"Теперь нажмите **`🎙️ Обработать все звонки`** для старта расшифровки!"
+                )
+            else:
+                msg = f"❌ Не удалось подключиться к Whisper по адресу `{tunnel_url}`. Проверьте, запущены ли все ячейки в Colab."
+            keyboard = _calls_keyboard()
+            api.send_message(chat_id, msg, reply_markup=keyboard, parse_mode="Markdown")
+            return True
     if not any(k in t_lower for k in keywords):
         return False
 
