@@ -91,6 +91,16 @@ def cmd_ml_signal():
     _print(QuantMLPredictor().signal_json())
 
 
+def cmd_ml_momentum(top, strong):
+    from aios_core.quant.ml_signal_bridge import MLSignalBridge
+    b = MLSignalBridge()
+    out = {"summary": b.summary()}
+    if strong:
+        out["strong"] = b.strong_signals(min_prob=strong)
+    out["top_momentum"] = b.top_momentum(n=top)
+    _print(out)
+
+
 # ------------------------------------------------------------- rag ----------
 def cmd_rag_search(query, n):
     from aios_core.rag.embeddings_store import EmbeddingsStore
@@ -164,6 +174,7 @@ def main() -> int:
     ml = sub.add_parser("ml")
     mlsub = ml.add_subparsers(dest="action", required=True)
     mlsub.add_parser("signal")
+    pmom = mlsub.add_parser("momentum"); pmom.add_argument("--top", type=int, default=5); pmom.add_argument("--strong", type=float, default=None)
 
     rg = sub.add_parser("rag")
     rgsub = rg.add_subparsers(dest="action", required=True)
@@ -188,7 +199,9 @@ def main() -> int:
     elif args.cmd == "data":
         if args.action == "collect": cmd_data_collect(args.symbols, args.tf, args.limit, args.exchanges)
         else: cmd_data_export()
-    elif args.cmd == "ml": cmd_ml_signal()
+    elif args.cmd == "ml":
+        if args.action == "signal": cmd_ml_signal()
+        else: cmd_ml_momentum(args.top, args.strong)
     elif args.cmd == "rag":
         if args.action == "search": cmd_rag_search(args.query, args.n)
         else: cmd_rag_build()
