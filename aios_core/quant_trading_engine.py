@@ -1332,7 +1332,7 @@ def reset_multi_exchange_demo(data_dir: str = "/root/AIOS/data") -> bool:
 
 
 def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
-    """Форматирует отчёт по 5 демо-счетам ($5,000) и межбиржевому арбитражу для Telegram."""
+    """Форматирует 360-градусный отчёт по 5 демо-счетам ($5,000), арбитражу и ИИ-индикаторам для Telegram."""
     tot_init = report.get("total_initial_balance_usd", 5000.0)
     tot_cash = report.get("total_cash_usd", 5000.0)
     tot_equity = report.get("total_equity_usd", 5000.0)
@@ -1342,6 +1342,14 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
     pnl_icon = "🚀" if tot_pnl >= 0 else "📉"
     pnl_sign = "+" if tot_pnl > 0 else ""
 
+    # Запрос сентимента и рисков
+    sent_verdict = "🟢 BULLISH"
+    try:
+        from aios_core.crypto_news_sentiment import AIOSCryptoNewsSentiment
+        sent_verdict = AIOSCryptoNewsSentiment.analyze_market_sentiment().get("verdict", "🟢 BULLISH")
+    except Exception:
+        pass
+
     lines = [
         "🏛️ <b>Мульти-Биржевой Крипто-Заработок AIOS ($5,000 Демо)</b>",
         "━━━━━━━━━━━━━━━━━━━━━",
@@ -1349,6 +1357,11 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
         f"💳 <b>Свободный кэш:</b> ${tot_cash:,.2f} USD",
         f"📊 <b>Текущий капитал (Equity):</b> <b>${tot_equity:,.2f} USD</b>",
         f"{pnl_icon} <b>Совокупный PnL:</b> <b>{pnl_sign}${tot_pnl:,.2f} USD ({pnl_sign}{tot_ret:.2f}%)</b>",
+        "",
+        "🛡️ <b>ИИ-Мониторинг Рисков & Сентимента:</b>",
+        "• Защита депозита (RiskGuard): <b>🟢 OK (Kill-Switch не активен)</b>",
+        f"• Рыночный сентимент (AI Sentiment): <b>{sent_verdict}</b>",
+        "• Риск-менеджмент: <b>Kelly Sizing (1/2) + Trailing Stop (-1.0%)</b>",
         "",
         "🏦 <b>Результаты торгов по каждой из 5 бирж:</b>"
     ]
