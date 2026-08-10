@@ -884,8 +884,10 @@ def api_calls_single_dialogue(dialogue_id: str):
 
 @app.get("/c/calls")
 @app.get("/calls")
+@app.get("/converge/c/calls")
+@app.get("/converge/calls")
 def calls_dashboard_view():
-    return FileResponse(STATIC / "calls_dashboard.html")
+    return FileResponse(DATA / "stitch_calls_dashboard.html")
 
 
 @app.get("/api/business/inventory")
