@@ -171,12 +171,28 @@ class QuantSignalEngine:
             else:
                 rsi = 100.0
 
-        # 3. Формирование сигнала
+        # 3. Расчет Bollinger Bands (20 периодов)
+        period_bb = min(20, len(prices))
+        sma_bb = sum(prices[-period_bb:]) / period_bb
+        variance = sum((p - sma_bb) ** 2 for p in prices[-period_bb:]) / period_bb
+        std_dev = math.sqrt(variance)
+        upper_bb = sma_bb + (2.0 * std_dev)
+        lower_bb = sma_bb - (2.0 * std_dev)
+
+        # 4. Формирование сигнала (SMA + RSI + Bollinger Bands)
         signal = "HOLD"
         confidence = 0.50
         reason = "Индикаторы в нейтральной зоне"
 
-        if sma_fast > sma_slow and rsi < 65.0:
+        if current_price <= lower_bb and rsi < 40.0:
+            signal = "BUY_LONG"
+            confidence = 0.95
+            reason = f"Пробой Нижней полосы Боллинджера (${lower_bb:.2f}) + RSI {rsi:.1f}"
+        elif current_price >= upper_bb and rsi > 60.0:
+            signal = "SELL_SHORT"
+            confidence = 0.95
+            reason = f"Пробой Верхней полосы Боллинджера (${upper_bb:.2f}) + RSI {rsi:.1f}"
+        elif sma_fast > sma_slow and rsi < 65.0:
             signal = "BUY_LONG"
             confidence = 0.85
             reason = f"Бычье пересечение SMA (Fast {sma_fast:.1f} > Slow {sma_slow:.1f}) + RSI {rsi:.1f}"
@@ -191,7 +207,7 @@ class QuantSignalEngine:
         elif rsi > 70.0:
             signal = "SELL_SHORT"
             confidence = 0.90
-            reason = f"Сильная перекупленность RSI = {rsi:.1f} (> 70)"
+            reason = f"Сильная перекупленность RSI = {rsi:.1f} (> 70)" "
 
         return {
             "symbol": symbol,
