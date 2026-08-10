@@ -1043,6 +1043,29 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
         api.answer_callback(cb_id, "…")
         return
 
+    if data.startswith("call_"):
+        api.answer_callback(cb_id, "Обрабатываю...")
+        try:
+            from aios_core.whisper_colab_transcriber import check_colab_whisper_health, process_calls_directory, CALLS_DIR
+            from tg_bot.calls import _calls_keyboard
+            if data == "call_status":
+                st = check_colab_whisper_health()
+                msg = f"🟢 **Google Colab Whisper GPU — ONLINE**\nURL: `{st.get('url')}`" if st.get("online") else f"🔴 **Colab Whisper OFFLINE**\nReason: `{st.get('reason')}`"
+                api.send_message(chat_id, msg, reply_markup=_calls_keyboard(), parse_mode="Markdown")
+            elif data == "call_process_all":
+                api.send_message(chat_id, "⏳ **Транскрибация звонков запущена...**", parse_mode="Markdown")
+                res = process_calls_directory()
+                msg = f"🎉 **Обработано звонков: {len(res)} шт.**" if res else "📁 **Нет новых звонков для обработки в Calls/**"
+                api.send_message(chat_id, msg, reply_markup=_calls_keyboard(), parse_mode="Markdown")
+            elif data == "call_list":
+                files = list(CALLS_DIR.glob("*")) if CALLS_DIR.exists() else []
+                flist = "\n".join([f"• `{f.name}`" for f in files if f.suffix.lower() in {".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac", ".opus", ".3gp", ".amr"}]) or "Папка Calls/ пуста."
+                msg = f"📁 **Список звонков в `/root/AIOS/Calls`**:\n\n{flist}"
+                api.send_message(chat_id, msg, reply_markup=_calls_keyboard(), parse_mode="Markdown")
+        except Exception as _e:
+            api.send_message(chat_id, f"⚠️ Ошибка обработки звонков: {_e}")
+        return
+
     if data.startswith("nav_") or data.startswith("olx_") or data.startswith("cat_items_") or data.startswith("crypto_"):
         _handle_nav_callback(api, chat_id, cb_id, data)
         return

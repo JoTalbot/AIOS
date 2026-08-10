@@ -647,6 +647,10 @@ def run_bot(token: str) -> None:
 
                     # Natural language control of Google / Instagram accounts
                     try:
+                        from tg_bot.calls import _handle_calls_intent
+                        if _handle_calls_intent(api, chat_id, text):
+                            print(f"  -> calls-intent handled (chat {chat_id})")
+                            continue
                         if _handle_account_intent(api, chat_id, text):
                             print(f"  -> account-intent handled (chat {chat_id})")
                             continue
@@ -724,6 +728,10 @@ def run_bot(token: str) -> None:
                     reply = cmd_stats()
                 elif cmd in ("/status", "/platforms"):
                     reply = cmd_platforms()
+                elif cmd in ("/calls", "/whisper"):
+                    from tg_bot.calls import _handle_calls_intent
+                    _handle_calls_intent(api, chat_id, "/calls")
+                    continue
                 elif cmd == "/olx":
                     reply = cmd_olx(args)
                 elif cmd == "/olx_sub" or cmd == "/subscribe":

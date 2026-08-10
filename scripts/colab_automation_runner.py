@@ -30,7 +30,8 @@ async def run_colab_automation():
         subprocess.run([sys.executable, "-m", "pip", "install", "playwright"], check=True)
         from playwright.async_api import async_playwright
 
-    notebook_url = "https://colab.research.google.com/github/JoTalbot/AIOS/blob/main/docs/AIOS_Google_Colab_LLM_Coding.ipynb"
+    default_nb = "https://colab.research.google.com/github/JoTalbot/AIOS/blob/main/docs/AIOS_Google_Colab_Whisper_Transcriber.ipynb" if "whisper" in sys.argv else "https://colab.research.google.com/github/JoTalbot/AIOS/blob/main/docs/AIOS_Google_Colab_LLM_Coding.ipynb"
+    notebook_url = os.getenv("COLAB_NOTEBOOK_URL", default_nb)
     cdp_url = "http://localhost:9222"
 
     async with async_playwright() as p:
