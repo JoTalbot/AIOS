@@ -857,6 +857,18 @@ def api_system():
     return _system_snapshot()
 
 
+@app.get("/api/calls/knowledge-graph")
+def api_calls_knowledge_graph():
+    from aios_core.contact_knowledge_graph import build_relationship_knowledge_graph
+    return build_relationship_knowledge_graph()
+
+
+@app.get("/api/calls/dossier/{contact_id}")
+def api_calls_contact_dossier(contact_id: str):
+    from aios_core.contact_knowledge_graph import generate_contact_ai_dossier
+    return generate_contact_ai_dossier(contact_id)
+
+
 @app.get("/api/calls/contacts")
 def api_calls_contacts():
     from aios_core.calls_crm_engine import get_contacts_with_dialogues

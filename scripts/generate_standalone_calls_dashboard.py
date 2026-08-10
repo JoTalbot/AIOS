@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 AIOS Standalone & Preloaded Stitch Calls CRM Dashboard Generator
+Поддерживает Граф Связей (Vis.js), ИИ-Досье контактов и расшифровки диктофона.
 """
 
 import os
@@ -13,6 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from aios_core.calls_crm_engine import get_contacts_with_dialogues
+from aios_core.contact_knowledge_graph import build_relationship_knowledge_graph
 
 DATA_HTML = REPO_ROOT / "data" / "stitch_calls_dashboard.html"
 STATIC_HTML = REPO_ROOT / "converge" / "static" / "calls_dashboard.html"
@@ -20,14 +22,18 @@ STATIC_HTML = REPO_ROOT / "converge" / "static" / "calls_dashboard.html"
 
 def build_preloaded_html():
     contacts = get_contacts_with_dialogues()
+    graph_data = build_relationship_knowledge_graph()
+
     contacts_json = json.dumps(contacts, ensure_ascii=False)
+    graph_json = json.dumps(graph_data, ensure_ascii=False)
 
     head_part = """<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AIOS Calls CRM & Speaker Diarization — Stitch Dashboard</title>
+  <title>AIOS Calls CRM, Knowledge Graph & Speaker Diarization — Stitch Dashboard</title>
+  <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <style>
     :root {
       --bg: #0F172A;
@@ -48,10 +54,14 @@ def build_preloaded_html():
     header { background: #162032; border-bottom: 1px solid var(--card-border); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
     .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.05rem; color: var(--accent); }
     .header-badges { display: flex; gap: 6px; flex-wrap: wrap; }
-    .badge { background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+    .badge { background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; cursor: pointer; }
     .badge.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
 
-    .container { display: flex; flex: 1; height: calc(100vh - 58px); min-height: 500px; }
+    .tab-bar { background: #111B2E; border-bottom: 1px solid var(--card-border); display: flex; padding: 0 16px; gap: 4px; }
+    .tab-btn { padding: 10px 16px; color: var(--text-muted); font-size: 0.88rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(255,255,255,0.02); }
+
+    .container { display: flex; flex: 1; height: calc(100vh - 100px); min-height: 500px; }
     
     .sidebar { width: 320px; border-right: 1px solid var(--card-border); background: #131D31; display: flex; flex-direction: column; flex-shrink: 0; }
     .search-box { padding: 12px; border-bottom: 1px solid var(--card-border); }
@@ -69,7 +79,10 @@ def build_preloaded_html():
     .contact-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
     .count-chip { background: var(--accent-glow); border: 1px solid var(--accent); color: var(--accent); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
 
-    .main-panel { flex: 1; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
+    .main-panel { flex: 1; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; position: relative; }
+    .tab-content { display: none; flex: 1; flex-direction: column; height: 100%; overflow: hidden; }
+    .tab-content.active { display: flex; }
+
     .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); gap: 12px; padding: 20px; text-align: center; }
     
     .contact-header { padding: 14px 20px; border-bottom: 1px solid var(--card-border); background: var(--card-bg); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
@@ -81,6 +94,10 @@ def build_preloaded_html():
     .dialogue-summary { font-size: 0.88rem; color: #CBD5E1; line-height: 1.45; margin-bottom: 10px; }
     .dialogue-footer { display: flex; gap: 10px; font-size: 0.78rem; color: var(--text-muted); align-items: center; flex-wrap: wrap; }
 
+    /* Graph Container */
+    #graphContainer { width: 100%; height: 100%; background: #0B1120; }
+
+    /* Modal Viewer */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 12px; }
     .modal-overlay.active { display: flex; }
     .modal-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; width: 100%; max-width: 820px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
@@ -103,14 +120,19 @@ def build_preloaded_html():
 
     @media (max-width: 768px) {
       .container { flex-direction: column; height: auto; min-height: auto; }
-      .sidebar { width: 100%; max-height: 280px; border-right: none; border-bottom: 1px solid var(--card-border); }
-      .main-panel { min-height: 400px; }
+      .sidebar { width: 100%; max-height: 250px; border-right: none; border-bottom: 1px solid var(--card-border); }
+      .main-panel { min-height: 450px; }
     }
   </style>
   <script type="application/json" id="preloadedData">
 """
 
     tail_part = """
+  </script>
+  <script type="application/json" id="preloadedGraphData">
+"""
+
+    end_part = """
   </script>
 </head>
 <body>
@@ -119,11 +141,17 @@ def build_preloaded_html():
       🎙️ AIOS Calls & Voice CRM — Google Contacts
     </div>
     <div class="header-badges">
-      <div class="badge active">✅ 44+ Контактов</div>
+      <div class="badge active">✅ Google Contacts</div>
       <div class="badge">🎙️ Diarization</div>
       <div class="badge">📲 Ambient Voice</div>
     </div>
   </header>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('contactsTab')">🎙️ Диалоги Контактов</button>
+    <button class="tab-btn" onclick="switchTab('graphTab')">🕸️ Граф Связей и Упоминаний</button>
+    <button class="tab-btn" onclick="switchTab('dossierTab')">📑 ИИ-Досье Контакта</button>
+  </div>
 
   <div class="container">
     <div class="sidebar">
@@ -134,11 +162,32 @@ def build_preloaded_html():
       </div>
     </div>
 
-    <div class="main-panel" id="mainPanel">
-      <div class="empty-state">
-        <div style="font-size:48px;">📞</div>
-        <h3>Выберите Google Контакт из списка слева</h3>
-        <p>Отображаются только контакты, с которыми имеются расшифрованные звонки и диктофонные записи.</p>
+    <div class="main-panel">
+      <!-- Tab 1: Contacts & Dialogues -->
+      <div class="tab-content active" id="contactsTab">
+        <div class="empty-state" id="emptyState">
+          <div style="font-size:48px;">📞</div>
+          <h3>Выберите Google Контакт из списка слева</h3>
+          <p>Отображаются только контакты, с которыми имеются расшифрованные звонки и диктофонные записи.</p>
+        </div>
+        <div id="contactDetailView" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
+        </div>
+      </div>
+
+      <!-- Tab 2: Relationship Knowledge Graph -->
+      <div class="tab-content" id="graphTab">
+        <div id="graphContainer"></div>
+      </div>
+
+      <!-- Tab 3: AI Contact Dossier -->
+      <div class="tab-content" id="dossierTab">
+        <div class="detail-body" id="dossierBody" style="padding:24px;">
+          <div class="empty-state">
+            <div style="font-size:48px;">📑</div>
+            <h3>Выберите контакт слева для генерации ИИ-Досье</h3>
+            <p>Накопительный психологический портрет, финансовые договоренности и аналитика взаимоотношений.</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -156,28 +205,32 @@ def build_preloaded_html():
 
   <script>
     let allContacts = [];
+    let graphData = null;
     let selectedContact = null;
+    let networkInstance = null;
 
     function initDashboard() {
       try {
         const rawJson = document.getElementById('preloadedData').textContent;
         allContacts = JSON.parse(rawJson);
         renderContacts(allContacts);
+
+        const rawGraph = document.getElementById('preloadedGraphData').textContent;
+        graphData = JSON.parse(rawGraph);
       } catch (err) {
         console.error('Preloaded JSON parse error:', err);
-        loadAsyncContacts();
       }
     }
 
-    async function loadAsyncContacts() {
-      const list = document.getElementById('contactsList');
-      try {
-        const res = await fetch('/api/calls/contacts');
-        const data = await res.json();
-        allContacts = data.contacts || [];
-        renderContacts(allContacts);
-      } catch (err) {
-        list.innerHTML = '<div style="padding:20px; text-align:center; color:#EF4444;"> Ошибка загрузки данных</div>';
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+
+      if (tabId === 'graphTab') {
+        renderKnowledgeGraph();
       }
     }
 
@@ -217,12 +270,15 @@ def build_preloaded_html():
       renderContacts(allContacts);
       if (selectedContact) {
         renderContactDetail(selectedContact);
+        loadContactDossier(selectedContact);
       }
     }
 
     function renderContactDetail(c) {
-      const main = document.getElementById('mainPanel');
-      main.innerHTML = `
+      document.getElementById('emptyState').style.display = 'none';
+      const detail = document.getElementById('contactDetailView');
+      detail.style.display = 'flex';
+      detail.innerHTML = `
         <div class="contact-header">
           <div style="display:flex; align-items:center; gap:12px;">
             <div class="avatar" style="width:48px; height:48px; font-size:1.1rem;">${c.initials || 'К'}</div>
@@ -231,7 +287,7 @@ def build_preloaded_html():
               <div style="font-size:0.82rem; color:#94A3B8;">${c.phone || ''} ${c.role ? '| ' + c.role : ''}</div>
             </div>
           </div>
-          <div class="count-chip" style="font-size:0.85rem; padding:4px 12px;">Диалогов: ${c.dialogues_count}</div>
+          <div class="count-chip" style="font-size:0.85rem; padding:4px 12px;">Всего диалогов: ${c.dialogues_count}</div>
         </div>
         <div class="detail-body">
           ${(c.dialogues || []).map(d => `
@@ -253,10 +309,45 @@ def build_preloaded_html():
       `;
     }
 
+    async function loadContactDossier(c) {
+      const db = document.getElementById('dossierBody');
+      db.innerHTML = `<div style="padding:20px; color:#00F0FF;">⏳ Загрузка и ИИ-анализ накопительного досье для ${c.name}...</div>`;
+      try {
+        const res = await fetch(`/api/calls/dossier/${c.contact_id}`);
+        const data = await res.json();
+        db.innerHTML = `
+          <div class="contact-header" style="border-radius:12px; margin-bottom:16px;">
+            <div>
+              <h2 style="font-size:1.2rem; font-weight:700;">📑 ИИ-Досье и Психопортрет: ${data.name}</h2>
+              <div style="font-size:0.85rem; color:#94A3B8;">${data.phone} | ${data.role} | Диалогов: ${data.dialogues_count}</div>
+            </div>
+          </div>
+          <div class="summary-box" style="font-size:0.95rem; line-height:1.6;">${data.dossier_text || 'Досье формируется...'}</div>
+        `;
+      } catch (err) {
+        db.innerHTML = `<div class="summary-box">👤 **Досье ${c.name}**:\nВсего диалогов: ${c.dialogues_count} шт.</div>`;
+      }
+    }
+
+    function renderKnowledgeGraph() {
+      if (!graphData || !window.vis) return;
+      const container = document.getElementById('graphContainer');
+      const data = {
+        nodes: new vis.DataSet(graphData.nodes || []),
+        edges: new vis.DataSet(graphData.edges || [])
+      };
+      const options = {
+        nodes: { font: { color: '#F8FAFC' }, borderWidth: 2 },
+        edges: { font: { color: '#94A3B8', size: 10 }, smooth: true },
+        physics: { stabilization: true, barnesHut: { gravitationalConstant: -3000 } }
+      };
+      if (networkInstance) networkInstance.destroy();
+      networkInstance = new vis.Network(container, data, options);
+    }
+
     async function openDialogue(dialogueId) {
       try {
         const res = await fetch(`/api/calls/dialogues/${dialogueId}`);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
         const d = await res.json();
         showDialogueModal(d);
       } catch (err) {
@@ -270,11 +361,7 @@ def build_preloaded_html():
             }
           }
         }
-        if (found) {
-          showDialogueModal(found);
-        } else {
-          alert('Ошибка загрузки диалога: ' + err.message);
-        }
+        if (found) showDialogueModal(found);
       }
     }
 
@@ -282,12 +369,8 @@ def build_preloaded_html():
       document.getElementById('modalTitle').innerText = `Разговор: ${d.filename || 'Запись'}`;
       const c = d.google_contact || {};
       const speakersHtml = `
-        <div class="speaker-pill owner">
-          <span>🎙️</span> Я (Владелец)
-        </div>
-        <div class="speaker-pill contact">
-          <span>👤</span> ${c.name || 'Собеседник'} (${c.role || 'Google Контакт'})
-        </div>
+        <div class="speaker-pill owner"><span>🎙️</span> Я (Владелец)</div>
+        <div class="speaker-pill contact"><span>👤</span> ${c.name || 'Собеседник'} (${c.role || 'Google Контакт'})</div>
       `;
 
       const segmentsHtml = (d.diarized_segments || []).map(s => {
@@ -332,7 +415,7 @@ def build_preloaded_html():
 </html>
 """
 
-    full_html = head_part + contacts_json + tail_part
+    full_html = head_part + contacts_json + tail_part + graph_json + end_part
 
     DATA_HTML.parent.mkdir(parents=True, exist_ok=True)
     DATA_HTML.write_text(full_html, encoding="utf-8")
@@ -340,7 +423,7 @@ def build_preloaded_html():
     STATIC_HTML.parent.mkdir(parents=True, exist_ok=True)
     STATIC_HTML.write_text(full_html, encoding="utf-8")
 
-    print(f"🎉 Fully preloaded HTML dashboard written to DATA and STATIC ({DATA_HTML.stat().st_size // 1024} KB)!")
+    print(f"🎉 Fully preloaded HTML dashboard with Knowledge Graph & AI Dossiers written ({DATA_HTML.stat().st_size // 1024} KB)!")
 
 
 if __name__ == "__main__":
