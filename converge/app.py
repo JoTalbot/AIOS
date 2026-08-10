@@ -864,6 +864,12 @@ def api_calls_search(q: str):
     return {"query": q, "count": len(matches), "results": matches}
 
 
+@app.get("/api/calls/omnichannel/{contact_id}")
+def api_calls_omnichannel(contact_id: str):
+    from aios_core.omnichannel_identity_360 import build_omnichannel_profile_360
+    return build_omnichannel_profile_360(contact_id)
+
+
 @app.get("/api/calls/knowledge-graph")
 def api_calls_knowledge_graph():
     from aios_core.contact_knowledge_graph import build_relationship_knowledge_graph
