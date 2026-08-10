@@ -21,6 +21,40 @@ sys.path.insert(0, str(REPO_ROOT))
 os.environ["DISPLAY"] = os.environ.get("DISPLAY", ":1")
 
 
+# Ноутбуки Colab-фермы по типу сервиса (для авто-запуска через COLAB_SERVICE_KIND)
+NOTEBOOK_MAP = {
+    "llm":        "AIOS_Google_Colab_LLM_Coding.ipynb",
+    "whisper":    "AIOS_Google_Colab_Whisper_Transcriber.ipynb",
+    "quant_ml":   "AIOS_Colab_Quant_ML_Training.ipynb",
+    "rl":         "AIOS_Colab_Quant_RL_Training.ipynb",
+    "clustering": "AIOS_Colab_Quant_Clustering.ipynb",
+    "lora":       "AIOS_Colab_LoRA_FineTune.ipynb",
+    "embeddings": "AIOS_Colab_Embeddings_Build.ipynb",
+    "scraper":    "AIOS_Colab_Scraper_Farm.ipynb",
+    "gguf":       "AIOS_Colab_GGUF_Quantize.ipynb",
+}
+GITHUB_NB = "https://colab.research.google.com/github/JoTalbot/AIOS/blob/main/docs/"
+
+
+def _pick_notebook() -> str:
+    """Определить URL ноутбука по env-переменным / аргументам."""
+    # 1) явный URL
+    env_url = os.getenv("COLAB_NOTEBOOK_URL", "").strip()
+    if env_url:
+        return env_url
+    # 2) локальный файл (если указан COLAB_NOTEBOOK_FILE)
+    local_file = os.getenv("COLAB_NOTEBOOK_FILE", "").strip()
+    if local_file and Path(local_file).exists():
+        return f"file://{Path(local_file).resolve()}"
+    # 3) по типу сервиса
+    kind = os.getenv("COLAB_SERVICE_KIND", "")
+    if kind in NOTEBOOK_MAP:
+        return GITHUB_NB + NOTEBOOK_MAP[kind]
+    # 4) fallback: whisper/llm по аргументам
+    return (GITHUB_NB + "AIOS_Google_Colab_Whisper_Transcriber.ipynb"
+            if "whisper" in sys.argv else GITHUB_NB + "AIOS_Google_Colab_LLM_Coding.ipynb")
+
+
 async def run_colab_automation():
     print("🚀 [ColabRunner] Запуск автоматизации Google Colab через Chrome CDP (9222)...")
 
@@ -30,8 +64,8 @@ async def run_colab_automation():
         subprocess.run([sys.executable, "-m", "pip", "install", "playwright"], check=True)
         from playwright.async_api import async_playwright
 
-    default_nb = "https://colab.research.google.com/github/JoTalbot/AIOS/blob/main/docs/AIOS_Google_Colab_Whisper_Transcriber.ipynb" if "whisper" in sys.argv else "https://colab.research.google.com/github/JoTalbot/AIOS/blob/main/docs/AIOS_Google_Colab_LLM_Coding.ipynb"
-    notebook_url = os.getenv("COLAB_NOTEBOOK_URL", default_nb)
+    notebook_url = _pick_notebook()
+    print(f"📒 Выбран ноутбук: {notebook_url}")
     cdp_url = "http://localhost:9222"
 
     async with async_playwright() as p:
@@ -78,14 +112,29 @@ async def run_colab_automation():
         await page.keyboard.press("Control+F9")
         await asyncio.sleep(5)
 
-        # Окно 'Run anyway'
+        # Окно 'Run anyway' / Подтверждение запуска
+        await asyncio.sleep(2)
         try:
-            run_anyway_btn = page.locator("colab-callout button, #ok")
-            if await run_anyway_btn.is_visible():
-                await run_anyway_btn.click()
-                print("👍 Запуск ячеек подтвержден (Run anyway)!")
-        except Exception:
-            pass
+            for selector in [
+                "button:has-text('Run anyway')",
+                "button:has-text('Всё равно')",
+                "button:has-text('Все равно')",
+                "button:has-text('Запустить')",
+                "colab-callout button",
+                "#ok",
+                "mwc-button#ok",
+                "paper-button#ok"
+            ]:
+                try:
+                    btn = page.locator(selector)
+                    if await btn.is_visible(timeout=1000):
+                        await btn.click()
+                        print(f"👍 Запуск ячеек подтвержден ({selector})!")
+                        break
+                except Exception:
+                    pass
+        except Exception as _de:
+            print(f"Dialog check note: {_de}")
 
         print("\n⏳ Ожидание инициализации vLLM и создания Cloudflare туннеля...")
         tunnel_url = ""
@@ -114,6 +163,23 @@ async def run_colab_automation():
             else:
                 from scripts.register_colab_llm import register_colab_endpoint
                 register_colab_endpoint(tunnel_url, "colab/qwen2.5-coder")
+
+            # === AIOS Colab Farm: регистрация в едином реестре (Этап 1) ===
+            try:
+                from aios_core.colab.colab_registry import colab_registry
+                # маппинг ноутбучных типов на типы реестра
+                kind_map = {"rl": "quant_ml", "clustering": "quant_ml", "lora": "llm", "gguf": "llm"}
+                _k = os.getenv("COLAB_SERVICE_KIND",
+                               "whisper" if ("whisper" in sys.argv or "Whisper" in notebook_url) else "llm")
+                kind = kind_map.get(_k, _k)
+                node = os.getenv("COLAB_NODE_ID", "local")
+                name = os.getenv("COLAB_SERVICE_NAME", f"colab-{kind}")
+                model = os.getenv("COLAB_LLM_MODEL", "colab/qwen2.5-coder") if kind == "llm" else None
+                colab_registry.register(kind=kind, base_url=tunnel_url,
+                                        model=model, name=name, node_id=node)
+                print(f"📦 [ColabFarm] Сервис '{name}' ({kind}) зарегистрирован в реестре Colab-фермы.")
+            except Exception as re:
+                print(f"⚠️ [ColabFarm] Не удалось зарегистрировать сервис в реестре: {re}")
         else:
             print("⚠️ Ссылка туннеля пока не появилась в текстовом блоке. Переходим в режим вочдога активности...")
 
