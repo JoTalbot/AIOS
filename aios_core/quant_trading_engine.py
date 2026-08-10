@@ -406,7 +406,16 @@ class QuantMasterOrchestrator:
         kraken_pairs_map = {
             "BTCUSD": "XXBTZUSD",
             "ETHUSD": "XETHZUSD",
-            "SOLUSD": "SOLUSD"
+            "SOLUSD": "SOLUSD",
+            "XRPUSD": "XXRPZUSD",
+            "ADAUSD": "ADAUSD",
+            "DOTUSD": "DOTUSD",
+            "LINKUSD": "LINKUSD",
+            "AVAXUSD": "AVAXUSD",
+            "LTCUSD": "XLTCZUSD",
+            "NEARUSD": "NEARUSD",
+            "UNIUSD": "UNIUSD",
+            "SHIBUSD": "SHIBUSD"
         }
         
         kraken_signals = []
@@ -500,7 +509,16 @@ def get_kraken_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[str, Any]:
     kraken_pairs_map = {
         "BTCUSD": "XXBTZUSD",
         "ETHUSD": "XETHZUSD",
-        "SOLUSD": "SOLUSD"
+        "SOLUSD": "SOLUSD",
+        "XRPUSD": "XXRPZUSD",
+        "ADAUSD": "ADAUSD",
+        "DOTUSD": "DOTUSD",
+        "LINKUSD": "LINKUSD",
+        "AVAXUSD": "AVAXUSD",
+        "LTCUSD": "XLTCZUSD",
+        "NEARUSD": "NEARUSD",
+        "UNIUSD": "UNIUSD",
+        "SHIBUSD": "SHIBUSD"
     }
 
     positions_detail = []
@@ -645,7 +663,7 @@ def format_kraken_demo_report(report: Dict[str, Any]) -> str:
         "🤖 <b>Алгоритм & Стратегия:</b>",
         "• Количественный робот AIOS (SMA 3/10 Crossover + RSI 14)",
         "• Риск-менеджмент: Take-Profit +2.0%, Trailing Stop-Loss -1.0%",
-        "• Торговые пары: BTC/USD, ETH/USD, SOL/USD на Kraken",
+        "• Торговые пары: 12 топовых пар (BTC, ETH, SOL, XRP, ADA, DOT, LINK, AVAX, LTC, NEAR, UNI, SHIB) на Kraken",
         "",
         "💡 <i>Команды:</i>",
         "<code>баланс кракен</code> — реальный баланс активов",
