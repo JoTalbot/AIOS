@@ -114,6 +114,16 @@ def cmd_rag_build():
     build_corpus()
 
 
+def cmd_rag_ask(query, model):
+    from aios_core.rag.rag_query_llm import RAGQueryLLM
+    rag = RAGQueryLLM(model=model)
+    res = rag.answer(query)
+    out = {"query": query, "answer": res["answer"]}
+    if res.get("sources"):
+        out["sources"] = [s.get("path") for s in res["sources"][:5]]
+    _print(out)
+
+
 # ------------------------------------------------------------- models -------
 def cmd_models_import(src, extract):
     from scripts.import_colab_models import main as imp
@@ -180,6 +190,7 @@ def main() -> int:
     rgsub = rg.add_subparsers(dest="action", required=True)
     ps = rgsub.add_parser("search"); ps.add_argument("query"); ps.add_argument("--n", type=int, default=5)
     rgsub.add_parser("build")
+    pa = rgsub.add_parser("ask"); pa.add_argument("query"); pa.add_argument("--model", default="qwen2.5-coder:1.5b")
 
     mo = sub.add_parser("models")
     mosub = mo.add_subparsers(dest="action", required=True)
@@ -204,6 +215,7 @@ def main() -> int:
         else: cmd_ml_momentum(args.top, args.strong)
     elif args.cmd == "rag":
         if args.action == "search": cmd_rag_search(args.query, args.n)
+        elif args.action == "ask": cmd_rag_ask(args.query, args.model)
         else: cmd_rag_build()
     elif args.cmd == "models": cmd_models_import(args.src, args.extract)
     return 0
