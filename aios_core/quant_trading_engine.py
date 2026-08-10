@@ -207,7 +207,7 @@ class QuantSignalEngine:
         elif rsi > 70.0:
             signal = "SELL_SHORT"
             confidence = 0.90
-            reason = f"Сильная перекупленность RSI = {rsi:.1f} (> 70)" "
+            reason = f"Сильная перекупленность RSI = {rsi:.1f} (> 70)"
 
         return {
             "symbol": symbol,
