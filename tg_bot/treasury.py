@@ -154,6 +154,31 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ Ошибка треугольного арбитража: {e}")
         return True
 
+        # Запрос проверки Web3-аирдропов и ретродропов
+    if any(phrase in t for phrase in ("аирдроп", "айрдроп", "ретродроп", "аирдропы", "дропы")):
+        api.send_message(chat_id, "🎁 <b>Запускаю сканирование Web3-кошелька на невостребованные аирдропы...</b>")
+        try:
+            from aios_core.airdrop_radar import AIOSAirdropRadar
+            radar = AIOSAirdropRadar()
+            res = radar.scan_wallet_airdrops()
+            lines = [
+                "🎁 <b>AIOS Web3 Airdrop Radar:</b>",
+                f"• Проверяемый кошелек: <code>{res.get("address")[:10]}...{res.get("address")[-6:]}</code>",
+                f"• Найдено доступных аирдропов: <b>{res.get("eligible_protocols_count")}</b>",
+                f"• Оценочная стоимость наград: <b>+${res.get("total_estimated_airdrops_usd"):.2f} USD</b>",
+                "",
+                "📊 <b>Детализация по протоколам:</b>"
+            ]
+            for p in res.get("protocols", []):
+                icon = "🟢" if p["eligible"] else "⚪"
+                lines.append(f"{icon} <b>{p.get("protocol", "")}</b>: ${p.get("est_reward_usd", 0.0):.2f} [{p.get("status", "")}]")
+            lines.append("")
+            lines.append("💡 <i>Сканер периодически запрашивает снэпшоты новых L1/L2 сетей.</i>")
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка радар-сканера аирдропов: {e}")
+        return True
+
     # Запрос ИИ-совета по ребалансировке и оптимизации портфеля
     if any(phrase in t for phrase in ("совет по портфелю", "ребалансировка", "совет портфель", "совет трейдеру", "оптимизация рисков")):
         api.send_message(chat_id, "🧠 <b>Запускаю ИИ-анализ портфеля $5,000 и генерацию советов по ребалансировке...</b>")
