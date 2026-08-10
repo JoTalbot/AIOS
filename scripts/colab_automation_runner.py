@@ -57,7 +57,7 @@ async def run_colab_automation():
         await page.set_viewport_size({"width": 1920, "height": 1080})
 
         print(f"🔗 Переход в Google Colab Notebook: {notebook_url}")
-        await page.goto(notebook_url, wait_until="networkidle", timeout=60000)
+        await page.goto(notebook_url, wait_until="domcontentloaded", timeout=60000)
         print("✅ Страница Google Colab успешно загружена!")
 
         await asyncio.sleep(5)
@@ -94,11 +94,13 @@ async def run_colab_automation():
             await asyncio.sleep(6)
             page_text = await page.content()
 
-            match = re.search(r'https://[a-zA-Z0-9-]+\.trycloudflare\.com/v1', page_text)
+            is_whisper_mode = "whisper" in sys.argv or "Whisper" in notebook_url
+            pattern = r'https://[a-zA-Z0-9-]+\.trycloudflare\.com' if is_whisper_mode else r'https://[a-zA-Z0-9-]+\.trycloudflare\.com/v1'
+            match = re.search(pattern, page_text)
             if match:
                 tunnel_url = match.group(0)
                 print(f"\n🎉 ========================================================")
-                print(f"🔗 ИЗВЛЕЧЁН ПУБЛИЧНЫЙ URL КОДИНГ-МОДЕЛИ ИЗ GOOGLE COLAB:")
+                print(f"🔗 ИЗВЛЕЧЁН ПУБЛИЧНЫЙ URL ИЗ GOOGLE COLAB ({'Whisper' if is_whisper_mode else 'LLM'}):")
                 print(f"   {tunnel_url}")
                 print(f"========================================================\n")
                 break
@@ -106,8 +108,12 @@ async def run_colab_automation():
                 print(f"⏳ [Сканирование {attempt+1}/40] Ожидание генерации туннеля...")
 
         if tunnel_url:
-            from scripts.register_colab_llm import register_colab_endpoint
-            register_colab_endpoint(tunnel_url, "colab/qwen2.5-coder")
+            if "whisper" in sys.argv or "Whisper" in notebook_url:
+                from scripts.register_colab_whisper import register_whisper_endpoint
+                register_whisper_endpoint(tunnel_url)
+            else:
+                from scripts.register_colab_llm import register_colab_endpoint
+                register_colab_endpoint(tunnel_url, "colab/qwen2.5-coder")
         else:
             print("⚠️ Ссылка туннеля пока не появилась в текстовом блоке. Переходим в режим вочдога активности...")
 
