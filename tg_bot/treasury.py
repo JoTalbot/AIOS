@@ -117,6 +117,43 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Не удалось сбросить мульти-биржевые демонстрационные счета.")
         return True
 
+    # Запрос генерации Excel-отчёта по крипто-портфелю
+    if any(phrase in t for phrase in ("крипто эксель", "крипто excel", "excel отчёт", "excel отчет", "скачать эксель", "скачать excel")):
+        api.send_message(chat_id, "📊 <b>Генерирую детальный бухгалтерский Excel-отчёт .xlsx по 5 биржам...</b>")
+        try:
+            from aios_core.quant_trading_engine import (
+                get_multi_exchange_demo_report,
+                export_crypto_excel_report
+            )
+            rep = get_multi_exchange_demo_report()
+            excel_file = export_crypto_excel_report(rep)
+            api.send_document(chat_id, excel_file, caption="📊 <b>Бухгалтерский Excel-отчёт по 5 биржам AIOS ($5,000 Демо)</b>")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка экспорта Excel-отчёта: {e}")
+        return True
+
+        # Запрос треугольного арбитража внутри биржи
+    if any(phrase in t for phrase in ("треугольный арбитраж", "треугольник", "треугольный спред")):
+        api.send_message(chat_id, "⚡ <b>Запускаю сканер 3-шагового треугольного арбитража внутри биржи...</b>")
+        try:
+            from aios_core.triangular_arbitrage import AIOSTriangularArbitrageEngine
+            scanner = AIOSTriangularArbitrageEngine()
+            res = scanner.scan_triangular_opportunities("binance")
+            best = res.get("best_opportunity", {})
+            lines = [
+                "⚡ <b>AIOS Triangular Arbitrage Engine (Binance):</b>",
+                f"• Просканировано цепочек: <b>{res.get(triangles_scanned)}</b>",
+                f"• Лучшая цепочка: <b>{best.get(triangle)}</b>",
+                f"• Доходность после комиссий (0.075% x3): <b>{best.get(net_spread_pct)}%</b>",
+                f"• Моделируемый PnL ($100/сделка): <b>${best.get(net_pnl_usd)} USD</b>",
+                "",
+                "<i>Треугольный арбитраж постоянно ищет мимолетные расхождения кросс-курсов валютных пар внутри биржи.</i>"
+            ]
+            api.send_message(chat_id, "\n".join(lines))
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка треугольного арбитража: {e}")
+        return True
+
     # Запрос ИИ-бэктестинга и симуляции стратегий (например, "бэктест BTC", "бэктест SOL")
     bt_match = _re4.match(r"^(?:бэктест|бектест|backtest|тест стратегии|оптимизация)\s+([a-zA-Z0-9]+)\b", t)
     if bt_match:

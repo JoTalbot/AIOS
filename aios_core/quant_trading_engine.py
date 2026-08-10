@@ -1692,3 +1692,75 @@ def format_backtest_report(data: Dict[str, Any]) -> str:
     ])
 
     return "\n".join(lines)
+
+
+def export_crypto_excel_report(report: Dict[str, Any], output_path: str = "/tmp/AIOS_Crypto_Report.xlsx") -> str:
+    """Генерирует профессиональный бухгалтерский отчёт .xlsx по 5 биржам и открытым позициям."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    wb = openpyxl.Workbook()
+
+    ws1 = wb.active
+    ws1.title = "Сводка Портфеля $5,000"
+
+    title_font = Font(name="Arial", size=14, bold=True, color="FFFFFF")
+    header_font = Font(name="Arial", size=11, bold=True, color="FFFFFF")
+
+    header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
+    accent_fill = PatternFill(start_color="111827", end_color="111827", fill_type="solid")
+
+    ws1.merge_cells("A1:E1")
+    ws1["A1"] = "AIOS — Отчёт Мульти-Биржевого Крипто-Заработка ($5,000 Демо)"
+    ws1["A1"].font = title_font
+    ws1["A1"].fill = accent_fill
+    ws1["A1"].alignment = Alignment(horizontal="center", vertical="center")
+
+    headers1 = ["Биржа / Платформа", "Начальный Баланс ($)", "Свободный Кэш ($)", "Текущий Капитал ($)", "Чистый PnL ($)"]
+    ws1.append([])
+    ws1.append(headers1)
+
+    for col in range(1, 6):
+        cell = ws1.cell(row=3, column=col)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center")
+
+    exchanges = report.get("exchanges", {})
+    for ex_key, ex_data in exchanges.items():
+        ws1.append([
+            ex_data.get("name", ex_key.upper()),
+            ex_data.get("initial_balance_usd", 1000.0),
+            ex_data.get("cash_usd", 1000.0),
+            ex_data.get("equity_usd", 1000.0),
+            ex_data.get("pnl_usd", 0.0)
+        ])
+
+    ws2 = wb.create_sheet(title="Открытые Позиции")
+    headers2 = ["Биржа", "Торговая Пара", "Направление", "Цена Входа ($)", "Рыночная Цена ($)", "Объём (Qty)", "Инвестировано ($)", "PnL ($)", "PnL (%)"]
+    ws2.append(headers2)
+
+    for col in range(1, 10):
+        cell = ws2.cell(row=1, column=col)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center")
+
+    for ex_key, ex_data in exchanges.items():
+        ex_name = ex_data.get("name", ex_key.upper())
+        for p in ex_data.get("positions", []):
+            ws2.append([
+                ex_name,
+                p.get("pair", ""),
+                p.get("side", "LONG"),
+                p.get("entry_price", 0.0),
+                p.get("live_price", 0.0),
+                p.get("qty", 0.0),
+                p.get("invested_usd", 0.0),
+                p.get("unrealized_pnl_usd", 0.0),
+                p.get("unrealized_pnl_pct", 0.0)
+            ])
+
+    out_p = Path(output_path)
+    wb.save(out_p)
+    return str(out_p)
