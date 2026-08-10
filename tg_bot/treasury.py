@@ -117,17 +117,18 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Не удалось сбросить демонстрационный счёт Kraken.")
         return True
 
-    # Трейдинг, Демо-счёт $100 Kraken и процесс заработка
+    # Единый отчет автономного крипто-заработка ($100 Демо)
     if any(phrase in t for phrase in (
+        "крипто заработок", "заработок", "крипто отчёт", "крипто отчет", "крипто сводка",
         "трейдинг", "сигналы", "квант", "торговля", "paper trading",
         "демо счет", "демосчет", "демо счёт", "демо кракен", "кракен демо",
         "заработок кракен", "кракен заработок", "кракен трейдинг", "демо"
     )):
-        api.send_message(chat_id, "🐙 <b>Запрашиваю показатели демонстрационного счёта Kraken ($100)...</b>")
+        api.send_message(chat_id, "🚀 <b>Запрашиваю показатели автономного крипто-заработка ($100)...</b>")
         try:
             from aios_core.quant_trading_engine import (
-                get_kraken_demo_report,
-                format_kraken_demo_report,
+                get_unified_crypto_earnings_report,
+                format_unified_crypto_earnings_report,
                 QuantMasterOrchestrator
             )
             try:
@@ -136,11 +137,11 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             except Exception:
                 pass
 
-            report = get_kraken_demo_report()
-            msg_text = format_kraken_demo_report(report)
+            report = get_unified_crypto_earnings_report()
+            msg_text = format_unified_crypto_earnings_report(report)
             api.send_message(chat_id, msg_text)
         except Exception as e:
-            api.send_message(chat_id, f"❌ Ошибка получения данных демо-счёта Kraken: {e}")
+            api.send_message(chat_id, f"❌ Ошибка получения отчёта крипто-заработка: {e}")
         return True
 
     # Склад & Запчасти

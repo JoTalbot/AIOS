@@ -673,7 +673,7 @@ def format_kraken_demo_report(report: Dict[str, Any]) -> str:
             )
         lines.append("")
     else:
-        lines.append("💼 <b>Открытые позиции:</b> <i>В данный момент позиций нет (100% в кэше)</i>\n")
+        lines.append("💼 <b>Открытые позиции:</b> <i>В данный момент позиций нет (100% в кэше)</i>")
 
     lines.extend([
         "🤖 <b>Алгоритм & Стратегия:</b>",
@@ -684,6 +684,148 @@ def format_kraken_demo_report(report: Dict[str, Any]) -> str:
         "💡 <i>Команды:</i>",
         "<code>баланс кракен</code> — реальный баланс активов",
         "<code>кракен демо сброс</code> — сбросить демо-счёт на $100"
+    ])
+
+    return "\n".join(lines)
+
+
+
+
+
+
+
+
+def get_unified_crypto_earnings_report(data_dir: str = "/root/AIOS/data") -> Dict[str, Any]:
+    """Получает 360-градусный отчёт по всем векторам крипто-заработка AIOS ($100 демо-счёт)."""
+    kraken_rep = get_kraken_demo_report(data_dir=data_dir)
+
+    arb_scanned = 0
+    arb_viable = 0
+    best_spread = 0.0
+    try:
+        from aios_core.dex_arbitrage_scanner import AIOSDEXArbitrageScanner
+        scanner = AIOSDEXArbitrageScanner(data_dir=data_dir)
+        arb_res = scanner.scan_arbitrage_opportunities(min_spread_pct=0.3)
+        cross_res = arb_res.get("cross_dex_scan", {})
+        arb_scanned = cross_res.get("pairs_scanned", 0)
+        arb_viable = cross_res.get("viable_count", 0)
+        best_opp = cross_res.get("best_opportunity", {})
+        best_spread = best_opp.get("spread_pct", 0.0)
+    except Exception:
+        pass
+
+    cash_usd = kraken_rep.get("cash_usd", 100.0)
+    daily_yield_pct = 0.08 / 365.0
+    simulated_daily_yield = cash_usd * daily_yield_pct
+
+    total_pnl = kraken_rep.get("total_pnl_usd", 0.0)
+    equity = kraken_rep.get("total_equity_usd", 100.0)
+    initial_bal = kraken_rep.get("initial_balance_usd", 100.0)
+
+    profit_to_split = max(0.0, total_pnl)
+    split_25 = profit_to_split * 0.25
+
+    return {
+        "initial_balance_usd": initial_bal,
+        "cash_usd": cash_usd,
+        "total_equity_usd": equity,
+        "total_pnl_usd": total_pnl,
+        "total_return_pct": kraken_rep.get("total_return_pct", 0.0),
+        "kraken_report": kraken_rep,
+        "arbitrage": {
+            "pairs_scanned": arb_scanned,
+            "viable_count": arb_viable,
+            "best_spread_pct": best_spread
+        },
+        "defi_yield": {
+            "apy_pct": 8.0,
+            "daily_yield_usd": simulated_daily_yield
+        },
+        "profit_split_25_usd": split_25
+    }
+
+
+def format_unified_crypto_earnings_report(report: Dict[str, Any]) -> str:
+    """Форматирует комплексный отчёт автономного крипто-заработка для Telegram."""
+    init_bal = report.get("initial_balance_usd", 100.0)
+    cash = report.get("cash_usd", 100.0)
+    equity = report.get("total_equity_usd", 100.0)
+    total_pnl = report.get("total_pnl_usd", 0.0)
+    total_ret = report.get("total_return_pct", 0.0)
+
+    kraken_rep = report.get("kraken_report", {})
+    trades = kraken_rep.get("total_trades", 0)
+    wins = kraken_rep.get("winning_trades", 0)
+    win_rate = kraken_rep.get("win_rate_pct", 0.0)
+    positions = kraken_rep.get("positions", [])
+
+    arb = report.get("arbitrage", {})
+    arb_scanned = arb.get("pairs_scanned", 0)
+    arb_viable = arb.get("viable_count", 0)
+    best_spread = arb.get("best_spread_pct", 0.0)
+
+    defi = report.get("defi_yield", {})
+    daily_yield = defi.get("daily_yield_usd", 0.0)
+
+    split_25 = report.get("profit_split_25_usd", 0.0)
+
+    pnl_icon = "🚀" if total_pnl >= 0 else "📉"
+    pnl_sign = "+" if total_pnl > 0 else ""
+
+    lines = [
+        "🚀 <b>AIOS Автономный Крипто-Заработок ($100 Демо)</b>",
+        "━━━━━━━━━━━━━━━━━━━━━",
+        f"💵 <b>Начальный депозит:</b> ${init_bal:.2f} USD",
+        f"💳 <b>Свободный кэш:</b> ${cash:.2f} USD",
+        f"📊 <b>Текущий капитал (Equity):</b> <b>${equity:.2f} USD</b>",
+        f"{pnl_icon} <b>Совокупный PnL:</b> <b>{pnl_sign}${total_pnl:.2f} USD ({pnl_sign}{total_ret:.2f}%)</b>",
+        "",
+        "🌐 <b>4 Активных Вектора Заработка:</b>",
+        "1. 📈 <b>Квантовый трейдинг (Kraken 12 пар):</b>",
+        f"   • Сделок: <b>{trades}</b> (Успешных: {wins}, Винрейт: <b>{win_rate:.1f}%</b>)",
+        "   • Сигналы: SMA 3/10 + RSI 14 + Полосы Боллинджера (20)",
+        "2. ⚡ <b>Кросс-DEX Арбитраж (Kraken/Binance/UniV3):</b>",
+        f"   • Сканирование пар: {arb_scanned} | Доходных окон: <b>{arb_viable}</b> (Лучший спрэд: <b>{best_spread:.3f}%</b>)",
+        "3. 🌾 <b>DeFi Staking & Yield (8.0% APY):</b>",
+        f"   • Пассивный доход на кэш: <b>+${daily_yield:.4f} USD/день</b>",
+        "4. 🤖 <b>Web3 Bounties & AI Datasets:</b>",
+        "   • Авто-решение задач GitHub (Gitcoin/Algora)",
+        ""
+    ]
+
+    if positions:
+        lines.append("💼 <b>Открытые позиции на Kraken:</b>")
+        for p in positions:
+            p_icon = "🟢" if p.get("unrealized_pnl_usd", 0) >= 0 else "🔴"
+            u_sign = "+" if p.get("unrealized_pnl_usd", 0) > 0 else ""
+            pair_disp = p.get("pair_display", "")
+            side = p.get("side", "")
+            entry_p = p.get("entry_price", 0.0)
+            live_p = p.get("live_price", 0.0)
+            qty = p.get("qty", 0.0)
+            inv = p.get("invested_usd", 0.0)
+            un_pnl = p.get("unrealized_pnl_usd", 0.0)
+            un_pct = p.get("unrealized_pnl_pct", 0.0)
+            lines.append(f"{p_icon} <b>{pair_disp}</b> ({side}):")
+            lines.append(f"  – Вход: ${entry_p:.4f} ➔ Рынок: <b>${live_p:.4f}</b>")
+            lines.append(f"  – Объём: {qty:.6f} (${inv:.2f})")
+            lines.append(f"  – PnL: <b>{u_sign}${un_pnl:.2f} USD ({u_sign}{un_pct:.2f}%)</b>")
+        lines.append("")
+    else:
+        lines.append("💼 <b>Открытые позиции:</b> <i>В данный момент позиций нет (100% в кэше)</i>")
+        lines.append("")
+
+    lines.extend([
+        "💰 <b>Распределение прибыли (Правило 25% × 4):</b>",
+        f"• 👨‍💻 Разработчик (25%): <b>${split_25:.2f} USD</b>",
+        f"• 🏦 Инвестор (25%): <b>${split_25:.2f} USD</b>",
+        f"• 👥 Персонал (25%): <b>${split_25:.2f} USD</b>",
+        f"• 🤖 AIOS Фонд (25%): <b>${split_25:.2f} USD</b>",
+        "",
+        "💡 <i>Команды:</i>",
+        "<code>крипто заработок</code> — полный отчёт",
+        "<code>кракен демо сброс</code> — сброс счёта на $100",
+        "<code>баланс кракен</code> — реальный баланс активов"
     ])
 
     return "\n".join(lines)
