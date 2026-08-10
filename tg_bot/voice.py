@@ -50,7 +50,31 @@ def _send_voice_reply(api, chat_id: int, text: str) -> bool:
 
 
 def _transcribe_audio(path: str) -> str:
-    """Распознать голосовое через Gemini (inline audio). Возвращает текст или ''."""
+    """Распознать голосовое или аудиозапись через AIOS Whisper & Neural Diarization Engine."""
+    try:
+        from aios_core.whisper_colab_transcriber import transcribe_audio_call, generate_call_summary
+        from aios_core.google_contacts_sync import match_folder_to_google_contact
+        from aios_core.neural_diarization import perform_neural_diarization, format_diarized_transcript_text
+        from aios_core.call_task_extractor import extract_and_save_call_tasks
+
+        res = transcribe_audio_call(path)
+        if res and res.get("status") == "success":
+            text = res.get("transcription", "")
+            segs = res.get("segments", [])
+            c_info = match_folder_to_google_contact("Голосовое Telegram")
+            d_segs = perform_neural_diarization(path, segs, c_info, is_dictaphone=True)
+            formatted_text = format_diarized_transcript_text(d_segs) or text
+            
+            # Сохраняем в Calls
+            fname = os.path.basename(path)
+            stem = os.path.splitext(fname)[0]
+            summary = generate_call_summary(formatted_text, fname)
+            
+            # Извлекаем CRM задачи
+            extract_and_save_call_tasks(stem, fname, summary, "Голосовое Telegram")
+            return formatted_text
+    except Exception as e:
+        print(f"  [WHISPER-VOICE] err: {e}")
     import base64
     import urllib.request as _urllib
 
