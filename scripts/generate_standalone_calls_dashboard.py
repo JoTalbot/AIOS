@@ -167,6 +167,19 @@ def build_preloaded_html():
   </div>
 
   <script>
+        function parseMarkdown(text) {
+      if (!text) return '';
+      let html = String(text);
+      html = html.replace(/^### (.*$)/gim, '<h4 class="text-sm font-bold text-secondary mt-3 mb-1">$1</h4>');
+      html = html.replace(/^## (.*$)/gim, '<h3 class="text-md font-bold text-secondary mt-4 mb-2">$1</h3>');
+      html = html.replace(/^# (.*$)/gim, '<h2 class="text-lg font-bold text-secondary mt-4 mb-2">$1</h2>');
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="text-secondary font-semibold">$1</strong>');
+      html = html.replace(/^\s*[\-\*•]\s+(.*$)/gim, '<div class="flex items-start gap-2 my-1"><span class="text-secondary">•</span><span>$1</span></div>');
+      html = html.replace(/\n\n/g, '<br><br>');
+      html = html.replace(/\n/g, '<br>');
+      return html;
+    }
+
     let allContacts = [];
     let graphData = null;
     let selectedContact = null;
@@ -441,7 +454,7 @@ def build_preloaded_html():
         </div>
         <div>
           <h4 style="color:#7bd0ff; margin-bottom:8px; font-weight:700;">📌 ИИ-Аналитический отчёт и выжимка</h4>
-          <div class="profile-box">${d.summary || 'Резюме генерируется...'}</div>
+          <div class="profile-box">${parseMarkdown(d.summary || 'Резюме генерируется...')}</div>
         </div>
         <div>
           <h4 style="color:#7bd0ff; margin-bottom:8px; font-weight:700;">💬 Расшифровка по спикерам (Diarized Transcript)</h4>
