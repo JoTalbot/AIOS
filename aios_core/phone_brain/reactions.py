@@ -180,6 +180,11 @@ class ReactionEngine:
     # ------------------------------------------------------------- matching
 
     def _matches(self, rule: dict, item: dict, masked_text: str, masked_title: str) -> bool:
+        # Игнорировать сообщения от контакта/источника "AIOS" (системные боты)
+        raw_title = str(item.get("title") or item.get("contact") or masked_title or "").lower()
+        if "aios" in raw_title:
+            return False
+
         packages = rule["match"]["package"]
         if packages and str(item.get("package") or "") not in packages:
             return False
