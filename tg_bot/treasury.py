@@ -117,6 +117,23 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Не удалось сбросить мульти-биржевые демонстрационные счета.")
         return True
 
+    # Запрос ИИ-бэктестинга и симуляции стратегий (например, "бэктест BTC", "бэктест SOL")
+    bt_match = _re4.match(r"^(?:бэктест|бектест|backtest|тест стратегии|оптимизация)\s+([a-zA-Z0-9]+)\b", t)
+    if bt_match:
+        coin = bt_match.group(1).upper()
+        api.send_message(chat_id, f"🧪 <b>Запускаю ИИ-симуляцию и бэктестинг 3 алгоритмов для {coin}...</b>")
+        try:
+            from aios_core.quant_trading_engine import (
+                backtest_asset_strategies,
+                format_backtest_report
+            )
+            data = backtest_asset_strategies(coin)
+            msg_txt = format_backtest_report(data)
+            api.send_message(chat_id, msg_txt)
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка бэктестинга монеты {coin}: {e}")
+        return True
+
     # Запрос ИИ-анализа конкретной монеты (например, "анализ BTC", "прогноз SOL")
     asset_match = _re4.match(r"^(?:анализ|прогноз|проанализируй|аналитика)\s+([a-zA-Z0-9]+)\b", t)
     if asset_match:
