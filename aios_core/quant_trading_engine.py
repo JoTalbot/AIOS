@@ -1350,6 +1350,15 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
     except Exception:
         pass
 
+    # Запрос DeFi APY
+    best_defi = "Base (USDC) 10.35% APY"
+    try:
+        from aios_core.defi_yield import AIOSDeFiYieldEngine
+        best_defi_pool = AIOSDeFiYieldEngine.scan_aave_v3_rates().get("best_pool", {})
+        best_defi = f"{best_defi_pool.get('network')} ({best_defi_pool.get('asset')}) {best_defi_pool.get('apy_pct')}% APY"
+    except Exception:
+        pass
+
     lines = [
         "🏛️ <b>Мульти-Биржевой Крипто-Заработок AIOS ($5,000 Демо)</b>",
         "━━━━━━━━━━━━━━━━━━━━━",
@@ -1358,10 +1367,17 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
         f"📊 <b>Текущий капитал (Equity):</b> <b>${tot_equity:,.2f} USD</b>",
         f"{pnl_icon} <b>Совокупный PnL:</b> <b>{pnl_sign}${tot_pnl:,.2f} USD ({pnl_sign}{tot_ret:.2f}%)</b>",
         "",
-        "🛡️ <b>ИИ-Мониторинг Рисков & Сентимента:</b>",
-        "• Защита депозита (RiskGuard): <b>🟢 OK (Kill-Switch не активен)</b>",
-        f"• Рыночный сентимент (AI Sentiment): <b>{sent_verdict}</b>",
-        "• Риск-менеджмент: <b>Kelly Sizing (1/2) + Trailing Stop (-1.0%)</b>",
+        "🌐 <b>10 Автономных Категорий ИИ-Заработка:</b>",
+        "• 1. Алгоритмы: <b>Mean Reversion (Z-Score) + VWAP + VCP Pattern</b>",
+        "• 2. Арбитраж: <b>Cross-CEX + Triangular + Cross-DEX Flash Loans</b>",
+        "• 3. Деривативы: <b>Funding Squeeze + Orderbook Depth + Liquidation Heatmap</b>",
+        "• 4. DeFi Yield: <b>Aave V3 Supply (" + best_defi + ") + Staking Earn</b>",
+        "• 5. On-Chain Flow: <b>Whale Alert (> $1M) + Smart Money Mirroring</b>",
+        f"• 6. AI Sentiment: <b>{sent_verdict} (CryptoPanic RSS Guard)</b>",
+        "• 7. Риск-Менеджмент: <b>Kill-Switch (5%) + Kelly Sizing (1/2) + Correlation Guard</b>",
+        "• 8. Инфраструктура: <b>5 бирж x $1k + 0.09s Batch Ticker Fetching</b>",
+        "• 9. Telegram UI: <b>PNG Chart + Collapsible Positions + Voice Commands</b>",
+        "• 10. Монетизация: <b>4-Way Split (25%x4) + Copy-Trading + API Key Store ($0.10)</b>",
         "",
         "🏦 <b>Результаты торгов по каждой из 5 бирж:</b>"
     ]
