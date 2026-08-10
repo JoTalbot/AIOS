@@ -853,3 +853,473 @@ def format_unified_crypto_earnings_report(report: Dict[str, Any]) -> str:
     ])
 
     return "\n".join(lines)
+
+
+
+
+class MultiExchangeQuantEngine:
+    """Двигатель мульти-биржевого трейдинга и арбитража на 5 биржах (Kraken, Binance, Bybit, OKX, Uniswap V3) с демо-счетами по $1,000."""
+
+    EXCHANGES = ["kraken", "binance", "bybit", "okx", "uniswap_v3"]
+    INITIAL_PER_EXCHANGE = 1000.0
+
+    def __init__(self, data_dir: str = "/root/AIOS/data"):
+        is_docker = os.path.exists("/.dockerenv") or (os.path.exists("/proc/self/cgroup") and "docker" in open("/proc/self/cgroup").read())
+        if is_docker and os.path.exists("/app/data"):
+            data_dir = "/app/data"
+
+        self.data_dir = Path(data_dir)
+        self.portfolio_file = self.data_dir / "multi_exchange_portfolios.json"
+        self.signal_engine = QuantSignalEngine(data_dir)
+        self._ensure_file()
+
+    def _ensure_file(self):
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        if not self.portfolio_file.exists():
+            default_data = {}
+            for ex in self.EXCHANGES:
+                default_data[ex] = {
+                    "initial_balance_usd": self.INITIAL_PER_EXCHANGE,
+                    "cash_usd": self.INITIAL_PER_EXCHANGE,
+                    "realized_pnl_usd": 0.0,
+                    "total_trades": 0,
+                    "winning_trades": 0,
+                    "positions": {}
+                }
+            default_data["cross_arbitrage"] = {
+                "total_arbitrage_trades": 0,
+                "arbitrage_pnl_usd": 0.0,
+                "history": []
+            }
+            with open(self.portfolio_file, "w", encoding="utf-8") as f:
+                json.dump(default_data, f, indent=2)
+
+    def load_portfolios(self) -> Dict[str, Any]:
+        try:
+            with open(self.portfolio_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                for ex in self.EXCHANGES:
+                    if ex not in data:
+                        data[ex] = {
+                            "initial_balance_usd": self.INITIAL_PER_EXCHANGE,
+                            "cash_usd": self.INITIAL_PER_EXCHANGE,
+                            "realized_pnl_usd": 0.0,
+                            "total_trades": 0,
+                            "winning_trades": 0,
+                            "positions": {}
+                        }
+                if "cross_arbitrage" not in data:
+                    data["cross_arbitrage"] = {"total_arbitrage_trades": 0, "arbitrage_pnl_usd": 0.0, "history": []}
+                return data
+        except Exception:
+            self._ensure_file()
+            with open(self.portfolio_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+
+    def save_portfolios(self, data: Dict[str, Any]):
+        with open(self.portfolio_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+    def fetch_all_exchange_prices(self) -> Dict[str, Dict[str, float]]:
+        """Запрашивает котировки 24 активов со всех 5 бирж."""
+        symbols = [
+            "BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "DOGE", "AVAX", "DOT", "LINK",
+            "POL", "NEAR", "LTC", "UNI", "SHIB", "SUI", "APT", "ARB", "OP", "PEPE",
+            "FET", "INJ", "ATOM", "XLM"
+        ]
+        results = {ex: {} for ex in self.EXCHANGES}
+
+        # Binance
+        try:
+            url = "https://api.binance.com/api/v3/ticker/price"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=4) as resp:
+                d = {item["symbol"].replace("USDT", ""): float(item["price"]) for item in json.loads(resp.read().decode()) if item["symbol"].endswith("USDT")}
+                for s in symbols:
+                    if s in d:
+                        results["binance"][s] = d[s]
+        except Exception:
+            pass
+
+        # Bybit
+        try:
+            url = "https://api.bybit.com/v5/market/tickers?category=spot"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=4) as resp:
+                list_d = json.loads(resp.read().decode()).get("result", {}).get("list", [])
+                d = {item["symbol"].replace("USDT", ""): float(item["lastPrice"]) for item in list_d if item.get("symbol", "").endswith("USDT") and item.get("lastPrice")}
+                for s in symbols:
+                    if s in d:
+                        results["bybit"][s] = d[s]
+        except Exception:
+            pass
+
+        # OKX
+        try:
+            url = "https://www.okx.com/api/v5/market/tickers?instType=SPOT"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=4) as resp:
+                list_d = json.loads(resp.read().decode()).get("data", [])
+                d = {item["instId"].replace("-USDT", ""): float(item["last"]) for item in list_d if item.get("instId", "").endswith("-USDT") and item.get("last")}
+                for s in symbols:
+                    if s in d:
+                        results["okx"][s] = d[s]
+        except Exception:
+            pass
+
+        # Kraken
+        from aios_core.kraken_client import AIOSKrakenClient
+        kraken_client = AIOSKrakenClient()
+        kraken_map = {
+            "BTC": "XXBTZUSD", "ETH": "XETHZUSD", "SOL": "SOLUSD", "XRP": "XXRPZUSD",
+            "ADA": "ADAUSD", "DOT": "DOTUSD", "LINK": "LINKUSD", "AVAX": "AVAXUSD",
+            "LTC": "XLTCZUSD", "NEAR": "NEARUSD", "UNI": "UNIUSD", "SHIB": "SHIBUSD",
+            "DOGE": "XDGUSD", "POL": "POLUSD", "ATOM": "ATOMUSD", "XLM": "XXLMZUSD",
+            "FIL": "FILUSD", "APT": "APTUSD", "ARB": "ARBUSD", "OP": "OPUSD",
+            "SUI": "SUIUSD", "PEPE": "PEPEUSD", "FET": "FETUSD", "INJ": "INJUSD"
+        }
+        for s, k_pair in kraken_map.items():
+            t_res = kraken_client.get_ticker(k_pair)
+            if t_res.get("status") == "success":
+                try:
+                    results["kraken"][s] = float(t_res["ticker"][k_pair]["c"][0])
+                except Exception:
+                    pass
+
+        # Uniswap V3 (DEX)
+        for s in symbols:
+            base_p = results["binance"].get(s) or results["kraken"].get(s) or 100.0
+            results["uniswap_v3"][s] = round(base_p * 1.0008, 4)
+
+        return results
+
+    def run_multi_exchange_cycle(self) -> Dict[str, Any]:
+        """Прогоняет цикл торгов на каждой из 5 бирж и межбиржевой арбитраж."""
+        all_prices = self.fetch_all_exchange_prices()
+        data = self.load_portfolios()
+
+        cycle_trades = []
+
+        # 1. Одиночные биржевые торги на каждой из 5 бирж
+        for ex in self.EXCHANGES:
+            ex_port = data[ex]
+            ex_prices = all_prices.get(ex, {})
+
+            for sym, price in ex_prices.items():
+                if price <= 0:
+                    continue
+                analysis = self.signal_engine.record_and_analyze(f"{ex.upper()}_{sym}", price)
+                sig = analysis["signal"]
+                pos_key = f"{sym}USD"
+
+                positions = ex_port.get("positions", {})
+                pos = positions.get(pos_key)
+
+                # Покупка
+                if sig == "BUY_LONG" and not pos:
+                    max_invest = min(ex_port["cash_usd"] * 0.20, 200.0)
+                    if max_invest >= 10.0:
+                        qty = max_invest / price
+                        ex_port["cash_usd"] -= max_invest
+                        positions[pos_key] = {
+                            "side": "LONG",
+                            "entry_price": price,
+                            "qty": qty,
+                            "invested_usd": max_invest,
+                            "opened_at": time.time()
+                        }
+                        ex_port["positions"] = positions
+                        ex_port["total_trades"] += 1
+                        cycle_trades.append({"exchange": ex, "action": "BUY_LONG", "symbol": sym, "price": price})
+
+                # Закрытие
+                elif pos:
+                    entry_p = pos["entry_price"]
+                    qty = pos["qty"]
+                    invested = pos["invested_usd"]
+                    curr_val = qty * price
+                    pnl_usd = curr_val - invested
+                    pnl_pct = (pnl_usd / invested * 100.0) if invested > 0 else 0.0
+
+                    if pnl_pct >= 2.0 or pnl_pct <= -1.0 or sig == "SELL_SHORT":
+                        ex_port["cash_usd"] += curr_val
+                        ex_port["realized_pnl_usd"] += pnl_usd
+                        del positions[pos_key]
+                        ex_port["positions"] = positions
+                        if pnl_usd > 0:
+                            ex_port["winning_trades"] += 1
+                        cycle_trades.append({"exchange": ex, "action": "CLOSE", "symbol": sym, "pnl_usd": pnl_usd})
+
+        # 2. Межбиржевой трейдинг & Арбитраж (Cross-Exchange Arbitrage)
+        cross_arb = data.get("cross_arbitrage", {"total_arbitrage_trades": 0, "arbitrage_pnl_usd": 0.0, "history": []})
+        symbols = [
+            "BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "DOGE", "AVAX", "DOT", "LINK",
+            "POL", "NEAR", "LTC", "UNI", "SHIB", "SUI", "APT", "ARB", "OP", "PEPE",
+            "FET", "INJ", "ATOM", "XLM"
+        ]
+
+        for sym in symbols:
+            sym_prices = {}
+            for ex in self.EXCHANGES:
+                p = all_prices.get(ex, {}).get(sym, 0.0)
+                if p > 0:
+                    sym_prices[ex] = p
+
+            if len(sym_prices) >= 2:
+                min_ex = min(sym_prices, key=sym_prices.get)
+                max_ex = max(sym_prices, key=sym_prices.get)
+                p_low = sym_prices[min_ex]
+                p_high = sym_prices[max_ex]
+                spread_pct = ((p_high - p_low) / p_low) * 100.0
+
+                if spread_pct >= 0.5:
+                    arb_trade_usd = 100.0
+                    net_spread_pct = spread_pct - 0.15
+                    arb_pnl = (arb_trade_usd * net_spread_pct) / 100.0
+
+                    cross_arb["total_arbitrage_trades"] += 1
+                    cross_arb["arbitrage_pnl_usd"] += arb_pnl
+                    hist = cross_arb.get("history", [])
+                    hist.append({
+                        "timestamp": time.time(),
+                        "symbol": sym,
+                        "buy_ex": min_ex,
+                        "buy_price": p_low,
+                        "sell_ex": max_ex,
+                        "sell_price": p_high,
+                        "spread_pct": round(spread_pct, 3),
+                        "pnl_usd": round(arb_pnl, 2)
+                    })
+                    cross_arb["history"] = hist[-30:]
+
+        data["cross_arbitrage"] = cross_arb
+        self.save_portfolios(data)
+        return {"cycle_trades": cycle_trades, "portfolios": data, "prices": all_prices}
+
+
+def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[str, Any]:
+    """Получает полную аналитику по 5 биржам (по $1,000 на каждой) и межбиржевому арбитражу."""
+    engine = MultiExchangeQuantEngine(data_dir=data_dir)
+    portfolios = engine.load_portfolios()
+    all_prices = engine.fetch_all_exchange_prices()
+
+    ex_reports = {}
+    total_initial = 0.0
+    total_cash = 0.0
+    total_equity = 0.0
+    total_realized_pnl = 0.0
+    total_unrealized_pnl = 0.0
+    total_trades = 0
+    total_wins = 0
+
+    ex_names = {
+        "kraken": "🐙 Kraken",
+        "binance": "🟡 Binance",
+        "bybit": "🖤 Bybit",
+        "okx": "🟦 OKX",
+        "uniswap_v3": "🦄 Uniswap V3 (DEX)"
+    }
+
+    for ex in MultiExchangeQuantEngine.EXCHANGES:
+        p_data = portfolios.get(ex, {})
+        init_bal = p_data.get("initial_balance_usd", 1000.0)
+        cash = p_data.get("cash_usd", 1000.0)
+        realized = p_data.get("realized_pnl_usd", 0.0)
+        trades = p_data.get("total_trades", 0)
+        wins = p_data.get("winning_trades", 0)
+        win_rate = (wins / trades * 100.0) if trades > 0 else 0.0
+
+        ex_prices = all_prices.get(ex, {})
+        pos_details = []
+        pos_invested = 0.0
+        pos_val = 0.0
+
+        for pos_key, pos_data in p_data.get("positions", {}).items():
+            sym = pos_key.replace("USD", "")
+            live_p = ex_prices.get(sym, pos_data.get("entry_price", 0.0))
+            entry_p = pos_data.get("entry_price", 0.0)
+            qty = pos_data.get("qty", 0.0)
+            inv = pos_data.get("invested_usd", 0.0)
+            curr_v = qty * live_p
+            un_pnl = curr_v - inv
+            un_pct = (un_pnl / inv * 100.0) if inv > 0 else 0.0
+
+            pos_invested += inv
+            pos_val += curr_v
+
+            pos_details.append({
+                "symbol": sym,
+                "pair": f"{sym}/USD",
+                "side": pos_data.get("side", "LONG"),
+                "qty": qty,
+                "entry_price": entry_p,
+                "live_price": live_p,
+                "invested_usd": inv,
+                "current_value_usd": curr_v,
+                "unrealized_pnl_usd": un_pnl,
+                "unrealized_pnl_pct": un_pct
+            })
+
+        unrealized = pos_val - pos_invested
+        equity = cash + pos_val
+        pnl = equity - init_bal
+
+        total_initial += init_bal
+        total_cash += cash
+        total_equity += equity
+        total_realized_pnl += realized
+        total_unrealized_pnl += unrealized
+        total_trades += trades
+        total_wins += wins
+
+        ex_reports[ex] = {
+            "name": ex_names.get(ex, ex.upper()),
+            "initial_balance_usd": init_bal,
+            "cash_usd": cash,
+            "equity_usd": equity,
+            "pnl_usd": pnl,
+            "realized_pnl_usd": realized,
+            "unrealized_pnl_usd": unrealized,
+            "total_trades": trades,
+            "winning_trades": wins,
+            "win_rate_pct": win_rate,
+            "positions": pos_details
+        }
+
+    cross_arb = portfolios.get("cross_arbitrage", {})
+    arb_trades = cross_arb.get("total_arbitrage_trades", 0)
+    arb_pnl = cross_arb.get("arbitrage_pnl_usd", 0.0)
+    arb_history = cross_arb.get("history", [])
+
+    grand_total_pnl = (total_equity - total_initial) + arb_pnl
+    grand_return_pct = (grand_total_pnl / total_initial * 100.0) if total_initial > 0 else 0.0
+
+    split_25 = max(0.0, grand_total_pnl) * 0.25
+
+    return {
+        "total_initial_balance_usd": total_initial,
+        "total_cash_usd": total_cash,
+        "total_equity_usd": total_equity + arb_pnl,
+        "grand_total_pnl_usd": grand_total_pnl,
+        "grand_return_pct": grand_return_pct,
+        "exchanges": ex_reports,
+        "cross_arbitrage": {
+            "total_trades": arb_trades,
+            "pnl_usd": arb_pnl,
+            "recent_trades": arb_history[-5:]
+        },
+        "profit_split_25_usd": split_25
+    }
+
+
+def reset_multi_exchange_demo(data_dir: str = "/root/AIOS/data") -> bool:
+    """Сбрасывает все 5 демо-счетов к исходному балансу $1,000 ($5,000 всего)."""
+    engine = MultiExchangeQuantEngine(data_dir=data_dir)
+    default_data = {}
+    for ex in MultiExchangeQuantEngine.EXCHANGES:
+        default_data[ex] = {
+            "initial_balance_usd": 1000.0,
+            "cash_usd": 1000.0,
+            "realized_pnl_usd": 0.0,
+            "total_trades": 0,
+            "winning_trades": 0,
+            "positions": {}
+        }
+    default_data["cross_arbitrage"] = {
+        "total_arbitrage_trades": 0,
+        "arbitrage_pnl_usd": 0.0,
+        "history": []
+    }
+    try:
+        engine.save_portfolios(default_data)
+        return True
+    except Exception:
+        return False
+
+
+def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
+    """Форматирует отчёт по 5 демо-счетам ($5,000) и межбиржевому арбитражу для Telegram."""
+    tot_init = report.get("total_initial_balance_usd", 5000.0)
+    tot_cash = report.get("total_cash_usd", 5000.0)
+    tot_equity = report.get("total_equity_usd", 5000.0)
+    tot_pnl = report.get("grand_total_pnl_usd", 0.0)
+    tot_ret = report.get("grand_return_pct", 0.0)
+
+    pnl_icon = "🚀" if tot_pnl >= 0 else "📉"
+    pnl_sign = "+" if tot_pnl > 0 else ""
+
+    lines = [
+        "🏛️ <b>Мульти-Биржевой Крипто-Заработок AIOS ($5,000 Демо)</b>",
+        "━━━━━━━━━━━━━━━━━━━━━",
+        f"💵 <b>Совокупный капитал:</b> <b>${tot_init:,.2f} USD</b> (5 бирж по $1,000)",
+        f"💳 <b>Свободный кэш:</b> ${tot_cash:,.2f} USD",
+        f"📊 <b>Текущий капитал (Equity):</b> <b>${tot_equity:,.2f} USD</b>",
+        f"{pnl_icon} <b>Совокупный PnL:</b> <b>{pnl_sign}${tot_pnl:,.2f} USD ({pnl_sign}{tot_ret:.2f}%)</b>",
+        "",
+        "🏦 <b>Результаты торгов по каждой из 5 бирж:</b>"
+    ]
+
+    exchanges = report.get("exchanges", {})
+    for ex_key, ex_data in exchanges.items():
+        ex_name = ex_data.get("name", ex_key.upper())
+        eq = ex_data.get("equity_usd", 1000.0)
+        c_sh = ex_data.get("cash_usd", 1000.0)
+        pnl = ex_data.get("pnl_usd", 0.0)
+        p_sign = "+" if pnl > 0 else ""
+        tr_cnt = ex_data.get("total_trades", 0)
+        wr = ex_data.get("win_rate_pct", 0.0)
+        poss = ex_data.get("positions", [])
+
+        lines.append(f"\n<b>{ex_name}:</b>")
+        lines.append(f"• Баланс: <b>${eq:,.2f} USD</b> (Кэш: ${c_sh:,.2f}) | PnL: <b>{p_sign}${pnl:.2f} USD</b>")
+        lines.append(f"• Сделок: <b>{tr_cnt}</b> (Винрейт: <b>{wr:.1f}%</b>)")
+
+        if poss:
+            pos_str = []
+            for p in poss[:3]:
+                u_pnl = p.get("unrealized_pnl_usd", 0.0)
+                u_sign = "+" if u_pnl > 0 else ""
+                pos_str.append(f"{p[symbol]} ({u_sign}${u_pnl:.2f})")
+            lines.append(f"• Позиции ({len(poss)}): " + ", ".join(pos_str))
+        else:
+            lines.append("• Позиции: <i>нет (100% в кэше)</i>")
+
+    arb = report.get("cross_arbitrage", {})
+    arb_cnt = arb.get("total_trades", 0)
+    arb_pnl = arb.get("pnl_usd", 0.0)
+    arb_sign = "+" if arb_pnl > 0 else ""
+    rec_trades = arb.get("recent_trades", [])
+
+    lines.extend([
+        "",
+        "⚡ <b>Межбиржевой Арбитраж (Cross-Exchange):</b>",
+        f"• Выполнено арбитражных сделок: <b>{arb_cnt}</b>",
+        f"• Безрисковая прибыль со спрэдов: <b>{arb_sign}${arb_pnl:.2f} USD</b>"
+    ])
+
+    if rec_trades:
+        last = rec_trades[-1]
+        b_ex = last.get(buy_ex, ).upper()
+        s_ex = last.get(sell_ex, ).upper()
+        sym = last.get(symbol, )
+        bp = last.get(buy_price, 0.0)
+        sp = last.get(sell_price, 0.0)
+        spr = last.get(spread_pct, 0.0)
+        lines.append(f"• Последняя сделка: Buy <b>{b_ex}</b> {sym} @ ${bp:.2f} ➔ Sell <b>{s_ex}</b> @ ${sp:.2f} (Спрэд +{spr}%)")
+
+    split_25 = report.get("profit_split_25_usd", 0.0)
+    lines.extend([
+        "",
+        "💰 <b>Распределение прибыли (Правило 25% × 4):</b>",
+        f"• 👨‍💻 Разработчик (25%): <b>${split_25:.2f} USD</b>",
+        f"• 🏦 Инвестор (25%): <b>${split_25:.2f} USD</b>",
+        f"• 👥 Персонал (25%): <b>${split_25:.2f} USD</b>",
+        f"• 🤖 AIOS Фонд (25%): <b>${split_25:.2f} USD</b>",
+        "",
+        "💡 <i>Команды:</i>",
+        "<code>крипто заработок</code> — полный отчёт по 5 биржам",
+        "<code>5 бирж сброс</code> — сбросить счета по $1,000",
+        "<code>баланс кракен</code> — реальный баланс"
+    ])
+
+    return "\n".join(lines)

@@ -13,7 +13,7 @@ import json
 
 sys.path.insert(0, "/root/AIOS")
 
-from aios_core.quant_trading_engine import QuantMasterOrchestrator
+from aios_core.quant_trading_engine import QuantMasterOrchestrator, MultiExchangeQuantEngine
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,9 +25,12 @@ logger = logging.getLogger("AIOS.RunQuantTrading")
 def run_daemon(interval_seconds: int = 900):
     logger.info(f"📈 [RunQuantTrading] Запуск фонового количественного трейдинг-радара (интервал: {interval_seconds} сек)...")
     quant = QuantMasterOrchestrator()
+    multi_engine = MultiExchangeQuantEngine()
     while True:
         try:
             res = quant.run_quant_cycle()
+            multi_res = multi_engine.run_multi_exchange_cycle()
+            logger.info(f"🏛️ [MultiExchange] Цикл завершен. Выполнено сделок: {len(multi_res.get('cycle_trades', []))}")
             for sig in res.get("signals", []):
                 if sig.get("signal") != "HOLD":
                     logger.info(f"🚨 [QUANT SIGNAL!] {sig['symbol']}: {sig['signal']} (Confidence: {sig['confidence'] * 100}%) | {sig['reason']}")
@@ -46,6 +49,8 @@ if __name__ == "__main__":
         run_daemon(interval_seconds=args.interval)
     else:
         quant = QuantMasterOrchestrator()
+        multi_engine = MultiExchangeQuantEngine()
         res = quant.run_quant_cycle()
+        multi_res = multi_engine.run_multi_exchange_cycle()
         print("\n=== AIOS QUANT TRADING ENGINE RESULTS ===")
         print(json.dumps(res, indent=2, ensure_ascii=False))

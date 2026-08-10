@@ -108,40 +108,41 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ Ошибка Android Mesh: {e}")
         return True
 
-    # 0. Сброс демонстрационного счёта Kraken ($100)
-    if any(phrase in t for phrase in ("сбрось демо", "сбросить демо", "кракен демо сброс", "сбросить демо кракен", "сброс демо")):
-        from aios_core.quant_trading_engine import reset_kraken_demo_account
-        if reset_kraken_demo_account():
-            api.send_message(chat_id, "✅ <b>Демонстрационный счёт Kraken успешно сброшен на $100.00 USD!</b>")
+    # 0. Сброс всех 5 демо-счетов по $1,000 ($5,000)
+    if any(phrase in t for phrase in ("сбрось демо", "сбросить демо", "5 бирж сброс", "сбросить 5 бирж", "сброс 5 бирж", "кракен демо сброс", "сброс демо")):
+        from aios_core.quant_trading_engine import reset_multi_exchange_demo
+        if reset_multi_exchange_demo():
+            api.send_message(chat_id, "✅ <b>Все 5 демонстрационных счетов (Kraken, Binance, Bybit, OKX, Uniswap V3) успешно сброшены на $1,000.00 USD каждый ($5,000.00 USD всего)!</b>")
         else:
-            api.send_message(chat_id, "❌ Не удалось сбросить демонстрационный счёт Kraken.")
+            api.send_message(chat_id, "❌ Не удалось сбросить мульти-биржевые демонстрационные счета.")
         return True
 
-    # Единый отчет автономного крипто-заработка ($100 Демо)
+    # Отчет мульти-биржевого крипто-заработка (5 бирж по $1,000 = $5,000 Демо)
     if any(phrase in t for phrase in (
         "крипто заработок", "заработок", "крипто отчёт", "крипто отчет", "крипто сводка",
         "трейдинг", "сигналы", "квант", "торговля", "paper trading",
         "демо счет", "демосчет", "демо счёт", "демо кракен", "кракен демо",
-        "заработок кракен", "кракен заработок", "кракен трейдинг", "демо"
+        "заработок кракен", "кракен заработок", "кракен трейдинг", "демо",
+        "5 бирж", "мульти биржа", "межбиржа", "арбитраж бирж"
     )):
-        api.send_message(chat_id, "🚀 <b>Запрашиваю показатели автономного крипто-заработка ($100)...</b>")
+        api.send_message(chat_id, "🏛️ <b>Запрашиваю показатели мульти-биржевого крипто-заработка (5 бирж по $1,000)...</b>")
         try:
             from aios_core.quant_trading_engine import (
-                get_unified_crypto_earnings_report,
-                format_unified_crypto_earnings_report,
-                QuantMasterOrchestrator
+                MultiExchangeQuantEngine,
+                get_multi_exchange_demo_report,
+                format_multi_exchange_demo_report
             )
             try:
-                quant = QuantMasterOrchestrator()
-                quant.run_quant_cycle()
+                engine = MultiExchangeQuantEngine()
+                engine.run_multi_exchange_cycle()
             except Exception:
                 pass
 
-            report = get_unified_crypto_earnings_report()
-            msg_text = format_unified_crypto_earnings_report(report)
+            report = get_multi_exchange_demo_report()
+            msg_text = format_multi_exchange_demo_report(report)
             api.send_message(chat_id, msg_text)
         except Exception as e:
-            api.send_message(chat_id, f"❌ Ошибка получения отчёта крипто-заработка: {e}")
+            api.send_message(chat_id, f"❌ Ошибка получения отчёта мульти-биржевого крипто-заработка: {e}")
         return True
 
     # Склад & Запчасти
