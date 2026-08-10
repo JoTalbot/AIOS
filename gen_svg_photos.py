@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Уникальные SVG-иллюстрации для позиций без собственных фото.
+"""Уникальные SVG-иллюстрации для позиций склада.
 Каждая картинка уникальна: иконка детали + цвет категории + подпись."""
 import json
 import re
@@ -10,9 +10,29 @@ INV = ROOT / "data" / "inventory.json"
 OUT = ROOT / "data" / "photos" / "unique"
 OUT.mkdir(parents=True, exist_ok=True)
 
-# иконки (простые SVG-пути) по типу детали
+# иконки (простые и выразительные SVG-векторы) по типу детали
 def icon_for(name: str) -> str:
     n = name.lower()
+    if "полуос" in n:
+        return '<line x1="70" y1="90" x2="250" y2="90" stroke="#374151" stroke-width="12"/><circle cx="70" cy="90" r="28" fill="none" stroke="#374151" stroke-width="8"/><circle cx="70" cy="90" r="14" fill="#374151"/><rect x="235" y="80" width="20" height="20" rx="3" fill="#374151"/>'
+    if "пружин" in n:
+        return '<path d="M160 30 c-30 0 -30 15 0 15 c30 0 30 15 0 15 c-30 0 -30 15 0 15 c30 0 30 15 0 15 c-30 0 -30 15 0 15 c30 0 30 15 0 15" fill="none" stroke="#374151" stroke-width="10" stroke-linecap="round"/>'
+    if "амортизатор" in n or "стойк" in n:
+        return '<circle cx="160" cy="35" r="12" fill="none" stroke="#374151" stroke-width="8"/><line x1="160" y1="47" x2="160" y2="75" stroke="#374151" stroke-width="10"/><rect x="140" y="75" width="40" height="60" rx="6" fill="#374151"/><circle cx="160" cy="145" r="12" fill="none" stroke="#374151" stroke-width="8"/>'
+    if "маховик" in n:
+        return '<circle cx="160" cy="90" r="50" fill="none" stroke="#374151" stroke-width="14" stroke-dasharray="8 4"/><circle cx="160" cy="90" r="24" fill="none" stroke="#374151" stroke-width="8"/><circle cx="160" cy="90" r="10" fill="#374151"/>'
+    if "корзина" in n:
+        return '<circle cx="160" cy="90" r="50" fill="none" stroke="#374151" stroke-width="12"/><circle cx="160" cy="90" r="28" fill="none" stroke="#374151" stroke-width="6"/><line x1="160" y1="45" x2="160" y2="62" stroke="#374151" stroke-width="6"/><line x1="160" y1="118" x2="160" y2="135" stroke="#374151" stroke-width="6"/><line x1="115" y1="90" x2="132" y2="90" stroke="#374151" stroke-width="6"/><line x1="188" y1="90" x2="205" y2="90" stroke="#374151" stroke-width="6"/>'
+    if "диск сцеплен" in n or "ведомый диск" in n:
+        return '<circle cx="160" cy="90" r="50" fill="none" stroke="#374151" stroke-width="14"/><circle cx="160" cy="90" r="18" fill="#374151"/><rect x="135" y="70" width="12" height="12" rx="2" fill="#9ca3af"/><rect x="173" y="70" width="12" height="12" rx="2" fill="#9ca3af"/><rect x="135" y="98" width="12" height="12" rx="2" fill="#9ca3af"/><rect x="173" y="98" width="12" height="12" rx="2" fill="#9ca3af"/>'
+    if "карбюратор" in n:
+        return '<rect x="125" y="60" width="70" height="60" rx="8" fill="#374151"/><circle cx="145" cy="45" r="12" fill="none" stroke="#374151" stroke-width="8"/><circle cx="175" cy="45" r="12" fill="none" stroke="#374151" stroke-width="8"/><line x1="115" y1="110" x2="135" y2="110" stroke="#374151" stroke-width="8"/><rect x="130" y="115" width="60" height="12" rx="2" fill="#6b7280"/>'
+    if "бензонасос" in n:
+        return '<circle cx="160" cy="85" r="28" fill="#374151"/><rect x="150" y="110" width="20" height="25" fill="#374151"/><path d="M140 135l40 10" stroke="#374151" stroke-width="8" fill="none"/><path d="M135 75h-20v-15" stroke="#374151" stroke-width="8" fill="none"/><path d="M185 75h20v-15" stroke="#374151" stroke-width="8" fill="none"/>'
+    if "помпа" in n or "насос охлажден" in n:
+        return '<circle cx="160" cy="85" r="32" fill="none" stroke="#374151" stroke-width="10"/><circle cx="160" cy="85" r="16" fill="#374151"/><path d="M130 95l-30 25h40z" fill="#374151"/><circle cx="200" cy="65" r="10" fill="none" stroke="#374151" stroke-width="6"/>'
+    if "термостат" in n:
+        return '<rect x="130" y="65" width="60" height="50" rx="10" fill="#374151"/><path d="M160 35v30M160 115v30" stroke="#374151" stroke-width="12"/><line x1="140" y1="90" x2="180" y2="90" stroke="#fff" stroke-width="6"/>'
     if "хомут" in n:
         return '<circle cx="160" cy="90" r="46" fill="none" stroke="#374151" stroke-width="10"/>'
     if "тройник" in n or "штуцер" in n:
@@ -72,25 +92,35 @@ def render(name: str, category: str, idx: int) -> str:
 </svg>"""
 
 
-def main() -> None:
+def main(target_indices: list[int] = None) -> None:
     items = json.loads(INV.read_text(encoding="utf-8"))
     made = 0
     for idx, it in enumerate(items, 1):
-        name = it.get("name", "")
-        ph = it.get("photos") or ([it["photo"]] if it.get("photo") else [])
-        real = [p for p in ph if Path(p).exists()]
-        has_unique = real and not any("ws_cat" in str(p) for p in real)
-        if has_unique:
+        if target_indices and idx not in target_indices:
             continue
+        name = it.get("name", "")
         dest = OUT / f"ws_u_{idx:03d}.svg"
         dest.write_text(render(name, it.get("category", ""), idx), encoding="utf-8")
         it["photos"] = [str(dest)]
         it["photo"] = str(dest)
         made += 1
-        print(f"  SVG {name[:45]}")
+        print(f"  [+] Сгенерирован SVG ({idx:02d}): {name}")
     INV.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\nSVG создано: {made}")
+    print(f"\nВсего сгенерировано и обновлено в инвентаре: {made} SVG-изображений.")
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    # 10 целевых позиций из списка товаров с фото из интернета:
+    # 8: Полуоси заднего моста
+    # 11: Пружины подвески
+    # 12: Амортизаторы / стойки
+    # 13: Маховик двигателя
+    # 14: Корзина сцепления
+    # 15: Ведомый диск сцепления
+    # 20: Карбюраторы (Солекс / Озон)
+    # 21: Бензонасос механический
+    # 26: Помпа водяная (насос охлаждения)
+    # 27: Термостат в корпусе
+    targets = [8, 11, 12, 13, 14, 15, 20, 21, 26, 27]
+    main(targets)
