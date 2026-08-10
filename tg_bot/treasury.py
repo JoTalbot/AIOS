@@ -117,6 +117,23 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Не удалось сбросить мульти-биржевые демонстрационные счета.")
         return True
 
+    # Запрос ИИ-анализа конкретной монеты (например, "анализ BTC", "прогноз SOL")
+    asset_match = _re4.match(r"^(?:анализ|прогноз|проанализируй|аналитика)\s+([a-zA-Z0-9]+)\b", t)
+    if asset_match:
+        coin = asset_match.group(1).upper()
+        api.send_message(chat_id, f"🔮 <b>Запускаю 360-градусный ИИ-анализ и прогноз для {coin}...</b>")
+        try:
+            from aios_core.quant_trading_engine import (
+                analyze_single_asset_360,
+                format_single_asset_analysis
+            )
+            data = analyze_single_asset_360(coin)
+            msg_txt = format_single_asset_analysis(data)
+            api.send_message(chat_id, msg_txt)
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка ИИ-анализа монеты {coin}: {e}")
+        return True
+
     # Запрос графика PnL и распределения активов
     if any(phrase in t for phrase in ("крипто график", "график крипто", "график бирж", "pnl график", "покажи график")):
         api.send_message(chat_id, "📊 <b>Генерирую визуальный дашборд-график PnL и распределения по 5 биржам...</b>")

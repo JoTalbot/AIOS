@@ -1491,3 +1491,94 @@ def format_positions_only_report(report: Dict[str, Any]) -> str:
         lines.append("<i>В данный момент открытых позиций нет (100% средств в свободном кэше).</i>")
 
     return "\n".join(lines)
+
+
+
+
+def analyze_single_asset_360(symbol: str) -> Dict[str, Any]:
+    """Проводит 360-градусный ИИ-анализ выбранной криптовалюты по 5 биржам, индикаторам, стакану и сентименту."""
+    clean_sym = symbol.upper().replace("USD", "").replace("USDT", "").replace("BTC-", "").replace("KRAKEN_", "")
+
+    from aios_core.quant_trading_engine import MultiExchangeQuantEngine, QuantSignalEngine
+    engine = MultiExchangeQuantEngine()
+    all_prices = engine.fetch_all_exchange_prices()
+
+    prices_map = {}
+    for ex, ex_p in all_prices.items():
+        if clean_sym in ex_p:
+            prices_map[ex] = ex_p[clean_sym]
+
+    avg_price = sum(prices_map.values()) / max(1, len(prices_map)) if prices_map else 100.0
+
+    sig_engine = QuantSignalEngine()
+    analysis = sig_engine.record_and_analyze(clean_sym, avg_price)
+
+    from aios_core.orderbook_analyzer import AIOSOrderbookAnalyzer
+    ob_info = AIOSOrderbookAnalyzer.analyze_orderbook(clean_sym)
+
+    from aios_core.crypto_news_sentiment import AIOSCryptoNewsSentiment
+    sent_info = AIOSCryptoNewsSentiment.analyze_market_sentiment()
+
+    from aios_core.llm_balancer import LLMBalancer
+    balancer = LLMBalancer()
+
+    prompt = (
+        f"Ты — шеф-аналитик криптовалютного рынка AIOS. Сделай краткое резюме (3 предложения) по {clean_sym}:\n"
+        f"Цена ${avg_price:.4f}, сигнал {analysis.get('signal')} ({analysis.get('confidence')*100:.0f}%), "
+        f"RSI {analysis.get('rsi')}, MACD {analysis.get('macd')}, Funding {analysis.get('funding_rate')}%, "
+        f"Стакан {ob_info.get('status')}, Сентимент {sent_info.get('verdict')}.\n"
+        f"Дай точную рекомендацию: точка входа, Take-Profit (+2%), Stop-Loss (-1%) и риски."
+    )
+
+    llm_verdict = balancer.chat([{"role": "user", "content": prompt}]) or "Рекомендуется удержание (HOLD) до пробоя ключевых уровней."
+
+    return {
+        "symbol": clean_sym,
+        "avg_price": avg_price,
+        "prices_by_exchange": prices_map,
+        "analysis": analysis,
+        "orderbook": ob_info,
+        "sentiment": sent_info,
+        "llm_verdict": llm_verdict
+    }
+
+
+def format_single_asset_analysis(data: Dict[str, Any]) -> str:
+    """Форматирует карточку ИИ-анализа монеты для Telegram."""
+    sym = data.get("symbol", "BTC")
+    p = data.get("avg_price", 0.0)
+    prices = data.get("prices_by_exchange", {})
+    analysis = data.get("analysis", {})
+    ob = data.get("orderbook", {})
+    sent = data.get("sentiment", {})
+    verdict = data.get("llm_verdict", "")
+
+    sig = analysis.get("signal", "HOLD")
+    conf = analysis.get("confidence", 0.5) * 100
+    icon = "🟢" if "BUY" in sig else ("🔴" if "SELL" in sig else "⚪")
+
+    lines = [
+        f"🔮 <b>ИИ-Анализ & Прогноз AIOS для {sym}</b>",
+        "━━━━━━━━━━━━━━━━━━━━━",
+        f"💵 <b>Средняя цена:</b> <b>${p:,.4f} USD</b>",
+        f"{icon} <b>ИИ-Сигнал:</b> <b>{sig}</b> (Уверенность: <b>{conf:.0f}%</b>)",
+        f"💡 <b>Факторы:</b> <i>{analysis.get('reason')}</i>",
+        "",
+        "📊 <b>Цены на биржах:</b>"
+    ]
+    for ex_k, ex_p in prices.items():
+        lines.append(f"• {ex_k.upper()}: <b>${ex_p:,.4f}</b>")
+
+    lines.extend([
+        "",
+        "📐 <b>Метрики & Деривативы:</b>",
+        f"• RSI (14): <b>{analysis.get('rsi')}</b> | MACD: <b>{analysis.get('macd')}</b>",
+        f"• Ставка Фандинга: <b>{analysis.get('funding_rate')}%</b>",
+        f"• Стакан ордеров: <b>{ob.get('status')}</b>",
+        f"• Рыночный сентимент: <b>{sent.get('verdict')}</b>",
+        "",
+        "🤖 <b>Вердикт ИИ-Аналитика:</b>",
+        f"<i>{verdict}</i>"
+    ])
+
+    return "\n".join(lines)
