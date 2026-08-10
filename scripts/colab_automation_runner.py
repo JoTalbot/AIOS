@@ -55,6 +55,79 @@ def _pick_notebook() -> str:
             if "whisper" in sys.argv else GITHUB_NB + "AIOS_Google_Colab_LLM_Coding.ipynb")
 
 
+
+async def _confirm_dialogs(page):
+    """Нажать кнопку подтверждения запуска (Run anyway) на разных языках."""
+    # Точный клик по кнопкам подтверждения через JS (shadow DOM / cross-origin надёжнее)
+    js_confirm = """
+    () => {
+      const EXACT = ["Усе одно запустити","Усе одно запустить","Всё равно запустить","Все равно запустить","Run anyway"];
+      const L = EXACT.map(function(s){return s.toLowerCase();});
+      let hit=null;
+      const walk=function(root){
+        root.querySelectorAll("*").forEach(function(el){
+          if(hit) return;
+          if(el.shadowRoot) walk(el.shadowRoot);
+          const t=(el.innerText||el.textContent||"").trim();
+          if(L.indexOf(t.toLowerCase())>=0){ el.click(); hit=t; }
+        });
+      };
+      walk(document);
+      document.querySelectorAll("iframe").forEach(function(f){
+        if(hit) return;
+        try{ if(f.contentDocument) walk(f.contentDocument);}catch(e){}
+      });
+      return hit;
+    }
+    """
+    try:
+        hit = await page.evaluate(js_confirm)
+        if hit:
+            print(f"👍 Подтверждено (JS): {hit}")
+            await asyncio.sleep(1)
+    except Exception:
+        pass
+
+    selectors = [
+        # украинский
+        "button:has-text('Усе одно запустити')",
+        "button:has-text('Усе одно')",
+        "button:has-text('Все одно запустити')",
+        # русский
+        "button:has-text('Все равно запустить')",
+        "button:has-text('Всё равно запустить')",
+        "button:has-text('Все равно')",
+        "button:has-text('Всё равно')",
+        "button:has-text('Запустить')",
+        "button:has-text('Выполнить')",
+        # английский
+        "button:has-text('Run anyway')",
+        "button:has-text('Run all')",
+        # generic
+        "colab-callout button",
+        "#ok", "mwc-button#ok", "paper-button#ok",
+    ]
+    for selector in selectors:
+        try:
+            btn = page.locator(selector)
+            if await btn.is_visible(timeout=700):
+                await btn.click(timeout=2000)
+                print(f"👍 Подтверждено ({selector})")
+                await asyncio.sleep(1)
+        except Exception:
+            continue
+    # капча
+    try:
+        for fr in page.frames:
+            if "recaptcha" in fr.url:
+                cb = fr.locator("#recaptcha-anchor")
+                if await cb.is_visible(timeout=800):
+                    await cb.click()
+                    print("👍 Клик по reCAPTCHA checkbox")
+    except Exception:
+        pass
+
+
 async def run_colab_automation():
     print("🚀 [ColabRunner] Запуск автоматизации Google Colab через Chrome CDP (9222)...")
 
@@ -90,71 +163,92 @@ async def run_colab_automation():
         page = await context.new_page()
         await page.set_viewport_size({"width": 1920, "height": 1080})
 
-        print(f"🔗 Переход в Google Colab Notebook: {notebook_url}")
-        await page.goto(notebook_url, wait_until="domcontentloaded", timeout=60000)
-        print("✅ Страница Google Colab успешно загружена!")
+        # Переиспользование уже открытой вкладки с тем же ноутбуком
+        reused = False
+        nb_key = notebook_url.split("/")[-1]
+        for pg in context.pages:
+            try:
+                if nb_key and nb_key in pg.url and "colab" in pg.url:
+                    page = pg
+                    reused = True
+                    print(f"✅ Переиспользована существующая вкладка Colab: {nb_key}")
+                    break
+            except Exception:
+                continue
 
-        await asyncio.sleep(5)
+        if reused:
+            print("ℹ️  Вкладка переиспользована. Подтверждаю диалоги и повторно запускаю выполнение...")
+            await _confirm_dialogs(page)
+            await asyncio.sleep(2)
+            try:
+                await page.keyboard.press("Control+F9")
+                print("▶️ Ctrl+F9 (Run all) отправлен")
+            except Exception as ex:
+                print(f"Run note: {ex}")
+            await asyncio.sleep(3)
+            await _confirm_dialogs(page)
+            await asyncio.sleep(4)
+        else:
+            print(f"🔗 Переход в Google Colab Notebook: {notebook_url}")
+            await page.goto(notebook_url, wait_until="domcontentloaded", timeout=60000)
+            print("✅ Страница Google Colab успешно загружена!")
 
-        # Подключение GPU
-        print("🔌 Проверка кнопки Подключиться к GPU...")
-        try:
-            connect_btn = page.locator("#connect, #reconnect")
-            if await connect_btn.is_visible():
-                await connect_btn.click()
-                print("👍 Нажата кнопка Подключиться!")
-                await asyncio.sleep(5)
-        except Exception as e:
-            print(f"Connect note: {e}")
+            await asyncio.sleep(5)
 
-        # Запуск всех ячеек (Ctrl+F9)
-        print("▶️ Запуск выполнения всех ячеек (Ctrl+F9)...")
-        await page.keyboard.press("Control+F9")
-        await asyncio.sleep(5)
+            # Подключение GPU
+            print("🔌 Проверка кнопки Подключиться к GPU...")
+            try:
+                connect_btn = page.locator("#connect, #reconnect")
+                if await connect_btn.is_visible():
+                    await connect_btn.click()
+                    print("👍 Нажата кнопка Подключиться!")
+                    await asyncio.sleep(5)
+            except Exception as e:
+                print(f"Connect note: {e}")
 
-        # Окно 'Run anyway' / Подтверждение запуска
-        await asyncio.sleep(2)
-        try:
-            for selector in [
-                "button:has-text('Run anyway')",
-                "button:has-text('Всё равно')",
-                "button:has-text('Все равно')",
-                "button:has-text('Запустить')",
-                "colab-callout button",
-                "#ok",
-                "mwc-button#ok",
-                "paper-button#ok"
-            ]:
-                try:
-                    btn = page.locator(selector)
-                    if await btn.is_visible(timeout=1000):
-                        await btn.click()
-                        print(f"👍 Запуск ячеек подтвержден ({selector})!")
-                        break
-                except Exception:
-                    pass
-        except Exception as _de:
-            print(f"Dialog check note: {_de}")
+            # Запуск всех ячеек (Ctrl+F9)
+            print("▶️ Запуск выполнения всех ячеек (Ctrl+F9)...")
+            await page.keyboard.press("Control+F9")
+            await asyncio.sleep(5)
 
-        print("\n⏳ Ожидание инициализации vLLM и создания Cloudflare туннеля...")
+            # Окно 'Run anyway' / Подтверждение запуска (многоязычно)
+            await asyncio.sleep(2)
+            await _confirm_dialogs(page)
+
+            # Повторный запуск, если диалог подтверждения сбросил выполнение
+            await asyncio.sleep(2)
+            try:
+                await page.keyboard.press("Control+F9")
+                print("▶️ Повторный Ctrl+F9 (Run all) после подтверждения")
+            except Exception:
+                pass
+            await asyncio.sleep(3)
+            await _confirm_dialogs(page)
+
+        print("\n⏳ Инициализация и слежение за выполнением...")
         tunnel_url = ""
 
-        for attempt in range(40): # До 4 минут ожидания
-            await asyncio.sleep(6)
-            page_text = await page.content()
+        # Туннель нужен только сервисам с cloudflared (LLM/Whisper).
+        kind_needs_tunnel = os.getenv("COLAB_SERVICE_KIND", "llm") in ("llm", "whisper")
+        if kind_needs_tunnel:
+            for attempt in range(40):  # До 4 минут ожидания
+                await asyncio.sleep(6)
+                page_text = await page.content()
 
-            is_whisper_mode = "whisper" in sys.argv or "Whisper" in notebook_url
-            pattern = r'https://[a-zA-Z0-9-]+\.trycloudflare\.com' if is_whisper_mode else r'https://[a-zA-Z0-9-]+\.trycloudflare\.com/v1'
-            match = re.search(pattern, page_text)
-            if match:
-                tunnel_url = match.group(0)
-                print(f"\n🎉 ========================================================")
-                print(f"🔗 ИЗВЛЕЧЁН ПУБЛИЧНЫЙ URL ИЗ GOOGLE COLAB ({'Whisper' if is_whisper_mode else 'LLM'}):")
-                print(f"   {tunnel_url}")
-                print(f"========================================================\n")
-                break
-            else:
-                print(f"⏳ [Сканирование {attempt+1}/40] Ожидание генерации туннеля...")
+                is_whisper_mode = "whisper" in sys.argv or "Whisper" in notebook_url
+                pattern = r'https://[a-zA-Z0-9-]+\.trycloudflare\.com' if is_whisper_mode else r'https://[a-zA-Z0-9-]+\.trycloudflare\.com/v1'
+                match = re.search(pattern, page_text)
+                if match:
+                    tunnel_url = match.group(0)
+                    print(f"\n🎉 ========================================================")
+                    print(f"🔗 ИЗВЛЕЧЁН ПУБЛИЧНЫЙ URL ИЗ GOOGLE COLAB ({'Whisper' if is_whisper_mode else 'LLM'}):")
+                    print(f"   {tunnel_url}")
+                    print(f"========================================================\n")
+                    break
+                else:
+                    print(f"⏳ [Сканирование {attempt+1}/40] Ожидание генерации туннеля...")
+        else:
+            print("ℹ️  Этот ноутбук не создаёт туннель — переходим сразу к вочдогу.")
 
         if tunnel_url:
             if "whisper" in sys.argv or "Whisper" in notebook_url:
@@ -178,8 +272,8 @@ async def run_colab_automation():
                 colab_registry.register(kind=kind, base_url=tunnel_url,
                                         model=model, name=name, node_id=node)
                 print(f"📦 [ColabFarm] Сервис '{name}' ({kind}) зарегистрирован в реестре Colab-фермы.")
-            except Exception as re:
-                print(f"⚠️ [ColabFarm] Не удалось зарегистрировать сервис в реестре: {re}")
+            except Exception as reg_err:
+                print(f"⚠️ [ColabFarm] Не удалось зарегистрировать сервис в реестре: {reg_err}")
         else:
             print("⚠️ Ссылка туннеля пока не появилась в текстовом блоке. Переходим в режим вочдога активности...")
 
