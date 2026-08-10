@@ -25,7 +25,7 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
     t = " ".join(str(text or "").casefold().split())
 
     # 1. Обработка подтверждения оплаты
-    approve = _re3.match(r"^(?:подтверди\s+фриланс|подтвердить\s+фриланс|confirm\s+freelance)\s+(\S+)", t)
+    approve = _re3.match(r"^(?:подтверди\s+фриланс|подтвердить\s+фриланс|confirm\s+freelance)\s+(\S+)", t)
     if approve:
         task_id = approve.group(1).strip()
         tasks_file = PROJECT_ROOT / "data" / "freelance_tasks.json"
@@ -116,7 +116,7 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
         return True
 
     # 3. Обработка получения инвойса
-    get_inv = _re3.match(r"^(?:инвойс\\s+фриланс|invoice\\s+freelance)\\s+(\\S+)\\b", t)
+    get_inv = _re3.match(r"^(?:инвойс\s+фриланс|invoice\s+freelance)\s+(\S+)", t)
     if get_inv:
         task_id = get_inv.group(1).strip()
         tasks_file = PROJECT_ROOT / "data" / "freelance_tasks.json"
