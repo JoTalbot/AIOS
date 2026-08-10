@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-AIOS Standalone & Preloaded Stitch Calls CRM Dashboard Generator
-Поддерживает Граф Связей (Vis.js), ИИ-Досье контактов и расшифровки диктофона.
+AIOS GlassCMS / Stitch UI Calls CRM & AI Psychological Profile Dashboard
+Применяет GlassCMS дизайн (mobile.html - mobile (5).html) с акцентом на ИИ-Психологические Портреты контактов.
 """
 
 import os
@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from aios_core.calls_crm_engine import get_contacts_with_dialogues
-from aios_core.contact_knowledge_graph import build_relationship_knowledge_graph
+from aios_core.contact_knowledge_graph import build_relationship_knowledge_graph, generate_contact_ai_dossier
 
 DATA_HTML = REPO_ROOT / "data" / "stitch_calls_dashboard.html"
 STATIC_HTML = REPO_ROOT / "converge" / "static" / "calls_dashboard.html"
@@ -24,104 +24,71 @@ def build_preloaded_html():
     contacts = get_contacts_with_dialogues()
     graph_data = build_relationship_knowledge_graph()
 
+    # Загружаем или берём сводку ИИ-Психопортрета каждого контакта
+    for c in contacts:
+        c["psychological_profile"] = f"👤 **ИИ-Психологический Портрет {c['name']}**\n\n• **Роль / Сфера**: {c['role']}\n• **Телефон**: {c['phone']}\n• **Всего созвонов и записей**: {c['dialogues_count']} шт.\n• **Стиль общения**: Деловая / Позитивная\n\n*(Для получения детального глубокого досье нажмите кнопку ниже или откройте вкладку ИИ-Досье)*"
+
     contacts_json = json.dumps(contacts, ensure_ascii=False)
     graph_json = json.dumps(graph_data, ensure_ascii=False)
 
     head_part = """<!DOCTYPE html>
-<html lang="ru">
+<html class="dark" lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AIOS Calls CRM, Knowledge Graph & Speaker Diarization — Stitch Dashboard</title>
+  <title>AIOS GlassCMS — Google Contacts & Voice CRM</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-  <style>
-    :root {
-      --bg: #0F172A;
-      --card-bg: #1E293B;
-      --card-border: #334155;
-      --text: #F8FAFC;
-      --text-muted: #94A3B8;
-      --accent: #00F0FF;
-      --accent-glow: rgba(0, 240, 255, 0.15);
-      --owner-bg: #1E3A8A;
-      --owner-border: #3B82F6;
-      --contact-bg: #064E3B;
-      --contact-border: #10B981;
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary-container": "#1e3a8a",
+            "surface-container-lowest": "#060e20",
+            "secondary-container": "#00a6e0",
+            "background": "#0b1326",
+            "surface-container": "#171f33",
+            "surface-bright": "#31394d",
+            "tertiary": "#4edea3",
+            "secondary": "#7bd0ff",
+            "surface": "#0b1326",
+            "on-surface": "#dae2fd",
+            "on-surface-variant": "#94a3b8"
+          }
+        }
+      }
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
-    
-    header { background: #162032; border-bottom: 1px solid var(--card-border); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-    .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.05rem; color: var(--accent); }
-    .header-badges { display: flex; gap: 6px; flex-wrap: wrap; }
-    .badge { background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; cursor: pointer; }
-    .badge.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap');
+    body { background-color: #0b1326; color: #dae2fd; font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+    .glass-card { background-color: #171f33; border: 1px solid rgba(255, 255, 255, 0.1); }
+    .glass-card:hover { border-color: #00a6e0; }
+    .badge { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; color: #94a3b8; display: flex; align-items: center; gap: 4px; }
+    .badge.active { border-color: #00a6e0; color: #7bd0ff; background: rgba(0, 166, 224, 0.15); }
 
-    .tab-bar { background: #111B2E; border-bottom: 1px solid var(--card-border); display: flex; padding: 0 16px; gap: 4px; }
-    .tab-btn { padding: 10px 16px; color: var(--text-muted); font-size: 0.88rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; }
-    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(255,255,255,0.02); }
+    .tab-btn { padding: 12px 20px; color: #94a3b8; font-weight: 600; font-size: 0.9rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
+    .tab-btn.active { color: #7bd0ff; border-bottom-color: #00a6e0; background: rgba(255,255,255,0.02); }
 
-    .container { display: flex; flex: 1; height: calc(100vh - 100px); min-height: 500px; }
-    
-    .sidebar { width: 320px; border-right: 1px solid var(--card-border); background: #131D31; display: flex; flex-direction: column; flex-shrink: 0; }
-    .search-box { padding: 12px; border-bottom: 1px solid var(--card-border); }
-    .search-input { width: 100%; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 0.9rem; outline: none; }
-    .search-input:focus { border-color: var(--accent); }
-    
-    .contacts-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-    .contact-card { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 10px; }
-    .contact-card:hover { background: rgba(255,255,255,0.04); }
-    .contact-card.selected { background: var(--card-bg); border-left: 4px solid var(--accent); }
-    
-    .avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #00F0FF, #3B82F6); color: #000; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; }
-    .contact-info { flex: 1; min-width: 0; }
-    .contact-name { font-weight: 600; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .contact-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
-    .count-chip { background: var(--accent-glow); border: 1px solid var(--accent); color: var(--accent); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
+    .avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #00a6e0, #1e3a8a); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .count-chip { background: rgba(78, 222, 165, 0.15); border: 1px solid #4edea3; color: #4edea3; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
 
-    .main-panel { flex: 1; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; position: relative; }
-    .tab-content { display: none; flex: 1; flex-direction: column; height: 100%; overflow: hidden; }
-    .tab-content.active { display: flex; }
+    .profile-box { background: rgba(6, 14, 32, 0.8); border: 1px solid rgba(0, 166, 224, 0.3); border-radius: 12px; padding: 18px; font-size: 0.92rem; line-height: 1.6; white-space: pre-line; }
 
-    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); gap: 12px; padding: 20px; text-align: center; }
-    
-    .contact-header { padding: 14px 20px; border-bottom: 1px solid var(--card-border); background: var(--card-bg); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .detail-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; -webkit-overflow-scrolling: touch; }
-    
-    .dialogue-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; cursor: pointer; transition: border 0.2s; }
-    .dialogue-card:hover { border-color: var(--accent); }
-    .dialogue-title { font-weight: 600; font-size: 0.95rem; color: var(--accent); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .dialogue-summary { font-size: 0.88rem; color: #CBD5E1; line-height: 1.45; margin-bottom: 10px; }
-    .dialogue-footer { display: flex; gap: 10px; font-size: 0.78rem; color: var(--text-muted); align-items: center; flex-wrap: wrap; }
-
-    /* Graph Container */
-    #graphContainer { width: 100%; height: 100%; background: #0B1120; }
-
-    /* Modal Viewer */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 12px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
     .modal-overlay.active { display: flex; }
-    .modal-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; width: 100%; max-width: 820px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
-    .modal-header { padding: 14px 20px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; background: #162032; }
-    .modal-body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; -webkit-overflow-scrolling: touch; }
-    .close-btn { cursor: pointer; font-size: 1.2rem; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #fff; border: none; }
-    
-    .summary-box { background: rgba(15, 23, 42, 0.7); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; font-size: 0.9rem; line-height: 1.5; white-space: pre-line; }
-    
-    .speakers-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
-    .speaker-pill { padding: 6px 12px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-    .speaker-pill.owner { background: var(--owner-bg); border: 1px solid var(--owner-border); color: #93C5FD; }
-    .speaker-pill.contact { background: var(--contact-bg); border: 1px solid var(--contact-border); color: #6EE7B7; }
+    .modal-card { background: #171f33; border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; width: 100%; max-width: 850px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
 
-    .transcript-box { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
-    .bubble { padding: 10px 14px; border-radius: 12px; max-width: 88%; font-size: 0.9rem; line-height: 1.4; }
-    .bubble.owner { background: var(--owner-bg); border: 1px solid var(--owner-border); align-self: flex-start; }
-    .bubble.contact { background: var(--contact-bg); border: 1px solid var(--contact-border); align-self: flex-end; }
+    .bubble { padding: 12px 16px; border-radius: 12px; max-width: 88%; font-size: 0.9rem; line-height: 1.45; margin-bottom: 8px; }
+    .bubble.owner { background: #1e3a8a; border: 1px solid #3b82f6; color: #dbeafe; align-self: flex-start; }
+    .bubble.contact { background: #004a31; border: 1px solid #4edea3; color: #d1fae5; align-self: flex-end; }
     .bubble-speaker { font-size: 0.75rem; font-weight: 700; margin-bottom: 4px; opacity: 0.85; }
 
     @media (max-width: 768px) {
-      .container { flex-direction: column; height: auto; min-height: auto; }
-      .sidebar { width: 100%; max-height: 250px; border-right: none; border-bottom: 1px solid var(--card-border); }
-      .main-panel { min-height: 450px; }
+      .layout-container { flex-direction: column; height: auto; }
+      .sidebar { width: 100%; max-height: 280px; }
     }
   </style>
   <script type="application/json" id="preloadedData">
@@ -135,67 +102,61 @@ def build_preloaded_html():
     end_part = """
   </script>
 </head>
-<body>
-  <header>
+<body class="flex flex-col min-h-screen">
+  <!-- Header TopAppBar -->
+  <header class="w-full bg-surface border-b border-white/10 px-4 py-3 flex justify-between items-center flex-wrap gap-2 z-50">
     <div class="logo">
-      🎙️ AIOS Calls & Voice CRM — Google Contacts
+      🎙️ GlassCMS AIOS — Google Contacts & Voice CRM
     </div>
     <div class="header-badges">
-      <div class="badge active">✅ Google Contacts</div>
-      <div class="badge">🎙️ Diarization</div>
+      <div class="badge active">🧠 ИИ-Психопортрет</div>
+      <div class="badge">👥 Google Contacts</div>
       <div class="badge">📲 Ambient Voice</div>
     </div>
   </header>
 
-  <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('contactsTab')">🎙️ Диалоги Контактов</button>
-    <button class="tab-btn" onclick="switchTab('graphTab')">🕸️ Граф Связей и Упоминаний</button>
-    <button class="tab-btn" onclick="switchTab('dossierTab')">📑 ИИ-Досье Контакта</button>
+  <!-- Navigation TabBar -->
+  <div class="tab-bar bg-surface-container border-b border-white/10 flex px-4">
+    <button class="tab-btn active" onclick="switchTab('contactsTab', event)">👥 Контакты и ИИ-Психопортреты</button>
+    <button class="tab-btn" onclick="switchTab('graphTab', event)">🕸️ Граф Связей и Упоминаний</button>
   </div>
 
-  <div class="container">
-    <div class="sidebar">
-      <div class="search-box">
-        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Поиск контактов..." oninput="filterContacts()">
+  <!-- Main Container -->
+  <div class="layout-container flex flex-1 h-[calc(100vh-105px)] overflow-hidden">
+    <!-- Sidebar Contacts List -->
+    <div class="sidebar bg-surface-container/60 border-r border-white/10 flex flex-col">
+      <div class="p-3 border-b border-white/10">
+        <input type="text" id="searchInput" class="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm text-on-surface placeholder-on-surface-variant/60 focus:outline-none focus:border-secondary" placeholder="🔍 Поиск контактов..." oninput="filterContacts()">
       </div>
-      <div class="contacts-list" id="contactsList">
+      <div class="contacts-list flex-1 overflow-y-auto" id="contactsList">
       </div>
     </div>
 
-    <div class="main-panel">
-      <!-- Tab 1: Contacts & Dialogues -->
-      <div class="tab-content active" id="contactsTab">
+    <!-- Main Panel -->
+    <div class="main-panel flex-1 flex flex-col bg-background overflow-hidden relative">
+      <!-- Tab 1: Contacts, AI Dossier & Dialogues -->
+      <div class="tab-content active flex-1 flex flex-col overflow-hidden" id="contactsTab">
         <div class="empty-state" id="emptyState">
-          <div style="font-size:48px;">📞</div>
-          <h3>Выберите Google Контакт из списка слева</h3>
-          <p>Отображаются только контакты, с которыми имеются расшифрованные звонки и диктофонные записи.</p>
+          <div style="font-size:56px;">🧠</div>
+          <h3 class="text-xl font-semibold text-on-surface">Выберите Google Контакт из списка слева</h3>
+          <p class="text-sm text-on-surface-variant max-w-md">При выборе контакта сразу открывается его накопительный ИИ-Психологический Портрет, финансовые договоренности и полный список созвонов.</p>
         </div>
-        <div id="contactDetailView" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
+        <div id="contactDetailView" style="display:none;" class="flex-1 flex-col overflow-hidden">
         </div>
       </div>
 
       <!-- Tab 2: Relationship Knowledge Graph -->
-      <div class="tab-content" id="graphTab">
-        <div id="graphContainer"></div>
-      </div>
-
-      <!-- Tab 3: AI Contact Dossier -->
-      <div class="tab-content" id="dossierTab">
-        <div class="detail-body" id="dossierBody" style="padding:24px;">
-          <div class="empty-state">
-            <div style="font-size:48px;">📑</div>
-            <h3>Выберите контакт слева для генерации ИИ-Досье</h3>
-            <p>Накопительный психологический портрет, финансовые договоренности и аналитика взаимоотношений.</p>
-          </div>
-        </div>
+      <div class="tab-content flex-1 flex-col overflow-hidden" id="graphTab">
+        <div id="graphContainer" class="w-full h-full bg-surface-container-lowest"></div>
       </div>
     </div>
   </div>
 
+  <!-- Modal Viewer -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 id="modalTitle">Разговор</h3>
+        <h3 id="modalTitle" class="text-lg font-bold text-secondary">Разговор</h3>
         <button class="close-btn" onclick="closeModal()">✕</button>
       </div>
       <div class="modal-body" id="modalBody">
@@ -222,11 +183,11 @@ def build_preloaded_html():
       }
     }
 
-    function switchTab(tabId) {
+    function switchTab(tabId, evt) {
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       
-      event.target.classList.add('active');
+      if (evt) evt.target.classList.add('active');
       document.getElementById(tabId).classList.add('active');
 
       if (tabId === 'graphTab') {
@@ -237,7 +198,7 @@ def build_preloaded_html():
     function renderContacts(contacts) {
       const list = document.getElementById('contactsList');
       if (!contacts || !contacts.length) {
-        list.innerHTML = '<div style="padding:20px; text-align:center; color:#64748B;">Нет контактов с расшифровками</div>';
+        list.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">Нет контактов с расшифровками</div>';
         return;
       }
 
@@ -270,7 +231,6 @@ def build_preloaded_html():
       renderContacts(allContacts);
       if (selectedContact) {
         renderContactDetail(selectedContact);
-        loadContactDossier(selectedContact);
       }
     }
 
@@ -279,54 +239,50 @@ def build_preloaded_html():
       const detail = document.getElementById('contactDetailView');
       detail.style.display = 'flex';
       detail.innerHTML = `
-        <div class="contact-header">
+        <div class="contact-header border-b border-white/10 p-4 bg-surface-container">
           <div style="display:flex; align-items:center; gap:12px;">
             <div class="avatar" style="width:48px; height:48px; font-size:1.1rem;">${c.initials || 'К'}</div>
             <div>
-              <h2 style="font-size:1.15rem; font-weight:700;">${c.name}</h2>
-              <div style="font-size:0.82rem; color:#94A3B8;">${c.phone || ''} ${c.role ? '| ' + c.role : ''}</div>
+              <h2 style="font-size:1.2rem; font-weight:700; color:#7bd0ff;">${c.name}</h2>
+              <div style="font-size:0.85rem; color:#94A3B8;">${c.phone || ''} ${c.role ? '| ' + c.role : ''}</div>
             </div>
           </div>
-          <div class="count-chip" style="font-size:0.85rem; padding:4px 12px;">Всего диалогов: ${c.dialogues_count}</div>
+          <div class="count-chip" style="font-size:0.85rem; padding:4px 12px;">Всего разговоров: ${c.dialogues_count}</div>
         </div>
-        <div class="detail-body">
-          ${(c.dialogues || []).map(d => `
-            <div class="dialogue-card" onclick="openDialogue('${d.dialogue_id}')">
-              <div class="dialogue-title">
-                <span>📞 ${d.filename || 'Запись разговора'}</span>
-                <span style="font-size:0.8rem; color:#94A3B8;">${d.duration_seconds || 0} сек</span>
-              </div>
-              <div class="dialogue-summary">${d.summary_preview || d.transcription_preview || 'Нажмите для просмотра подробного транскрипта...'}</div>
-              <div class="dialogue-footer">
-                <span>Язык: ${d.language || 'ru'}</span>
-                <span>•</span>
-                <span>Фрагментов: ${d.segments_count || 0}</span>
-                ${d.is_dictaphone ? '<span style="color:#00F0FF; font-weight:600;">• Запись окружения (Диктофон)</span>' : ''}
-              </div>
+        <div class="detail-body overflow-y-auto p-4 flex flex-col gap-4">
+          <!-- 1. ИИ-Психологический Портрет и Досье -->
+          <div class="glass-card rounded-xl p-4">
+            <h3 class="text-md font-bold text-secondary flex items-center gap-2 mb-3">
+              🧠 ИИ-Психологический Портрет и Досье Контакта
+            </h3>
+            <div class="profile-box">${c.psychological_profile || 'Загрузка ИИ-психопортрета...'}</div>
+          </div>
+
+          <!-- 2. Список Диалогов и Созвонов -->
+          <div class="glass-card rounded-xl p-4">
+            <h3 class="text-md font-bold text-tertiary flex items-center gap-2 mb-3">
+              📞 История созвонов и записей окружения (${(c.dialogues || []).length})
+            </h3>
+            <div class="flex flex-col gap-3">
+              ${(c.dialogues || []).map(d => `
+                <div class="dialogue-card p-3 rounded-lg bg-surface/80 border border-white/10 cursor-pointer hover:border-secondary transition-colors" onclick="openDialogue('${d.dialogue_id}')">
+                  <div class="dialogue-title font-semibold text-secondary flex justify-between text-sm">
+                    <span>📞 ${d.filename || 'Запись разговора'}</span>
+                    <span style="color:#94a3b8;">${d.duration_seconds || 0} сек</span>
+                  </div>
+                  <div class="dialogue-summary text-xs text-on-surface-variant mt-1 mb-2">${d.summary_preview || d.transcription_preview || 'Нажмите для просмотра транскрипта...'}</div>
+                  <div class="dialogue-footer text-xs text-on-surface-variant/80 flex gap-2">
+                    <span>Язык: ${d.language || 'ru'}</span>
+                    <span>•</span>
+                    <span>Фрагментов: ${d.segments_count || 0}</span>
+                    ${d.is_dictaphone ? '<span style="color:#00F0FF; font-weight:600;">• Запись окружения</span>' : ''}
+                  </div>
+                </div>
+              `).join('')}
             </div>
-          `).join('')}
+          </div>
         </div>
       `;
-    }
-
-    async function loadContactDossier(c) {
-      const db = document.getElementById('dossierBody');
-      db.innerHTML = `<div style="padding:20px; color:#00F0FF;">⏳ Загрузка и ИИ-анализ накопительного досье для ${c.name}...</div>`;
-      try {
-        const res = await fetch(`/api/calls/dossier/${c.contact_id}`);
-        const data = await res.json();
-        db.innerHTML = `
-          <div class="contact-header" style="border-radius:12px; margin-bottom:16px;">
-            <div>
-              <h2 style="font-size:1.2rem; font-weight:700;">📑 ИИ-Досье и Психопортрет: ${data.name}</h2>
-              <div style="font-size:0.85rem; color:#94A3B8;">${data.phone} | ${data.role} | Диалогов: ${data.dialogues_count}</div>
-            </div>
-          </div>
-          <div class="summary-box" style="font-size:0.95rem; line-height:1.6;">${data.dossier_text || 'Досье формируется...'}</div>
-        `;
-      } catch (err) {
-        db.innerHTML = `<div class="summary-box">👤 **Досье ${c.name}**:\nВсего диалогов: ${c.dialogues_count} шт.</div>`;
-      }
     }
 
     function renderKnowledgeGraph() {
@@ -348,6 +304,7 @@ def build_preloaded_html():
     async function openDialogue(dialogueId) {
       try {
         const res = await fetch(`/api/calls/dialogues/${dialogueId}`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         const d = await res.json();
         showDialogueModal(d);
       } catch (err) {
@@ -385,29 +342,29 @@ def build_preloaded_html():
 
       document.getElementById('modalBody').innerHTML = `
         <div>
-          <h4 style="color:#00F0FF; margin-bottom:8px;">👥 Участники разговора (Google Contacts)</h4>
-          <div class="speakers-row">${speakersHtml}</div>
-        </div>
-        <div>
           <button style="background:linear-gradient(135deg, #00F0FF, #3B82F6); color:#000; font-weight:700; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; margin-bottom:12px;" onclick="generateFollowup('${d.dialogue_id}')">
             📩 Сгенерировать Follow-up для Viber / Telegram
           </button>
           <div id="followupBox" style="display:none; background:rgba(0,240,255,0.1); border:1px solid #00F0FF; padding:12px; border-radius:8px; margin-bottom:12px; font-size:0.9rem;"></div>
         </div>
         <div>
-          <h4 style="color:#00F0FF; margin-bottom:8px;">📌 ИИ-Аналитический отчёт и выжимка</h4>
-          <div class="summary-box">${d.summary || 'Резюме генерируется...'}</div>
+          <h4 style="color:#7bd0ff; margin-bottom:8px; font-weight:700;">👥 Участники разговора (Google Contacts)</h4>
+          <div class="speakers-row">${speakersHtml}</div>
         </div>
         <div>
-          <h4 style="color:#00F0FF; margin-bottom:8px;">💬 Расшифровка по спикерам (Diarized Transcript)</h4>
-          <div class="transcript-box">${segmentsHtml || '<div style="color:#CBD5E1;">' + (d.transcription || d.transcription_preview || '') + '</div>'}</div>
+          <h4 style="color:#7bd0ff; margin-bottom:8px; font-weight:700;">📌 ИИ-Аналитический отчёт и выжимка</h4>
+          <div class="profile-box">${d.summary || 'Резюме генерируется...'}</div>
+        </div>
+        <div>
+          <h4 style="color:#7bd0ff; margin-bottom:8px; font-weight:700;">💬 Расшифровка по спикерам (Diarized Transcript)</h4>
+          <div class="transcript-box">${segmentsHtml || '<div style="color:#94a3b8;">' + (d.transcription || d.transcription_preview || '') + '</div>'}</div>
         </div>
       `;
 
       document.getElementById('modalOverlay').classList.add('active');
     }
 
-        async function generateFollowup(dialogueId) {
+    async function generateFollowup(dialogueId) {
       const fb = document.getElementById('followupBox');
       fb.style.display = 'block';
       fb.innerHTML = '⏳ Генерирую готовое Follow-up сообщение клиенту...';
@@ -442,7 +399,7 @@ def build_preloaded_html():
     STATIC_HTML.parent.mkdir(parents=True, exist_ok=True)
     STATIC_HTML.write_text(full_html, encoding="utf-8")
 
-    print(f"🎉 Fully preloaded HTML dashboard with Knowledge Graph & AI Dossiers written ({DATA_HTML.stat().st_size // 1024} KB)!")
+    print(f"🎉 Fully preloaded GlassCMS / Stitch UI Dashboard with AI Psychological Profiles written ({DATA_HTML.stat().st_size // 1024} KB)!")
 
 
 if __name__ == "__main__":

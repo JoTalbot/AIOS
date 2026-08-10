@@ -113,7 +113,16 @@ def build_relationship_knowledge_graph() -> Dict[str, Any]:
 
 
 def generate_contact_ai_dossier(contact_id: str) -> Dict[str, Any]:
-    """Формирует накопительное ИИ-досье и психопортрет контакта."""
+    """Формирует накопительное ИИ-досье и психопортрет контакта со стойким кэшем."""
+    dossiers_cache = {}
+    if DOSSIER_CACHE_FILE.exists():
+        try:
+            with open(DOSSIER_CACHE_FILE, "r", encoding="utf-8") as f:
+                dossiers_cache = json.load(f)
+                if str(contact_id) in dossiers_cache:
+                    return dossiers_cache[str(contact_id)]
+        except Exception:
+            pass
     contacts = get_contacts_with_dialogues()
     matched_contact = None
     for c in contacts:
@@ -168,6 +177,12 @@ def generate_contact_ai_dossier(contact_id: str) -> Dict[str, Any]:
         "dossier_text": dossier_text,
         "dialogues": dialogues
     }
+
+    dossiers_cache[str(contact_id)] = dossier
+    dossiers_cache[matched_contact["name"]] = dossier
+    DOSSIER_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(DOSSIER_CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(dossiers_cache, f, indent=2, ensure_ascii=False)
 
     return dossier
 
