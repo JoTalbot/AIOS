@@ -857,6 +857,37 @@ def api_system():
     return _system_snapshot()
 
 
+@app.get("/api/calls/contacts")
+def api_calls_contacts():
+    from aios_core.calls_crm_engine import get_contacts_with_dialogues
+    contacts = get_contacts_with_dialogues()
+    return {"count": len(contacts), "contacts": contacts}
+
+
+@app.get("/api/calls/contacts/{contact_id}/dialogues")
+def api_calls_contact_dialogues(contact_id: str):
+    from aios_core.calls_crm_engine import get_contact_dialogues_detail
+    detail = get_contact_dialogues_detail(contact_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Контакт не найден")
+    return detail
+
+
+@app.get("/api/calls/dialogues/{dialogue_id}")
+def api_calls_single_dialogue(dialogue_id: str):
+    from aios_core.calls_crm_engine import get_single_dialogue_detail
+    detail = get_single_dialogue_detail(dialogue_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Диалог не найден")
+    return detail
+
+
+@app.get("/c/calls")
+@app.get("/calls")
+def calls_dashboard_view():
+    return FileResponse(STATIC / "calls_dashboard.html")
+
+
 @app.get("/api/business/inventory")
 def api_inventory():
     inv = _read_json(DATA / "inventory.json", [])

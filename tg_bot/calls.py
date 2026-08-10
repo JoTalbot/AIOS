@@ -124,7 +124,8 @@ def _calls_keyboard():
                 {"text": "📊 Статус Colab GPU", "callback_data": "call_status"}
             ],
             [
-                {"text": "📁 Список файлов звонков", "callback_data": "call_list"}
+                {"text": "🌐 Дашборд Звонков (Stitch CRM)", "url": "https://api.autosklo.org.ua/c/calls"},
+                {"text": "📁 Список файлов", "callback_data": "call_list"}
             ]
         ]
     }

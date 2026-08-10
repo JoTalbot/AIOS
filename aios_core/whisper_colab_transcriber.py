@@ -172,6 +172,8 @@ def generate_call_summary(transcription_text: str, filename: str) -> str:
 """
     try:
         from aios_core.llm_balancer import LLMBalancer
+        from aios_core.google_contacts_sync import match_folder_to_google_contact
+        from aios_core.speaker_diarization import diarize_audio_segments, format_diarized_transcript_text
         balancer = LLMBalancer()
         res_text = balancer.chat(
             messages=[{"role": "user", "content": prompt}],
@@ -211,9 +213,26 @@ def process_calls_directory(dir_path: str = str(CALLS_DIR), force: bool = False)
         logger.info(f"🎙️ Обработка звонка: {audio_file.name}...")
         result = transcribe_audio_call(str(audio_file))
 
-        # Сохранение текста
+        # 1. Сопоставление с Google Контактом по имени папки
+        folder_name = audio_file.parent.name if audio_file.parent != CALLS_DIR else audio_file.stem
+        is_dictaphone = "!voice" in str(audio_file) or "voice" in audio_file.name.lower()
+        if is_dictaphone and folder_name == "!voice":
+            folder_name = "Запись окружения (Диктофон)"
+
+        contact_info = match_folder_to_google_contact(folder_name)
+        result["google_contact"] = contact_info
+        result["is_dictaphone"] = is_dictaphone
+        result["folder_name"] = folder_name
+
+        # 2. Распознавание спикеров (Diarization)
+        raw_segments = result.get("segments", [])
+        diarized_segments = diarize_audio_segments(raw_segments, contact_info, is_dictaphone=is_dictaphone)
+        result["diarized_segments"] = diarized_segments
+        diarized_text = format_diarized_transcript_text(diarized_segments)
+
+        # Сохранение текста с разметкой спикеров
         transcription_text = result.get("transcription", "")
-        txt_path.write_text(transcription_text, encoding="utf-8")
+        txt_path.write_text(diarized_text or transcription_text, encoding="utf-8")
 
         # Сохранение полной метаинформации
         with open(json_path, "w", encoding="utf-8") as f:
