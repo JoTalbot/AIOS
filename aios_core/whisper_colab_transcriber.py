@@ -1,3 +1,6 @@
+from aios_core.google_contacts_sync import match_folder_to_google_contact
+from aios_core.neural_diarization import perform_neural_diarization as diarize_audio_segments
+from aios_core.speaker_diarization import format_diarized_transcript_text
 #!/usr/bin/env python3
 """
 AIOS Whisper Colab Transcriber Engine
@@ -173,7 +176,8 @@ def generate_call_summary(transcription_text: str, filename: str) -> str:
     try:
         from aios_core.llm_balancer import LLMBalancer
         from aios_core.google_contacts_sync import match_folder_to_google_contact
-        from aios_core.speaker_diarization import diarize_audio_segments, format_diarized_transcript_text
+        from aios_core.neural_diarization import perform_neural_diarization as diarize_audio_segments
+        from aios_core.speaker_diarization import format_diarized_transcript_text
         balancer = LLMBalancer()
         res_text = balancer.chat(
             messages=[{"role": "user", "content": prompt}],
