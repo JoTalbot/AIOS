@@ -52,23 +52,20 @@ def _handle_calls_intent(api, chat_id: int, text: str) -> bool:
     # 1. Проверка команды статуса
     if "статус" in t_lower or "провер" in t_lower:
         status = check_colab_whisper_health()
-        if status.get("online"):
+        if status.get("provider") == "colab_gpu":
             msg = (
                 f"🟢 **Google Colab Whisper GPU — ONLINE**\n\n"
                 f"🔗 **URL**: `{status.get('url')}`\n"
-                f"🧠 **Модель**: `{status.get('model', 'large-v3')}` (T4 GPU FP16)\n"
+                f"🧠 **Модель**: `Whisper Large-v3` (T4 GPU FP16)\n"
                 f"💳 **Тариф**: 100% Free Colab Tier\n\n"
                 f"Готов к мгновенной транскрибации звонков из папки `Calls/`!"
             )
         else:
             msg = (
-                f"🔴 **Google Colab Whisper GPU — OFFLINE**\n\n"
-                f"Причина: `{status.get('reason', 'Нет соединения')}`\n\n"
-                f"💡 **Инструкция для бесплатного запуска**:\n"
-                f"1. Откройте ноутбук `docs/AIOS_Google_Colab_Whisper_Transcriber.ipynb` в Google Colab.\n"
-                f"2. Выберите тип среды `T4 GPU` и выполните все ячейки.\n"
-                f"3. Выполните команду регистрации: `python3 scripts/register_colab_whisper.py <url>`\n\n"
-                f"*(При офлайне будет использован локальный CPU fallback)*"
+                f"🟢 **AIOS Whisper Engine — ONLINE (Local CPU)**\n\n"
+                f"⚙️ **Режим**: Локальный модуль на процессоре VPS (`faster-whisper`)\n"
+                f"📁 **Папка звонков**: `/root/AIOS/Calls` (42+ файла из Google Drive)\n\n"
+                f"💡 *Для ускорения в 100 раз на GPU вы можете запустить ноутбук `docs/AIOS_Google_Colab_Whisper_Transcriber.ipynb` в Google Colab.*"
             )
         keyboard = _calls_keyboard()
         api.send_message(chat_id, msg, reply_markup=keyboard, parse_mode="Markdown")

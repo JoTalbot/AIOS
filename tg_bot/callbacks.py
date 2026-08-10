@@ -1072,8 +1072,11 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
 
                 threading.Thread(target=_bg_run_calls, args=(api, chat_id), daemon=True).start()
             elif data == "call_list":
-                files = list(CALLS_DIR.glob("*")) if CALLS_DIR.exists() else []
-                flist = "\n".join([f"• `{f.name}`" for f in files if f.suffix.lower() in {".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac", ".opus", ".3gp", ".amr"}]) or "Папка Calls/ пуста."
+                files = list(CALLS_DIR.rglob("*")) if CALLS_DIR.exists() else []
+                audio_files = [f for f in files if f.is_file() and f.suffix.lower() in {".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac", ".opus", ".3gp", ".amr"}]
+                flist = "\n".join([f"• `{f.relative_to(CALLS_DIR)}`" for f in audio_files[:20]]) or "Папка Calls/ пуста."
+                if len(audio_files) > 20:
+                    flist += f"\n... и ещё {len(audio_files) - 20} аудиофайлов"
                 msg = f"📁 **Список звонков в `/root/AIOS/Calls`**:\n\n{flist}"
                 api.send_message(chat_id, msg, reply_markup=_calls_keyboard(), parse_mode="Markdown")
         except Exception as _e:
