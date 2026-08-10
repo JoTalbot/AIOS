@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 AIOS GlassCMS Mobile (6) Bento Grid - Calls CRM & AI Psychological Portrait Dashboard
-Применяет точно такой же Bento Grid дизайн из mobile (6).html для ИИ-Психологических Портретов контактов.
 """
 
 import os
@@ -24,7 +23,6 @@ def build_preloaded_html():
     contacts = get_contacts_with_dialogues()
     graph_data = build_relationship_knowledge_graph()
 
-    # Предварительно обогащаем каждый контакт структурированными данными психопортрета из mobile (6).html
     for c in contacts:
         dossier = generate_contact_ai_dossier(c["contact_id"])
         c["psychological_profile_raw"] = dossier.get("dossier_text", "")
@@ -37,7 +35,7 @@ def build_preloaded_html():
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AIOS GlassCMS — Customer Intelligence & Psychological Portrait</title>
+  <title>AIOS GlassCMS — Customer Intelligence & Voice CRM</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <script id="tailwind-config">
@@ -79,6 +77,8 @@ def build_preloaded_html():
     .avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #00a6e0, #1e3a8a); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
     .count-chip { background: rgba(78, 222, 165, 0.15); border: 1px solid #4edea3; color: #4edea3; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
 
+    .profile-box { background: rgba(6, 14, 32, 0.8); border: 1px solid rgba(0, 166, 224, 0.3); border-radius: 12px; padding: 18px; font-size: 0.92rem; line-height: 1.6; white-space: pre-line; }
+
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
     .modal-overlay.active { display: flex; }
     .modal-card { background: #171f33; border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; width: 100%; max-width: 850px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
@@ -105,7 +105,6 @@ def build_preloaded_html():
   </script>
 </head>
 <body class="flex flex-col min-h-screen">
-  <!-- Header TopAppBar -->
   <header class="w-full bg-surface border-b border-white/10 px-4 py-3 flex justify-between items-center flex-wrap gap-2 z-50">
     <div class="logo">
       🎙️ GlassCMS AIOS — Customer Intelligence & Voice CRM
@@ -117,15 +116,12 @@ def build_preloaded_html():
     </div>
   </header>
 
-  <!-- Navigation TabBar -->
   <div class="tab-bar bg-surface-container border-b border-white/10 flex px-4">
     <button class="tab-btn active" onclick="switchTab('contactsTab', event)">🧠 ИИ-Психопортреты и Контакты</button>
     <button class="tab-btn" onclick="switchTab('graphTab', event)">🕸️ Граф Связей и Упоминаний</button>
   </div>
 
-  <!-- Main Container -->
   <div class="layout-container flex flex-1 h-[calc(100vh-105px)] overflow-hidden">
-    <!-- Sidebar Contacts List -->
     <div class="sidebar bg-surface-container/60 border-r border-white/10 flex flex-col">
       <div class="p-3 border-b border-white/10">
         <input type="text" id="searchInput" class="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm text-on-surface placeholder-on-surface-variant/60 focus:outline-none focus:border-secondary" placeholder="🔍 Поиск контактов..." oninput="filterContacts()">
@@ -134,9 +130,7 @@ def build_preloaded_html():
       </div>
     </div>
 
-    <!-- Main Panel -->
     <div class="main-panel flex-1 flex flex-col bg-background overflow-hidden relative">
-      <!-- Tab 1: Contacts, Bento Grid AI Portrait & Dialogues -->
       <div class="tab-content active flex-1 flex flex-col overflow-hidden" id="contactsTab">
         <div class="empty-state" id="emptyState">
           <div style="font-size:56px;">🧠</div>
@@ -147,14 +141,12 @@ def build_preloaded_html():
         </div>
       </div>
 
-      <!-- Tab 2: Relationship Knowledge Graph -->
       <div class="tab-content flex-1 flex-col overflow-hidden" id="graphTab">
         <div id="graphContainer" class="w-full h-full bg-surface-container-lowest"></div>
       </div>
     </div>
   </div>
 
-  <!-- Modal Viewer -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal-card">
       <div class="modal-header">
@@ -167,17 +159,19 @@ def build_preloaded_html():
   </div>
 
   <script>
-        function parseMarkdown(text) {
+    function parseMarkdown(text) {
       if (!text) return '';
-      let html = String(text);
-      html = html.replace(/^### (.*$)/gim, '<h4 class="text-sm font-bold text-secondary mt-3 mb-1">$1</h4>');
-      html = html.replace(/^## (.*$)/gim, '<h3 class="text-md font-bold text-secondary mt-4 mb-2">$1</h3>');
-      html = html.replace(/^# (.*$)/gim, '<h2 class="text-lg font-bold text-secondary mt-4 mb-2">$1</h2>');
-      html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="text-secondary font-semibold">$1</strong>');
-      html = html.replace(/^\s*[\-\*•]\s+(.*$)/gim, '<div class="flex items-start gap-2 my-1"><span class="text-secondary">•</span><span>$1</span></div>');
-      html = html.replace(/\n\n/g, '<br><br>');
-      html = html.replace(/\n/g, '<br>');
-      return html;
+      let str = String(text);
+      let parts = str.split('**');
+      let html = '';
+      for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 1) {
+          html += '<strong style="color:#7bd0ff; font-weight:700;">' + parts[i] + '</strong>';
+        } else {
+          html += parts[i];
+        }
+      }
+      return html.replace(/\\n/g, '<br>');
     }
 
     let allContacts = [];
@@ -269,14 +263,12 @@ def build_preloaded_html():
         </div>
 
         <div class="detail-body overflow-y-auto p-4 flex flex-col gap-6">
-          <!-- BENTO GRID LAYOUT из mobile (6).html -->
           <div class="flex flex-col gap-2">
             <h2 class="text-xl font-bold text-on-surface">ИИ-Психологический Портрет</h2>
             <p class="text-sm text-on-surface-variant">Анализ профиля на основе последних диалогов и паттернов поведения.</p>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- 1. Эмоциональное состояние (Current State) -->
             <section class="glass-panel rounded-xl p-4 flex flex-col gap-3 col-span-1">
               <div class="flex items-center justify-between">
                 <h3 class="text-xs uppercase text-on-surface-variant tracking-wider font-semibold">Текущее Эмоциональное Состояние</h3>
@@ -291,7 +283,6 @@ def build_preloaded_html():
               </div>
             </section>
 
-            <!-- 2. Черты характера (Key Traits) -->
             <section class="glass-panel rounded-xl p-4 flex flex-col gap-3 col-span-1">
               <div class="flex items-center justify-between mb-1">
                 <h3 class="text-xs uppercase text-on-surface-variant tracking-wider font-semibold">Ключевые Черты Характера</h3>
@@ -310,7 +301,6 @@ def build_preloaded_html():
               </div>
             </section>
 
-            <!-- 3. Стиль общения (Communication Style) -->
             <section class="glass-panel rounded-xl p-4 flex flex-col gap-3 col-span-1 md:col-span-2">
               <div class="flex items-center justify-between mb-1">
                 <h3 class="text-xs uppercase text-on-surface-variant tracking-wider font-semibold">Стиль Общения и Коммуникации</h3>
@@ -323,7 +313,7 @@ def build_preloaded_html():
                 </div>
                 <div class="flex items-start gap-2.5 p-2 border-b border-white/5">
                   <span class="text-secondary">⏱️</span>
-                  <p>Быстро принимает решения после предоставления точных расчетов и гарантий.</p>
+                  <p>Быстро принимает решения после представления точных расчетов и гарантий.</p>
                 </div>
                 <div class="flex items-start gap-2.5 p-2">
                   <span class="text-secondary">📩</span>
@@ -332,7 +322,6 @@ def build_preloaded_html():
               </div>
             </section>
 
-            <!-- 4. ИИ-Инструкции для Оператора (Operator Directives) -->
             <section class="bg-primary-container/20 border border-primary-container/40 rounded-xl p-4 flex flex-col gap-3 col-span-1 md:col-span-2 relative overflow-hidden">
               <div class="flex items-center gap-2 mb-1">
                 <span class="text-secondary text-xl">💡</span>
@@ -355,13 +344,11 @@ def build_preloaded_html():
             </section>
           </div>
 
-          <!-- Накопительное подробное досье -->
           <div class="glass-panel rounded-xl p-4">
             <h3 class="text-sm font-bold text-secondary mb-2">📑 Накопительное Аналитическое Досье AIOS</h3>
-            <div class="p-3 bg-surface-container-lowest/80 rounded-lg text-xs leading-relaxed white-space-pre-line text-on-surface-variant">${rawProfile}</div>
+            <div class="profile-box">${parseMarkdown(rawProfile)}</div>
           </div>
 
-          <!-- Список Созвонов -->
           <div class="glass-panel rounded-xl p-4">
             <h3 class="text-sm font-bold text-tertiary mb-3">📞 История созвонов и записей окружения (${(c.dialogues || []).length})</h3>
             <div class="flex flex-col gap-2.5">
@@ -371,7 +358,7 @@ def build_preloaded_html():
                     <span>📞 ${d.filename || 'Запись разговора'}</span>
                     <span style="color:#94a3b8;">${d.duration_seconds || 0} сек</span>
                   </div>
-                  <div class="dialogue-summary text-xs text-on-surface-variant mt-1 mb-2">${d.summary_preview || d.transcription_preview || 'Нажмите для просмотра транскрипта...'}</div>
+                  <div class="dialogue-summary text-xs text-on-surface-variant mt-1 mb-2">${parseMarkdown(d.summary_preview || d.transcription_preview || 'Нажмите для просмотра транскрипта...')}</div>
                   <div class="dialogue-footer text-xs text-on-surface-variant/80 flex gap-2">
                     <span>Язык: ${d.language || 'ru'}</span>
                     <span>•</span>
@@ -472,7 +459,7 @@ def build_preloaded_html():
       try {
         const res = await fetch(`/api/calls/dialogues/${dialogueId}/followup`);
         const data = await res.json();
-        fb.innerHTML = `<strong>📩 Готовое Follow-up сообщение (${data.contact_name}):</strong><br><br>${data.followup_draft}<br><br><button style="background:#10B981; color:#fff; border:none; padding:4px 10px; border-radius:6px; cursor:pointer;" onclick="navigator.clipboard.writeText(\`${data.followup_draft.replace(/`/g, '')}\`); alert('Скопировано в буфер обмена!')">📋 Скопировать в буфер</button>`;
+        fb.innerHTML = `<strong>📩 Готовое Follow-up сообщение (${data.contact_name}):</strong><br><br>${data.followup_draft}<br><br><button style="background:#10B981; color:#fff; border:none; padding:4px 10px; border-radius:6px; cursor:pointer;" onclick="navigator.clipboard.writeText('${data.followup_draft}'); alert('Скопировано в буфер обмена!')">📋 Скопировать в буфер</button>`;
       } catch (err) {
         fb.innerHTML = '⚠️ Ошибка генерации follow-up';
       }
@@ -500,7 +487,7 @@ def build_preloaded_html():
     STATIC_HTML.parent.mkdir(parents=True, exist_ok=True)
     STATIC_HTML.write_text(full_html, encoding="utf-8")
 
-    print(f"🎉 Fully preloaded GlassCMS Bento Grid Dashboard with AI Psychological Profiles written ({DATA_HTML.stat().st_size // 1024} KB)!")
+    print(f"🎉 Cleaned & Fully Preloaded GlassCMS Dashboard written ({DATA_HTML.stat().st_size // 1024} KB)!")
 
 
 if __name__ == "__main__":
