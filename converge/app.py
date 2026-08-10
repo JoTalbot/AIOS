@@ -857,6 +857,13 @@ def api_system():
     return _system_snapshot()
 
 
+@app.get("/api/calls/search")
+def api_calls_search(q: str):
+    from aios_core.semantic_voice_search import search_voice_dialogues
+    matches = search_voice_dialogues(q)
+    return {"query": q, "count": len(matches), "results": matches}
+
+
 @app.get("/api/calls/knowledge-graph")
 def api_calls_knowledge_graph():
     from aios_core.contact_knowledge_graph import build_relationship_knowledge_graph
