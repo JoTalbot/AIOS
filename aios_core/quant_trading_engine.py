@@ -1279,7 +1279,7 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
             for p in poss[:3]:
                 u_pnl = p.get("unrealized_pnl_usd", 0.0)
                 u_sign = "+" if u_pnl > 0 else ""
-                pos_str.append(f"{p[symbol]} ({u_sign}${u_pnl:.2f})")
+                pos_str.append(f"{p.get('symbol', '')} ({u_sign}${u_pnl:.2f})")
             lines.append(f"• Позиции ({len(poss)}): " + ", ".join(pos_str))
         else:
             lines.append("• Позиции: <i>нет (100% в кэше)</i>")
