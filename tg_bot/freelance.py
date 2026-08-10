@@ -24,6 +24,69 @@ def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:
     import re as _re3
     t = " ".join(str(text or "").casefold().split())
 
+    # 0. Живая отправка ставки на Freelancehunt
+    send_bid = _re3.match(r"^(?:отправь\s+ставку|отправить\s+ставку|submit\s+bid)\s+(\d+)(?:\s+(\d+))?\b", t)
+    if send_bid:
+        proj_id = int(send_bid.group(1))
+        amount_uah = int(send_bid.group(2)) if send_bid.group(2) else 700
+        
+        api.send_message(chat_id, f"🚀 <b>Отправляю отклик на проект Freelancehunt № {proj_id}...</b>")
+        
+        # Загружаем текст отклика из задач или генерируем
+        tasks_file = PROJECT_ROOT / "data" / "freelance_tasks.json"
+        comment_text = "Здравствуйте! Я опытный Python-инженер и специалист по AIOS-автоматизации. Готов к работе."
+        if tasks_file.exists():
+            try:
+                tasks = json.loads(tasks_file.read_text(encoding="utf-8"))
+                for task in tasks:
+                    if str(proj_id) in str(task.get("id")) or str(proj_id) in str(task.get("url")):
+                        comment_text = task.get("proposal_text") or comment_text
+                        break
+            except Exception:
+                pass
+
+        # Исполняем запрос к API Freelancehunt
+        token = ""
+        env_file = PROJECT_ROOT / ".env"
+        if env_file.exists():
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                if line.startswith("FREELANCEHUNT_API_TOKEN="):
+                    token = line.split("=", 1)[1].strip().strip('"').strip("'")
+
+        if not token:
+            api.send_message(chat_id, "❌ FREELANCEHUNT_API_TOKEN не найден в .env")
+            return True
+
+        url = f"https://api.freelancehunt.com/v2/projects/{proj_id}/bids"
+        payload = {
+            "amount": amount_uah,
+            "currency_code": "UAH",
+            "days": 1,
+            "comment": comment_text[:1000]
+        }
+
+        import urllib.request
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0"
+            },
+            method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                txt = f"✅ <b>Отклик на проект № {proj_id} успешно опубликован на Freelancehunt!</b>\n\n"
+                txt += f"• Сумма: <b>{amount_uah} UAH</b>\n"
+                txt += f"• Проект: https://freelancehunt.com/project/{proj_id}.html"
+                api.send_message(chat_id, txt)
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка публикации ставки: {e}")
+        return True
+
     # 1. Обработка подтверждения оплаты
     approve = _re3.match(r"^(?:подтверди\s+фриланс|подтвердить\s+фриланс|confirm\s+freelance)\s+(\S+)", t)
     if approve:
