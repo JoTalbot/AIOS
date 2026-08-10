@@ -230,7 +230,7 @@ def process_calls_directory(dir_path: str = str(CALLS_DIR), force: bool = False)
 
         # 2. Распознавание спикеров (Diarization)
         raw_segments = result.get("segments", [])
-        diarized_segments = diarize_audio_segments(raw_segments, contact_info, is_dictaphone=is_dictaphone)
+        diarized_segments = diarize_audio_segments(str(audio_file), raw_segments, contact_info, is_dictaphone=is_dictaphone)
         result["diarized_segments"] = diarized_segments
         diarized_text = format_diarized_transcript_text(diarized_segments)
 
@@ -258,6 +258,12 @@ def process_calls_directory(dir_path: str = str(CALLS_DIR), force: bool = False)
         except Exception as e:
             logger.warning(f"Ошибка отправки TG-уведомления по звонку: {e}")
 
+    if results:
+        try:
+            from scripts.generate_standalone_calls_dashboard import build_preloaded_html
+            build_preloaded_html()
+        except Exception as _d_err:
+            logger.warning(f"Dashboard rebuild note: {_d_err}")
     return results
 
 

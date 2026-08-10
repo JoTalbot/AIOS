@@ -39,6 +39,9 @@ def get_all_dialogues() -> List[Dict[str, Any]]:
 
             # Имя папки и контакт
             folder_name = jf.parent.name if jf.parent != CALLS_DIR else stem
+            contact_info = match_folder_to_google_contact(folder_name, str(jf))
+            if contact_info and contact_info.get("name"):
+                folder_name = contact_info.get("name")
             is_dictaphone = "!voice" in str(jf) or "voice" in jf.name.lower()
             
             contact_info = data.get("google_contact") or match_folder_to_google_contact(folder_name)
