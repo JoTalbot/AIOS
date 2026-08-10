@@ -34,6 +34,8 @@ import time
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
@@ -417,6 +419,10 @@ def run_bot(token: str) -> None:
                     continue
                 if not _is_authorized_chat(chat_id):
                     print(f"  [SECURITY] ignored message from unauthorized chat {chat_id}")
+                    try:
+                        api.send_message(chat_id, f"⛔ Доступ к AIOS боту ограничен.\nВаш chat_id: `{chat_id}`.\nДобавьте этот ID в `.env` (`TELEGRAM_CHAT_ID={chat_id}`).", parse_mode="Markdown")
+                    except Exception:
+                        pass
                     continue
 
                 # Голосовое сообщение — распознать и выполнить как команду
