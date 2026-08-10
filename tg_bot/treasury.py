@@ -154,6 +154,21 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ Ошибка треугольного арбитража: {e}")
         return True
 
+    # Запрос ИИ-совета по ребалансировке и оптимизации портфеля
+    if any(phrase in t for phrase in ("совет по портфелю", "ребалансировка", "совет портфель", "совет трейдеру", "оптимизация рисков")):
+        api.send_message(chat_id, "🧠 <b>Запускаю ИИ-анализ портфеля $5,000 и генерацию советов по ребалансировке...</b>")
+        try:
+            from aios_core.quant_trading_engine import (
+                get_ai_portfolio_advice,
+                format_portfolio_advice_report
+            )
+            data = get_ai_portfolio_advice()
+            msg_txt = format_portfolio_advice_report(data)
+            api.send_message(chat_id, msg_txt)
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка ИИ-советника по портфелю: {e}")
+        return True
+
     # Запрос ИИ-бэктестинга и симуляции стратегий (например, "бэктест BTC", "бэктест SOL")
     bt_match = _re4.match(r"^(?:бэктест|бектест|backtest|тест стратегии|оптимизация)\s+([a-zA-Z0-9]+)\b", t)
     if bt_match:

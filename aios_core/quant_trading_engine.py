@@ -1797,3 +1797,57 @@ def export_crypto_excel_report(report: Dict[str, Any], output_path: str = "/tmp/
     out_p = Path(output_path)
     wb.save(out_p)
     return str(out_p)
+
+
+
+
+def get_ai_portfolio_advice(data_dir: str = "/root/AIOS/data") -> Dict[str, Any]:
+    """Генерирует ИИ-совет по ребалансировке и оптимизации рисков портфеля $5,000."""
+    report = get_multi_exchange_demo_report(data_dir=data_dir)
+    exchanges = report.get("exchanges", {})
+
+    pos_summary = []
+    for ex_k, ex_d in exchanges.items():
+        poss = ex_d.get("positions", [])
+        for p in poss:
+            pos_summary.append(f"[{ex_k.upper()}] {p.get("pair", "")}: PnL ${p.get("unrealized_pnl_usd", 0.0):.2f}")
+
+    from aios_core.llm_balancer import LLMBalancer
+    balancer = LLMBalancer()
+
+    eq = report.get("total_equity_usd", 5000.0)
+    cash = report.get("total_cash_usd", 5000.0)
+    pnl = report.get("grand_total_pnl_usd", 0.0)
+    top_pos = ", ".join(pos_summary[:10])
+
+    prompt = (
+        f"Ты — шеф-управляющий портфелем $5,000 AIOS. Капитал ${eq:.2f}, кэш ${cash:.2f}, PnL ${pnl:.2f}. "
+        f"Позиции: {top_pos}. "
+        f"Дай 3 коротких практических совета по оптимизации рисков и ребалансировке."
+    )
+
+    advice_text = balancer.chat([{"role": "user", "content": prompt}]) or "Портфель оптимально сбалансирован."
+
+    return {
+        "report": report,
+        "advice_text": advice_text
+    }
+
+
+def format_portfolio_advice_report(data: Dict[str, Any]) -> str:
+    """Форматирует карточку ИИ-совета по портфелю для Telegram."""
+    rep = data.get("report", {})
+    adv = data.get("advice_text", "")
+
+    lines = [
+        "🧠 <b>ИИ-Советник по Оптимизации Портфеля AIOS ($5,000)</b>",
+        "━━━━━━━━━━━━━━━━━━━━━",
+        f"📊 <b>Текущий капитал:</b> <b>${rep.get("total_equity_usd", 5000.0):,.2f} USD</b>",
+        f"💳 <b>Свободный кэш:</b> ${rep.get("total_cash_usd", 5000.0):,.2f} USD",
+        f"📈 <b>Результат (PnL):</b> <b>${rep.get("grand_total_pnl_usd", 0.0):.2f} USD</b>",
+        "",
+        "💡 <b>Рекомендации ИИ-Управляющего:</b>",
+        f"<i>{adv}</i>"
+    ]
+
+    return "\n".join(lines)
