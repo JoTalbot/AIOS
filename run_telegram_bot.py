@@ -417,6 +417,7 @@ def run_bot(token: str) -> None:
 
                 if not chat_id:
                     continue
+                print(f"📩 [TG INCOMING] chat={chat_id} ({first_name}): '{text}'")
                 if not _is_authorized_chat(chat_id):
                     print(f"  [SECURITY] ignored message from unauthorized chat {chat_id}")
                     try:
