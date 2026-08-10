@@ -389,6 +389,12 @@ def build_preloaded_html():
           <div class="speakers-row">${speakersHtml}</div>
         </div>
         <div>
+          <button style="background:linear-gradient(135deg, #00F0FF, #3B82F6); color:#000; font-weight:700; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; margin-bottom:12px;" onclick="generateFollowup('${d.dialogue_id}')">
+            📩 Сгенерировать Follow-up для Viber / Telegram
+          </button>
+          <div id="followupBox" style="display:none; background:rgba(0,240,255,0.1); border:1px solid #00F0FF; padding:12px; border-radius:8px; margin-bottom:12px; font-size:0.9rem;"></div>
+        </div>
+        <div>
           <h4 style="color:#00F0FF; margin-bottom:8px;">📌 ИИ-Аналитический отчёт и выжимка</h4>
           <div class="summary-box">${d.summary || 'Резюме генерируется...'}</div>
         </div>
@@ -399,6 +405,19 @@ def build_preloaded_html():
       `;
 
       document.getElementById('modalOverlay').classList.add('active');
+    }
+
+        async function generateFollowup(dialogueId) {
+      const fb = document.getElementById('followupBox');
+      fb.style.display = 'block';
+      fb.innerHTML = '⏳ Генерирую готовое Follow-up сообщение клиенту...';
+      try {
+        const res = await fetch(`/api/calls/dialogues/${dialogueId}/followup`);
+        const data = await res.json();
+        fb.innerHTML = `<strong>📩 Готовое Follow-up сообщение (${data.contact_name}):</strong><br><br>${data.followup_draft}<br><br><button style="background:#10B981; color:#fff; border:none; padding:4px 10px; border-radius:6px; cursor:pointer;" onclick="navigator.clipboard.writeText(\`${data.followup_draft.replace(/`/g, '')}\`); alert('Скопировано в буфер обмена!')">📋 Скопировать в буфер</button>`;
+      } catch (err) {
+        fb.innerHTML = '⚠️ Ошибка генерации follow-up';
+      }
     }
 
     function closeModal() {

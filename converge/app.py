@@ -857,6 +857,20 @@ def api_system():
     return _system_snapshot()
 
 
+@app.get("/api/calls/dialogues/{dialogue_id}/followup")
+def api_calls_followup(dialogue_id: str):
+    from aios_core.calls_crm_engine import get_single_dialogue_detail
+    from aios_core.dialogue_followup_generator import generate_dialogue_followup_message
+    detail = get_single_dialogue_detail(dialogue_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Диалог не найден")
+    c_info = detail.get("google_contact", {})
+    c_name = c_info.get("name", "Клиент")
+    summary = detail.get("summary", "")
+    transcript = detail.get("transcription", "")
+    return generate_dialogue_followup_message(c_name, summary, transcript)
+
+
 @app.get("/api/calls/search")
 def api_calls_search(q: str):
     from aios_core.semantic_voice_search import search_voice_dialogues
