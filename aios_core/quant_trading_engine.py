@@ -1,5 +1,9 @@
 
 def _send_trading_tg_alert(message: str) -> bool:
+    """Отправка фоновых уведомлений Quant Radar отключена по запросу владельца."""
+    return False
+
+def _disabled_send_trading_tg_alert(message: str) -> bool:
     """Отправка уведомления о сделках квант-трейдинга в Telegram."""
     import urllib.request
     import json
