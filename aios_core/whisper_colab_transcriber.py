@@ -189,7 +189,7 @@ def process_calls_directory(dir_path: str = str(CALLS_DIR), force: bool = False)
     supported_exts = {".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac", ".opus", ".3gp", ".amr"}
     results = []
 
-    audio_files = [f for f in target_dir.iterdir() if f.is_file() and f.suffix.lower() in supported_exts]
+    audio_files = [f for f in target_dir.rglob("*") if f.is_file() and f.suffix.lower() in supported_exts]
 
     for audio_file in audio_files:
         stem = audio_file.stem

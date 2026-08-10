@@ -54,6 +54,11 @@ def _handle_calls_intent(api, chat_id: int, text: str) -> bool:
     # 2. Попытка обработки всех звонков
     if any(k in t_lower for k in ["обработай", "расшифруй", "запусти", "транскрибируй", "все"]):
         api.send_message(chat_id, "⏳ **Запуск транскрибации звонков...**\n*Проверка Colab GPU и анализ аудизаписей...*", parse_mode="Markdown")
+        try:
+            from scripts.sync_gdrive_calls import sync_gdrive
+            sync_gdrive()
+        except Exception as _ge:
+            print(f"GDrive sync note: {_ge}")
         results = process_calls_directory()
 
         if not results:
