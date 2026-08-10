@@ -137,29 +137,65 @@ def _handle_dashboard_intent(api, chat_id: int, text: str) -> bool:
 
 
 def _handle_freelance_summary_intent(api, chat_id: int, text: str) -> bool:
-    """«фриланс», «что по фрилансу» — краткая сводка фриланс-воронки."""
+    """«фриланс», «список фриланса» — детальный список заказов и проектов фриланса с ID."""
     t = " ".join(str(text or "").casefold().split())
-    if not any(phrase in t for phrase in _FREELANCE_TRIGGERS):
+    if not any(phrase in t for phrase in _FREELANCE_TRIGGERS) and not any(p in t for p in ("список", "заказы", "проекты")):
         return False
+
+    api.send_message(chat_id, "💼 <b>Запрашиваю активные заказы и список проектов фриланса...</b>")
+    import urllib.request, json
+
     tasks = _load("freelance_tasks.json", [])
-    if not tasks:
-        api.send_message(chat_id, "💼 Фриланс: данных пока нет.")
-        return True
-    ready = [x for x in tasks if x.get("status") == "PROPOSAL_READY"]
-    notified = [x for x in ready if x.get("approval_notified")]
-    bid = [x for x in tasks if x.get("status") == "BID_SUBMITTED"]
-    lost = [x for x in tasks if x.get("status") == "LOST"]
-    total = sum(float(x.get("budget_usd", 0)) for x in ready)
-    lines = [
-        "💼 <b>Фриланс-воронка</b>",
-        f"  📝 Предложений готово: <b>{len(ready)}</b> (≈ ${_fmt(total)})",
-        f"  📨 Уведомлено в TG (ждут approve): <b>{len(notified)}</b>",
-        f"  🎯 Отправлено ставок: <b>{len(bid)}</b> · Проиграно: {len(lost)}",
-        "",
-        "💡 <i>Для отправки ставки вручную — открой уведомление в чате или напиши боту.</i>",
-    ]
-    try:
-        api.send_message(chat_id, "\n".join(lines))
-    except Exception:
-        api.send_message(chat_id, "\n".join(lines).replace("<b>", "").replace("</b>", "").replace("<i>", "").replace("</i>", ""))
+
+    live_fh_projects = []
+    from pathlib import Path; env_file = Path("/root/AIOS/.env")
+    token = ""
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            if line.startswith("FREELANCEHUNT_API_TOKEN="):
+                token = line.split("=", 1)[1].strip().strip('"').strip("'")
+
+    if token:
+        try:
+            url = "https://api.freelancehunt.com/v2/projects?page[number]=1"
+            req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}", "User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+                live_fh_projects = data.get("data", [])
+        except Exception:
+            pass
+
+    lines = ["💼 <b>Свободные заказы фриланса (с ID для выбора):</b>", ""]
+
+    if live_fh_projects:
+        lines.append("🔥 <b>Свежие открытые заказы на Freelancehunt:</b>")
+        for p in live_fh_projects[:5]:
+            p_id = p.get("id")
+            p_attr = p.get("attributes", {})
+            title = p_attr.get("name", "")
+            b_data = p_attr.get("budget") or {}
+            b_amount = b_data.get("amount", 700) if isinstance(b_data, dict) else 700
+            b_curr = b_data.get("currency", "UAH") if isinstance(b_data, dict) else "UAH"
+            lines.append(f"• <b>№ {p_id}</b>: {title}")
+            lines.append(f"  Бюджет: <b>{b_amount} {b_curr}</b>")
+            lines.append(f"  Ссылка: https://freelancehunt.com/project/{p_id}.html")
+            lines.append(f"  👉 Ставка: <code>отправь ставку {p_id} {b_amount}</code>")
+            lines.append("")
+
+    ready_tasks = [x for x in tasks if isinstance(x, dict) and x.get("status") in ("PROPOSAL_READY", "BID_SUBMITTED")]
+    if ready_tasks:
+        lines.append("📋 <b>Задачи AIOS в работе:</b>")
+        for x in ready_tasks[:5]:
+            t_id = x.get("id")
+            title = x.get("title", "")
+            budget = x.get("budget_usd", 0.0)
+            source = x.get("source", "")
+            lines.append(f"• <b>ID: {t_id}</b> ({source})")
+            lines.append(f"  <i>{title}</i>")
+            lines.append(f"  Бюджет: <b>${budget} USD</b>")
+            lines.append(f"  Инвойс: <code>инвойс фриланс {t_id}</code> | Подтвердить: <code>подтверди фриланс {t_id}</code>")
+            lines.append("")
+
+    api.send_message(chat_id, "\n".join(lines)[:4000])
     return True
+
