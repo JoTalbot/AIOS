@@ -43,7 +43,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             # v19.1 --telegram outputs markdown directly
             report = r.stdout.strip()
             if report:
-                api.send_message(chat_id, report)
+                api.send_message(chat_id, report, parse_mode="Markdown")
             else:
                 import json as _j_lr
                 data = _j_lr.loads(r.stdout)
@@ -75,7 +75,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                             capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
             report = r.stdout.strip()
             if report:
-                api.send_message(chat_id, report)
+                api.send_message(chat_id, report, parse_mode="Markdown")
             else:
                 import json as _j_arb
                 data = _j_arb.loads(r.stdout)
@@ -101,7 +101,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                             capture_output=True, text=True, timeout=15, cwd=str(PROJECT_ROOT))
             report = r.stdout.strip()
             if report:
-                api.send_message(chat_id, report)
+                api.send_message(chat_id, report, parse_mode="Markdown")
             else:
                 api.send_message(chat_id, "❌ Пустой отчет Mesh")
         except Exception as e:

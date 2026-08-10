@@ -1368,17 +1368,18 @@ def generate_crypto_pnl_chart(report: Dict[str, Any], output_path: str = "/tmp/c
 
 
 def format_positions_only_report(report: Dict[str, Any]) -> str:
-    """Форматирует детальный отчёт обо всех открытых позициях на 5 биржах."""
+    """Форматирует детальный отчёт обо всех открытых позициях на 5 биржах с ограничением длины для Telegram."""
     exchanges = report.get("exchanges", {})
-    lines = ["💼 <b>Детальный список открытых позиций (5 бирж):</b>", ""]
+    lines = ["💼 <b>Сводка открытых позиций по 5 биржам AIOS:</b>", ""]
     total_pos = 0
 
     for ex_key, ex_data in exchanges.items():
         ex_name = ex_data.get("name", ex_key.upper())
         poss = ex_data.get("positions", [])
         if poss:
-            lines.append(f"<b>{ex_name}:</b>")
-            for p in poss:
+            lines.append(f"<b>{ex_name}</b> ({len(poss)} позиций):")
+            # Показываем первые 4 позиций для лаконичности
+            for p in poss[:4]:
                 total_pos += 1
                 u_pnl = p.get("unrealized_pnl_usd", 0.0)
                 u_sign = "+" if u_pnl > 0 else ""
@@ -1387,7 +1388,9 @@ def format_positions_only_report(report: Dict[str, Any]) -> str:
                 side = p.get("side", "")
                 ep = p.get("entry_price", 0.0)
                 lp = p.get("live_price", 0.0)
-                lines.append(f"  {p_icon} <b>{pair_disp}</b> ({side}): Вход: ${ep:.4f} ➔ Рынок: ${lp:.4f} | PnL: <b>{u_sign}${u_pnl:.2f} USD</b>")
+                lines.append(f"  {p_icon} <b>{pair_disp}</b>: Вход ${ep:.4f} ➔ Рынок ${lp:.4f} | PnL: <b>{u_sign}${u_pnl:.2f}</b>")
+            if len(poss) > 4:
+                lines.append(f"  <i>... и ещё {len(poss) - 4} позиций</i>")
             lines.append("")
 
     if total_pos == 0:
