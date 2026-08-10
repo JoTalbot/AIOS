@@ -1043,7 +1043,7 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
         api.answer_callback(cb_id, "…")
         return
 
-    if data.startswith("nav_") or data.startswith("olx_") or data.startswith("cat_items_"):
+    if data.startswith("nav_") or data.startswith("olx_") or data.startswith("cat_items_") or data.startswith("crypto_"):
         _handle_nav_callback(api, chat_id, cb_id, data)
         return
 
@@ -1138,6 +1138,9 @@ def _handle_nav_callback(api, chat_id: int, cb_id: str, data: str) -> None:
         elif data == "crypto_positions":
             from tg_bot.treasury import _handle_treasury_intent as _hti
             _hti(api, chat_id, "крипто позиции")
+        elif data in ("crypto_arb", "nav_arb"):
+            from tg_bot.treasury import _handle_treasury_intent as _hti
+            _hti(api, chat_id, "арбитраж")
         elif data == "nav_np":
             from tg_bot.treasury import _handle_treasury_intent as _hti
             _hti(api, chat_id, "логистика новая почта")

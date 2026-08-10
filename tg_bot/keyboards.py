@@ -143,7 +143,7 @@ CRYPTO_ACTIONS_INLINE = {
     "inline_keyboard": [
         [{"text": "📊 График PnL", "callback_data": "crypto_chart"},
          {"text": "💼 Открытые позиции", "callback_data": "crypto_positions"}],
-        [{"text": "⚡ Арбитраж цен", "callback_data": "nav_arb"},
+        [{"text": "⚡ Арбитраж цен", "callback_data": "crypto_arb"},
          {"text": "🔄 Обновить сводку", "callback_data": "crypto_refresh"}],
     ]
 }
