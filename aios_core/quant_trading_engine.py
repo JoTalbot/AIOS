@@ -431,7 +431,19 @@ class QuantMasterOrchestrator:
             "LTCUSD": "XLTCZUSD",
             "NEARUSD": "NEARUSD",
             "UNIUSD": "UNIUSD",
-            "SHIBUSD": "SHIBUSD"
+            "SHIBUSD": "SHIBUSD",
+            "DOGEUSD": "XDGUSD",
+            "POLUSD": "POLUSD",
+            "ATOMUSD": "ATOMUSD",
+            "XLMUSD": "XXLMZUSD",
+            "FILUSD": "FILUSD",
+            "APTUSD": "APTUSD",
+            "ARBUSD": "ARBUSD",
+            "OPUSD": "OPUSD",
+            "SUIUSD": "SUIUSD",
+            "PEPEUSD": "PEPEUSD",
+            "FETUSD": "FETUSD",
+            "INJUSD": "INJUSD"
         }
         
         kraken_signals = []
@@ -534,7 +546,19 @@ def get_kraken_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[str, Any]:
         "LTCUSD": "XLTCZUSD",
         "NEARUSD": "NEARUSD",
         "UNIUSD": "UNIUSD",
-        "SHIBUSD": "SHIBUSD"
+        "SHIBUSD": "SHIBUSD",
+        "DOGEUSD": "XDGUSD",
+        "POLUSD": "POLUSD",
+        "ATOMUSD": "ATOMUSD",
+        "XLMUSD": "XXLMZUSD",
+        "FILUSD": "FILUSD",
+        "APTUSD": "APTUSD",
+        "ARBUSD": "ARBUSD",
+        "OPUSD": "OPUSD",
+        "SUIUSD": "SUIUSD",
+        "PEPEUSD": "PEPEUSD",
+        "FETUSD": "FETUSD",
+        "INJUSD": "INJUSD"
     }
 
     positions_detail = []
@@ -679,7 +703,7 @@ def format_kraken_demo_report(report: Dict[str, Any]) -> str:
         "🤖 <b>Алгоритм & Стратегия:</b>",
         "• Количественный робот AIOS (SMA 3/10 Crossover + RSI 14)",
         "• Риск-менеджмент: Take-Profit +2.0%, Trailing Stop-Loss -1.0%",
-        "• Торговые пары: 12 топовых пар (BTC, ETH, SOL, XRP, ADA, DOT, LINK, AVAX, LTC, NEAR, UNI, SHIB) на Kraken",
+        "• Торговые пары: 24 пары на 5 биржах (Kraken, Binance, Bybit, OKX, Uniswap V3)",
         "",
         "💡 <i>Команды:</i>",
         "<code>баланс кракен</code> — реальный баланс активов",
@@ -781,7 +805,7 @@ def format_unified_crypto_earnings_report(report: Dict[str, Any]) -> str:
         f"{pnl_icon} <b>Совокупный PnL:</b> <b>{pnl_sign}${total_pnl:.2f} USD ({pnl_sign}{total_ret:.2f}%)</b>",
         "",
         "🌐 <b>4 Активных Вектора Заработка:</b>",
-        "1. 📈 <b>Квантовый трейдинг (Kraken 12 пар):</b>",
+        "1. 📈 <b>Квантовый трейдинг (5 бирж: Kraken, Binance, Bybit, OKX, UniV3):</b>",
         f"   • Сделок: <b>{trades}</b> (Успешных: {wins}, Винрейт: <b>{win_rate:.1f}%</b>)",
         "   • Сигналы: SMA 3/10 + RSI 14 + Полосы Боллинджера (20)",
         "2. ⚡ <b>Кросс-DEX Арбитраж (Kraken/Binance/UniV3):</b>",
