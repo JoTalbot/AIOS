@@ -451,3 +451,205 @@ if __name__ == "__main__":
     res = quant.run_quant_cycle()
     print("\n=== AIOS QUANT TRADING ENGINE SUMMARY ===")
     print(json.dumps(res, indent=2, ensure_ascii=False))
+
+
+def get_kraken_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[str, Any]:
+    """Получает полную аналитику демонстрационного счёта $100 на бирже Kraken."""
+    is_docker = os.path.exists('/.dockerenv') or (os.path.exists('/proc/self/cgroup') and 'docker' in open('/proc/self/cgroup').read())
+    if is_docker and os.path.exists("/app/data"):
+        data_dir = "/app/data"
+
+    data_path = Path(data_dir) / "kraken_paper_portfolio.json"
+    if not data_path.exists():
+        default_port = {
+            "initial_balance_usd": 100.0,
+            "cash_usd": 100.0,
+            "realized_pnl_usd": 0.0,
+            "total_trades": 0,
+            "winning_trades": 0,
+            "positions": {}
+        }
+        data_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(data_path, "w", encoding="utf-8") as f:
+            json.dump(default_port, f, indent=2)
+        port = default_port
+    else:
+        try:
+            with open(data_path, "r", encoding="utf-8") as f:
+                port = json.load(f)
+        except Exception:
+            port = {
+                "initial_balance_usd": 100.0,
+                "cash_usd": 100.0,
+                "realized_pnl_usd": 0.0,
+                "total_trades": 0,
+                "winning_trades": 0,
+                "positions": {}
+            }
+
+    initial_balance = port.get("initial_balance_usd", 100.0)
+    cash_usd = port.get("cash_usd", 100.0)
+    realized_pnl = port.get("realized_pnl_usd", 0.0)
+    total_trades = port.get("total_trades", 0)
+    winning_trades = port.get("winning_trades", 0)
+    win_rate = (winning_trades / total_trades * 100.0) if total_trades > 0 else 0.0
+
+    from aios_core.kraken_client import AIOSKrakenClient
+    kraken_client = AIOSKrakenClient()
+
+    kraken_pairs_map = {
+        "BTCUSD": "XXBTZUSD",
+        "ETHUSD": "XETHZUSD",
+        "SOLUSD": "SOLUSD"
+    }
+
+    positions_detail = []
+    total_position_invested = 0.0
+    total_position_value = 0.0
+
+    for pos_key, pos_data in port.get("positions", {}).items():
+        std_pair = pos_key.replace("KRAKEN_", "")
+        kraken_pair = kraken_pairs_map.get(std_pair, std_pair)
+
+        live_price = 0.0
+        try:
+            ticker_res = kraken_client.get_ticker(kraken_pair)
+            if ticker_res.get("status") == "success":
+                live_price = float(ticker_res["ticker"][kraken_pair]["c"][0])
+        except Exception:
+            pass
+
+        if live_price <= 0:
+            binance_pair = std_pair.replace("USD", "USDT")
+            mf = MarketDataFeed.fetch_live_price(binance_pair)
+            live_price = mf.get("price", pos_data.get("entry_price", 100.0))
+
+        entry_price = pos_data.get("entry_price", 0.0)
+        qty = pos_data.get("qty", 0.0)
+        invested = pos_data.get("invested_usd", 0.0)
+        current_val = qty * live_price
+        unrealized_pnl = current_val - invested
+        unrealized_pct = (unrealized_pnl / invested * 100.0) if invested > 0 else 0.0
+
+        total_position_invested += invested
+        total_position_value += current_val
+
+        positions_detail.append({
+            "key": pos_key,
+            "pair_display": std_pair.replace("USD", "/USD"),
+            "side": pos_data.get("side", "LONG"),
+            "qty": qty,
+            "entry_price": entry_price,
+            "live_price": live_price,
+            "invested_usd": invested,
+            "current_value_usd": current_val,
+            "unrealized_pnl_usd": unrealized_pnl,
+            "unrealized_pnl_pct": unrealized_pct,
+            "opened_at": pos_data.get("opened_at", 0)
+        })
+
+    total_unrealized_pnl = total_position_value - total_position_invested
+    total_equity = cash_usd + total_position_value
+    total_pnl = total_equity - initial_balance
+    total_return_pct = (total_pnl / initial_balance) * 100.0
+
+    return {
+        "initial_balance_usd": initial_balance,
+        "cash_usd": cash_usd,
+        "total_equity_usd": total_equity,
+        "realized_pnl_usd": realized_pnl,
+        "unrealized_pnl_usd": total_unrealized_pnl,
+        "total_pnl_usd": total_pnl,
+        "total_return_pct": total_return_pct,
+        "total_trades": total_trades,
+        "winning_trades": winning_trades,
+        "win_rate_pct": win_rate,
+        "positions": positions_detail
+    }
+
+
+def reset_kraken_demo_account(data_dir: str = "/root/AIOS/data") -> bool:
+    """Сбрасывает демонстрационный счёт Kraken к исходному балансу $100.00 USD."""
+    is_docker = os.path.exists('/.dockerenv') or (os.path.exists('/proc/self/cgroup') and 'docker' in open('/proc/self/cgroup').read())
+    if is_docker and os.path.exists("/app/data"):
+        data_dir = "/app/data"
+
+    data_path = Path(data_dir) / "kraken_paper_portfolio.json"
+    default_port = {
+        "initial_balance_usd": 100.0,
+        "cash_usd": 100.0,
+        "realized_pnl_usd": 0.0,
+        "total_trades": 0,
+        "winning_trades": 0,
+        "positions": {}
+    }
+    try:
+        data_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(data_path, "w", encoding="utf-8") as f:
+            json.dump(default_port, f, indent=2)
+        return True
+    except Exception:
+        return False
+
+
+def format_kraken_demo_report(report: Dict[str, Any]) -> str:
+    """Форматирует отчёт демонстрационного счёта Kraken ($100) для Telegram."""
+    init_bal = report.get("initial_balance_usd", 100.0)
+    cash = report.get("cash_usd", 100.0)
+    equity = report.get("total_equity_usd", 100.0)
+    total_pnl = report.get("total_pnl_usd", 0.0)
+    total_ret = report.get("total_return_pct", 0.0)
+    realized = report.get("realized_pnl_usd", 0.0)
+    unrealized = report.get("unrealized_pnl_usd", 0.0)
+    trades = report.get("total_trades", 0)
+    wins = report.get("winning_trades", 0)
+    win_rate = report.get("win_rate_pct", 0.0)
+    positions = report.get("positions", [])
+
+    pnl_icon = "📈" if total_pnl >= 0 else "📉"
+    pnl_sign = "+" if total_pnl > 0 else ""
+    realized_sign = "+" if realized > 0 else ""
+    unrealized_sign = "+" if unrealized > 0 else ""
+
+    lines = [
+        "🐙 <b>Демонстрационный счёт Kraken ($100.00 USD)</b>",
+        "━━━━━━━━━━━━━━━━━━━━━",
+        f"💵 <b>Начальный депозит:</b> ${init_bal:.2f} USD",
+        f"💳 <b>Свободный кэш:</b> ${cash:.2f} USD",
+        f"📊 <b>Текущий капитал (Equity):</b> <b>${equity:.2f} USD</b>",
+        f"{pnl_icon} <b>Общий результат (PnL):</b> <b>{pnl_sign}${total_pnl:.2f} USD ({pnl_sign}{total_ret:.2f}%)</b>",
+        "",
+        "📈 <b>Статистика процесса заработка:</b>",
+        f"• Всего сделок: <b>{trades}</b> (Успешных: <b>{wins}</b>, Винрейт: <b>{win_rate:.1f}%</b>)",
+        f"• Реализованная прибыль: <b>{realized_sign}${realized:.2f} USD</b>",
+        f"• Незафиксированный PnL: <b>{unrealized_sign}${unrealized:.2f} USD</b>",
+        ""
+    ]
+
+    if positions:
+        lines.append("💼 <b>Открытые позиции на Kraken:</b>")
+        for p in positions:
+            p_icon = "🟢" if p['unrealized_pnl_usd'] >= 0 else "🔴"
+            u_sign = "+" if p['unrealized_pnl_usd'] > 0 else ""
+            lines.append(
+                f"{p_icon} <b>{p['pair_display']}</b> ({p['side']}):\n"
+                f"  – Вход: ${p['entry_price']:.2f} ➔ Рынок: <b>${p['live_price']:.2f}</b>\n"
+                f"  – Объём: {p['qty']:.6f} (${p['invested_usd']:.2f})\n"
+                f"  – PnL: <b>{u_sign}${p['unrealized_pnl_usd']:.2f} USD ({u_sign}{p['unrealized_pnl_pct']:.2f}%)</b>"
+            )
+        lines.append("")
+    else:
+        lines.append("💼 <b>Открытые позиции:</b> <i>В данный момент позиций нет (100% в кэше)</i>\n")
+
+    lines.extend([
+        "🤖 <b>Алгоритм & Стратегия:</b>",
+        "• Количественный робот AIOS (SMA 3/10 Crossover + RSI 14)",
+        "• Риск-менеджмент: Take-Profit +2.0%, Trailing Stop-Loss -1.0%",
+        "• Торговые пары: BTC/USD, ETH/USD, SOL/USD на Kraken",
+        "",
+        "💡 <i>Команды:</i>",
+        "<code>баланс кракен</code> — реальный баланс активов",
+        "<code>кракен демо сброс</code> — сбросить демо-счёт на $100"
+    ])
+
+    return "\n".join(lines)

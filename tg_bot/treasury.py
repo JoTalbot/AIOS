@@ -108,34 +108,39 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ Ошибка Android Mesh: {e}")
         return True
 
-    # Трейдинг и котировки
-    if any(phrase in t for phrase in ("трейдинг", "сигналы", "квант", "торговля", "paper trading")):
-        api.send_message(chat_id, "📈 <b>Запрашиваю количественный анализ и сигналы рынка...</b>")
-        import subprocess as _sp_tr
+    # 0. Сброс демонстрационного счёта Kraken ($100)
+    if any(phrase in t for phrase in ("сбрось демо", "сбросить демо", "кракен демо сброс", "сбросить демо кракен", "сброс демо")):
+        from aios_core.quant_trading_engine import reset_kraken_demo_account
+        if reset_kraken_demo_account():
+            api.send_message(chat_id, "✅ <b>Демонстрационный счёт Kraken успешно сброшен на $100.00 USD!</b>")
+        else:
+            api.send_message(chat_id, "❌ Не удалось сбросить демонстрационный счёт Kraken.")
+        return True
+
+    # Трейдинг, Демо-счёт $100 Kraken и процесс заработка
+    if any(phrase in t for phrase in (
+        "трейдинг", "сигналы", "квант", "торговля", "paper trading",
+        "демо счет", "демосчет", "демо счёт", "демо кракен", "кракен демо",
+        "заработок кракен", "кракен заработок", "кракен трейдинг", "демо"
+    )):
+        api.send_message(chat_id, "🐙 <b>Запрашиваю показатели демонстрационного счёта Kraken ($100)...</b>")
         try:
-            r = _sp_tr.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_quant_trading.py")],
-                           capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
-            import json as _j_tr
-            data = _j_tr.loads(r.stdout.split("===")[-1].strip() if "===" in r.stdout else r.stdout)
+            from aios_core.quant_trading_engine import (
+                get_kraken_demo_report,
+                format_kraken_demo_report,
+                QuantMasterOrchestrator
+            )
+            try:
+                quant = QuantMasterOrchestrator()
+                quant.run_quant_cycle()
+            except Exception:
+                pass
 
-            lines = ["📈 <b>AIOS Quant Radar & Paper Trading:</b>\n"]
-            for sig in data.get("binance_signals", []):
-                sym = sig.get("symbol")
-                signal = sig.get("signal")
-                price = sig.get("current_price")
-                rsi = sig.get("rsi")
-                icon = "🟢" if "BUY" in signal else ("🔴" if "SELL" in signal else "⚪")
-                lines.append(f"{icon} <b>{sym}</b>: ${price:.2f} | <b>{signal}</b> (RSI: {rsi})")
-
-            lines.append("\n💼 <b>Портфель Binance:</b>")
-            summary = data.get("binance_trading_results", [{}])[0].get("portfolio_summary", {})
-            lines.append(f"• Баланс кэша: <b>${summary.get('cash_usd', 0.0):.2f} USD</b>")
-            lines.append(f"• Реализованный PnL: <b>${summary.get('realized_pnl_usd', 0.0):.2f} USD</b>")
-            lines.append(f"• Винрейт: <b>{summary.get('win_rate_pct', 0.0)}%</b> | Позиций: <b>{summary.get('open_positions', 0)}</b>")
-
-            api.send_message(chat_id, "\n".join(lines))
+            report = get_kraken_demo_report()
+            msg_text = format_kraken_demo_report(report)
+            api.send_message(chat_id, msg_text)
         except Exception as e:
-            api.send_message(chat_id, f"❌ Ошибка трейдинга: {e}")
+            api.send_message(chat_id, f"❌ Ошибка получения данных демо-счёта Kraken: {e}")
         return True
 
     # Склад & Запчасти
