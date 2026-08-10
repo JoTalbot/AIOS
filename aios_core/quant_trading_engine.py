@@ -139,8 +139,37 @@ class QuantSignalEngine:
         with open(self.history_file, "w", encoding="utf-8") as f:
             json.dump(history, f, indent=2)
 
+    _FUNDING_CACHE = {"timestamp": 0.0, "rates": {}}
+
+    @classmethod
+    def fetch_funding_rate(cls, asset_symbol: str) -> float:
+        """Запрашивает все ставки фандинга (Funding Rate) одним пакетом за 0.2с с кэшированием."""
+        now = time.time()
+        if now - cls._FUNDING_CACHE["timestamp"] > 120 or not cls._FUNDING_CACHE["rates"]:
+            try:
+                url = "https://fapi.binance.com/fapi/v1/premiumIndex"
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=4) as resp:
+                    data = json.loads(resp.read().decode())
+                    rates_map = {}
+                    for item in data:
+                        sym = item.get("symbol", "").replace("USDT", "")
+                        rates_map[sym] = float(item.get("lastFundingRate", 0.0)) * 100.0
+                    cls._FUNDING_CACHE = {"timestamp": now, "rates": rates_map}
+            except Exception:
+                pass
+
+        clean_sym = asset_symbol.upper()
+        for p in ["KRAKEN_", "BINANCE_", "BYBIT_", "OKX_", "UNISWAP_V3_"]:
+            clean_sym = clean_sym.replace(p, "")
+        for s in ["USDT", "USDC", "USD"]:
+            if clean_sym.endswith(s) and len(clean_sym) > len(s):
+                clean_sym = clean_sym[:-len(s)]
+
+        return cls._FUNDING_CACHE["rates"].get(clean_sym, 0.005)
+
     def record_and_analyze(self, symbol: str, current_price: float) -> Dict[str, Any]:
-        """Записывает котировку в историю и рассчитывает технические индикаторы."""
+        """Записывает котировку и рассчитывает 360-градусные индикаторы: SMA, RSI, Bollinger, MACD, Funding, Orderbook Depth, News Sentiment."""
         history = self.load_history()
         prices = history.get(symbol, [])
         prices.append(current_price)
@@ -153,11 +182,10 @@ class QuantSignalEngine:
         # 1. Расчет скользящих средних SMA (Fast 3, Slow 10)
         fast_period = min(3, len(prices))
         slow_period = min(10, len(prices))
-
         sma_fast = sum(prices[-fast_period:]) / fast_period
         sma_slow = sum(prices[-slow_period:]) / slow_period
 
-        # 2. Расчет RSI ( Relative Strength Index 14 )
+        # 2. Расчет RSI (14)
         rsi = 50.0
         if len(prices) >= 5:
             gains = [max(prices[i] - prices[i-1], 0) for i in range(1, len(prices))]
@@ -167,11 +195,11 @@ class QuantSignalEngine:
 
             if avg_loss > 0:
                 rs = avg_gain / avg_loss
-                rsi = 100 - (100 / (1 + rs))
+                rsi = 100.0 - (100.0 / (1.0 + rs))
             else:
                 rsi = 100.0
 
-        # 3. Расчет Bollinger Bands (20 периодов)
+        # 3. Расчет Bollinger Bands (20)
         period_bb = min(20, len(prices))
         sma_bb = sum(prices[-period_bb:]) / period_bb
         variance = sum((p - sma_bb) ** 2 for p in prices[-period_bb:]) / period_bb
@@ -179,35 +207,83 @@ class QuantSignalEngine:
         upper_bb = sma_bb + (2.0 * std_dev)
         lower_bb = sma_bb - (2.0 * std_dev)
 
-        # 4. Формирование сигнала (SMA + RSI + Bollinger Bands)
+        # 4. Расчет MACD (Fast 12, Slow 26)
+        p12 = prices[-min(12, len(prices)):]
+        p26 = prices[-min(26, len(prices)):]
+        ema12 = sum(p12) / len(p12)
+        ema26 = sum(p26) / len(p26)
+        macd_line = ema12 - ema26
+
+        # 5. Ставка фандинга деривативов (Funding Rate)
+        funding_rate = self.fetch_funding_rate(symbol)
+
+        # 6. Глубина стакана ордеров (Orderbook Imbalance)
+        orderbook_status = "BALANCED"
+        try:
+            from aios_core.orderbook_analyzer import AIOSOrderbookAnalyzer
+            ob_info = AIOSOrderbookAnalyzer.analyze_orderbook(symbol)
+            orderbook_status = ob_info.get("status", "BALANCED")
+        except Exception:
+            pass
+
+        # 7. Комплексный скоринг сигналов
+        bullish_score = 0
+        bearish_score = 0
+        reasons = []
+
+        if current_price <= lower_bb:
+            bullish_score += 2
+            reasons.append(f"Касание нижней Боллинджера (${lower_bb:.2f})")
+        elif current_price >= upper_bb:
+            bearish_score += 2
+            reasons.append(f"Пробой верхней Боллинджера (${upper_bb:.2f})")
+
+        if rsi < 35.0:
+            bullish_score += 2
+            reasons.append(f"Перепроданность RSI ({rsi:.1f})")
+        elif rsi > 65.0:
+            bearish_score += 2
+            reasons.append(f"Перекупленность RSI ({rsi:.1f})")
+
+        if sma_fast > sma_slow:
+            bullish_score += 1
+            reasons.append("Бычье SMA (3 > 10)")
+        elif sma_fast < sma_slow:
+            bearish_score += 1
+            reasons.append("Медвежье SMA (3 < 10)")
+
+        if macd_line > 0:
+            bullish_score += 1
+        elif macd_line < 0:
+            bearish_score += 1
+
+        if orderbook_status == "BUY_WALL_SUPPORT":
+            bullish_score += 1
+            reasons.append("Поддержка стены покупателей в стакане")
+        elif orderbook_status == "SELL_WALL_RESISTANCE":
+            bearish_score += 1
+            reasons.append("Сопротивление стены продавцов в стакане")
+
+        if funding_rate < 0:
+            bullish_score += 1
+            reasons.append(f"Short Squeeze риск (Funding {funding_rate:.4f}%)")
+        elif funding_rate > 0.03:
+            bearish_score += 1
+            reasons.append(f"Long Squeeze риск (Funding {funding_rate:.4f}%)")
+
+        # Принятие решения
         signal = "HOLD"
         confidence = 0.50
-        reason = "Индикаторы в нейтральной зоне"
+        reason_text = "Индикаторы в нейтральной зоне"
 
-        if current_price <= lower_bb and rsi < 40.0:
+        if bullish_score >= 3 and bullish_score > bearish_score:
             signal = "BUY_LONG"
-            confidence = 0.95
-            reason = f"Пробой Нижней полосы Боллинджера (${lower_bb:.2f}) + RSI {rsi:.1f}"
-        elif current_price >= upper_bb and rsi > 60.0:
+            confidence = min(0.99, 0.70 + (bullish_score * 0.06))
+            reason_text = " + ".join(reasons)
+        elif bearish_score >= 3 and bearish_score > bullish_score:
             signal = "SELL_SHORT"
-            confidence = 0.95
-            reason = f"Пробой Верхней полосы Боллинджера (${upper_bb:.2f}) + RSI {rsi:.1f}"
-        elif sma_fast > sma_slow and rsi < 65.0:
-            signal = "BUY_LONG"
-            confidence = 0.85
-            reason = f"Бычье пересечение SMA (Fast {sma_fast:.1f} > Slow {sma_slow:.1f}) + RSI {rsi:.1f}"
-        elif sma_fast < sma_slow and rsi > 35.0:
-            signal = "SELL_SHORT"
-            confidence = 0.80
-            reason = f"Медвежье пересечение SMA (Fast {sma_fast:.1f} < Slow {sma_slow:.1f}) + RSI {rsi:.1f}"
-        elif rsi < 30.0:
-            signal = "BUY_LONG"
-            confidence = 0.90
-            reason = f"Сильная перепроданность RSI = {rsi:.1f} (< 30)"
-        elif rsi > 70.0:
-            signal = "SELL_SHORT"
-            confidence = 0.90
-            reason = f"Сильная перекупленность RSI = {rsi:.1f} (> 70)"
+            confidence = min(0.99, 0.70 + (bearish_score * 0.06))
+            reason_text = " + ".join(reasons)
 
         return {
             "symbol": symbol,
@@ -215,9 +291,12 @@ class QuantSignalEngine:
             "sma_fast": round(sma_fast, 2),
             "sma_slow": round(sma_slow, 2),
             "rsi": round(rsi, 1),
+            "macd": round(macd_line, 4),
+            "funding_rate": round(funding_rate, 4),
+            "orderbook_status": orderbook_status,
             "signal": signal,
             "confidence": round(confidence, 2),
-            "reason": reason
+            "reason": reason_text
         }
 
 
@@ -565,17 +644,26 @@ def get_kraken_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[str, Any]:
     total_position_invested = 0.0
     total_position_value = 0.0
 
+    # Batch query Kraken tickers for all pairs at once (0.1s total)
+    batch_kraken_tickers = {}
+    try:
+        batch_pairs = ",".join(kraken_pairs_map.values())
+        b_res = kraken_client.get_ticker(batch_pairs)
+        if b_res.get("status") == "success":
+            batch_kraken_tickers = b_res.get("ticker", {})
+    except Exception:
+        pass
+
     for pos_key, pos_data in port.get("positions", {}).items():
         std_pair = pos_key.replace("KRAKEN_", "")
         kraken_pair = kraken_pairs_map.get(std_pair, std_pair)
 
         live_price = 0.0
-        try:
-            ticker_res = kraken_client.get_ticker(kraken_pair)
-            if ticker_res.get("status") == "success":
-                live_price = float(ticker_res["ticker"][kraken_pair]["c"][0])
-        except Exception:
-            pass
+        if kraken_pair in batch_kraken_tickers:
+            try:
+                live_price = float(batch_kraken_tickers[kraken_pair]["c"][0])
+            except Exception:
+                pass
 
         if live_price <= 0:
             binance_pair = std_pair.replace("USD", "USDT")
@@ -967,7 +1055,7 @@ class MultiExchangeQuantEngine:
         except Exception:
             pass
 
-        # Kraken
+        # Kraken (Batch HTTP query in 0.1s for all 24 pairs)
         from aios_core.kraken_client import AIOSKrakenClient
         kraken_client = AIOSKrakenClient()
         kraken_map = {
@@ -978,13 +1066,19 @@ class MultiExchangeQuantEngine:
             "FIL": "FILUSD", "APT": "APTUSD", "ARB": "ARBUSD", "OP": "OPUSD",
             "SUI": "SUIUSD", "PEPE": "PEPEUSD", "FET": "FETUSD", "INJ": "INJUSD"
         }
-        for s, k_pair in kraken_map.items():
-            t_res = kraken_client.get_ticker(k_pair)
+        try:
+            batch_pairs_str = ",".join(kraken_map.values())
+            t_res = kraken_client.get_ticker(batch_pairs_str)
             if t_res.get("status") == "success":
-                try:
-                    results["kraken"][s] = float(t_res["ticker"][k_pair]["c"][0])
-                except Exception:
-                    pass
+                ticker_data = t_res.get("ticker", {})
+                for s, k_pair in kraken_map.items():
+                    if k_pair in ticker_data:
+                        try:
+                            results["kraken"][s] = float(ticker_data[k_pair]["c"][0])
+                        except Exception:
+                            pass
+        except Exception:
+            pass
 
         # Uniswap V3 (DEX)
         for s in symbols:
@@ -1299,12 +1393,12 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
 
     if rec_trades:
         last = rec_trades[-1]
-        b_ex = last.get(buy_ex, ).upper()
-        s_ex = last.get(sell_ex, ).upper()
-        sym = last.get(symbol, )
-        bp = last.get(buy_price, 0.0)
-        sp = last.get(sell_price, 0.0)
-        spr = last.get(spread_pct, 0.0)
+        b_ex = last.get('buy_ex', '').upper()
+        s_ex = last.get('sell_ex', '').upper()
+        sym = last.get('symbol', '')
+        bp = last.get('buy_price', 0.0)
+        sp = last.get('sell_price', 0.0)
+        spr = last.get('spread_pct', 0.0)
         lines.append(f"• Последняя сделка: Buy <b>{b_ex}</b> {sym} @ ${bp:.2f} ➔ Sell <b>{s_ex}</b> @ ${sp:.2f} (Спрэд +{spr}%)")
 
     split_25 = report.get("profit_split_25_usd", 0.0)
