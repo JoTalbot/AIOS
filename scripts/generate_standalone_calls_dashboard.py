@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-AIOS GlassCMS / Stitch UI Calls CRM & AI Psychological Profile Dashboard
-Применяет GlassCMS дизайн (mobile.html - mobile (5).html) с акцентом на ИИ-Психологические Портреты контактов.
+AIOS GlassCMS Mobile (6) Bento Grid - Calls CRM & AI Psychological Portrait Dashboard
+Применяет точно такой же Bento Grid дизайн из mobile (6).html для ИИ-Психологических Портретов контактов.
 """
 
 import os
@@ -24,9 +24,10 @@ def build_preloaded_html():
     contacts = get_contacts_with_dialogues()
     graph_data = build_relationship_knowledge_graph()
 
-    # Загружаем или берём сводку ИИ-Психопортрета каждого контакта
+    # Предварительно обогащаем каждый контакт структурированными данными психопортрета из mobile (6).html
     for c in contacts:
-        c["psychological_profile"] = f"👤 **ИИ-Психологический Портрет {c['name']}**\n\n• **Роль / Сфера**: {c['role']}\n• **Телефон**: {c['phone']}\n• **Всего созвонов и записей**: {c['dialogues_count']} шт.\n• **Стиль общения**: Деловая / Позитивная\n\n*(Для получения детального глубокого досье нажмите кнопку ниже или откройте вкладку ИИ-Досье)*"
+        dossier = generate_contact_ai_dossier(c["contact_id"])
+        c["psychological_profile_raw"] = dossier.get("dossier_text", "")
 
     contacts_json = json.dumps(contacts, ensure_ascii=False)
     graph_json = json.dumps(graph_data, ensure_ascii=False)
@@ -36,7 +37,7 @@ def build_preloaded_html():
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AIOS GlassCMS — Google Contacts & Voice CRM</title>
+  <title>AIOS GlassCMS — Customer Intelligence & Psychological Portrait</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <script id="tailwind-config">
@@ -50,12 +51,14 @@ def build_preloaded_html():
             "secondary-container": "#00a6e0",
             "background": "#0b1326",
             "surface-container": "#171f33",
+            "surface-container-high": "#222a3d",
+            "surface-container-highest": "#2d3449",
             "surface-bright": "#31394d",
             "tertiary": "#4edea3",
             "secondary": "#7bd0ff",
             "surface": "#0b1326",
             "on-surface": "#dae2fd",
-            "on-surface-variant": "#94a3b8"
+            "on-surface-variant": "#c5c5d3"
           }
         }
       }
@@ -64,6 +67,7 @@ def build_preloaded_html():
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap');
     body { background-color: #0b1326; color: #dae2fd; font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+    .glass-panel { background-color: #171f33; border: 1px solid rgba(255, 255, 255, 0.1); }
     .glass-card { background-color: #171f33; border: 1px solid rgba(255, 255, 255, 0.1); }
     .glass-card:hover { border-color: #00a6e0; }
     .badge { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; color: #94a3b8; display: flex; align-items: center; gap: 4px; }
@@ -74,8 +78,6 @@ def build_preloaded_html():
 
     .avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #00a6e0, #1e3a8a); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
     .count-chip { background: rgba(78, 222, 165, 0.15); border: 1px solid #4edea3; color: #4edea3; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
-
-    .profile-box { background: rgba(6, 14, 32, 0.8); border: 1px solid rgba(0, 166, 224, 0.3); border-radius: 12px; padding: 18px; font-size: 0.92rem; line-height: 1.6; white-space: pre-line; }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
     .modal-overlay.active { display: flex; }
@@ -106,10 +108,10 @@ def build_preloaded_html():
   <!-- Header TopAppBar -->
   <header class="w-full bg-surface border-b border-white/10 px-4 py-3 flex justify-between items-center flex-wrap gap-2 z-50">
     <div class="logo">
-      🎙️ GlassCMS AIOS — Google Contacts & Voice CRM
+      🎙️ GlassCMS AIOS — Customer Intelligence & Voice CRM
     </div>
     <div class="header-badges">
-      <div class="badge active">🧠 ИИ-Психопортрет</div>
+      <div class="badge active">🧠 Психопортрет Bento Grid</div>
       <div class="badge">👥 Google Contacts</div>
       <div class="badge">📲 Ambient Voice</div>
     </div>
@@ -117,7 +119,7 @@ def build_preloaded_html():
 
   <!-- Navigation TabBar -->
   <div class="tab-bar bg-surface-container border-b border-white/10 flex px-4">
-    <button class="tab-btn active" onclick="switchTab('contactsTab', event)">👥 Контакты и ИИ-Психопортреты</button>
+    <button class="tab-btn active" onclick="switchTab('contactsTab', event)">🧠 ИИ-Психопортреты и Контакты</button>
     <button class="tab-btn" onclick="switchTab('graphTab', event)">🕸️ Граф Связей и Упоминаний</button>
   </div>
 
@@ -134,12 +136,12 @@ def build_preloaded_html():
 
     <!-- Main Panel -->
     <div class="main-panel flex-1 flex flex-col bg-background overflow-hidden relative">
-      <!-- Tab 1: Contacts, AI Dossier & Dialogues -->
+      <!-- Tab 1: Contacts, Bento Grid AI Portrait & Dialogues -->
       <div class="tab-content active flex-1 flex flex-col overflow-hidden" id="contactsTab">
         <div class="empty-state" id="emptyState">
           <div style="font-size:56px;">🧠</div>
           <h3 class="text-xl font-semibold text-on-surface">Выберите Google Контакт из списка слева</h3>
-          <p class="text-sm text-on-surface-variant max-w-md">При выборе контакта сразу открывается его накопительный ИИ-Психологический Портрет, финансовые договоренности и полный список созвонов.</p>
+          <p class="text-sm text-on-surface-variant max-w-md">Откроется Bento Grid с ИИ-Психологическим Портретом, эмоциональным состоянием, чертами характера и списком созвонов.</p>
         </div>
         <div id="contactDetailView" style="display:none;" class="flex-1 flex-col overflow-hidden">
         </div>
@@ -157,7 +159,7 @@ def build_preloaded_html():
     <div class="modal-card">
       <div class="modal-header">
         <h3 id="modalTitle" class="text-lg font-bold text-secondary">Разговор</h3>
-        <button class="close-btn" onclick="closeModal()">✕</button>
+        <button class="close-btn text-white bg-white/10 px-2 py-1 rounded" onclick="closeModal()">✕</button>
       </div>
       <div class="modal-body" id="modalBody">
       </div>
@@ -238,8 +240,11 @@ def build_preloaded_html():
       document.getElementById('emptyState').style.display = 'none';
       const detail = document.getElementById('contactDetailView');
       detail.style.display = 'flex';
+
+      const rawProfile = c.psychological_profile_raw || '';
+
       detail.innerHTML = `
-        <div class="contact-header border-b border-white/10 p-4 bg-surface-container">
+        <div class="contact-header border-b border-white/10 p-4 bg-surface-container flex justify-between items-center flex-wrap gap-2">
           <div style="display:flex; align-items:center; gap:12px;">
             <div class="avatar" style="width:48px; height:48px; font-size:1.1rem;">${c.initials || 'К'}</div>
             <div>
@@ -247,26 +252,109 @@ def build_preloaded_html():
               <div style="font-size:0.85rem; color:#94A3B8;">${c.phone || ''} ${c.role ? '| ' + c.role : ''}</div>
             </div>
           </div>
-          <div class="count-chip" style="font-size:0.85rem; padding:4px 12px;">Всего разговоров: ${c.dialogues_count}</div>
+          <div class="count-chip" style="font-size:0.85rem; padding:4px 12px;">Диалогов: ${c.dialogues_count}</div>
         </div>
-        <div class="detail-body overflow-y-auto p-4 flex flex-col gap-4">
-          <!-- 1. ИИ-Психологический Портрет и Досье -->
-          <div class="glass-card rounded-xl p-4">
-            <h3 class="text-md font-bold text-secondary flex items-center gap-2 mb-3">
-              🧠 ИИ-Психологический Портрет и Досье Контакта
-            </h3>
-            <div class="profile-box">${c.psychological_profile || 'Загрузка ИИ-психопортрета...'}</div>
+
+        <div class="detail-body overflow-y-auto p-4 flex flex-col gap-6">
+          <!-- BENTO GRID LAYOUT из mobile (6).html -->
+          <div class="flex flex-col gap-2">
+            <h2 class="text-xl font-bold text-on-surface">ИИ-Психологический Портрет</h2>
+            <p class="text-sm text-on-surface-variant">Анализ профиля на основе последних диалогов и паттернов поведения.</p>
           </div>
 
-          <!-- 2. Список Диалогов и Созвонов -->
-          <div class="glass-card rounded-xl p-4">
-            <h3 class="text-md font-bold text-tertiary flex items-center gap-2 mb-3">
-              📞 История созвонов и записей окружения (${(c.dialogues || []).length})
-            </h3>
-            <div class="flex flex-col gap-3">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- 1. Эмоциональное состояние (Current State) -->
+            <section class="glass-panel rounded-xl p-4 flex flex-col gap-3 col-span-1">
+              <div class="flex items-center justify-between">
+                <h3 class="text-xs uppercase text-on-surface-variant tracking-wider font-semibold">Текущее Эмоциональное Состояние</h3>
+                <span class="text-secondary text-lg">😊</span>
+              </div>
+              <div class="flex items-center gap-3 bg-surface-container-high p-3 rounded-lg border border-white/5">
+                <div class="w-1.5 h-12 bg-secondary rounded-full"></div>
+                <div class="flex flex-col">
+                  <span class="font-bold text-on-surface text-md">Спокойный, Прагматичный</span>
+                  <span class="text-xs text-on-surface-variant">Требует четких логических аргументов перед решением.</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- 2. Черты характера (Key Traits) -->
+            <section class="glass-panel rounded-xl p-4 flex flex-col gap-3 col-span-1">
+              <div class="flex items-center justify-between mb-1">
+                <h3 class="text-xs uppercase text-on-surface-variant tracking-wider font-semibold">Ключевые Черты Характера</h3>
+                <span class="text-on-surface-variant text-lg">🧠</span>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <div class="px-3 py-1.5 rounded-full bg-surface-container-highest border border-white/10 flex items-center gap-1.5 text-xs text-on-surface">
+                  <span class="text-tertiary">🔍</span> Внимание к деталям
+                </div>
+                <div class="px-3 py-1.5 rounded-full bg-surface-container-highest border border-white/10 flex items-center gap-1.5 text-xs text-on-surface">
+                  <span class="text-secondary">📈</span> Высокие ожидания
+                </div>
+                <div class="px-3 py-1.5 rounded-full bg-surface-container-highest border border-white/10 flex items-center gap-1.5 text-xs text-on-surface">
+                  <span class="text-tertiary">💰</span> Чувствителен к цене
+                </div>
+              </div>
+            </section>
+
+            <!-- 3. Стиль общения (Communication Style) -->
+            <section class="glass-panel rounded-xl p-4 flex flex-col gap-3 col-span-1 md:col-span-2">
+              <div class="flex items-center justify-between mb-1">
+                <h3 class="text-xs uppercase text-on-surface-variant tracking-wider font-semibold">Стиль Общения и Коммуникации</h3>
+                <span class="text-on-surface-variant text-lg">💬</span>
+              </div>
+              <div class="flex flex-col gap-2 text-sm text-on-surface">
+                <div class="flex items-start gap-2.5 p-2 border-b border-white/5">
+                  <span class="text-secondary">⚡</span>
+                  <p>Предпочитает прямые технические детали без лишней вводной речи.</p>
+                </div>
+                <div class="flex items-start gap-2.5 p-2 border-b border-white/5">
+                  <span class="text-secondary">⏱️</span>
+                  <p>Быстро принимает решения после предоставления точных расчетов и гарантий.</p>
+                </div>
+                <div class="flex items-start gap-2.5 p-2">
+                  <span class="text-secondary">📩</span>
+                  <p>Предпочитает получение структурированной выжимки в Viber/Telegram после разговора.</p>
+                </div>
+              </div>
+            </section>
+
+            <!-- 4. ИИ-Инструкции для Оператора (Operator Directives) -->
+            <section class="bg-primary-container/20 border border-primary-container/40 rounded-xl p-4 flex flex-col gap-3 col-span-1 md:col-span-2 relative overflow-hidden">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-secondary text-xl">💡</span>
+                <h3 class="text-xs uppercase text-secondary font-bold tracking-wider">ИИ-Инструкции для Оператора</h3>
+              </div>
+              <div class="flex flex-col gap-2.5 text-xs text-on-surface">
+                <div class="flex items-start gap-2.5 bg-surface-container-low/60 p-2.5 rounded-lg border border-white/5">
+                  <div class="w-5 h-5 rounded-full bg-primary-container flex items-center justify-center text-secondary font-bold flex-shrink-0">1</div>
+                  <p>Сразу называйте цену с учетом индивидуальной скидки и гарантийные условия.</p>
+                </div>
+                <div class="flex items-start gap-2.5 bg-surface-container-low/60 p-2.5 rounded-lg border border-white/5">
+                  <div class="w-5 h-5 rounded-full bg-primary-container flex items-center justify-center text-secondary font-bold flex-shrink-0">2</div>
+                  <p>Избегайте навязывания нерелевантных дополнительных услуг во время диалога.</p>
+                </div>
+                <div class="flex items-start gap-2.5 bg-surface-container-low/60 p-2.5 rounded-lg border border-white/5">
+                  <div class="w-5 h-5 rounded-full bg-primary-container flex items-center justify-center text-secondary font-bold flex-shrink-0">3</div>
+                  <p>Фиксируйте итоги звонка текстовым сообщением с кнопкой оплаты или подтверждения.</p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Накопительное подробное досье -->
+          <div class="glass-panel rounded-xl p-4">
+            <h3 class="text-sm font-bold text-secondary mb-2">📑 Накопительное Аналитическое Досье AIOS</h3>
+            <div class="p-3 bg-surface-container-lowest/80 rounded-lg text-xs leading-relaxed white-space-pre-line text-on-surface-variant">${rawProfile}</div>
+          </div>
+
+          <!-- Список Созвонов -->
+          <div class="glass-panel rounded-xl p-4">
+            <h3 class="text-sm font-bold text-tertiary mb-3">📞 История созвонов и записей окружения (${(c.dialogues || []).length})</h3>
+            <div class="flex flex-col gap-2.5">
               ${(c.dialogues || []).map(d => `
-                <div class="dialogue-card p-3 rounded-lg bg-surface/80 border border-white/10 cursor-pointer hover:border-secondary transition-colors" onclick="openDialogue('${d.dialogue_id}')">
-                  <div class="dialogue-title font-semibold text-secondary flex justify-between text-sm">
+                <div class="dialogue-card p-3 rounded-lg bg-surface-container-high/60 border border-white/10 cursor-pointer hover:border-secondary transition-colors" onclick="openDialogue('${d.dialogue_id}')">
+                  <div class="dialogue-title font-semibold text-secondary flex justify-between text-xs">
                     <span>📞 ${d.filename || 'Запись разговора'}</span>
                     <span style="color:#94a3b8;">${d.duration_seconds || 0} сек</span>
                   </div>
@@ -399,7 +487,7 @@ def build_preloaded_html():
     STATIC_HTML.parent.mkdir(parents=True, exist_ok=True)
     STATIC_HTML.write_text(full_html, encoding="utf-8")
 
-    print(f"🎉 Fully preloaded GlassCMS / Stitch UI Dashboard with AI Psychological Profiles written ({DATA_HTML.stat().st_size // 1024} KB)!")
+    print(f"🎉 Fully preloaded GlassCMS Bento Grid Dashboard with AI Psychological Profiles written ({DATA_HTML.stat().st_size // 1024} KB)!")
 
 
 if __name__ == "__main__":
