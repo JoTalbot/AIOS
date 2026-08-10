@@ -117,6 +117,36 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Не удалось сбросить мульти-биржевые демонстрационные счета.")
         return True
 
+    # Запрос графика PnL и распределения активов
+    if any(phrase in t for phrase in ("крипто график", "график крипто", "график бирж", "pnl график", "покажи график")):
+        api.send_message(chat_id, "📊 <b>Генерирую визуальный дашборд-график PnL и распределения по 5 биржам...</b>")
+        try:
+            from aios_core.quant_trading_engine import (
+                get_multi_exchange_demo_report,
+                generate_crypto_pnl_chart
+            )
+            report = get_multi_exchange_demo_report()
+            chart_file = generate_crypto_pnl_chart(report)
+            api.send_photo(chat_id, chart_file, caption="📊 <b>Дашборд распределения капитала и PnL по 5 биржам ($5,000 Демо)</b>")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка генерации графика: {e}")
+        return True
+
+    # Запрос открытых позиций
+    if any(phrase in t for phrase in ("крипто позиции", "позиции крипто", "все позиции", "покажи позиции")):
+        api.send_message(chat_id, "💼 <b>Запрашиваю список открытых позиций по 5 биржам...</b>")
+        try:
+            from aios_core.quant_trading_engine import (
+                get_multi_exchange_demo_report,
+                format_positions_only_report
+            )
+            report = get_multi_exchange_demo_report()
+            msg_txt = format_positions_only_report(report)
+            api.send_message(chat_id, msg_txt)
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка получения позиций: {e}")
+        return True
+
     # Отчет мульти-биржевого крипто-заработка (5 бирж по $1,000 = $5,000 Демо)
     if any(phrase in t for phrase in (
         "крипто заработок", "заработок", "крипто отчёт", "крипто отчет", "крипто сводка",
@@ -132,6 +162,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
                 get_multi_exchange_demo_report,
                 format_multi_exchange_demo_report
             )
+            from tg_bot.keyboards import CRYPTO_ACTIONS_INLINE
             try:
                 engine = MultiExchangeQuantEngine()
                 engine.run_multi_exchange_cycle()
@@ -140,7 +171,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
 
             report = get_multi_exchange_demo_report()
             msg_text = format_multi_exchange_demo_report(report)
-            api.send_message(chat_id, msg_text)
+            api.send_message(chat_id, msg_text, reply_markup=CRYPTO_ACTIONS_INLINE)
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка получения отчёта мульти-биржевого крипто-заработка: {e}")
         return True

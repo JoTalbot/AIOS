@@ -1323,3 +1323,74 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
     ])
 
     return "\n".join(lines)
+
+
+
+
+def generate_crypto_pnl_chart(report: Dict[str, Any], output_path: str = "/tmp/crypto_pnl_chart.png") -> str:
+    """Генерирует дашборд-график PnL и распределения активов по 5 биржам в формате PNG."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    exchanges = report.get("exchanges", {})
+    labels = [e["name"].split()[-1] for e in exchanges.values()]
+    equities = [e.get("equity_usd", 1000.0) for e in exchanges.values()]
+    cashes = [e.get("cash_usd", 1000.0) for e in exchanges.values()]
+
+    plt.style.use("dark_background")
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4.5), gridspec_kw={'width_ratios': [1.2, 1]})
+
+    x = range(len(labels))
+    ax1.bar(x, equities, color="#00d26a", width=0.4, label="Capital ($)")
+    ax1.bar(x, cashes, color="#3b82f6", width=0.4, alpha=0.6, label="Cash ($)")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(labels, rotation=15, fontsize=9)
+    ax1.set_title("Equity Distribution across 5 Exchanges ($5,000)", fontsize=11, fontweight="bold", pad=10)
+    ax1.set_ylabel("USD ($)")
+    ax1.legend(loc="lower right", fontsize=8)
+    ax1.grid(axis="y", linestyle="--", alpha=0.3)
+
+    tot_cash = report.get("total_cash_usd", 5000.0)
+    tot_pos_val = report.get("total_equity_usd", 5000.0) - tot_cash
+    pie_labels = ["Free Cash", "Active Positions"]
+    pie_vals = [max(0.1, tot_cash), max(0.1, tot_pos_val)]
+    colors = ["#3b82f6", "#f59e0b"]
+
+    ax2.pie(pie_vals, labels=pie_labels, autopct="%1.1f%%", colors=colors, startangle=140, textprops={"fontsize": 9})
+    ax2.set_title("Portfolio Allocations", fontsize=11, fontweight="bold", pad=10)
+
+    plt.tight_layout()
+    chart_p = Path(output_path)
+    plt.savefig(chart_p, dpi=150, bbox_inches="tight")
+    plt.close()
+    return str(chart_p)
+
+
+def format_positions_only_report(report: Dict[str, Any]) -> str:
+    """Форматирует детальный отчёт обо всех открытых позициях на 5 биржах."""
+    exchanges = report.get("exchanges", {})
+    lines = ["💼 <b>Детальный список открытых позиций (5 бирж):</b>", ""]
+    total_pos = 0
+
+    for ex_key, ex_data in exchanges.items():
+        ex_name = ex_data.get("name", ex_key.upper())
+        poss = ex_data.get("positions", [])
+        if poss:
+            lines.append(f"<b>{ex_name}:</b>")
+            for p in poss:
+                total_pos += 1
+                u_pnl = p.get("unrealized_pnl_usd", 0.0)
+                u_sign = "+" if u_pnl > 0 else ""
+                p_icon = "🟢" if u_pnl >= 0 else "🔴"
+                pair_disp = p.get("pair", "")
+                side = p.get("side", "")
+                ep = p.get("entry_price", 0.0)
+                lp = p.get("live_price", 0.0)
+                lines.append(f"  {p_icon} <b>{pair_disp}</b> ({side}): Вход: ${ep:.4f} ➔ Рынок: ${lp:.4f} | PnL: <b>{u_sign}${u_pnl:.2f} USD</b>")
+            lines.append("")
+
+    if total_pos == 0:
+        lines.append("<i>В данный момент открытых позиций нет (100% средств в свободном кэше).</i>")
+
+    return "\n".join(lines)

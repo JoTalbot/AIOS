@@ -1129,9 +1129,15 @@ def _handle_nav_callback(api, chat_id: int, cb_id: str, data: str) -> None:
         elif data == "nav_treasury":
             from tg_bot.treasury import _handle_treasury_intent as _hti
             _hti(api, chat_id, "казначейство и резервы")
-        elif data == "nav_trading":
+        elif data in ("nav_trading", "crypto_refresh"):
             from tg_bot.treasury import _handle_treasury_intent as _hti
-            _hti(api, chat_id, "трейдинг и котировки")
+            _hti(api, chat_id, "крипто заработок")
+        elif data == "crypto_chart":
+            from tg_bot.treasury import _handle_treasury_intent as _hti
+            _hti(api, chat_id, "крипто график")
+        elif data == "crypto_positions":
+            from tg_bot.treasury import _handle_treasury_intent as _hti
+            _hti(api, chat_id, "крипто позиции")
         elif data == "nav_np":
             from tg_bot.treasury import _handle_treasury_intent as _hti
             _hti(api, chat_id, "логистика новая почта")

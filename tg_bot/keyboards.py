@@ -137,3 +137,13 @@ BOT_MENU_KEYBOARD = {
 
 
 DANGEROUS_CALLBACKS = {"coder_git_push", "coder_restart", "bot_restart", "bot_stop"}
+
+# Быстрые действия для Крипто-Заработка (5 бирж)
+CRYPTO_ACTIONS_INLINE = {
+    "inline_keyboard": [
+        [{"text": "📊 График PnL", "callback_data": "crypto_chart"},
+         {"text": "💼 Открытые позиции", "callback_data": "crypto_positions"}],
+        [{"text": "⚡ Арбитраж цен", "callback_data": "nav_arb"},
+         {"text": "🔄 Обновить сводку", "callback_data": "crypto_refresh"}],
+    ]
+}
