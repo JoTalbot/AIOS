@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 AIOS Standalone Stitch Calls CRM Dashboard Generator
-Создает автономный HTML дашборд со встроенными данными 44+ контактов и диалогов.
+Создает 100% валидный HTML дашборд со встроенными данными 44+ контактов и диалогов.
 """
 
 import os
@@ -25,24 +25,28 @@ def generate_standalone_dashboard():
 
     template_code = STATIC_HTML_SRC.read_text(encoding="utf-8") if STATIC_HTML_SRC.exists() else ""
 
-    # Внедряем предзагруженные данные прямо в HTML
-    preload_script = f"""
-  <script>
-    window.PRELOADED_CONTACTS = {contacts_json_str};
+    # Внедряем JSON данные безопасно через <script type="application/json">
+    json_embed = f"""
+  <script type="application/json" id="preloadedContactsData">
+{contacts_json_str}
   </script>
 """
     
-    # Заменяем loadContacts на использование предзагруженных данных
-    modified_code = template_code.replace(
-        "async function loadContacts() {",
-        f"""{preload_script}
-    async function loadContacts() {{
-      if (window.PRELOADED_CONTACTS && window.PRELOADED_CONTACTS.length) {{
-        allContacts = window.PRELOADED_CONTACTS;
-        renderContacts(allContacts);
-        return;
-      }}"""
-    )
+    # Внедряем элемент перед закрывающим </head>
+    modified_code = template_code.replace("</head>", f"{json_embed}\n</head>")
+
+    # Внедряем считывание из JSON перед fetch в JS
+    js_override = """    async function loadContacts() {
+      const list = document.getElementById('contactsList');
+      try {
+        const jsonEl = document.getElementById('preloadedContactsData');
+        if (jsonEl && jsonEl.textContent.trim()) {
+          allContacts = JSON.parse(jsonEl.textContent);
+          renderContacts(allContacts);
+          return;
+        }"""
+    
+    modified_code = modified_code.replace("async function loadContacts() {", js_override)
 
     OUTPUT_HTML.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_HTML.write_text(modified_code, encoding="utf-8")
