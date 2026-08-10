@@ -767,3 +767,52 @@ class LLMBalancer:
                 "models": prov.models[:5],
             }
         return result
+
+
+    
+
+    def _query_colab_llm(self, all_messages: list[dict], max_tokens: int = 2000, temperature: float = 0.3) -> str | None:
+        """Запрос к кастомной кодинг-модели LLM, запущенной в Google Colab через OpenAI API."""
+        import urllib.request
+        import json
+        import os
+        from pathlib import Path
+
+        colab_url = os.environ.get("COLAB_LLM_URL", "").strip().rstrip("/")
+        if not colab_url:
+            keys_p = Path("/root/AIOS/data/.llm_keys.json")
+            if keys_p.exists():
+                try:
+                    kd = json.loads(keys_p.read_text(encoding="utf-8"))
+                    colab_url = kd.get("colab_llm", {}).get("base_url", "").strip().rstrip("/")
+                except Exception:
+                    pass
+
+        if not colab_url:
+            return None
+
+        if not colab_url.endswith("/v1"):
+            colab_url += "/v1"
+
+        endpoint = f"{colab_url}/chat/completions"
+        payload = {
+            "model": os.environ.get("COLAB_LLM_MODEL", "colab/qwen2.5-coder"),
+            "messages": all_messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
+
+        try:
+            req = urllib.request.Request(
+                endpoint,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json", "User-Agent": "AIOS-LLMBalancer/1.0"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                choices = data.get("choices", [])
+                if choices:
+                    return choices[0].get("message", {}).get("content", "").strip()
+        except Exception as e:
+            return None
+        return None
