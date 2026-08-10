@@ -48,7 +48,9 @@ cd /root/AIOS
 /opt/aios/.venv/bin/python aios_colab_cli.py services list          # сервисы
 /opt/aios/.venv/bin/python aios_colab_cli.py nodes list             # ноды кластера
 /opt/aios/.venv/bin/python aios_colab_cli.py rag search "запрос"    # RAG-поиск
+/opt/aios/.venv/bin/python aios_colab_cli.py rag ask "вопрос"       # RAG + локальная LLM (Ollama)
 /opt/aios/.venv/bin/python aios_colab_cli.py ml signal              # ML-сигналы
+/opt/aios/.venv/bin/python aios_colab_cli.py ml momentum            # топ-моментум (консультирующие)
 /opt/aios/.venv/bin/python aios_colab_cli.py data collect --symbols BTC ETH
 ```
 
