@@ -1,0 +1,12 @@
+[Unit]
+Description=Run AIOS Colab/Telegram canary every ten minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=10min
+RandomizedDelaySec=30s
+Persistent=true
+Unit=aios-telegram-colab-canary.service
+
+[Install]
+WantedBy=timers.target

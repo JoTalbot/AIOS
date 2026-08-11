@@ -1,0 +1,15 @@
+[Unit]
+Description=AIOS Telegram structured metrics thresholds and deduplicated alerts
+After=network-online.target aios-telegram-bot.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+EnvironmentFile=-/root/AIOS/.env
+EnvironmentFile=-/root/AIOS/data/.telegram_canary.env
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/telegram_metrics_report.py
+StandardOutput=append:/root/AIOS/logs/telegram_metrics_report.log
+StandardError=append:/root/AIOS/logs/telegram_metrics_report.log
+TimeoutStartSec=90
+Nice=10

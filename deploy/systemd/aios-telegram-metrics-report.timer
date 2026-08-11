@@ -1,0 +1,12 @@
+[Unit]
+Description=Evaluate AIOS Telegram metrics every fifteen minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+RandomizedDelaySec=30s
+Persistent=true
+Unit=aios-telegram-metrics-report.service
+
+[Install]
+WantedBy=timers.target
