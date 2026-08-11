@@ -6,6 +6,7 @@ import json
 import os
 import re
 import subprocess
+import threading
 import time
 import urllib.request
 from datetime import datetime, timedelta
@@ -15,9 +16,34 @@ from tg_bot.common import PROJECT_ROOT, _esc_tg, _smart_model
 
 
 _chat_history: dict[int, list[dict]] = {}  # chat_id -> message history
+_balancer_instance = None
+_balancer_lock = threading.RLock()
+_last_llm_metadata: dict[str, object] = {}
 
 
 MAX_HISTORY = 20  # keep last 20 messages per chat
+
+
+def _get_shared_balancer():
+    """Keep provider cooldowns/cache across Telegram messages."""
+    global _balancer_instance
+    with _balancer_lock:
+        if _balancer_instance is None:
+            from aios_core.llm_balancer import LLMBalancer
+
+            _balancer_instance = LLMBalancer()
+        return _balancer_instance
+
+
+def _set_last_llm_metadata(**values: object) -> None:
+    with _balancer_lock:
+        _last_llm_metadata.clear()
+        _last_llm_metadata.update(values)
+
+
+def get_last_llm_metadata() -> dict[str, object]:
+    with _balancer_lock:
+        return dict(_last_llm_metadata)
 
 
 def _is_model_identity_question(text: str) -> bool:
@@ -187,6 +213,7 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
     allow_cmd=True — разрешено выполнять <cmd> (только из /cmd).
     """
     if _is_model_identity_question(user_text):
+        _set_last_llm_metadata(provider="deterministic", model="identity", latency_sec=0.0)
         return _model_identity_reply()
 
     import json as _json, urllib.request as _urllib, os as _os
@@ -251,10 +278,9 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
     # round-robin/fallback across providers and keys.
     _balancer = None
     try:
-        from aios_core.llm_balancer import LLMBalancer as _LLMBalancer
-        _balancer = _LLMBalancer()
+        _balancer = _get_shared_balancer()
     except Exception as _e:
-        print(f"  [LLM] balancer init failed: {_e}")
+        print(f"  [LLM] balancer init failed: {type(_e).__name__}")
 
     # Legacy direct endpoints remain as a last-resort compatibility fallback.
     endpoints = []
@@ -306,19 +332,23 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
                 from aios_core.llm_gemini_web import build_gemini_prompt as _bgp
                 from aios_core.llm_gemini_web import gemini_web_ask as _gwa
                 response = _gwa(_bgp(system, messages), timeout=240)
+                _set_last_llm_metadata(provider="gemini_web", model="gemini_web")
                 print(f"  [LLM] gemini_web response ({len(response or '')} chars)")
             except Exception as _gwe:
                 print(f"  [LLM] gemini_web failed: {_gwe}")
         if not response and _balancer is not None:
             try:
-                response = _balancer.chat(
-                    messages[1:],
-                    model=_smart_model(),
-                    system=_sys_for_llm,
-                    max_tokens=2000,
-                    temperature=0.3,
-                    task_type="chat",
-                )
+                with _balancer_lock:
+                    response = _balancer.chat(
+                        messages[1:],
+                        model=_smart_model(),
+                        system=_sys_for_llm,
+                        max_tokens=2000,
+                        temperature=0.3,
+                        task_type="chat",
+                    )
+                    route = dict(getattr(_balancer, "last_route", {}) or {})
+                _set_last_llm_metadata(**route)
                 print(f"  [LLM] balancer response ({len(response or '')} chars)")
             except Exception as _e:
                 print(f"  [LLM] balancer failed: {_e}")
@@ -341,6 +371,7 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
                         data = _json.loads(resp.read())
                     if "choices" in data and data["choices"]:
                         response = data["choices"][0]["message"]["content"]
+                        _set_last_llm_metadata(provider="legacy_fallback", model=model)
                         break
                 except Exception:
                     continue
