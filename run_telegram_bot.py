@@ -753,6 +753,64 @@ def run_bot(token: str) -> None:
                 if cmd == "/start" or cmd == "/menu":
                     reply = cmd_start(first_name)
                     keyboard = MAIN_MENU_INLINE
+                elif cmd == "/signals" or cmd == "/signal":
+                    # ML + RL консультирующие сигналы
+                    reply = None
+                    keyboard = None
+                    api.send_message(chat_id, "📊 Собираю ML/RL-сигналы…")
+                    try:
+                        from aios_core.quant_trading_engine import get_ai_signal_summary
+                        d = get_ai_signal_summary()
+                        ml = d.get("ml", {})
+                        rl = d.get("rl", {})
+                        lines = ["📊 <b>AIOS Quant Сигналы</b>\n"]
+                        lines.append("🔮 <b>ML (CatBoost):</b>")
+                        lines.append(f"   • Активов: {ml.get('total', 0)}")
+                        lines.append(f"   • Бычьих: <b>{ml.get('bullish_strong', 0)}</b> · Медвежьих: {ml.get('bearish_strong', 0)}")
+                        top = ml.get("top_momentum", [])
+                        if top:
+                            lines.append(f"   • Топ-моментум: {', '.join(top)}")
+                        lines.append("")
+                        lines.append("🤖 <b>RL (PPO):</b>")
+                        rl_long = rl.get("long", [])
+                        rl_half = rl.get("half", [])
+                        lines.append(f"   • LONG: {', '.join(rl_long) if rl_long else '—'}")
+                        lines.append(f"   • HALF (0.5): {', '.join(rl_half) if rl_half else '—'}")
+                        lines.append("")
+                        lines.append("<i>Консультирующие сигналы. Не финансовая рекомендация.</i>")
+                        api.send_message(chat_id, "\n".join(lines)[:3900])
+                    except Exception as e:
+                        api.send_message(chat_id, f"❌ Ошибка сигналов: {e}")
+                    continue
+                elif cmd == "/ask" or cmd == "/rag":
+
+                    # RAG-запрос к знаниям AIOS (проект + чаты + профиль владельца)
+                    reply = None
+                    keyboard = None
+                    question = (args or "").strip()
+                    if not question:
+                        api.send_message(chat_id, "❓ Задайте вопрос через /ask <ваш вопрос>\nПример: /ask кто владелец AIOS")
+                        continue
+                    api.send_message(chat_id, "🔎 Ищу в базе знаний AIOS…")
+                    try:
+                        import subprocess as _sp_ask
+                        _r = _sp_ask.run(
+                            ["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "aios_ask.py"),
+                             question, "--llm", "--top", "5"],
+                            capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT))
+                        _out = (_r.stdout or "").strip()
+                        # берём ответ LLM (после маркера "=== Ответ LLM ===")
+                        if "=== Ответ LLM ===" in _out:
+                            _ans = _out.split("=== Ответ LLM ===")[-1].strip()
+                        else:
+                            _ans = _out[-2000:]
+                        if _ans:
+                            api.send_message(chat_id, _ans[:3900])
+                        else:
+                            api.send_message(chat_id, "🤷 Не нашёл ответа. Сформулируйте иначе.")
+                    except Exception as e:
+                        api.send_message(chat_id, f"❌ Ошибка RAG: {e}")
+                    continue
                 elif cmd == "/stats":
                     reply = cmd_stats()
                 elif cmd in ("/status", "/platforms"):
