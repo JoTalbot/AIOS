@@ -49,6 +49,10 @@ class TelegramAPI:
         result = self._request("getUpdates", {"offset": offset, "timeout": 30})
         return result.get("result", [])
 
+    def get_me(self) -> dict:
+        """Non-invasive Bot API authentication/network canary."""
+        return self._request("getMe")
+
     def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML",
                      reply_markup: dict | None = None) -> dict:
         payload: dict = {"chat_id": chat_id, "text": text, "parse_mode": parse_mode}

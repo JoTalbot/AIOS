@@ -119,8 +119,24 @@ def run_canary(*, send_telegram: bool = False) -> dict:
             }
         except Exception as exc:
             result["telegram"] = {"status": "failed", "error_class": type(exc).__name__}
+    elif token:
+        # A dedicated canary chat is optional. getMe still verifies Telegram
+        # DNS, IPv4 transport, TLS and bot authentication without user-visible spam.
+        try:
+            from tg_bot.api import TelegramAPI
 
-    telegram_ok = result["telegram"]["status"] in ("skipped", "sent")
+            api_started = time.monotonic()
+            payload = TelegramAPI(token).get_me()
+            result["telegram"] = {
+                "status": "api_ok" if payload.get("ok") else "failed",
+                "api_sec": round(time.monotonic() - api_started, 3),
+            }
+        except Exception as exc:
+            result["telegram"] = {"status": "failed", "error_class": type(exc).__name__}
+    else:
+        result["telegram"] = {"status": "missing_token"}
+
+    telegram_ok = result["telegram"]["status"] in ("api_ok", "sent")
     result["ok"] = bool(result["colab"]["ok"] and telegram_ok)
     previous = _previous_state()
     result["consecutive_failures"] = (
@@ -140,7 +156,9 @@ def run_canary(*, send_telegram: bool = False) -> dict:
                 "provider": result["colab"].get("provider", "unknown"),
                 "model": result["colab"].get("model", "unknown"),
                 "gen_sec": result["colab"].get("generation_sec", 0),
-                "send_sec": result["telegram"].get("typing_sec", 0),
+                "send_sec": result["telegram"].get(
+                    "typing_sec", result["telegram"].get("api_sec", 0)
+                ),
                 "total_sec": result["total_sec"],
                 "error_class": result["colab"].get("error_class", ""),
                 "timestamp": result["timestamp"],

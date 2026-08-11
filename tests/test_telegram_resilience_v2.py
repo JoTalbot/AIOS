@@ -4,7 +4,7 @@ import socket
 
 from aios_core.autonomy.loop import _looks_like_owner_command
 from scripts.telegram_metrics_report import evaluate
-from tg_bot.api import _telegram_ipv4_family
+from tg_bot.api import TelegramAPI, _telegram_ipv4_family
 
 
 def test_plain_chat_bypasses_autonomy_planner():
@@ -21,6 +21,12 @@ def test_business_commands_use_autonomy_planner():
 
 def test_telegram_json_client_is_ipv4_only():
     assert _telegram_ipv4_family() == socket.AF_INET
+
+
+def test_non_invasive_telegram_canary_uses_get_me(monkeypatch):
+    api = TelegramAPI("test-token")
+    monkeypatch.setattr(api, "_request", lambda method, data=None: {"ok": method == "getMe"})
+    assert api.get_me() == {"ok": True}
 
 
 def test_metrics_alert_requires_minimum_sample():
