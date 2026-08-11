@@ -82,10 +82,15 @@ def summarize_telegram_metrics(hours: float = 24, path: Path | None = None) -> d
     except OSError:
         pass
 
-    sent = [row for row in rows if row.get("status") == "sent"]
+    # Delivery SLOs are calculated from real telegram_send events only. Canary
+    # failures are tracked separately and must not poison one hour of user-send
+    # success metrics after an expected Colab recovery.
+    deliveries = [row for row in rows if row.get("event") == "telegram_send"]
+    canaries = [row for row in rows if row.get("event") == "canary"]
+    sent = [row for row in deliveries if row.get("status") == "sent"]
     providers: dict[str, int] = {}
     errors: dict[str, int] = {}
-    for row in rows:
+    for row in deliveries:
         provider = str(row.get("provider") or "unknown")
         providers[provider] = providers.get(provider, 0) + 1
         if row.get("status") != "sent":
@@ -98,10 +103,13 @@ def summarize_telegram_metrics(hours: float = 24, path: Path | None = None) -> d
     return {
         "window_hours": hours,
         "generated_at": time.time(),
-        "events": len(rows),
+        "total_events": len(rows),
+        "events": len(deliveries),
+        "canary_events": len(canaries),
+        "canary_failures": sum(1 for row in canaries if row.get("status") != "sent"),
         "sent": len(sent),
-        "failed": len(rows) - len(sent),
-        "success_rate": round(len(sent) / len(rows), 4) if rows else 1.0,
+        "failed": len(deliveries) - len(sent),
+        "success_rate": round(len(sent) / len(deliveries), 4) if deliveries else 1.0,
         "providers": providers,
         "errors": errors,
         "latency": {
