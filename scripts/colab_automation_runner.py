@@ -585,7 +585,10 @@ async def run_colab_automation():
         # Туннель нужен только сервисам с cloudflared (LLM/Whisper).
         kind_needs_tunnel = service_kind in ("llm", "whisper")
         if kind_needs_tunnel and not tunnel_url:
-            wait_attempts = int(os.getenv("COLAB_TUNNEL_WAIT_ATTEMPTS", "100"))
+            # First-time vLLM install + model warm-up can exceed ten minutes.
+            # Fatal cell errors still short-circuit immediately, so a wider
+            # readiness window avoids restarting a healthy late-stage load.
+            wait_attempts = int(os.getenv("COLAB_TUNNEL_WAIT_ATTEMPTS", "160"))
             output_was_cleared = not old_tunnel_urls
             for attempt in range(wait_attempts):
                 await asyncio.sleep(6)
