@@ -50,7 +50,11 @@ from tg_bot.inventory_photos import (  # noqa: E402
 
 from tg_bot.common import _safe, _esc_tg, _run_account_control  # noqa: E402
 from tg_bot.callbacks import _handle_callback, _handle_button  # noqa: E402
-from tg_bot.llm import _llm_chat, _cmd_skills, _cmd_llm_mode, _cmd_console, _llm_status  # noqa: E402
+from tg_bot.llm import (  # noqa: E402
+    _llm_chat, _cmd_skills, _cmd_llm_mode, _cmd_console, _llm_status,
+    get_last_llm_metadata,
+)
+from tg_bot.outbox import TelegramOutbox  # noqa: E402
 from tg_bot.inbox import _llm_chat_direct, _parse_inbox_filters, _inbox_keyboard, _run_due_inbox, _collect_inbox, INBOX_SCHEDULE_FILE  # noqa: E402
 from tg_bot.voice import VOICE_REPLY_FILE, _voice_enabled, _set_voice_enabled, _send_voice_reply, _transcribe_audio  # noqa: E402
 from tg_bot.accounts import (  # noqa: E402
@@ -361,6 +365,8 @@ def _is_authorized_chat(chat_id: object) -> bool:
 
 def run_bot(token: str) -> None:
     api = TelegramAPI(token)
+    outbox = TelegramOutbox(api)
+    outbox.start()
     offset = 0
 
     print("🤖 AIOS Telegram Bot запущен (v10.0 with inline menu)")
@@ -702,9 +708,15 @@ def run_bot(token: str) -> None:
                         except Exception as _au_err:
                             print(f"  [AUTONOMY] err: {_au_err}")
 
-                    # Regular chat message — send to LLM. The typing action
-                    # runs in a daemon thread so a transient Telegram API stall
-                    # can never delay model generation.
+                    # Regular chat message: generation stays in the polling loop,
+                    # but delivery is persisted and handled by a dedicated worker.
+                    # The Telegram update id is a durable deduplication key.
+                    dedup_key = f"llm:{upd.get('update_id', msg.get('message_id', 'unknown'))}"
+                    if outbox.seen(dedup_key):
+                        print(f"  [LLM] duplicate update skipped ({dedup_key})")
+                        continue
+
+                    # Typing is fire-and-forget and can never delay generation.
                     try:
                         import threading as _threading
 
@@ -717,34 +729,56 @@ def run_bot(token: str) -> None:
                         ).start()
                     except Exception:
                         pass
+
                     _llm_started = time.monotonic()
                     llm_reply = _llm_chat(chat_id, text)
                     _llm_generation_sec = time.monotonic() - _llm_started
-                    print(f"  [LLM] reply ({len(llm_reply or '')} chars, gen={_llm_generation_sec:.2f}s): {(llm_reply or '')[:100]}")
-                    if llm_reply:
-                        # Remove any remaining cmd tags
-                        import re as _re2
-                        llm_reply = _re2.sub(r'<cmd>.*?</cmd>', '', llm_reply, flags=_re2.DOTALL)
-                        llm_reply = _re2.sub(r'```cmd\n.*?```', '', llm_reply, flags=_re2.DOTALL).strip()
-                        # Escape HTML but preserve code blocks
-                        llm_reply = llm_reply.replace("&", "&amp;")
-                        try:
-                            _send_started = time.monotonic()
-                            api.send_message(chat_id, llm_reply[:3900])
-                            _send_sec = time.monotonic() - _send_started
-                            print(f"  -> LLM sent (chat {chat_id}, send={_send_sec:.2f}s, total={_llm_generation_sec + _send_sec:.2f}s)")
-                        except Exception as send_err:
-                            # Retry without parse_mode
-                            try:
-                                _send_started = time.monotonic()
-                                api.send_message(chat_id, llm_reply[:3900], parse_mode='')
-                                _send_sec = time.monotonic() - _send_started
-                                print(f"  -> LLM sent plain (chat {chat_id}, send={_send_sec:.2f}s, total={_llm_generation_sec + _send_sec:.2f}s)")
-                            except Exception as e2:
-                                print(f"  [ERR] send failed: {e2}")
-                        # голосовой ответ, если включён
-                        if _voice_enabled(chat_id):
-                            _send_voice_reply(api, chat_id, llm_reply[:1500])
+                    route = get_last_llm_metadata()
+                    provider = str(route.get("provider") or "unknown")
+                    model = str(route.get("model") or "unknown")
+                    print(
+                        f"  [LLM] reply ({len(llm_reply or '')} chars, "
+                        f"provider={provider}, model={model}, gen={_llm_generation_sec:.2f}s)"
+                    )
+                    if not llm_reply:
+                        print(
+                            f"  [ERR] LLM send status=error, reason=empty_reply, "
+                            f"gen={_llm_generation_sec:.2f}s"
+                        )
+                        continue
+
+                    # Plain mode removes HTML parsing failures and therefore avoids
+                    # the unsafe old "retry without parse_mode" duplicate path.
+                    import re as _re2
+                    llm_reply = _re2.sub(r'<cmd>.*?</cmd>', '', llm_reply, flags=_re2.DOTALL)
+                    llm_reply = _re2.sub(r'```cmd\n.*?```', '', llm_reply, flags=_re2.DOTALL).strip()
+                    if not llm_reply:
+                        print(
+                            f"  [ERR] LLM send status=error, reason=empty_sanitized_reply, "
+                            f"gen={_llm_generation_sec:.2f}s"
+                        )
+                        continue
+
+                    on_sent = None
+                    if _voice_enabled(chat_id):
+                        def _voice_after_text(_result, _chat_id=chat_id, _text=llm_reply[:1500]):
+                            _send_voice_reply(api, _chat_id, _text)
+                        on_sent = _voice_after_text
+
+                    queued = outbox.enqueue(
+                        dedup_key=dedup_key,
+                        chat_id=chat_id,
+                        text=llm_reply[:3900],
+                        parse_mode="",
+                        generation_sec=_llm_generation_sec,
+                        provider=provider,
+                        model=model,
+                        on_sent=on_sent,
+                    )
+                    if queued:
+                        print(f"  [LLM] queued ({dedup_key}); awaiting terminal send status")
+                    else:
+                        print(f"  [LLM] duplicate enqueue skipped ({dedup_key})")
                     continue
 
                 reply = None
@@ -1061,6 +1095,7 @@ def run_bot(token: str) -> None:
                     print(f"  → ответил на {cmd} (chat {chat_id})")
 
         except KeyboardInterrupt:
+            outbox.stop()
             print("\n👋 Бот остановлен.")
             break
         except Exception as exc:
