@@ -5,8 +5,22 @@ Polling-режим, JSON + multipart загрузка файлов (фото/д�
 from __future__ import annotations
 
 import json
+import socket
 import urllib.request
 from pathlib import Path
+
+import requests
+from urllib3.util import connection as urllib3_connection
+
+
+# The server's IPv6 route to api.telegram.org intermittently stalls on larger
+# POST bodies. Keep Telegram JSON requests on IPv4; this also applies to
+# requests/urllib3 clients created later in the bot process.
+def _telegram_ipv4_family() -> int:
+    return socket.AF_INET
+
+
+urllib3_connection.allowed_gai_family = _telegram_ipv4_family
 
 
 class TelegramAPI:
@@ -18,10 +32,18 @@ class TelegramAPI:
 
     def _request(self, method: str, data: dict | None = None) -> dict:
         url = f"{self._base}/{method}"
-        body = json.dumps(data or {}).encode()
-        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            return json.loads(resp.read())
+        # getUpdates holds the response for up to 30 seconds by design. Other
+        # Bot API methods must fail promptly instead of blocking all polling.
+        timeout = (5, 40) if method == "getUpdates" else (5, 20)
+        response = requests.post(url, json=data or {}, timeout=timeout)
+        response.raise_for_status()
+        payload = response.json()
+        if payload.get("ok") is False:
+            raise RuntimeError(
+                f"Telegram {method} failed: {payload.get('error_code')} "
+                f"{str(payload.get('description') or '')[:160]}"
+            )
+        return payload
 
     def get_updates(self, offset: int = 0) -> list[dict]:
         result = self._request("getUpdates", {"offset": offset, "timeout": 30})
