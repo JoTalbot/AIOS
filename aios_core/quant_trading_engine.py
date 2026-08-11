@@ -66,6 +66,28 @@ from pathlib import Path
 
 from aios_core.crypto_wallet import AIOSWalletManager, PUBLIC_RPC_NODES
 
+# --- Консультирующие ML/RL-сигналы (read-only, без автоторговли) ---
+def _load_ai_signals() -> dict:
+    """Собирает консультирующие сигналы ML (catboost) и RL (PPO)."""
+    out = {"ml": {}, "rl": {}, "available": False}
+    try:
+        from aios_core.quant.ml_signal_bridge import MLSignalBridge
+        out["ml"] = MLSignalBridge().summary()
+    except Exception as e:
+        out["ml"] = {"error": str(e)[:100]}
+    try:
+        from aios_core.quant.rl_signal_bridge import RLSignalBridge
+        out["rl"] = RLSignalBridge().summary()
+    except Exception as e:
+        out["rl"] = {"error": str(e)[:100]}
+    out["available"] = bool(out["ml"].get("available")) or bool(out["rl"].get("available"))
+    return out
+
+def get_ai_signal_summary() -> dict:
+    """Объединённый консультативный отчёт ML+RL."""
+    return _load_ai_signals()
+
+
 logger = logging.getLogger("AIOS.QuantTrading")
 
 
@@ -857,7 +879,8 @@ def get_unified_crypto_earnings_report(data_dir: str = "/root/AIOS/data") -> Dic
             "apy_pct": 8.0,
             "daily_yield_usd": simulated_daily_yield
         },
-        "profit_split_25_usd": split_25
+        "profit_split_25_usd": split_25,
+        "ai_signals": _load_ai_signals()
     }
 
 
@@ -1306,7 +1329,8 @@ def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[st
             "pnl_usd": arb_pnl,
             "recent_trades": arb_history[-5:]
         },
-        "profit_split_25_usd": split_25
+        "profit_split_25_usd": split_25,
+        "ai_signals": _load_ai_signals()
     }
 
 
