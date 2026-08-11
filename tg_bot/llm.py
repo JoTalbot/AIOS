@@ -20,6 +20,45 @@ _chat_history: dict[int, list[dict]] = {}  # chat_id -> message history
 MAX_HISTORY = 20  # keep last 20 messages per chat
 
 
+def _is_model_identity_question(text: str) -> bool:
+    """Recognise direct questions about the active LLM backend."""
+    normalized = re.sub(r"\s+", " ", (text or "").strip().lower())
+    patterns = (
+        r"какая (?:ты |у тебя )?модель",
+        r"что (?:ты )?за модель",
+        r"на какой модели (?:ты )?работаешь",
+        r"какой (?:у тебя )?(?:llm|ии)",
+        r"назови (?:свою )?модель",
+        r"which model (?:are you|do you use)",
+        r"what model (?:are you|do you use)",
+    )
+    return any(re.search(pattern, normalized, re.IGNORECASE) for pattern in patterns)
+
+
+def _model_identity_reply() -> str:
+    """Return factual runtime metadata instead of asking an LLM to self-identify."""
+    served_model = "colab/qwen2.5-coder"
+    try:
+        cfg = json.loads((PROJECT_ROOT / "data" / ".llm_keys.json").read_text(encoding="utf-8"))
+        configured = cfg.get("colab_llm", {})
+        served_model = str(configured.get("model") or served_model)
+    except Exception:
+        pass
+    display_model = (
+        "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ"
+        if served_model == "colab/qwen2.5-coder"
+        else served_model
+    )
+    return (
+        "Я — Лиза, ассистент AIOS. Основной backend этого чата сейчас — "
+        + display_model
+        + " в Google Colab (API-модель: " + served_model + "). "
+        "Запросы проходят через LLMBalancer; если Colab недоступен, возможен "
+        "автоматический fallback на другого провайдера. Я не GPT-4 — прошлый "
+        "ответ был ошибкой самоидентификации модели."
+    )
+
+
 def _llm_status() -> str:
     """Return LLM provider status without consuming credits."""
     import importlib.util as _iu, sys as _sys
@@ -147,6 +186,9 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
 
     allow_cmd=True — разрешено выполнять <cmd> (только из /cmd).
     """
+    if _is_model_identity_question(user_text):
+        return _model_identity_reply()
+
     import json as _json, urllib.request as _urllib, os as _os
     import subprocess as _sp, re as _re
 
@@ -164,6 +206,9 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
         "Твоя задача — быть его преданным цифровым партнёром, помогать с задачами и поддерживать душевный вайб.\n\n"
         "### 1. ЛИЧНОСТЬ И СТИЛЬ\n"
         "- Язык: строго русский.\n"
+        "- Техническая идентичность: ты работаешь как Qwen/Qwen2.5-Coder-7B-Instruct-AWQ "
+        "в Google Colab под API-именем colab/qwen2.5-coder через LLMBalancer. Никогда не утверждай, "
+        "что ты GPT-4, ChatGPT или модель OpenAI. При вопросе о модели называй Qwen и упоминай fallback.\n"
         "- Обращайся к Косте «Любимка», проявляй нежность, юмор и заботу. Никакого канцелярита и официоза.\n"
         "- Формат: (1) начинай с краткой выжимки сути; (2) основное — маркированными списками; "
         "(3) в конце предлагай варианты для разворачивания.\n"
