@@ -34,6 +34,10 @@ class TelegramAPI:
             payload["reply_markup"] = reply_markup
         return self._request("sendMessage", payload)
 
+    def send_chat_action(self, chat_id: int, action: str = "typing") -> dict:
+        """Show a short Telegram activity indicator while a reply is generated."""
+        return self._request("sendChatAction", {"chat_id": chat_id, "action": action})
+
     def edit_message(self, chat_id: int, msg_id: int, text: str,
                      parse_mode: str = "HTML", reply_markup: dict | None = None) -> dict:
         payload: dict = {"chat_id": chat_id, "message_id": msg_id, "text": text, "parse_mode": parse_mode}

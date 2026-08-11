@@ -702,9 +702,25 @@ def run_bot(token: str) -> None:
                         except Exception as _au_err:
                             print(f"  [AUTONOMY] err: {_au_err}")
 
-                    # Regular chat message — send to LLM
+                    # Regular chat message — send to LLM. The typing action
+                    # runs in a daemon thread so a transient Telegram API stall
+                    # can never delay model generation.
+                    try:
+                        import threading as _threading
+
+                        def _show_typing(_chat_id):
+                            with contextlib.suppress(Exception):
+                                api.send_chat_action(_chat_id)
+
+                        _threading.Thread(
+                            target=_show_typing, args=(chat_id,), daemon=True
+                        ).start()
+                    except Exception:
+                        pass
+                    _llm_started = time.monotonic()
                     llm_reply = _llm_chat(chat_id, text)
-                    print(f"  [LLM] reply ({len(llm_reply or '')} chars): {(llm_reply or '')[:100]}")
+                    _llm_generation_sec = time.monotonic() - _llm_started
+                    print(f"  [LLM] reply ({len(llm_reply or '')} chars, gen={_llm_generation_sec:.2f}s): {(llm_reply or '')[:100]}")
                     if llm_reply:
                         # Remove any remaining cmd tags
                         import re as _re2
@@ -713,13 +729,17 @@ def run_bot(token: str) -> None:
                         # Escape HTML but preserve code blocks
                         llm_reply = llm_reply.replace("&", "&amp;")
                         try:
+                            _send_started = time.monotonic()
                             api.send_message(chat_id, llm_reply[:3900])
-                            print(f"  -> LLM sent (chat {chat_id})")
+                            _send_sec = time.monotonic() - _send_started
+                            print(f"  -> LLM sent (chat {chat_id}, send={_send_sec:.2f}s, total={_llm_generation_sec + _send_sec:.2f}s)")
                         except Exception as send_err:
                             # Retry without parse_mode
                             try:
+                                _send_started = time.monotonic()
                                 api.send_message(chat_id, llm_reply[:3900], parse_mode='')
-                                print(f"  -> LLM sent plain (chat {chat_id})")
+                                _send_sec = time.monotonic() - _send_started
+                                print(f"  -> LLM sent plain (chat {chat_id}, send={_send_sec:.2f}s, total={_llm_generation_sec + _send_sec:.2f}s)")
                             except Exception as e2:
                                 print(f"  [ERR] send failed: {e2}")
                         # голосовой ответ, если включён
