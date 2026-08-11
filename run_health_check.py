@@ -91,6 +91,30 @@ def check() -> dict:
     except Exception:
         pass
 
+    # устаревание ML/RL моделей и сигналов
+    import time as _t
+    _now = _t.time()
+    _stale_hours = 24
+    for name, path_ in {
+        "ML-сигналы": "/root/AIOS/data/quant/ml_signals.json",
+        "RL-сигналы": "/root/AIOS/data/quant/rl_signals.json",
+        "PPO-модель": "/root/AIOS/data/quant/models/ppo_trader.pt",
+        "PPO-мульти": "/root/AIOS/data/quant/models/ppo_multi_24.pt",
+        "CatBoost-модель": "/root/AIOS/data/quant/models/catboost_price_dir.cbm",
+    }.items():
+        try:
+            _f = Path(path_)
+            if not _f.exists():
+                problems.append(f"🔴 {name}: файл не найден")
+            else:
+                age_h = (_now - _f.stat().st_mtime) / 3600
+                if age_h > _stale_hours:
+                    problems.append(f"🟠 {name}: устарел ({age_h:.0f} ч > {_stale_hours} ч)")
+                else:
+                    ok_count += 1
+        except Exception as e:
+            problems.append(f"🔴 {name}: ошибка проверки {e}")
+
     return {"ok": ok_count, "problems": problems, "total": ok_count + len(problems)}
 
 
