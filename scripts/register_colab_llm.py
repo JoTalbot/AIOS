@@ -19,13 +19,20 @@ def register_colab_endpoint(colab_url: str, model_name: str = "colab/qwen2.5-cod
     colab_url = colab_url.strip().rstrip("/")
     if not colab_url.endswith("/v1"):
         colab_url += "/v1"
+    api_key = os.environ.get("COLAB_LLM_API_KEY", "").strip() or "colab-key-aios"
 
     print(f"📡 Проверяю подключение к Google Colab LLM по адресу: {colab_url}...")
 
     # Проверка работы эндпоинта
     check_url = f"{colab_url}/models"
     try:
-        req = urllib.request.Request(check_url, headers={"User-Agent": "AIOS-Colab-Register/1.0"})
+        req = urllib.request.Request(
+            check_url,
+            headers={
+                "User-Agent": "AIOS-Colab-Register/1.0",
+                "Authorization": f"Bearer {api_key}",
+            },
+        )
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             print("✅ Подключение к Google Colab LLM успешно установлено!")
@@ -46,7 +53,7 @@ def register_colab_endpoint(colab_url: str, model_name: str = "colab/qwen2.5-cod
         "provider": "colab",
         "base_url": colab_url,
         "model": model_name,
-        "api_key": "colab-key-aios",
+        "api_key": api_key,
         "enabled": True,
         "registered_at": __import__("time").time()
     }

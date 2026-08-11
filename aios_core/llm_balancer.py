@@ -779,14 +779,18 @@ class LLMBalancer:
         from pathlib import Path
 
         colab_url = os.environ.get("COLAB_LLM_URL", "").strip().rstrip("/")
-        if not colab_url:
-            keys_p = Path("/root/AIOS/data/.llm_keys.json")
-            if keys_p.exists():
-                try:
-                    kd = json.loads(keys_p.read_text(encoding="utf-8"))
-                    colab_url = kd.get("colab_llm", {}).get("base_url", "").strip().rstrip("/")
-                except Exception:
-                    pass
+        colab_api_key = os.environ.get("COLAB_LLM_API_KEY", "").strip()
+        keys_p = Path("/root/AIOS/data/.llm_keys.json")
+        if keys_p.exists():
+            try:
+                kd = json.loads(keys_p.read_text(encoding="utf-8"))
+                colab_cfg = kd.get("colab_llm", {})
+                if not colab_url:
+                    colab_url = colab_cfg.get("base_url", "").strip().rstrip("/")
+                if not colab_api_key:
+                    colab_api_key = colab_cfg.get("api_key", "").strip()
+            except Exception:
+                pass
 
         if not colab_url:
             return None
@@ -803,10 +807,13 @@ class LLMBalancer:
         }
 
         try:
+            headers = {"Content-Type": "application/json", "User-Agent": "AIOS-LLMBalancer/1.0"}
+            if colab_api_key:
+                headers["Authorization"] = f"Bearer {colab_api_key}"
             req = urllib.request.Request(
                 endpoint,
                 data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json", "User-Agent": "AIOS-LLMBalancer/1.0"}
+                headers=headers,
             )
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
