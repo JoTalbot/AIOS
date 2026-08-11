@@ -376,16 +376,17 @@ class LLMBalancer:
         self._provider_stats: dict[str, int] = {}
         self._cache: dict[str, str] = {}
         self._cache_max = int(os.environ.get("LLM_CACHE_MAX", "256"))
-        # FIXED PRIORITY: groq и deepseek первыми (самые надежные), openrouter и local последними
+        # Private Colab is preferred for text tasks; cloud providers and local
+        # Ollama remain automatic fallbacks when the Colab session is unavailable.
         self.task_priority = {
             "vision": ["gemini", "mistral", "openrouter", "local"],
-            "chat": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "deepseek", "zai", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "ibm", "local"],
-            "code": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "huggingface", "gemini", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
-            "analysis": ["groq", "cerebras", "github", "gemini", "mistral", "cohere", "together", "nvidia", "huggingface", "openai", "airforce", "openrouter", "local"],
-            "general": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
+            "chat": ["colab", "groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "deepseek", "zai", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "ibm", "local"],
+            "code": ["colab", "groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "huggingface", "gemini", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
+            "analysis": ["colab", "groq", "cerebras", "github", "gemini", "mistral", "cohere", "together", "nvidia", "huggingface", "openai", "airforce", "openrouter", "local"],
+            "general": ["colab", "groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
             # Планировщик автономии (JSON-структурированный вывод) — приоритет на
             # надёжные модели: groq llama-3.1-8b-instant, затем mistral/gemini/zai.
-            "reasoning": ["groq", "mistral", "zai", "gemini", "cohere", "deepseek", "openrouter", "local"],
+            "reasoning": ["colab", "groq", "mistral", "zai", "gemini", "cohere", "deepseek", "openrouter", "local"],
         }
 
     def _load_from_env(self):
@@ -479,6 +480,92 @@ class LLMBalancer:
                     installed=_installed,
                 )
 
+        # Private OpenAI-compatible model hosted in Google Colab.
+        # URL/key are runtime secrets loaded from data/.llm_keys.json or env;
+        # they are never embedded in source or emitted to logs.
+        _colab_cfg = {}
+        for _key_file in (
+            Path("/app/data/.llm_keys.json"),
+            Path(__file__).resolve().parents[1] / "data/.llm_keys.json",
+        ):
+            try:
+                _candidate = json.loads(_key_file.read_text(encoding="utf-8")).get("colab_llm", {})
+                if isinstance(_candidate, dict) and _candidate:
+                    _colab_cfg = _candidate
+                    break
+            except (OSError, ValueError):
+                continue
+
+        _colab_enabled_raw = os.environ.get(
+            "COLAB_LLM_ENABLED", str(_colab_cfg.get("enabled", True))
+        ).strip().lower()
+        _colab_enabled = _colab_enabled_raw not in ("0", "false", "no", "off")
+        _colab_url = os.environ.get("COLAB_LLM_URL", "").strip() or str(
+            _colab_cfg.get("base_url", "")
+        ).strip()
+        _colab_key = os.environ.get("COLAB_LLM_API_KEY", "").strip() or str(
+            _colab_cfg.get("api_key", "")
+        ).strip()
+        _colab_model = os.environ.get("COLAB_LLM_MODEL", "").strip() or str(
+            _colab_cfg.get("model", "colab/qwen2.5-coder")
+        ).strip()
+
+        if _colab_enabled and _colab_url and _colab_key and _colab_model:
+            _colab_url = _colab_url.rstrip("/")
+            if _colab_url.endswith("/chat/completions"):
+                _colab_endpoint = _colab_url
+            elif _colab_url.endswith("/v1"):
+                _colab_endpoint = _colab_url + "/chat/completions"
+            else:
+                _colab_endpoint = _colab_url + "/v1/chat/completions"
+            self.providers["colab"] = Provider(
+                name="colab",
+                base_url=_colab_endpoint,
+                keys=[APIKey(key=_colab_key, provider="colab")],
+                models=[_colab_model],
+            )
+
+    @staticmethod
+    def _fit_colab_messages(messages: list[dict], max_chars: int = 6000) -> list[dict]:
+        """Fit the large AIOS prompt into the Colab model's 4096-token window.
+
+        Keep the beginning of the system prompt (identity and safety rules) and
+        the newest dialogue turns. This applies only to the private Colab
+        provider; cloud providers retain the full context.
+        """
+        max_chars = max(1000, int(max_chars))
+        system_messages = [m for m in messages if m.get("role") == "system"]
+        dialogue = [m for m in messages if m.get("role") != "system"]
+
+        dialogue_total = sum(len(str(m.get("content", ""))) for m in dialogue)
+        dialogue_limit = max_chars if not system_messages else min(dialogue_total, max_chars // 3)
+        kept_reversed: list[dict] = []
+        remaining = dialogue_limit
+        for message in reversed(dialogue):
+            if remaining <= 0:
+                break
+            content = str(message.get("content", ""))
+            if len(content) > remaining:
+                truncation_marker = "\n...[earlier content truncated for Colab context]...\n"
+                usable = max(0, remaining - len(truncation_marker))
+                head = usable // 2
+                tail = usable - head
+                suffix = content[-tail:] if tail else ""
+                content = content[:head] + truncation_marker + suffix
+            kept_reversed.append({**message, "content": content})
+            remaining -= len(content)
+        kept_dialogue = list(reversed(kept_reversed))
+
+        system_budget = max_chars - sum(len(str(m.get("content", ""))) for m in kept_dialogue)
+        kept_system: list[dict] = []
+        for message in system_messages:
+            if system_budget <= 0:
+                break
+            content = str(message.get("content", ""))[:system_budget]
+            kept_system.append({**message, "content": content})
+            system_budget -= len(content)
+        return kept_system + kept_dialogue
+
     def add_key(self, provider: str, key: str):
         if provider not in self.providers:
             if provider in self.PROVIDERS:
@@ -547,6 +634,10 @@ class LLMBalancer:
                     # Check model support
                     if prov_name == "openrouter":
                         model_supported = True
+                    elif prov_name == "colab":
+                        # The private Colab runtime serves one configured model;
+                        # map any text task to it and keep normal provider fallback.
+                        model_supported = True
                     elif prov_name == "local":
                         inst = getattr(provider, "installed", set())
                         model_supported = try_model in inst or try_model in provider.models
@@ -572,14 +663,16 @@ class LLMBalancer:
 
                 keys_tried += 1
                 prov_name = best_provider.name
+                req_model = try_model
 
                 try:
                     import requests as _req_lib
                     # v2.3: маппинг модели на провайдера. Имя вида
                     # "llama-3.3-70b-versatile" существует только у groq — mistral/zai/
                     # openrouter отвечают 400. Подставляем родную модель провайдера.
-                    req_model = try_model
-                    if prov_name == "openrouter":
+                    if prov_name == "colab":
+                        req_model = best_provider.models[0]
+                    elif prov_name == "openrouter":
                         if "/" not in try_model:
                             # Голое имя (gpt-3.5-turbo и т.п.) → корректный openrouter slug.
                             # Не льёмся в устаревший :free-модель, от которой OpenRouter
@@ -598,10 +691,17 @@ class LLMBalancer:
                                 continue
                     elif prov_name != "local" and try_model not in provider.models:
                         req_model = provider.models[0] if provider.models else try_model
+                    req_messages = all_messages
+                    req_max_tokens = max_tokens
+                    if prov_name == "colab":
+                        _colab_chars = int(os.environ.get("COLAB_LLM_MAX_INPUT_CHARS", "6000"))
+                        _colab_output = int(os.environ.get("COLAB_LLM_MAX_OUTPUT_TOKENS", "768"))
+                        req_messages = self._fit_colab_messages(all_messages, _colab_chars)
+                        req_max_tokens = min(max_tokens, max(1, _colab_output))
                     payload = {
                         "model": req_model,
-                        "messages": all_messages,
-                        "max_tokens": max_tokens,
+                        "messages": req_messages,
+                        "max_tokens": req_max_tokens,
                         "temperature": temperature,
                     }
 
@@ -672,7 +772,7 @@ class LLMBalancer:
                     _code = getattr(getattr(e, "response", None), "status_code", None) or getattr(e, "code", None)
                     if _code:
                         code = int(_code)
-                        print(f"  [Balancer] {prov_name}/{try_model}: HTTP {code}")
+                        print(f"  [Balancer] {prov_name}/{req_model}: HTTP {code}")
                         if code == 402:
                             best_provider.mark_key_error(best_key, f"HTTP {code} Payment Required", cooldown=86400)
                             continue
@@ -695,7 +795,7 @@ class LLMBalancer:
                         else:
                             best_provider.mark_key_error(best_key, f"HTTP {code}", cooldown=300)
                             continue
-                    print(f"  [Balancer] {prov_name}/{try_model}: {str(e)[:80]}")
+                    print(f"  [Balancer] {prov_name}/{req_model}: {str(e)[:80]}")
                     best_provider.mark_key_error(best_key, str(e)[:60], cooldown=60)
                     continue
 
