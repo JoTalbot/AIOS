@@ -43,6 +43,7 @@ DEFAULT_SYMBOLS = [
     "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX",
     "LINK", "DOT", "MATIC", "LTC", "TRX", "ATOM", "UNI", "ETC",
     "FIL", "APT", "NEAR", "ARB", "OP", "SUI", "TIA", "SEI",
+    "TON", "INJ", "KAS", "RNDR", "FET", "WIF", "BONK", "PEPE", "SHIB",
 ]
 
 # Какие биржи обрабатываем и за каким "exchange id" ccxt.
@@ -53,6 +54,12 @@ EXCHANGES = {
     "bybit": ccxt.bybit,
     "okx": ccxt.okx,
     "kraken": ccxt.kraken,
+    # новые биржи
+    "coinbase": ccxt.coinbase,
+    "kucoin": ccxt.kucoin,
+    "bitfinex": ccxt.bitfinex,
+    "bitstamp": ccxt.bitstamp,
+    "mexc": ccxt.mexc,
 }
 
 # По умолчанию собираем OHLCV. Depth (стакан) - тяжёлый, собираем реже.
