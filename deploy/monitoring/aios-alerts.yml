@@ -96,3 +96,53 @@ groups:
         annotations:
           summary: "Outbox approval lag"
           description: "{{ $value }} outbox items awaiting approval"
+
+  - name: aios-telegram-llm
+    rules:
+      - alert: AIOSTelegramExporterDown
+        expr: up{job="aios-telegram"} == 0
+        for: 3m
+        labels: {severity: critical}
+        annotations:
+          summary: "Telegram/LLM metrics exporter is down"
+          description: "The bot process or its metrics endpoint has been unavailable for more than 3 minutes."
+
+      - alert: AIOSTelegramCanaryFailed
+        expr: aios_telegram_canary_ok == 0
+        for: 12m
+        labels: {severity: critical}
+        annotations:
+          summary: "Full Colab → Telegram canary is failing"
+          description: "The latest silent sendMessage canary, route check, or auto-delete did not pass."
+
+      - alert: AIOSTelegramCanaryStale
+        expr: aios_telegram_canary_age_seconds < 0 or aios_telegram_canary_age_seconds > 900
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Telegram/Colab canary result is stale"
+          description: "No fresh full canary result has been recorded for more than 15 minutes."
+
+      - alert: AIOSTelegramAmbiguousDelivery
+        expr: aios_telegram_queue_jobs{queue="outbox",status="failed_unknown"} > 0
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "Telegram delivery needs an operator decision"
+          description: "At least one ambiguous send is waiting for explicit /resend ID review."
+
+      - alert: AIOSTelegramGenerationBacklog
+        expr: aios_telegram_queue_jobs{queue="generation",status="pending"} > 10
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Telegram LLM generation backlog"
+          description: "More than 10 durable generation jobs have remained pending for 5 minutes."
+
+      - alert: AIOSTelegramDeliverySLOLow
+        expr: aios_telegram_delivery_success_ratio < 0.95 and sum(aios_telegram_delivery_events) >= 5
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Telegram delivery success ratio below 95%"
+          description: "The rolling Telegram delivery success ratio has stayed below the SLO for 10 minutes."

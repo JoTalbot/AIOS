@@ -142,6 +142,8 @@ def register_colab_endpoint(
     *,
     api_key: str | None = None,
     verify: bool = True,
+    node_id: str | None = None,
+    publish_primary: bool | None = None,
 ) -> dict:
     """Verify, then atomically publish one Colab endpoint generation."""
     base_url = _normalise_url(colab_url)
@@ -162,8 +164,10 @@ def register_colab_endpoint(
             keys_data = {}
 
     registered_at = time.time()
-    keys_data["colab_llm"] = {
+    node_name = (node_id or os.environ.get("COLAB_NODE_ID", "primary")).strip() or "primary"
+    node_config = {
         "provider": "colab",
+        "node_id": node_name,
         "base_url": base_url,
         "model": model_name,
         "api_key": secret,
@@ -171,21 +175,42 @@ def register_colab_endpoint(
         "registered_at": registered_at,
         "health": health,
     }
+    nodes = keys_data.get("colab_llm_nodes", [])
+    if not isinstance(nodes, list):
+        nodes = []
+    nodes = [item for item in nodes if isinstance(item, dict) and item.get("node_id") != node_name]
+    nodes.append(dict(node_config))
+    keys_data["colab_llm_nodes"] = nodes
+    if publish_primary is None:
+        publish_primary = os.environ.get("COLAB_NODE_ROLE", "primary").lower() != "standby"
+    if publish_primary:
+        keys_data["colab_llm"] = dict(node_config)
     _atomic_write(KEYS_FILE, json.dumps(keys_data, indent=2, ensure_ascii=False) + "\n")
-    _update_env(
-        ENV_FILE,
-        {
+    if publish_primary:
+        env_values = {
             "COLAB_LLM_URL": base_url,
             "COLAB_LLM_MODEL": model_name,
-            "COLAB_LLM_API_KEY": secret,
-        },
-    )
+        }
+        credential_mode = os.environ.get("AIOS_SYSTEMD_CREDENTIALS", "0").lower() in (
+            "1", "true", "yes", "on"
+        )
+        if credential_mode:
+            source_dir = Path(
+                os.environ.get("AIOS_CREDENTIAL_SOURCE_DIR", "/etc/aios/credentials")
+            )
+            _atomic_write(source_dir / "colab_llm_api_key", secret + "\n")
+            lines = ENV_FILE.read_text(encoding="utf-8").splitlines() if ENV_FILE.exists() else []
+            kept = [line for line in lines if line.partition("=")[0] != "COLAB_LLM_API_KEY"]
+            _atomic_write(ENV_FILE, "\n".join(kept) + ("\n" if kept else ""))
+        else:
+            env_values["COLAB_LLM_API_KEY"] = secret
+        _update_env(ENV_FILE, env_values)
 
     print(
         "🎉 ✅ Colab LLM зарегистрирована после "
         f"{health['attempts']} проверок; model={model_name}, latency={health['latency_sec']:.2f}s"
     )
-    return keys_data["colab_llm"]
+    return node_config
 
 
 if __name__ == "__main__":
@@ -195,5 +220,13 @@ if __name__ == "__main__":
     parser.add_argument("url")
     parser.add_argument("model", nargs="?", default="colab/qwen2.5-coder")
     parser.add_argument("--no-verify", action="store_true")
+    parser.add_argument("--node-id", default=os.environ.get("COLAB_NODE_ID", "primary"))
+    parser.add_argument("--standby", action="store_true")
     args = parser.parse_args()
-    register_colab_endpoint(args.url, args.model, verify=not args.no_verify)
+    register_colab_endpoint(
+        args.url,
+        args.model,
+        verify=not args.no_verify,
+        node_id=args.node_id,
+        publish_primary=not args.standby,
+    )

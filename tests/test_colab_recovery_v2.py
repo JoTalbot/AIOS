@@ -123,3 +123,137 @@ def test_verify_fails_closed(monkeypatch):
             attempts=2,
             interval=0,
         )
+
+
+def test_standby_registration_preserves_primary_publication(tmp_path, monkeypatch):
+    keys_file = tmp_path / ".llm_keys.json"
+    env_file = tmp_path / ".env"
+    monkeypatch.setattr(register, "KEYS_FILE", keys_file)
+    monkeypatch.setattr(register, "ENV_FILE", env_file)
+
+    register.register_colab_endpoint(
+        "https://primary.test/v1",
+        api_key="primary-secret",
+        verify=False,
+        node_id="primary",
+        publish_primary=True,
+    )
+    register.register_colab_endpoint(
+        "https://standby.test/v1",
+        api_key="standby-secret",
+        verify=False,
+        node_id="standby-1",
+        publish_primary=False,
+    )
+
+    saved = json.loads(keys_file.read_text(encoding="utf-8"))
+    assert saved["colab_llm"]["node_id"] == "primary"
+    assert {item["node_id"] for item in saved["colab_llm_nodes"]} == {
+        "primary",
+        "standby-1",
+    }
+    env = env_file.read_text(encoding="utf-8")
+    assert "COLAB_LLM_URL=https://primary.test/v1" in env
+    assert "standby.test" not in env
+
+
+def test_tunnel_provider_auto_prefers_tailscale_when_configured(monkeypatch):
+    monkeypatch.setenv("COLAB_TUNNEL_PROVIDER", "auto")
+    monkeypatch.delenv("TAILSCALE_AUTH_KEY", raising=False)
+    monkeypatch.delenv("COLAB_LLM_PUBLIC_URL", raising=False)
+    assert runner._configured_tunnel_provider() == "quick"
+
+    monkeypatch.setenv("TAILSCALE_AUTH_KEY", "runtime-secret")
+    monkeypatch.setenv("COLAB_LLM_PUBLIC_URL", "https://node.tail.example")
+    assert runner._configured_tunnel_provider() == "tailscale"
+
+
+def test_endpoint_extraction_accepts_provider_neutral_marker():
+    output = "ready\nCOLAB_LLM_URL=https://node.tail.example/v1\n"
+    assert runner._extract_endpoint_urls(output) == ["https://node.tail.example/v1"]
+
+
+def test_waiter_requires_current_tunnel_generation_for_stable_url(monkeypatch):
+    import asyncio
+
+    stable = "https://node.tail.example/v1"
+
+    async def no_sleep(_seconds):
+        return None
+
+    async def stale_output(_page):
+        return (
+            f"COLAB_LLM_URL={stable}\n"
+            "COLAB_TUNNEL_GENERATION=old-generation\n"
+        )
+
+    monkeypatch.setattr(runner.asyncio, "sleep", no_sleep)
+    monkeypatch.setattr(runner, "_output_text", stale_output)
+    url, fatal = asyncio.run(
+        runner._wait_for_new_tunnel(
+            object(),
+            old_urls={stable},
+            attempts=1,
+            service_kind="llm",
+            expected_generation="new-generation",
+        )
+    )
+    assert url == ""
+    assert fatal is False
+
+    async def fresh_output(_page):
+        return (
+            f"COLAB_LLM_URL={stable}\n"
+            "COLAB_TUNNEL_GENERATION=new-generation\n"
+        )
+
+    monkeypatch.setattr(runner, "_output_text", fresh_output)
+    url, fatal = asyncio.run(
+        runner._wait_for_new_tunnel(
+            object(),
+            old_urls={stable},
+            attempts=1,
+            service_kind="llm",
+            expected_generation="new-generation",
+        )
+    )
+    assert url == stable
+    assert fatal is False
+
+
+def test_runner_loads_its_own_registered_node(tmp_path, monkeypatch):
+    registry = tmp_path / ".llm_keys.json"
+    registry.write_text(
+        json.dumps(
+            {
+                "colab_llm": {"node_id": "primary", "base_url": "https://primary.test/v1"},
+                "colab_llm_nodes": [
+                    {"node_id": "primary", "base_url": "https://primary.test/v1"},
+                    {"node_id": "standby-1", "base_url": "https://standby.test/v1"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(runner, "COLAB_KEYS_FILE", registry)
+    monkeypatch.setenv("COLAB_NODE_ID", "standby-1")
+    assert runner._load_colab_runtime_config()["base_url"] == "https://standby.test/v1"
+
+
+def test_first_standby_registration_does_not_publish_primary(tmp_path, monkeypatch):
+    keys_file = tmp_path / ".llm_keys.json"
+    env_file = tmp_path / ".env"
+    monkeypatch.setattr(register, "KEYS_FILE", keys_file)
+    monkeypatch.setattr(register, "ENV_FILE", env_file)
+
+    register.register_colab_endpoint(
+        "https://standby-only.test/v1",
+        api_key="standby-secret",
+        verify=False,
+        node_id="standby-only",
+        publish_primary=False,
+    )
+    saved = json.loads(keys_file.read_text(encoding="utf-8"))
+    assert "colab_llm" not in saved
+    assert saved["colab_llm_nodes"][0]["node_id"] == "standby-only"
+    assert not env_file.exists()

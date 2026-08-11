@@ -58,6 +58,9 @@ class APIKey:
     error_count: int = 0
     cooldown_until: float = 0.0
     permanently_dead: bool = False
+    base_url: str = ""
+    model: str = ""
+    node_id: str = ""
 
     @property
     def is_available(self) -> bool:
@@ -371,7 +374,9 @@ class LLMBalancer:
     def __init__(self):
         self.providers: dict[str, Provider] = {}
         self._runtime_config_signature: tuple | None = None
-        self.last_route: dict[str, object] = {}
+        self._runtime_lock = threading.RLock()
+        self._route_local = threading.local()
+        self.last_route = {}
         self._load_from_env()
         self._total_requests = 0
         self._total_errors = 0
@@ -390,6 +395,14 @@ class LLMBalancer:
             # надёжные модели: groq llama-3.1-8b-instant, затем mistral/gemini/zai.
             "reasoning": ["colab", "groq", "mistral", "zai", "gemini", "cohere", "deepseek", "openrouter", "local"],
         }
+
+    @property
+    def last_route(self) -> dict[str, object]:
+        return dict(getattr(self._route_local, "value", {}))
+
+    @last_route.setter
+    def last_route(self, value: dict[str, object]) -> None:
+        self._route_local.value = dict(value or {})
 
     def _load_from_env(self):
         for key_file in (Path("/app/data/.llm_keys.json"), Path(__file__).resolve().parents[1] / "data/.llm_keys.json"):
@@ -500,7 +513,15 @@ class LLMBalancer:
                 stat = path.stat()
                 data = json.loads(path.read_text(encoding="utf-8"))
                 candidate = data.get("colab_llm", {})
+                nodes = data.get("colab_llm_nodes", [])
+                valid_nodes = [
+                    item for item in nodes if isinstance(item, dict)
+                ] if isinstance(nodes, list) else []
+                if not isinstance(candidate, dict) or not candidate:
+                    candidate = valid_nodes[0] if valid_nodes else {}
                 if isinstance(candidate, dict) and candidate:
+                    candidate = dict(candidate)
+                    candidate["_nodes"] = valid_nodes
                     signature = (str(path), stat.st_mtime_ns, stat.st_size)
                     return candidate, signature
             except (OSError, ValueError):
@@ -516,13 +537,14 @@ class LLMBalancer:
         return env_cfg, signature
 
     @staticmethod
-    def _build_colab_provider(config: dict) -> Provider | None:
+    def _colab_endpoint(config: dict) -> tuple[str, str, str, str] | None:
         enabled_raw = str(config.get("enabled", True)).strip().lower()
         if enabled_raw in ("0", "false", "no", "off"):
             return None
         base_url = str(config.get("base_url", "")).strip().rstrip("/")
         api_key = str(config.get("api_key", "")).strip()
         model = str(config.get("model", "colab/qwen2.5-coder")).strip()
+        node_id = str(config.get("node_id", "primary")).strip() or "primary"
         if not base_url or not api_key or not model:
             return None
         if base_url.endswith("/chat/completions"):
@@ -531,29 +553,62 @@ class LLMBalancer:
             endpoint = base_url + "/chat/completions"
         else:
             endpoint = base_url + "/v1/chat/completions"
+        return endpoint, api_key, model, node_id
+
+    @classmethod
+    def _build_colab_provider(cls, config: dict) -> Provider | None:
+        candidates = [config] + list(config.get("_nodes", []))
+        endpoints: list[tuple[str, str, str, str]] = []
+        seen: set[tuple[str, str]] = set()
+        for candidate in candidates:
+            parsed = cls._colab_endpoint(candidate)
+            if not parsed:
+                continue
+            identity = (parsed[0], parsed[1])
+            if identity in seen:
+                continue
+            seen.add(identity)
+            endpoints.append(parsed)
+        if not endpoints:
+            return None
+        keys = [
+            APIKey(
+                key=api_key,
+                provider="colab",
+                base_url=endpoint,
+                model=model,
+                node_id=node_id,
+            )
+            for endpoint, api_key, model, node_id in endpoints
+        ]
+        models = list(dict.fromkeys(item[2] for item in endpoints))
         return Provider(
             name="colab",
-            base_url=endpoint,
-            keys=[APIKey(key=api_key, provider="colab")],
-            models=[model],
+            base_url=endpoints[0][0],
+            keys=keys,
+            models=models,
         )
 
     def refresh_runtime_config(self, *, force: bool = False) -> bool:
         """Hot-reload a rotated Colab generation while preserving other cooldowns."""
+        with self._runtime_lock:
+            return self._refresh_runtime_config_unlocked(force=force)
+
+    def _refresh_runtime_config_unlocked(self, *, force: bool = False) -> bool:
         config, signature = self._read_colab_runtime()
         if not force and signature == self._runtime_config_signature:
             return False
         replacement = self._build_colab_provider(config)
         current = self.providers.get("colab")
-        unchanged = bool(
-            current
-            and replacement
-            and current.base_url == replacement.base_url
-            and current.models == replacement.models
-            and current.keys
-            and replacement.keys
-            and current.keys[0].key == replacement.keys[0].key
-        )
+        current_nodes = [
+            (key.base_url or current.base_url, key.key, key.model, key.node_id)
+            for key in current.keys
+        ] if current else []
+        replacement_nodes = [
+            (key.base_url or replacement.base_url, key.key, key.model, key.node_id)
+            for key in replacement.keys
+        ] if replacement else []
+        unchanged = bool(current and replacement and current_nodes == replacement_nodes)
         if not unchanged:
             if replacement is None:
                 self.providers.pop("colab", None)
@@ -711,7 +766,7 @@ class LLMBalancer:
                     # "llama-3.3-70b-versatile" существует только у groq — mistral/zai/
                     # openrouter отвечают 400. Подставляем родную модель провайдера.
                     if prov_name == "colab":
-                        req_model = best_provider.models[0]
+                        req_model = best_key.model or best_provider.models[0]
                     elif prov_name == "openrouter":
                         if "/" not in try_model:
                             # Голое имя (gpt-3.5-turbo и т.п.) → корректный openrouter slug.
@@ -757,7 +812,8 @@ class LLMBalancer:
                     }
 
                     _request_started = time.monotonic()
-                    _resp = _req_lib.post(best_provider.base_url, json=payload, headers=headers, timeout=120)
+                    request_url = best_key.base_url or best_provider.base_url
+                    _resp = _req_lib.post(request_url, json=payload, headers=headers, timeout=120)
                     _resp.raise_for_status()
                     data = _resp.json()
 
@@ -803,6 +859,7 @@ class LLMBalancer:
                             "provider": prov_name,
                             "model": req_model,
                             "latency_sec": round(time.monotonic() - _request_started, 3),
+                            "node_id": best_key.node_id if prov_name == "colab" else "",
                         }
                         if os.environ.get("LLM_CACHE", "1") == "1":
                             _cache_key = str((system or "", [tuple(sorted(m.items())) for m in messages if isinstance(m, dict) and "role" in m and "content" in m]))
@@ -918,6 +975,7 @@ class LLMBalancer:
                 "keys_available": sum(1 for k in prov.keys if k.is_available),
                 "requests": self._provider_stats.get(name, 0),
                 "models": prov.models[:5],
+                "nodes": len(prov.keys) if name == "colab" else 0,
             }
         return result
 

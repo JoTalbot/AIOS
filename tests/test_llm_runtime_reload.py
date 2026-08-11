@@ -75,3 +75,80 @@ def test_last_route_metadata_is_copied():
     value = telegram_llm.get_last_llm_metadata()
     value["provider"] = "changed"
     assert telegram_llm.get_last_llm_metadata()["provider"] == "colab"
+
+
+def test_multinode_colab_fails_over_before_cloud(monkeypatch):
+    import requests
+
+    monkeypatch.setenv("LLM_CACHE", "0")
+    config = {
+        "base_url": "https://primary.test/v1",
+        "api_key": "primary-key",
+        "model": "colab/qwen2.5-coder",
+        "node_id": "primary",
+        "_nodes": [
+            {
+                "base_url": "https://standby.test/v1",
+                "api_key": "standby-key",
+                "model": "colab/qwen2.5-coder",
+                "node_id": "standby-1",
+            }
+        ],
+    }
+    provider = LLMBalancer._build_colab_provider(config)
+    balancer = LLMBalancer()
+    balancer.providers = {"colab": provider}
+    monkeypatch.setattr(balancer, "refresh_runtime_config", lambda **_kwargs: False)
+    balancer.task_priority["chat"] = ["colab"]
+    called: list[str] = []
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"choices": [{"message": {"content": "from standby"}}]}
+
+    def post(url, **_kwargs):
+        called.append(url)
+        if "primary.test" in url:
+            raise requests.ConnectionError("primary unavailable")
+        return Response()
+
+    monkeypatch.setattr(requests, "post", post)
+    answer = balancer.chat(
+        [{"role": "user", "content": "hello"}],
+        model="llama-3.1-8b-instant",
+        task_type="chat",
+    )
+
+    assert answer == "from standby"
+    assert called == [
+        "https://primary.test/v1/chat/completions",
+        "https://standby.test/v1/chat/completions",
+    ]
+    assert balancer.last_route["node_id"] == "standby-1"
+    assert balancer.last_route["provider"] == "colab"
+
+
+def test_route_metadata_is_thread_local():
+    import threading
+
+    balancer = LLMBalancer()
+    barrier = threading.Barrier(2)
+    values: dict[str, dict] = {}
+
+    def worker(name: str) -> None:
+        balancer.last_route = {"provider": name, "model": name + "-model"}
+        barrier.wait(timeout=2)
+        values[name] = balancer.last_route
+
+    first = threading.Thread(target=worker, args=("colab",))
+    second = threading.Thread(target=worker, args=("groq",))
+    first.start()
+    second.start()
+    first.join(timeout=2)
+    second.join(timeout=2)
+
+    assert values["colab"]["provider"] == "colab"
+    assert values["groq"]["provider"] == "groq"

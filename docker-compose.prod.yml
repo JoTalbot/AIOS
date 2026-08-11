@@ -176,9 +176,12 @@ services:
     image: prom/prometheus:latest
     container_name: aios-prometheus
     ports: ["127.0.0.1:9090:9090"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./deploy/monitoring/production-alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./deploy/monitoring/aios-alerts.yml:/etc/prometheus/aios-alerts.yml:ro
+      - ./deploy/monitoring/production-alerts.yml:/etc/prometheus/production-alerts.yml:ro
       - prometheus-data:/prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -201,8 +204,10 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_LOG_MODE: console
     volumes:
+      - ./deploy/monitoring/datasources/prometheus.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
       - ./deploy/monitoring/grafana-production.json:/var/lib/grafana/dashboards/aios-production.json:ro
       - ./deploy/monitoring/grafana-autonomy.json:/var/lib/grafana/dashboards/aios-autonomy.json:ro
+      - ./deploy/monitoring/grafana-telegram-llm.json:/var/lib/grafana/dashboards/telegram-llm.json:ro
       - ./deploy/monitoring/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/aios.yml:ro
       - grafana-data:/var/lib/grafana
     depends_on: [prometheus]

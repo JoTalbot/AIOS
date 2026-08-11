@@ -78,7 +78,11 @@ def main() -> int:
     chat = os.environ.get("TELEGRAM_ALERT_CHAT_ID", "").strip() or os.environ.get(
         "TELEGRAM_CANARY_CHAT_ID", ""
     ).strip()
-    token = os.environ.get("AIOS_TELEGRAM_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN")
+    from tg_bot.credentials import secret_from_env_or_credential
+
+    token = secret_from_env_or_credential(
+        "AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token"
+    )
     if consecutive >= 2 and reasons and chat and token:
         try:
             from tg_bot.api import TelegramAPI

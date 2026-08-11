@@ -23,6 +23,10 @@ def _telegram_ipv4_family() -> int:
 urllib3_connection.allowed_gai_family = _telegram_ipv4_family
 
 
+class TelegramAPIError(RuntimeError):
+    """Definitive Bot API rejection received as a complete response."""
+
+
 class TelegramAPI:
     """Minimal Telegram Bot API client (polling mode)."""
 
@@ -54,11 +58,20 @@ class TelegramAPI:
         return self._request("getMe")
 
     def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML",
-                     reply_markup: dict | None = None) -> dict:
+                     reply_markup: dict | None = None,
+                     disable_notification: bool = False,
+                     reply_to_message_id: int | None = None) -> dict:
         payload: dict = {"chat_id": chat_id, "text": text, "parse_mode": parse_mode}
         if reply_markup:
             payload["reply_markup"] = reply_markup
+        if disable_notification:
+            payload["disable_notification"] = True
+        if reply_to_message_id:
+            payload["reply_to_message_id"] = int(reply_to_message_id)
         return self._request("sendMessage", payload)
+
+    def delete_message(self, chat_id: int, message_id: int) -> dict:
+        return self._request("deleteMessage", {"chat_id": chat_id, "message_id": message_id})
 
     def send_chat_action(self, chat_id: int, action: str = "typing") -> dict:
         """Show a short Telegram activity indicator while a reply is generated."""

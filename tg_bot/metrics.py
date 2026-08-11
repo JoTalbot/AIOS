@@ -51,6 +51,36 @@ def _percentile(values: list[float], percentile: float) -> float:
     return round(float(ordered[index]), 3)
 
 
+def _compact_metrics_file(path: Path) -> None:
+    try:
+        if path.stat().st_size < int(os.environ.get("TELEGRAM_METRICS_COMPACT_BYTES", "5242880")):
+            return
+        cutoff = time.time() - max(
+            1, int(os.environ.get("TELEGRAM_METRICS_RETENTION_DAYS", "30"))
+        ) * 86400
+        kept: list[str] = []
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            if float(row.get("timestamp", 0)) >= cutoff:
+                kept.append(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
+        kept = kept[-10000:]
+        fd, name = tempfile.mkstemp(prefix=path.name + ".", dir=str(path.parent))
+        tmp = Path(name)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write("\n".join(kept) + ("\n" if kept else ""))
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(tmp, path)
+        finally:
+            tmp.unlink(missing_ok=True)
+    except OSError:
+        return
+
+
 def record_telegram_event(event: dict, path: Path | None = None) -> None:
     """Append one redacted metric and refresh a compact 24-hour summary."""
     if os.environ.get("TELEGRAM_METRICS_ENABLED", "1").lower() in ("0", "false", "no", "off"):
@@ -63,6 +93,7 @@ def record_telegram_event(event: dict, path: Path | None = None) -> None:
     with _LOCK:
         with target.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(clean, ensure_ascii=False, separators=(",", ":")) + "\n")
+        _compact_metrics_file(target)
         if target == METRICS_FILE:
             _atomic_json(SUMMARY_FILE, summarize_telegram_metrics(hours=24, path=target))
 
@@ -121,3 +152,123 @@ def summarize_telegram_metrics(hours: float = 24, path: Path | None = None) -> d
             "total_p95": _percentile(nums("total_sec"), 0.95),
         },
     }
+
+
+def _prom_label(value: object) -> str:
+    return str(value).replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
+
+
+def _sqlite_status_counts(path: Path, table: str) -> dict[str, int]:
+    import sqlite3
+
+    if not path.exists():
+        return {}
+    try:
+        uri = f"file:{path}?mode=ro"
+        with sqlite3.connect(uri, uri=True, timeout=2) as db:
+            return {
+                str(status): int(count)
+                for status, count in db.execute(
+                    f"SELECT status, COUNT(*) FROM {table} GROUP BY status"
+                ).fetchall()
+            }
+    except (OSError, sqlite3.Error):
+        return {}
+
+
+def render_telegram_prometheus(hours: float = 24) -> str:
+    """Render redacted Telegram delivery, queue and canary metrics."""
+    summary = summarize_telegram_metrics(hours=hours)
+    lines = [
+        "# HELP aios_telegram_delivery_events Delivery events in the rolling metrics window.",
+        "# TYPE aios_telegram_delivery_events gauge",
+        f'aios_telegram_delivery_events{{status="sent"}} {int(summary["sent"])}',
+        f'aios_telegram_delivery_events{{status="failed"}} {int(summary["failed"])}',
+        "# HELP aios_telegram_delivery_success_ratio Successful delivery ratio in the rolling window.",
+        "# TYPE aios_telegram_delivery_success_ratio gauge",
+        f'aios_telegram_delivery_success_ratio {float(summary["success_rate"]):.6f}',
+        "# HELP aios_telegram_latency_seconds Delivery latency percentile by phase.",
+        "# TYPE aios_telegram_latency_seconds gauge",
+    ]
+    for phase in ("gen", "send", "total"):
+        for percentile in ("p50", "p95"):
+            value = float(summary["latency"].get(f"{phase}_{percentile}", 0))
+            quantile = "0.5" if percentile == "p50" else "0.95"
+            lines.append(
+                f'aios_telegram_latency_seconds{{phase="{phase}",quantile="{quantile}"}} {value:.6f}'
+            )
+    lines.extend(
+        [
+            "# HELP aios_telegram_provider_events Delivery events by selected provider.",
+            "# TYPE aios_telegram_provider_events gauge",
+        ]
+    )
+    for provider, count in sorted(summary.get("providers", {}).items()):
+        lines.append(
+            f'aios_telegram_provider_events{{provider="{_prom_label(provider)}"}} {int(count)}'
+        )
+    lines.extend(
+        [
+            "# HELP aios_telegram_delivery_errors Delivery failures by exception class.",
+            "# TYPE aios_telegram_delivery_errors gauge",
+        ]
+    )
+    for error, count in sorted(summary.get("errors", {}).items()):
+        lines.append(
+            f'aios_telegram_delivery_errors{{error_class="{_prom_label(error)}"}} {int(count)}'
+        )
+
+    queue_specs = (
+        (
+            "outbox",
+            Path(os.environ.get("TELEGRAM_OUTBOX_DB", "") or ROOT / "data" / "telegram_outbox.sqlite3"),
+            "telegram_outbox",
+        ),
+        (
+            "generation",
+            Path(
+                os.environ.get("TELEGRAM_GENERATION_DB", "")
+                or ROOT / "data" / "telegram_generation.sqlite3"
+            ),
+            "telegram_generation",
+        ),
+    )
+    lines.extend(
+        [
+            "# HELP aios_telegram_queue_jobs Current durable queue rows by queue and status.",
+            "# TYPE aios_telegram_queue_jobs gauge",
+        ]
+    )
+    known_statuses = {
+        "outbox": ("pending", "sending", "sent", "failed", "failed_unknown", "resend_queued"),
+        "generation": ("pending", "generating", "completed", "failed"),
+    }
+    for queue_name, db_path, table in queue_specs:
+        counts = _sqlite_status_counts(db_path, table)
+        for status in known_statuses[queue_name]:
+            lines.append(
+                f'aios_telegram_queue_jobs{{queue="{queue_name}",status="{status}"}} '
+                f'{int(counts.get(status, 0))}'
+            )
+
+    state_path = ROOT / "data" / "telegram_colab_canary.json"
+    try:
+        canary = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        canary = {}
+    timestamp = float(canary.get("timestamp", 0) or 0)
+    age = max(0.0, time.time() - timestamp) if timestamp else -1.0
+    lines.extend(
+        [
+            "# HELP aios_telegram_canary_ok Whether the latest Colab and Telegram canary passed.",
+            "# TYPE aios_telegram_canary_ok gauge",
+            f'aios_telegram_canary_ok {1 if canary.get("ok") else 0}',
+            "# HELP aios_telegram_canary_consecutive_failures Consecutive full-canary failures.",
+            "# TYPE aios_telegram_canary_consecutive_failures gauge",
+            f'aios_telegram_canary_consecutive_failures {int(canary.get("consecutive_failures", 0) or 0)}',
+            "# HELP aios_telegram_canary_age_seconds Age of the latest canary result; -1 means absent.",
+            "# TYPE aios_telegram_canary_age_seconds gauge",
+            f'aios_telegram_canary_age_seconds {age:.3f}',
+        ]
+    )
+    return "\n".join(lines) + "\n"

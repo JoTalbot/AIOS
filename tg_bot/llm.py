@@ -18,7 +18,7 @@ from tg_bot.common import PROJECT_ROOT, _esc_tg, _smart_model
 _chat_history: dict[int, list[dict]] = {}  # chat_id -> message history
 _balancer_instance = None
 _balancer_lock = threading.RLock()
-_last_llm_metadata: dict[str, object] = {}
+_llm_metadata_local = threading.local()
 
 
 MAX_HISTORY = 20  # keep last 20 messages per chat
@@ -36,14 +36,11 @@ def _get_shared_balancer():
 
 
 def _set_last_llm_metadata(**values: object) -> None:
-    with _balancer_lock:
-        _last_llm_metadata.clear()
-        _last_llm_metadata.update(values)
+    _llm_metadata_local.value = dict(values)
 
 
 def get_last_llm_metadata() -> dict[str, object]:
-    with _balancer_lock:
-        return dict(_last_llm_metadata)
+    return dict(getattr(_llm_metadata_local, "value", {}))
 
 
 def _is_model_identity_question(text: str) -> bool:
@@ -338,16 +335,15 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
                 print(f"  [LLM] gemini_web failed: {_gwe}")
         if not response and _balancer is not None:
             try:
-                with _balancer_lock:
-                    response = _balancer.chat(
-                        messages[1:],
-                        model=_smart_model(),
-                        system=_sys_for_llm,
-                        max_tokens=2000,
-                        temperature=0.3,
-                        task_type="chat",
-                    )
-                    route = dict(getattr(_balancer, "last_route", {}) or {})
+                response = _balancer.chat(
+                    messages[1:],
+                    model=_smart_model(),
+                    system=_sys_for_llm,
+                    max_tokens=2000,
+                    temperature=0.3,
+                    task_type="chat",
+                )
+                route = dict(getattr(_balancer, "last_route", {}) or {})
                 _set_last_llm_metadata(**route)
                 print(f"  [LLM] balancer response ({len(response or '')} chars)")
             except Exception as _e:

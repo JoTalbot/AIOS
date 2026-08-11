@@ -63,13 +63,22 @@ COLAB_ENV_FILE = REPO_ROOT / ".env"
 COLAB_KEEPER_ENV_FILE = REPO_ROOT / "data" / ".colab_llm.env"
 COLAB_MODEL = "colab/qwen2.5-coder"
 _TUNNEL_PATTERN = re.compile(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com/v1")
+_ENDPOINT_MARKER_PATTERN = re.compile(r"COLAB_LLM_URL=(https://[^\s<>\"']+/v1)")
 
 
 def _load_colab_runtime_config() -> dict:
     try:
         data = json.loads(COLAB_KEYS_FILE.read_text(encoding="utf-8"))
-        config = data.get("colab_llm", {})
-        return config if isinstance(config, dict) else {}
+        primary = data.get("colab_llm", {})
+        node_id = os.getenv("COLAB_NODE_ID", "primary").strip() or "primary"
+        nodes = data.get("colab_llm_nodes", [])
+        if isinstance(nodes, list):
+            for node in nodes:
+                if isinstance(node, dict) and str(node.get("node_id", "")) == node_id:
+                    return node
+        if node_id == "primary" and isinstance(primary, dict):
+            return primary
+        return {}
     except (OSError, ValueError):
         return {}
 
@@ -104,6 +113,26 @@ def _healthy_registered_colab() -> dict:
         return {}
     config = _load_colab_runtime_config()
     return config if _probe_colab_config(config) else {}
+
+
+def _extract_endpoint_urls(output_text: str) -> list[str]:
+    """Extract only explicit notebook endpoint markers (quick tunnel or Tailscale)."""
+    marked = _ENDPOINT_MARKER_PATTERN.findall(output_text or "")
+    legacy = _TUNNEL_PATTERN.findall(output_text or "")
+    return list(dict.fromkeys(marked + legacy))
+
+
+def _configured_tunnel_provider() -> str:
+    requested = os.getenv("COLAB_TUNNEL_PROVIDER", "auto").strip().lower()
+    if requested == "auto":
+        has_tailscale = bool(
+            os.getenv("TAILSCALE_AUTH_KEY", "").strip()
+            and os.getenv("COLAB_LLM_PUBLIC_URL", "").strip()
+        )
+        return "tailscale" if has_tailscale else "quick"
+    if requested not in ("tailscale", "quick"):
+        raise RuntimeError("COLAB_TUNNEL_PROVIDER must be auto, tailscale or quick")
+    return requested
 
 
 def _select_fresh_tunnel(
@@ -143,6 +172,14 @@ def _update_env_values(path: Path, values: dict[str, str]) -> None:
     _atomic_write(path, "\n".join(result) + "\n")
 
 
+def _remove_env_keys(path: Path, keys: set[str]) -> None:
+    if not path.exists():
+        return
+    lines = path.read_text(encoding="utf-8").splitlines()
+    kept = [line for line in lines if line.partition("=")[0] not in keys]
+    _atomic_write(path, "\n".join(kept) + ("\n" if kept else ""))
+
+
 def _rotate_colab_api_key() -> str:
     """Create a short-lived recovery generation key without logging its value."""
     current = os.getenv("COLAB_LLM_API_KEY", "").strip()
@@ -153,8 +190,17 @@ def _rotate_colab_api_key() -> str:
         return current
     new_key = secrets.token_urlsafe(36)
     os.environ["COLAB_LLM_API_KEY"] = new_key
-    _update_env_values(COLAB_ENV_FILE, {"COLAB_LLM_API_KEY": new_key})
-    _atomic_write(COLAB_KEEPER_ENV_FILE, "COLAB_LLM_API_KEY=" + new_key + "\n")
+    credential_mode = os.getenv("AIOS_SYSTEMD_CREDENTIALS", "0").lower() in (
+        "1", "true", "yes", "on"
+    )
+    if credential_mode:
+        source_dir = Path(os.getenv("AIOS_CREDENTIAL_SOURCE_DIR", "/etc/aios/credentials"))
+        _atomic_write(source_dir / "colab_llm_api_key", new_key + "\n")
+        _remove_env_keys(COLAB_ENV_FILE, {"COLAB_LLM_API_KEY"})
+        COLAB_KEEPER_ENV_FILE.unlink(missing_ok=True)
+    else:
+        _update_env_values(COLAB_ENV_FILE, {"COLAB_LLM_API_KEY": new_key})
+        _atomic_write(COLAB_KEEPER_ENV_FILE, "COLAB_LLM_API_KEY=" + new_key + "\n")
     print("🔐 Bearer-ключ Colab ротирован для нового recovery generation")
     return new_key
 
@@ -197,26 +243,107 @@ async def _output_text(page) -> str:
     return "\n".join(parts)
 
 
-async def _scrub_live_notebook_secret(page, api_key: str) -> bool:
-    """Remove the bearer value from Monaco after the running process captured it."""
-    if not api_key:
+async def _scrub_live_notebook_secrets(page, values: list[str]) -> bool:
+    """Remove injected bearer/tunnel secrets after running processes captured them."""
+    secrets_to_scrub = [value for value in values if value]
+    if not secrets_to_scrub:
         return False
     try:
-        changed = await page.evaluate("""([secret]) => {
+        changed = await page.evaluate("""([secrets]) => {
           let changed = false;
           for (const model of monaco.editor.getModels()) {
-            const value = model.getValue();
-            if (!value.includes(secret)) continue;
-            model.setValue(value.split(secret).join('__AIOS_RUNTIME_SECRET_SCRUBBED__'));
-            changed = true;
+            let value = model.getValue();
+            for (const secret of secrets) {
+              if (!secret || !value.includes(secret)) continue;
+              value = value.split(secret).join('__AIOS_RUNTIME_SECRET_SCRUBBED__');
+              changed = true;
+            }
+            if (value !== model.getValue()) model.setValue(value);
           }
           return changed;
-        }""", [api_key])
+        }""", [secrets_to_scrub])
         if changed:
-            print("🧹 Bearer-ключ удалён из live editor DOM после запуска")
+            print("🧹 Runtime-секреты удалены из live editor DOM после запуска")
         return bool(changed)
     except Exception:
         return False
+
+
+async def _run_tunnel_cell(page) -> bool:
+    """Run only the tunnel cell when vLLM is already healthy in this runtime."""
+    try:
+        cells = page.locator(".cell.code.notebook-cell")
+        for index in range(await cells.count() - 1, -1, -1):
+            cell = cells.nth(index)
+            text = await cell.inner_text(timeout=1500)
+            if "# === Защищённый tunnel" in text or "# === Защищённый Cloudflare tunnel" in text:
+                await cell.click(timeout=3000)
+                await page.keyboard.press("Control+Enter")
+                await asyncio.sleep(2)
+                await _confirm_dialogs(page)
+                print("▶️ Запущена только tunnel-ячейка; vLLM сохранён")
+                return True
+    except Exception as exc:
+        print(f"Tunnel-only note: {type(exc).__name__}")
+    return False
+
+
+async def _wait_for_new_tunnel(
+    page,
+    *,
+    old_urls: set[str],
+    attempts: int,
+    service_kind: str,
+    old_output: str = "",
+    expected_generation: str = "",
+) -> tuple[str, bool]:
+    output_was_cleared = not old_urls
+    fatal_markers = (
+        "GPU available: False",
+        "T4 GPU не подключён",
+        "vLLM завершился:",
+        "vLLM не запустился за 8 минут",
+        "tunnel URL не получен",
+        "TAILSCALE_AUTH_KEY is required",
+        "COLAB_LLM_PUBLIC_URL is required",
+    )
+    fatal_baseline = {marker: old_output.count(marker) for marker in fatal_markers}
+    fatal_output_was_cleared = not any(fatal_baseline.values())
+    for attempt in range(attempts):
+        await asyncio.sleep(6)
+        output_text = await _output_text(page)
+        if service_kind == "llm":
+            current_fatal_counts = {
+                marker: output_text.count(marker) for marker in fatal_markers
+            }
+            if not any(current_fatal_counts.values()):
+                fatal_output_was_cleared = True
+            new_fatal = any(
+                count > fatal_baseline[marker]
+                or (fatal_output_was_cleared and count > 0)
+                for marker, count in current_fatal_counts.items()
+            )
+            if new_fatal:
+                print("❌ Обнаружена фатальная ошибка нового запуска LLM-ячейки")
+                return "", True
+            generation_ready = not expected_generation or (
+                f"COLAB_TUNNEL_GENERATION={expected_generation}" in output_text
+            )
+            urls = _extract_endpoint_urls(output_text) if generation_ready else []
+        else:
+            generation_ready = True
+            urls = re.findall(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", output_text)
+        if not urls:
+            output_was_cleared = True
+        if expected_generation and generation_ready and urls:
+            fresh_url = urls[-1]
+        else:
+            fresh_url = _select_fresh_tunnel(urls, old_urls, output_was_cleared)
+        if fresh_url:
+            print("🎉 Получен URL нового выполнения tunnel-ячейки")
+            return fresh_url, False
+        print(f"⏳ [Сканирование {attempt + 1}/{attempts}] Ожидание нового tunnel generation...")
+    return "", False
 
 
 async def _confirm_dialogs(page):
@@ -361,7 +488,7 @@ async def _ensure_t4_runtime(page):
         return False
 
 
-async def _prepare_llm_notebook(page):
+async def _prepare_llm_notebook(page) -> str:
     """Patch the GitHub LLM notebook for the current Colab runtime.
 
     The upstream notebook used a non-existent PyPI ``cloudflared`` package and
@@ -370,61 +497,140 @@ async def _prepare_llm_notebook(page):
     authenticated Colab session.
     """
     if os.getenv("COLAB_SERVICE_KIND", "llm") != "llm":
-        return
+        return ""
     api_key = os.getenv("COLAB_LLM_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("COLAB_LLM_API_KEY is required for the Colab LLM endpoint")
 
-    cell1 = """# === Установка vLLM и cloudflared binary ===
-!pip install -q vllm
-!pip uninstall -y -q torchaudio
-!wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
-!chmod +x /usr/local/bin/cloudflared
-import subprocess
-print("✅ vLLM и cloudflared установлены; конфликтующий torchaudio удалён")
-subprocess.run(["cloudflared", "--version"], check=True)
+    tunnel_provider = _configured_tunnel_provider()
+    tailscale_auth_key = os.getenv("TAILSCALE_AUTH_KEY", "").strip()
+    tailscale_public_url = os.getenv("COLAB_LLM_PUBLIC_URL", "").strip().rstrip("/")
+    tailscale_hostname = os.getenv("TAILSCALE_COLAB_HOSTNAME", "aios-colab-llm").strip()
+    tailscale_mode = os.getenv("TAILSCALE_MODE", "funnel").strip().lower()
+    recovery_generation = secrets.token_hex(8)
+
+    cell1 = f"""# === Быстрая подготовка vLLM и tunnel binary ===
+import importlib.util, os, pathlib, shutil, subprocess, sys, urllib.request
+TUNNEL_PROVIDER = {tunnel_provider!r}
+if importlib.util.find_spec("vllm") is None:
+    print("STAGE install:vllm")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "vllm"])
+else:
+    print("STAGE install:vllm cached")
+if importlib.util.find_spec("torchaudio") is not None:
+    subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "-q", "torchaudio"], check=False)
+if pathlib.Path("/content/drive/MyDrive").exists():
+    cache = pathlib.Path("/content/drive/MyDrive/AIOS/huggingface_cache")
+    cache.mkdir(parents=True, exist_ok=True)
+    os.environ["HF_HOME"] = str(cache)
+    print("STAGE cache:huggingface drive")
+if TUNNEL_PROVIDER == "tailscale":
+    if shutil.which("tailscale") is None:
+        print("STAGE install:tailscale")
+        subprocess.check_call("curl -fsSL https://tailscale.com/install.sh | sh", shell=True)
+else:
+    cloudflared = pathlib.Path("/usr/local/bin/cloudflared")
+    if not cloudflared.exists():
+        print("STAGE install:cloudflared")
+        target = pathlib.Path("/tmp/cloudflared.new")
+        urllib.request.urlretrieve(
+            "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64",
+            target,
+        )
+        target.chmod(0o755)
+        os.replace(target, cloudflared)
+print("✅ STAGE install:ready provider=" + TUNNEL_PROVIDER)
 """
     cell2 = f"""# === Защищённый vLLM OpenAI API на T4 ===
-import subprocess, time, requests, pathlib, torch
+import os, subprocess, time, requests, pathlib, torch
 API_KEY = {api_key!r}
 print("GPU available:", torch.cuda.is_available())
 if not torch.cuda.is_available():
     raise RuntimeError("T4 GPU не подключён: torch.cuda.is_available() == False")
 print("GPU:", torch.cuda.get_device_name(0))
-subprocess.run("pkill -f 'vllm.entrypoints.openai.api_server' || true", shell=True)
-log_path = "/tmp/aios_vllm.log"
-log_file = open(log_path, "w")
-cmd = [
-    "python3", "-m", "vllm.entrypoints.openai.api_server",
-    "--model", "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ",
-    "--served-model-name", "colab/qwen2.5-coder",
-    "--quantization", "awq", "--dtype", "half",
-    "--port", "8000", "--max-model-len", "4096",
-    "--gpu-memory-utilization", "0.90", "--api-key", API_KEY,
-]
-vllm_proc = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
 headers = {{"Authorization": "Bearer " + API_KEY}}
-for attempt in range(240):
-    if vllm_proc.poll() is not None:
+try:
+    existing = requests.get("http://127.0.0.1:8000/v1/models", headers=headers, timeout=3)
+except Exception:
+    existing = None
+if existing is not None and existing.status_code == 200:
+    print("✅ STAGE model:reused colab/qwen2.5-coder")
+else:
+    subprocess.run("pkill -f 'vllm.entrypoints.openai.api_server' || true", shell=True)
+    log_path = "/tmp/aios_vllm.log"
+    log_file = open(log_path, "w")
+    cmd = [
+        "python3", "-m", "vllm.entrypoints.openai.api_server",
+        "--model", "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ",
+        "--served-model-name", "colab/qwen2.5-coder",
+        "--quantization", "awq", "--dtype", "half",
+        "--port", "8000", "--max-model-len", "4096",
+        "--gpu-memory-utilization", "0.90", "--api-key", API_KEY,
+    ]
+    vllm_proc = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT, env=os.environ.copy())
+    for attempt in range(240):
+        if vllm_proc.poll() is not None:
+            log_file.flush()
+            tail = pathlib.Path(log_path).read_text(errors="replace")[-5000:]
+            raise RuntimeError("vLLM завершился:\\n" + tail)
+        try:
+            response = requests.get("http://127.0.0.1:8000/v1/models", headers=headers, timeout=3)
+            if response.status_code == 200:
+                print("✅ vLLM API готов: colab/qwen2.5-coder")
+                break
+        except Exception:
+            pass
+        if attempt % 10 == 0:
+            print(f"⏳ Загрузка модели: {{attempt * 2}} сек")
+        time.sleep(2)
+    else:
         log_file.flush()
         tail = pathlib.Path(log_path).read_text(errors="replace")[-5000:]
-        raise RuntimeError("vLLM завершился:\\n" + tail)
-    try:
-        response = requests.get("http://127.0.0.1:8000/v1/models", headers=headers, timeout=3)
-        if response.status_code == 200:
-            print("✅ vLLM API готов: colab/qwen2.5-coder")
-            break
-    except Exception:
-        pass
-    if attempt % 10 == 0:
-        print(f"⏳ Загрузка модели: {{attempt * 2}} сек")
-    time.sleep(2)
-else:
-    log_file.flush()
-    tail = pathlib.Path(log_path).read_text(errors="replace")[-5000:]
-    raise TimeoutError("vLLM не запустился за 8 минут:\\n" + tail)
+        raise TimeoutError("vLLM не запустился за 8 минут:\\n" + tail)
 """
-    cell3 = """# === Защищённый Cloudflare tunnel ===
+    if tunnel_provider == "tailscale":
+        cell3 = f"""# === Защищённый tunnel: Tailscale ===
+import pathlib, subprocess, time
+TAILSCALE_AUTH_KEY = {tailscale_auth_key!r}
+PUBLIC_URL = {tailscale_public_url!r}
+HOSTNAME = {tailscale_hostname!r}
+MODE = {tailscale_mode!r}
+if not TAILSCALE_AUTH_KEY:
+    raise RuntimeError("TAILSCALE_AUTH_KEY is required")
+if not PUBLIC_URL:
+    raise RuntimeError("COLAB_LLM_PUBLIC_URL is required")
+socket = "/tmp/aios-tailscaled.sock"
+state = "/tmp/aios-tailscaled.state"
+subprocess.run(["pkill", "-f", "tailscaled.*aios-tailscaled"], check=False)
+daemon_log = open("/tmp/aios_tailscaled.log", "w")
+daemon = subprocess.Popen([
+    "tailscaled", "--tun=userspace-networking", "--socket=" + socket,
+    "--state=" + state,
+], stdout=daemon_log, stderr=subprocess.STDOUT)
+for _ in range(30):
+    if pathlib.Path(socket).exists():
+        break
+    if daemon.poll() is not None:
+        raise RuntimeError("Tailscale daemon failed")
+    time.sleep(1)
+subprocess.check_call([
+    "tailscale", "--socket=" + socket, "up", "--reset",
+    "--authkey=" + TAILSCALE_AUTH_KEY, "--hostname=" + HOSTNAME,
+    "--accept-routes=false",
+])
+if MODE == "serve":
+    subprocess.check_call(["tailscale", "--socket=" + socket, "serve", "--bg", "http://127.0.0.1:8000"])
+else:
+    subprocess.check_call(["tailscale", "--socket=" + socket, "funnel", "--bg", "8000"])
+tunnel_url = PUBLIC_URL.rstrip("/")
+if not tunnel_url.endswith("/v1"):
+    tunnel_url += "/v1"
+print("🎉 COLAB_LLM_URL=" + tunnel_url)
+print("COLAB_TUNNEL_GENERATION=" + {recovery_generation!r})
+print("🔐 Tailscale tunnel и Bearer API готовы")
+"""
+    else:
+        cell3 = f"""# === Защищённый tunnel: Cloudflare quick fallback ===
 import subprocess, re, time
 subprocess.run(["pkill", "-f", "cloudflared tunnel --url http://127.0.0.1:8000"], check=False)
 time.sleep(1)
@@ -442,17 +648,18 @@ while time.time() < deadline:
     if match:
         tunnel_url = match.group(0) + "/v1"
         print("🎉 COLAB_LLM_URL=" + tunnel_url)
-        print("🔐 API защищён Bearer-ключом AIOS")
+        print("COLAB_TUNNEL_GENERATION=" + {recovery_generation!r})
+        print("🔐 Quick tunnel и Bearer API готовы")
         break
 if not tunnel_url:
-    raise RuntimeError("Cloudflare tunnel URL не получен")
+    raise RuntimeError("Quick tunnel URL не получен")
 """
     patch_js = """([c1,c2,c3]) => {
       const models = monaco.editor.getModels();
       const find = (patterns) => models.find(m => patterns.some(p => m.getLineContent(1).startsWith(p)));
       const m1 = find(['# === ЯЧЕЙКА 1', '# === Установка vLLM']);
       const m2 = find(['# === ЯЧЕЙКА 2', '# === Защищённый vLLM']);
-      const m3 = find(['# === ЯЧЕЙКА 3', '# === Защищённый Cloudflare']);
+      const m3 = find(['# === ЯЧЕЙКА 3', '# === Защищённый Cloudflare', '# === Защищённый tunnel']);
       if (!m1 || !m2 || !m3) return false;
       m1.setValue(c1); m2.setValue(c2); m3.setValue(c3);
       return true;
@@ -461,7 +668,7 @@ if not tunnel_url:
         try:
             if await page.evaluate(patch_js, [cell1, cell2, cell3]):
                 print("🛠️ LLM-ячейки Colab подготовлены для T4/AWQ и защищённого API")
-                return
+                return recovery_generation
         except Exception:
             pass
         await asyncio.sleep(1)
@@ -469,6 +676,10 @@ if not tunnel_url:
 
 
 async def run_colab_automation():
+    from tg_bot.credentials import import_runtime_credential
+
+    import_runtime_credential("COLAB_LLM_API_KEY", "colab_llm_api_key")
+    import_runtime_credential("TAILSCALE_AUTH_KEY", "tailscale_auth_key")
     cdp_url = (
         os.getenv("COLAB_CDP_URL")
         or os.getenv("AIOS_CHROME_CDP")
@@ -529,7 +740,13 @@ async def run_colab_automation():
         colab_api_key = os.getenv("COLAB_LLM_API_KEY", "").strip()
         endpoint_reused = False
         old_tunnel_urls: set[str] = set()
+        old_output_text = ""
+        expected_generation = ""
         service_kind = os.getenv("COLAB_SERVICE_KIND", "llm")
+
+        tunnel_only_recovery = False
+        full_run_started = False
+        tunnel_provider = _configured_tunnel_provider()
 
         if reused:
             print("ℹ️  Вкладка переиспользована. Проверяю runtime и endpoint перед recovery...")
@@ -547,18 +764,39 @@ async def run_colab_automation():
                     tunnel_url = str(healthy.get("base_url", "")).strip().rstrip("/")
                     colab_api_key = str(healthy.get("api_key", "")).strip()
                     endpoint_reused = True
-                    print("✅ Зарегистрированный Colab endpoint здоров; Run all пропущен")
+                    print("✅ STAGE endpoint:healthy — выполнение ячеек пропущено")
                 else:
-                    colab_api_key = _rotate_colab_api_key()
-                    await _prepare_llm_notebook(page)
-                    old_tunnel_urls = set(_TUNNEL_PATTERN.findall(await _output_text(page)))
-                    await page.keyboard.press("Control+F9")
-                    print("▶️ Ctrl+F9 (Run all) отправлен для recovery")
-                    await asyncio.sleep(3)
-                    await _confirm_dialogs(page)
-                    await asyncio.sleep(4)
+                    current = _load_colab_runtime_config()
+                    colab_api_key = (
+                        os.getenv("COLAB_LLM_API_KEY", "").strip()
+                        or str(current.get("api_key", "")).strip()
+                    )
+                    if not colab_api_key:
+                        colab_api_key = _rotate_colab_api_key()
+                    os.environ["COLAB_LLM_API_KEY"] = colab_api_key
+                    expected_generation = await _prepare_llm_notebook(page)
+                    old_output_text = await _output_text(page)
+                    old_tunnel_urls = set(_extract_endpoint_urls(old_output_text))
+                    if tunnel_provider == "tailscale":
+                        # Stable Tailscale URLs are expected to repeat; an
+                        # authenticated health probe below rejects stale output.
+                        old_tunnel_urls.clear()
+                    tunnel_only_recovery = await _run_tunnel_cell(page)
+                    if tunnel_only_recovery:
+                        print("⚡ STAGE recovery:tunnel-only")
+                    else:
+                        colab_api_key = _rotate_colab_api_key()
+                        expected_generation = await _prepare_llm_notebook(page)
+                        old_output_text = await _output_text(page)
+                        old_tunnel_urls = set(_extract_endpoint_urls(old_output_text))
+                        await page.keyboard.press("Control+F9")
+                        full_run_started = True
+                        print("▶️ STAGE recovery:full — Ctrl+F9")
+                        await asyncio.sleep(3)
+                        await _confirm_dialogs(page)
             else:
                 await page.keyboard.press("Control+F9")
+                full_run_started = True
                 await asyncio.sleep(3)
                 await _confirm_dialogs(page)
         else:
@@ -571,52 +809,70 @@ async def run_colab_automation():
 
             if service_kind == "llm":
                 colab_api_key = _rotate_colab_api_key()
-                await _prepare_llm_notebook(page)
-                old_tunnel_urls = set(_TUNNEL_PATTERN.findall(await _output_text(page)))
+                expected_generation = await _prepare_llm_notebook(page)
+                old_output_text = await _output_text(page)
+                old_tunnel_urls = set(_extract_endpoint_urls(old_output_text))
 
-            print("▶️ Запуск выполнения всех ячеек (Ctrl+F9)...")
+            print("▶️ STAGE recovery:full — Ctrl+F9")
             await page.keyboard.press("Control+F9")
+            full_run_started = True
             await asyncio.sleep(5)
             await _confirm_dialogs(page)
-            await asyncio.sleep(4)
 
         print("\n⏳ Инициализация и слежение за выполнением...")
 
-        # Туннель нужен только сервисам с cloudflared (LLM/Whisper).
         kind_needs_tunnel = service_kind in ("llm", "whisper")
-        if kind_needs_tunnel and not tunnel_url:
-            # First-time vLLM install + model warm-up can exceed ten minutes.
-            # Fatal cell errors still short-circuit immediately, so a wider
-            # readiness window avoids restarting a healthy late-stage load.
+        if kind_needs_tunnel and not tunnel_url and tunnel_only_recovery:
+            quick_attempts = int(os.getenv("COLAB_TUNNEL_ONLY_WAIT_ATTEMPTS", "20"))
+            tunnel_url, fatal = await _wait_for_new_tunnel(
+                page,
+                old_urls=old_tunnel_urls,
+                attempts=quick_attempts,
+                service_kind=service_kind,
+                old_output=old_output_text,
+                expected_generation=expected_generation,
+            )
+            if tunnel_url and service_kind == "llm":
+                candidate = {
+                    "base_url": tunnel_url,
+                    "api_key": colab_api_key,
+                    "model": COLAB_MODEL,
+                    "enabled": True,
+                }
+                if not await asyncio.to_thread(_probe_colab_config, candidate, timeout=15):
+                    print("⚠️ Tunnel восстановлен, но локальный vLLM не отвечает; нужен полный recovery")
+                    tunnel_url = ""
+            if fatal:
+                tunnel_url = ""
+
+            if not tunnel_url:
+                colab_api_key = _rotate_colab_api_key()
+                expected_generation = await _prepare_llm_notebook(page)
+                old_output_text = await _output_text(page)
+                old_tunnel_urls = set(_extract_endpoint_urls(old_output_text))
+                if tunnel_provider == "tailscale":
+                    old_tunnel_urls.clear()
+                await page.keyboard.press("Control+F9")
+                full_run_started = True
+                print("▶️ STAGE recovery:full после неудачи tunnel-only")
+                await asyncio.sleep(3)
+                await _confirm_dialogs(page)
+
+        if kind_needs_tunnel and not tunnel_url and full_run_started:
             wait_attempts = int(os.getenv("COLAB_TUNNEL_WAIT_ATTEMPTS", "160"))
-            output_was_cleared = not old_tunnel_urls
-            for attempt in range(wait_attempts):
-                await asyncio.sleep(6)
-                output_text = await _output_text(page)
-
-                if service_kind == "llm":
-                    fatal_markers = (
-                        "GPU available: False",
-                        "T4 GPU не подключён",
-                        "vLLM завершился:",
-                        "vLLM не запустился за 8 минут",
-                        "Cloudflare tunnel URL не получен",
-                    )
-                    if any(marker in output_text for marker in fatal_markers):
-                        print("❌ Обнаружена фатальная ошибка LLM-ячейки; recovery будет перезапущен")
-                        return
-                    urls = _TUNNEL_PATTERN.findall(output_text)
-                else:
-                    urls = re.findall(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", output_text)
-
-                if not urls:
-                    output_was_cleared = True
-                fresh_url = _select_fresh_tunnel(urls, old_tunnel_urls, output_was_cleared)
-                if fresh_url:
-                    tunnel_url = fresh_url
-                    print("🎉 Получен URL нового выполнения tunnel-ячейки")
-                    break
-                print(f"⏳ [Сканирование {attempt + 1}/{wait_attempts}] Ожидание нового tunnel generation...")
+            tunnel_url, fatal = await _wait_for_new_tunnel(
+                page,
+                old_urls=old_tunnel_urls,
+                attempts=wait_attempts,
+                service_kind=service_kind,
+                old_output=old_output_text,
+                expected_generation=expected_generation,
+            )
+            if fatal:
+                await _scrub_live_notebook_secrets(
+                    page, [colab_api_key, os.getenv("TAILSCALE_AUTH_KEY", "")]
+                )
+                return
         elif not kind_needs_tunnel:
             print("ℹ️  Этот ноутбук не создаёт туннель — переходим сразу к watchdog")
 
@@ -627,15 +883,27 @@ async def run_colab_automation():
                     register_whisper_endpoint(tunnel_url)
             elif not endpoint_reused:
                 from scripts.register_colab_llm import register_colab_endpoint
-                register_colab_endpoint(
-                    tunnel_url,
-                    COLAB_MODEL,
-                    api_key=colab_api_key,
-                    verify=True,
-                )
-                await _scrub_live_notebook_secret(page, colab_api_key)
+                try:
+                    register_colab_endpoint(
+                        tunnel_url,
+                        COLAB_MODEL,
+                        api_key=colab_api_key,
+                        verify=True,
+                        node_id=os.getenv("COLAB_NODE_ID", "primary"),
+                        publish_primary=(
+                            os.getenv("COLAB_NODE_ROLE", "primary").strip().lower() != "standby"
+                        ),
+                    )
+                finally:
+                    await _scrub_live_notebook_secrets(
+                        page,
+                        [colab_api_key, os.getenv("TAILSCALE_AUTH_KEY", "")],
+                    )
             else:
-                await _scrub_live_notebook_secret(page, colab_api_key)
+                await _scrub_live_notebook_secrets(
+                    page,
+                    [colab_api_key, os.getenv("TAILSCALE_AUTH_KEY", "")],
+                )
                 print("♻️ Используется уже зарегистрированный здоровый endpoint")
 
             # AIOS Colab Farm registry is refreshed even on the idempotent path.
@@ -657,6 +925,9 @@ async def run_colab_automation():
             except Exception as reg_err:
                 print(f"⚠️ [ColabFarm] Регистрация не удалась: {type(reg_err).__name__}")
         elif kind_needs_tunnel:
+            await _scrub_live_notebook_secrets(
+                page, [colab_api_key, os.getenv("TAILSCALE_AUTH_KEY", "")]
+            )
             print("⚠️ Новый tunnel generation не появился; запускаю полный recovery")
             return
 

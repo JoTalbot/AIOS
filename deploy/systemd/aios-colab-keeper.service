@@ -1,0 +1,25 @@
+[Unit]
+Description=AIOS Colab LLM runtime and tunnel keeper
+After=network-online.target aios-chrome-vnc.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+EnvironmentFile=-/root/AIOS/.env
+Environment=AIOS_SYSTEMD_CREDENTIALS=1
+Environment=AIOS_CREDENTIAL_SOURCE_DIR=/etc/aios/credentials
+Environment=COLAB_TUNNEL_PROVIDER=auto
+LoadCredential=colab_llm_api_key:/etc/aios/credentials/colab_llm_api_key
+LoadCredential=tailscale_auth_key:/etc/aios/credentials/tailscale_auth_key
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/colab_automation_runner.py
+Restart=always
+RestartSec=15
+TimeoutStartSec=0
+UMask=0077
+StandardOutput=append:/root/AIOS/logs/colab_keeper.log
+StandardError=append:/root/AIOS/logs/colab_keeper.log
+
+[Install]
+WantedBy=multi-user.target

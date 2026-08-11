@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Canary for Colab routing and the at-most-once Telegram outbox.
 
-Set ``TELEGRAM_CANARY_CHAT_ID`` to a dedicated technical chat.  When omitted,
-Colab is still checked but no Telegram activity is produced.  The regular owner
-chat is deliberately not used as an implicit default.
+The canary sends a silent ``sendMessage`` to ``TELEGRAM_CANARY_CHAT_ID`` or
+the first owner ``TELEGRAM_CHAT_ID``, verifies the full outbox path, and deletes
+the message immediately. Message text and chat identifiers are never logged.
 """
 
 from __future__ import annotations
@@ -84,22 +84,25 @@ def run_canary(*, send_telegram: bool = False) -> dict:
     except Exception as exc:
         result["colab"] = {"ok": False, "error_class": type(exc).__name__}
 
-    token = os.environ.get("AIOS_TELEGRAM_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN")
-    canary_chat = os.environ.get("TELEGRAM_CANARY_CHAT_ID", "").strip()
+    from tg_bot.credentials import secret_from_env_or_credential
+
+    token = secret_from_env_or_credential(
+        "AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token"
+    )
+    owner_chat = os.environ.get("TELEGRAM_CHAT_ID", "").split(",", 1)[0].strip()
+    canary_chat = os.environ.get("TELEGRAM_CANARY_CHAT_ID", "").strip() or owner_chat
     if send_telegram and token and canary_chat:
         try:
             from tg_bot.api import TelegramAPI
             from tg_bot.outbox import TelegramOutbox
 
             api = TelegramAPI(token)
-            action_started = time.monotonic()
-            api.send_chat_action(int(canary_chat))
-            action_sec = time.monotonic() - action_started
-            bucket = int(time.time() // 600)
+            dedup_key = f"canary:{time.time_ns()}"
             outbox = TelegramOutbox(api, ROOT / "data" / "telegram_canary_outbox.sqlite3")
             outbox.start()
+            send_started = time.monotonic()
             queued = outbox.enqueue(
-                dedup_key=f"canary:{bucket}",
+                dedup_key=dedup_key,
                 chat_id=int(canary_chat),
                 text=(
                     "✅ AIOS canary: Colab/Qwen и Telegram outbox работают."
@@ -110,20 +113,36 @@ def run_canary(*, send_telegram: bool = False) -> dict:
                 generation_sec=float(result["colab"].get("generation_sec", 0)),
                 provider=str(result["colab"].get("provider", "unknown")),
                 model=str(result["colab"].get("model", "unknown")),
+                disable_notification=True,
+                metric_event="canary_delivery",
             )
-            row = outbox.wait(f"canary:{bucket}", timeout=25)
+            row = outbox.wait(dedup_key, timeout=25)
             outbox.stop()
+            status = row.get("status") if row else "timeout"
+            deleted = False
+            message_id = int(row.get("telegram_message_id") or 0) if row else 0
+            if status == "sent" and message_id:
+                for attempt in range(3):
+                    try:
+                        api.delete_message(int(canary_chat), message_id)
+                        deleted = True
+                        break
+                    except Exception:
+                        if attempt < 2:
+                            time.sleep(1)
+                if not deleted:
+                    status = "delete_failed"
             result["telegram"] = {
-                "status": row.get("status") if row else "timeout",
+                "status": status,
                 "queued": queued,
-                "typing_sec": round(action_sec, 3),
+                "deleted": deleted,
+                "send_sec": round(time.monotonic() - send_started, 3),
                 "attempts": int(row.get("attempts", 0)) if row else 0,
             }
         except Exception as exc:
             result["telegram"] = {"status": "failed", "error_class": type(exc).__name__}
     elif token:
-        # A dedicated canary chat is optional. getMe still verifies Telegram
-        # DNS, IPv4 transport, TLS and bot authentication without user-visible spam.
+        # Dry mode still verifies DNS, IPv4 transport, TLS and authentication.
         try:
             from tg_bot.api import TelegramAPI
 
@@ -159,7 +178,7 @@ def run_canary(*, send_telegram: bool = False) -> dict:
                 "model": result["colab"].get("model", "unknown"),
                 "gen_sec": result["colab"].get("generation_sec", 0),
                 "send_sec": result["telegram"].get(
-                    "typing_sec", result["telegram"].get("api_sec", 0)
+                    "send_sec", result["telegram"].get("api_sec", 0)
                 ),
                 "total_sec": result["total_sec"],
                 "error_class": result["colab"].get("error_class", ""),

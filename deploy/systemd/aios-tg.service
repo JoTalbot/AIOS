@@ -8,6 +8,9 @@ Type=simple
 User=root
 WorkingDirectory=/root/AIOS
 EnvironmentFile=-/root/AIOS/.env
+LoadCredential=telegram_token:/etc/aios/credentials/telegram_token
+LoadCredential=telegram_queue_key:/etc/aios/credentials/telegram_queue_key
+Environment=TELEGRAM_QUEUE_KEY_FILE=%d/telegram_queue_key
 ExecStart=/usr/bin/python3 -u /root/AIOS/run_telegram_bot.py
 Restart=always
 RestartSec=5

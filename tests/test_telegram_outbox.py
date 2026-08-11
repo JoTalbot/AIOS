@@ -130,3 +130,69 @@ def test_structured_metrics_have_percentiles_without_content(tmp_path, monkeypat
     assert summary["providers"] == {"colab": 3}
     assert summary["latency"]["send_p95"] == 0.5
     assert "must not be stored" not in path.read_text(encoding="utf-8")
+
+
+def test_legacy_plaintext_is_encrypted_in_place(tmp_path, monkeypatch):
+    monkeypatch.setenv("TELEGRAM_METRICS_ENABLED", "0")
+    db = tmp_path / "outbox.sqlite3"
+    original = TelegramOutbox(FakeAPI(), db)
+    with sqlite3.connect(db) as connection:
+        connection.execute(
+            """
+            INSERT INTO telegram_outbox (
+                dedup_key, chat_id, text, encrypted, parse_mode, status, created_at
+            ) VALUES ('legacy:1', 7, 'legacy private text', 0, '', 'pending', ?)
+            """,
+            (time.time(),),
+        )
+
+    api = FakeAPI()
+    migrated = TelegramOutbox(api, db)
+    with sqlite3.connect(db) as connection:
+        stored, encrypted = connection.execute(
+            "SELECT text, encrypted FROM telegram_outbox WHERE dedup_key='legacy:1'"
+        ).fetchone()
+    assert encrypted == 1
+    assert "legacy private text" not in stored
+
+    migrated.start()
+    assert migrated.wait("legacy:1", timeout=2)["status"] == "sent"
+    migrated.stop()
+    assert api.calls[0][1] == "legacy private text"
+
+
+def test_manual_resend_is_atomic_and_only_for_failed_unknown(tmp_path, monkeypatch):
+    monkeypatch.setenv("TELEGRAM_METRICS_ENABLED", "0")
+    api = FakeAPI(error=TimeoutError("ambiguous"))
+    outbox = TelegramOutbox(api, tmp_path / "outbox.sqlite3")
+    outbox.start()
+    assert outbox.enqueue(dedup_key="llm:uncertain", chat_id=7, text="once")
+    uncertain = outbox.wait("llm:uncertain", timeout=2)
+    assert uncertain["status"] == "failed_unknown"
+    assert outbox.manual_resend(uncertain["id"])
+    assert not outbox.manual_resend(uncertain["id"])
+    deadline = time.monotonic() + 2
+    while len(api.calls) < 2 and time.monotonic() < deadline:
+        time.sleep(0.02)
+    outbox.stop()
+
+    assert outbox.get("llm:uncertain")["status"] == "resend_queued"
+    remaining = outbox.list_uncertain()
+    assert len(remaining) == 1
+    assert remaining[0]["dedup_key"].startswith("manual-resend:")
+    assert len(api.calls) == 2
+
+
+def test_definitive_api_rejection_is_not_failed_unknown(tmp_path, monkeypatch):
+    from tg_bot.api import TelegramAPIError
+
+    monkeypatch.setenv("TELEGRAM_METRICS_ENABLED", "0")
+    outbox = TelegramOutbox(
+        FakeAPI(error=TelegramAPIError("rejected")), tmp_path / "outbox.sqlite3"
+    )
+    outbox.start()
+    assert outbox.enqueue(dedup_key="llm:bad", chat_id=7, text="bad")
+    row = outbox.wait("llm:bad", timeout=2)
+    outbox.stop()
+    assert row["status"] == "failed"
+    assert outbox.list_uncertain() == []

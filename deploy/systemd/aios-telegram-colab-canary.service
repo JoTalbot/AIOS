@@ -1,6 +1,6 @@
 [Unit]
 Description=AIOS Colab/Qwen and Telegram outbox canary
-After=network-online.target aios-telegram-bot.service aios-colab-keeper.service
+After=network-online.target aios-tg.service aios-colab-keeper.service
 Wants=network-online.target
 
 [Service]
@@ -13,4 +13,5 @@ ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/telegram_colab_canary.py
 StandardOutput=append:/root/AIOS/logs/telegram_colab_canary.log
 StandardError=append:/root/AIOS/logs/telegram_colab_canary.log
 TimeoutStartSec=180
+UMask=0077
 Nice=10

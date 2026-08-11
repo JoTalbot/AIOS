@@ -89,6 +89,8 @@ services:
     container_name: aios-prometheus-prod
     ports:
       - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - ../monitoring/aios-alerts.yml:/etc/prometheus/aios-alerts.yml
@@ -112,8 +114,11 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:?Set GRAFANA_PASSWORD in .env}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
-      - ../monitoring/grafana-aios-ops.json:/var/lib/grafana/dashboards/aios-ops.json
-      - ../monitoring/grafana-production.json:/var/lib/grafana/dashboards/production.json
+      - ../monitoring/datasources/prometheus.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+      - ../monitoring/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/aios.yml:ro
+      - ../monitoring/grafana-aios-ops.json:/var/lib/grafana/dashboards/aios-ops.json:ro
+      - ../monitoring/grafana-production.json:/var/lib/grafana/dashboards/production.json:ro
+      - ../monitoring/grafana-telegram-llm.json:/var/lib/grafana/dashboards/telegram-llm.json:ro
       - grafana-prod-data:/var/lib/grafana
     depends_on:
       - prometheus
