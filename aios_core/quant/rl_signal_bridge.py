@@ -45,30 +45,31 @@ class RLSignalBridge:
             import torch.nn as nn
 
             class PolicyNet(nn.Module):
-                def __init__(self, obs_dim, act_dim=3, hidden=64):
+                def __init__(self, obs_dim, act_dim=3, hidden=128):
                     super().__init__()
-                    self.fc1 = nn.Linear(obs_dim, hidden)
+                    self.fc_pre = nn.Linear(obs_dim, hidden)
+                    self.fc1 = nn.Linear(hidden, hidden)
                     self.fc2 = nn.Linear(hidden, hidden)
                     self.mean = nn.Linear(hidden, act_dim)
                     self.logstd = nn.Parameter(torch.zeros(act_dim))
                     self.value = nn.Linear(hidden, 1)
 
                 def forward(self, x):
+                    x = torch.relu(self.fc_pre(x))
                     x = torch.relu(self.fc1(x))
                     x = torch.relu(self.fc2(x))
                     return self.mean(x), self.logstd.exp(), self.value(x)
 
             ckpt = torch.load(self.model_file, map_location="cpu")
             sd = ckpt.get("policy", ckpt)
-            # определить obs_dim по первому весу
-            w = sd["fc1.weight"]
+            w = sd["fc_pre.weight"]
             obs_dim = w.shape[1]
             self._obs_dim = obs_dim
             net = PolicyNet(obs_dim)
             net.load_state_dict(sd)
             net.eval()
             self._policy = net
-            print(f"{LOG_TAG} Модель PPO загружена (obs_dim={obs_dim})")
+            print(f"{LOG_TAG} Модель PPO v3 загружена (obs_dim={obs_dim})")
         except Exception as e:
             print(f"{LOG_TAG} [WARN] Ошибка загрузки PPO-модели: {e}")
             self._policy = None
@@ -92,18 +93,45 @@ class RLSignalBridge:
         if len(rows) < window + 1:
             return None
         closes = [r[4] for r in rows]
+        vols = [r[5] for r in rows]
+        n = len(closes)
         returns = [0.0]
-        for i in range(1, len(closes)):
+        for i in range(1, n):
             returns.append(closes[i] / closes[i - 1] - 1.0)
-        mom = [0.0] * len(closes)
-        for i in range(12, len(closes)):
-            mom[i] = closes[i] / closes[i - 12] - 1.0
-        w = returns[-window:]
-        m = mom[-window:]
-        obs = np.concatenate([w, m]).astype(np.float32)
-        if obs.shape[0] != self._obs_dim:
-            return None
-        return obs
+        def mom(period):
+            m = [0.0] * n
+            for i in range(period, n):
+                m[i] = closes[i] / closes[i - period] - 1.0
+            return m
+        mom5 = mom(5); mom12 = mom(12)
+        vol_chg = [0.0] * n
+        for i in range(1, n):
+            vol_chg[i] = vols[i] / vols[i - 1] - 1.0 if vols[i-1] else 0.0
+        # волатильность
+        vol_arr = [0.01]*n
+        for i in range(1, n):
+            w = returns[max(0,i-10):i]
+            vol_arr[i] = float(np.std(w)) if len(w) > 1 else 0.01
+        vmean = float(np.mean(vol_arr)) or 0.01
+        rets_w = returns[-window:]
+        last = n - 1
+        base = np.concatenate([
+            rets_w,
+            [mom5[last], mom12[last], vol_chg[last], vol_arr[last]/vmean]
+        ]).astype(np.float32)
+        exp = self._obs_dim
+        if base.shape[0] == exp:
+            return base
+        # мультиактив-модель: base (window+4) + onehot (n_assets)
+        if exp > base.shape[0]:
+            n_assets = exp - base.shape[0]
+            onehot = np.zeros(n_assets, dtype=np.float32)
+            # предполагаем BTC как индекс 0 (первый актив)
+            onehot[0] = 1.0
+            obs = np.concatenate([base, onehot]).astype(np.float32)
+            if obs.shape[0] == exp:
+                return obs
+        return None
 
     # ---- предсказание ----
     def predict_symbol(self, binance_symbol: str) -> Optional[dict]:
