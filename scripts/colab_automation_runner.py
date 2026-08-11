@@ -11,8 +11,11 @@ import sys
 import time
 import re
 import json
+import secrets
 import subprocess
+import tempfile
 import asyncio
+import urllib.request
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -54,6 +57,166 @@ def _pick_notebook() -> str:
     return (GITHUB_NB + "AIOS_Google_Colab_Whisper_Transcriber.ipynb"
             if "whisper" in sys.argv else GITHUB_NB + "AIOS_Google_Colab_LLM_Coding.ipynb")
 
+
+COLAB_KEYS_FILE = REPO_ROOT / "data" / ".llm_keys.json"
+COLAB_ENV_FILE = REPO_ROOT / ".env"
+COLAB_KEEPER_ENV_FILE = REPO_ROOT / "data" / ".colab_llm.env"
+COLAB_MODEL = "colab/qwen2.5-coder"
+_TUNNEL_PATTERN = re.compile(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com/v1")
+
+
+def _load_colab_runtime_config() -> dict:
+    try:
+        data = json.loads(COLAB_KEYS_FILE.read_text(encoding="utf-8"))
+        config = data.get("colab_llm", {})
+        return config if isinstance(config, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _probe_colab_config(config: dict, *, timeout: float = 12) -> bool:
+    """Cheap authenticated readiness check used before deciding to rerun cells."""
+    base_url = str(config.get("base_url", "")).strip().rstrip("/")
+    api_key = str(config.get("api_key", "")).strip()
+    model = str(config.get("model", COLAB_MODEL)).strip() or COLAB_MODEL
+    if not base_url or not api_key or config.get("enabled", True) is False:
+        return False
+    if not base_url.endswith("/v1"):
+        base_url += "/v1"
+    try:
+        request = urllib.request.Request(
+            base_url + "/models",
+            headers={"Authorization": "Bearer " + api_key, "User-Agent": "AIOS-Colab-Keeper/2.0"},
+        )
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            if response.status != 200:
+                return False
+            payload = json.loads(response.read().decode("utf-8"))
+        return model in {
+            item.get("id") for item in payload.get("data", []) if isinstance(item, dict)
+        }
+    except Exception:
+        return False
+
+
+def _healthy_registered_colab() -> dict:
+    if os.getenv("COLAB_REUSE_HEALTHY_ENDPOINT", "1").strip().lower() in ("0", "false", "no", "off"):
+        return {}
+    config = _load_colab_runtime_config()
+    return config if _probe_colab_config(config) else {}
+
+
+def _select_fresh_tunnel(
+    urls: list[str], old_urls: set[str], output_was_cleared: bool
+) -> str:
+    """Reject stale notebook output left by an earlier Run all generation."""
+    candidates = [url for url in urls if output_was_cleared or url not in old_urls]
+    return candidates[-1] if candidates else ""
+
+
+def _atomic_write(path: Path, content: str, mode: int = 0o600) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=path.name + ".", dir=str(path.parent))
+    tmp = Path(name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _update_env_values(path: Path, values: dict[str, str]) -> None:
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    remaining = dict(values)
+    result: list[str] = []
+    for line in lines:
+        key = line.partition("=")[0] if "=" in line else ""
+        if key in remaining:
+            result.append(f"{key}={remaining.pop(key)}")
+        else:
+            result.append(line)
+    result.extend(f"{key}={value}" for key, value in remaining.items())
+    _atomic_write(path, "\n".join(result) + "\n")
+
+
+def _rotate_colab_api_key() -> str:
+    """Create a short-lived recovery generation key without logging its value."""
+    current = os.getenv("COLAB_LLM_API_KEY", "").strip()
+    enabled = os.getenv("COLAB_ROTATE_KEY_ON_RECOVERY", "1").strip().lower() not in (
+        "0", "false", "no", "off"
+    )
+    if not enabled and current:
+        return current
+    new_key = secrets.token_urlsafe(36)
+    os.environ["COLAB_LLM_API_KEY"] = new_key
+    _update_env_values(COLAB_ENV_FILE, {"COLAB_LLM_API_KEY": new_key})
+    _atomic_write(COLAB_KEEPER_ENV_FILE, "COLAB_LLM_API_KEY=" + new_key + "\n")
+    print("🔐 Bearer-ключ Colab ротирован для нового recovery generation")
+    return new_key
+
+
+async def _connect_runtime(page) -> bool:
+    """Connect through the current Colab shadow host and report final state."""
+    try:
+        state = page.locator("#connect, #reconnect")
+        host = page.locator("colab-connect-button")
+        tip = (await state.get_attribute("tooltiptext") or "") if await state.count() else ""
+        connected = bool(re.search(r"Подключено к|Connected to", tip, re.I))
+        if connected:
+            print("✅ Runtime Colab уже подключён")
+            return True
+        if await host.is_visible():
+            await host.click(timeout=5000)
+            print("👍 Runtime Colab подключается/переподключается")
+            await asyncio.sleep(10)
+            tip = (await state.get_attribute("tooltiptext") or "") if await state.count() else ""
+            return bool(re.search(r"Подключено к|Connected to", tip, re.I))
+    except Exception as exc:
+        print(f"Connect note: {type(exc).__name__}")
+    return False
+
+
+async def _output_text(page) -> str:
+    """Read rendered outputs only; never read notebook sources containing secrets."""
+    parts: list[str] = []
+    try:
+        parts.extend(await page.locator(".output-content, colab-error-output").all_inner_texts())
+    except Exception:
+        pass
+    for frame in page.frames:
+        if frame == page.main_frame:
+            continue
+        try:
+            parts.append(await frame.locator("body").inner_text(timeout=1000))
+        except Exception:
+            continue
+    return "\n".join(parts)
+
+
+async def _scrub_live_notebook_secret(page, api_key: str) -> bool:
+    """Remove the bearer value from Monaco after the running process captured it."""
+    if not api_key:
+        return False
+    try:
+        changed = await page.evaluate("""([secret]) => {
+          let changed = false;
+          for (const model of monaco.editor.getModels()) {
+            const value = model.getValue();
+            if (!value.includes(secret)) continue;
+            model.setValue(value.split(secret).join('__AIOS_RUNTIME_SECRET_SCRUBBED__'));
+            changed = true;
+          }
+          return changed;
+        }""", [api_key])
+        if changed:
+            print("🧹 Bearer-ключ удалён из live editor DOM после запуска")
+        return bool(changed)
+    except Exception:
+        return False
 
 
 async def _confirm_dialogs(page):
@@ -362,172 +525,136 @@ async def run_colab_automation():
             except Exception:
                 continue
 
+        tunnel_url = ""
+        colab_api_key = os.getenv("COLAB_LLM_API_KEY", "").strip()
+        endpoint_reused = False
+        old_tunnel_urls: set[str] = set()
+        service_kind = os.getenv("COLAB_SERVICE_KIND", "llm")
+
         if reused:
-            print("ℹ️  Вкладка переиспользована. Проверяю runtime, подтверждаю диалоги и запускаю выполнение...")
-            # Диалог истёкшей среды выполнения перехватывает клики по #connect.
-            # Сначала подтверждаем Reconnect, затем повторно проверяем toolbar.
+            print("ℹ️  Вкладка переиспользована. Проверяю runtime и endpoint перед recovery...")
             reconnect_hit = await _confirm_dialogs(page)
             if reconnect_hit and re.search(r"повторно|reconnect", reconnect_hit, re.I):
                 await asyncio.sleep(12)
             await _ensure_t4_runtime(page)
-            # После смены CPU→GPU Colab оставляет вкладку открытой, но runtime отключён.
-            # У кнопки внутри shadow DOM нет доступного текста, поэтому проверяем сам #connect.
-            try:
-                connect_state = page.locator("#connect, #reconnect")
-                connect_host = page.locator("colab-connect-button")
-                connect_tip = (await connect_state.get_attribute("tooltiptext") or "") if await connect_state.count() else ""
-                already_connected = bool(re.search(r"Подключено к|Connected to", connect_tip, re.I))
-                if await connect_host.is_visible() and not already_connected:
-                    # The #connect control lives in shadow DOM; clicking it directly
-                    # is intercepted by the colab-connect-button host in current Colab.
-                    await connect_host.click(timeout=5000)
-                    print("👍 Runtime Colab подключён/переподключён")
-                    await asyncio.sleep(10)
-                elif already_connected:
-                    print("✅ Runtime Colab уже подключён")
-            except Exception as connect_err:
-                print(f"Connect note: {connect_err}")
+            await _connect_runtime(page)
             await _confirm_dialogs(page)
             await asyncio.sleep(2)
-            await _prepare_llm_notebook(page)
-            try:
+
+            if service_kind == "llm":
+                healthy = await asyncio.to_thread(_healthy_registered_colab)
+                if healthy:
+                    tunnel_url = str(healthy.get("base_url", "")).strip().rstrip("/")
+                    colab_api_key = str(healthy.get("api_key", "")).strip()
+                    endpoint_reused = True
+                    print("✅ Зарегистрированный Colab endpoint здоров; Run all пропущен")
+                else:
+                    colab_api_key = _rotate_colab_api_key()
+                    await _prepare_llm_notebook(page)
+                    old_tunnel_urls = set(_TUNNEL_PATTERN.findall(await _output_text(page)))
+                    await page.keyboard.press("Control+F9")
+                    print("▶️ Ctrl+F9 (Run all) отправлен для recovery")
+                    await asyncio.sleep(3)
+                    await _confirm_dialogs(page)
+                    await asyncio.sleep(4)
+            else:
                 await page.keyboard.press("Control+F9")
-                print("▶️ Ctrl+F9 (Run all) отправлен")
-            except Exception as ex:
-                print(f"Run note: {ex}")
-            await asyncio.sleep(3)
-            await _confirm_dialogs(page)
-            await asyncio.sleep(4)
+                await asyncio.sleep(3)
+                await _confirm_dialogs(page)
         else:
             print(f"🔗 Переход в Google Colab Notebook: {notebook_url}")
             await page.goto(notebook_url, wait_until="domcontentloaded", timeout=60000)
             print("✅ Страница Google Colab успешно загружена!")
-
             await asyncio.sleep(5)
             await _ensure_t4_runtime(page)
-            await _prepare_llm_notebook(page)
+            await _connect_runtime(page)
 
-            # Подключение GPU
-            print("🔌 Проверка кнопки Подключиться к GPU...")
-            try:
-                connect_state = page.locator("#connect, #reconnect")
-                connect_host = page.locator("colab-connect-button")
-                connect_tip = (await connect_state.get_attribute("tooltiptext") or "") if await connect_state.count() else ""
-                already_connected = bool(re.search(r"Подключено к|Connected to", connect_tip, re.I))
-                if await connect_host.is_visible() and not already_connected:
-                    await connect_host.click(timeout=5000)
-                    print("👍 Нажата кнопка Подключиться!")
-                    await asyncio.sleep(5)
-                elif already_connected:
-                    print("✅ Runtime Colab уже подключён")
-            except Exception as e:
-                print(f"Connect note: {e}")
+            if service_kind == "llm":
+                colab_api_key = _rotate_colab_api_key()
+                await _prepare_llm_notebook(page)
+                old_tunnel_urls = set(_TUNNEL_PATTERN.findall(await _output_text(page)))
 
-            # Запуск всех ячеек (Ctrl+F9)
             print("▶️ Запуск выполнения всех ячеек (Ctrl+F9)...")
             await page.keyboard.press("Control+F9")
             await asyncio.sleep(5)
-
-            # Окно 'Run anyway' / Подтверждение запуска (многоязычно)
-            await asyncio.sleep(2)
             await _confirm_dialogs(page)
-
-            # Повторный запуск, если диалог подтверждения сбросил выполнение
-            await asyncio.sleep(2)
-            try:
-                await page.keyboard.press("Control+F9")
-                print("▶️ Повторный Ctrl+F9 (Run all) после подтверждения")
-            except Exception:
-                pass
-            await asyncio.sleep(3)
-            await _confirm_dialogs(page)
+            await asyncio.sleep(4)
 
         print("\n⏳ Инициализация и слежение за выполнением...")
-        tunnel_url = ""
 
         # Туннель нужен только сервисам с cloudflared (LLM/Whisper).
-        kind_needs_tunnel = os.getenv("COLAB_SERVICE_KIND", "llm") in ("llm", "whisper")
-        if kind_needs_tunnel:
+        kind_needs_tunnel = service_kind in ("llm", "whisper")
+        if kind_needs_tunnel and not tunnel_url:
             wait_attempts = int(os.getenv("COLAB_TUNNEL_WAIT_ATTEMPTS", "100"))
-            for attempt in range(wait_attempts):  # По умолчанию до 10 минут ожидания
+            output_was_cleared = not old_tunnel_urls
+            for attempt in range(wait_attempts):
                 await asyncio.sleep(6)
+                output_text = await _output_text(page)
 
-                # Stop immediately on terminal cell errors instead of spending the
-                # full tunnel timeout scanning a CPU or failed vLLM runtime. Read
-                # output containers only: notebook sources contain the injected key.
-                if os.getenv("COLAB_SERVICE_KIND", "llm") == "llm":
-                    try:
-                        output_parts = await page.locator(
-                            ".output-content, colab-error-output"
-                        ).all_inner_texts()
-                        output_text = "\n".join(output_parts)
-                        fatal_markers = (
-                            "GPU available: False",
-                            "T4 GPU не подключён",
-                            "vLLM завершился:",
-                            "vLLM не запустился за 8 минут",
-                            "Cloudflare tunnel URL не получен",
-                        )
-                        if any(marker in output_text for marker in fatal_markers):
-                            print("❌ Обнаружена фатальная ошибка LLM-ячейки; прекращаю scan-loop для recovery.")
-                            return
-                    except Exception as output_err:
-                        print(f"Cell output check note: {type(output_err).__name__}")
-
-                page_text = await page.content()
-                # Выводы Colab рендерятся в отдельных googleusercontent iframe.
-                # page.content() содержит только iframe-теги, поэтому читаем frames явно.
-                for frame in page.frames:
-                    if frame == page.main_frame:
-                        continue
-                    try:
-                        page_text += "\n" + await frame.locator("body").inner_text(timeout=1500)
-                    except Exception:
-                        continue
-
-                is_whisper_mode = "whisper" in sys.argv or "Whisper" in notebook_url
-                pattern = r'https://[a-zA-Z0-9-]+\.trycloudflare\.com' if is_whisper_mode else r'https://[a-zA-Z0-9-]+\.trycloudflare\.com/v1'
-                match = re.search(pattern, page_text)
-                if match:
-                    tunnel_url = match.group(0)
-                    print(f"\n🎉 ========================================================")
-                    print(f"🔗 ИЗВЛЕЧЁН ПУБЛИЧНЫЙ URL ИЗ GOOGLE COLAB ({'Whisper' if is_whisper_mode else 'LLM'}):")
-                    print(f"   {tunnel_url}")
-                    print(f"========================================================\n")
-                    break
+                if service_kind == "llm":
+                    fatal_markers = (
+                        "GPU available: False",
+                        "T4 GPU не подключён",
+                        "vLLM завершился:",
+                        "vLLM не запустился за 8 минут",
+                        "Cloudflare tunnel URL не получен",
+                    )
+                    if any(marker in output_text for marker in fatal_markers):
+                        print("❌ Обнаружена фатальная ошибка LLM-ячейки; recovery будет перезапущен")
+                        return
+                    urls = _TUNNEL_PATTERN.findall(output_text)
                 else:
-                    print(f"⏳ [Сканирование {attempt+1}/{wait_attempts}] Ожидание генерации туннеля...")
-        else:
-            print("ℹ️  Этот ноутбук не создаёт туннель — переходим сразу к вочдогу.")
+                    urls = re.findall(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", output_text)
+
+                if not urls:
+                    output_was_cleared = True
+                fresh_url = _select_fresh_tunnel(urls, old_tunnel_urls, output_was_cleared)
+                if fresh_url:
+                    tunnel_url = fresh_url
+                    print("🎉 Получен URL нового выполнения tunnel-ячейки")
+                    break
+                print(f"⏳ [Сканирование {attempt + 1}/{wait_attempts}] Ожидание нового tunnel generation...")
+        elif not kind_needs_tunnel:
+            print("ℹ️  Этот ноутбук не создаёт туннель — переходим сразу к watchdog")
 
         if tunnel_url:
-            if "whisper" in sys.argv or "Whisper" in notebook_url:
-                from scripts.register_colab_whisper import register_whisper_endpoint
-                register_whisper_endpoint(tunnel_url)
-            else:
+            if service_kind == "whisper" or "Whisper" in notebook_url:
+                if not endpoint_reused:
+                    from scripts.register_colab_whisper import register_whisper_endpoint
+                    register_whisper_endpoint(tunnel_url)
+            elif not endpoint_reused:
                 from scripts.register_colab_llm import register_colab_endpoint
-                register_colab_endpoint(tunnel_url, "colab/qwen2.5-coder")
+                register_colab_endpoint(
+                    tunnel_url,
+                    COLAB_MODEL,
+                    api_key=colab_api_key,
+                    verify=True,
+                )
+                await _scrub_live_notebook_secret(page, colab_api_key)
+            else:
+                print("♻️ Используется уже зарегистрированный здоровый endpoint")
 
-            # === AIOS Colab Farm: регистрация в едином реестре (Этап 1) ===
+            # AIOS Colab Farm registry is refreshed even on the idempotent path.
             try:
                 from aios_core.colab.colab_registry import colab_registry
-                # маппинг ноутбучных типов на типы реестра
                 kind_map = {"rl": "quant_ml", "clustering": "quant_ml", "lora": "llm", "gguf": "llm"}
-                _k = os.getenv("COLAB_SERVICE_KIND",
-                               "whisper" if ("whisper" in sys.argv or "Whisper" in notebook_url) else "llm")
-                kind = kind_map.get(_k, _k)
+                kind = kind_map.get(service_kind, service_kind)
                 node = os.getenv("COLAB_NODE_ID", "local")
                 name = os.getenv("COLAB_SERVICE_NAME", f"colab-{kind}")
-                model = os.getenv("COLAB_LLM_MODEL", "colab/qwen2.5-coder") if kind == "llm" else None
-                colab_registry.register(kind=kind, base_url=tunnel_url,
-                                        model=model, name=name, node_id=node)
-                print(f"📦 [ColabFarm] Сервис '{name}' ({kind}) зарегистрирован в реестре Colab-фермы.")
+                model = os.getenv("COLAB_LLM_MODEL", COLAB_MODEL) if kind == "llm" else None
+                colab_registry.register(
+                    kind=kind,
+                    base_url=tunnel_url,
+                    model=model,
+                    name=name,
+                    node_id=node,
+                )
+                print(f"📦 [ColabFarm] Сервис '{name}' ({kind}) зарегистрирован")
             except Exception as reg_err:
-                print(f"⚠️ [ColabFarm] Не удалось зарегистрировать сервис в реестре: {reg_err}")
-        else:
-            print("⚠️ Ссылка туннеля не появилась. Завершаю попытку для полного перезапуска automation.")
-            if kind_needs_tunnel:
-                return
+                print(f"⚠️ [ColabFarm] Регистрация не удалась: {type(reg_err).__name__}")
+        elif kind_needs_tunnel:
+            print("⚠️ Новый tunnel generation не появился; запускаю полный recovery")
+            return
 
         # === БЕСКОНЕЧНЫЙ ЦИКЛ ПОДДЕРЖАНИЯ АКТИВНОСТИ (COLAB ACTIVITY KEEPER) ===
         print("\n🔄 [Colab Activity Keeper] Включен вочдог поддержания активности сессии Colab!")
@@ -567,7 +694,7 @@ async def run_colab_automation():
                     try:
                         import urllib.request as _ur
                         health_url = tunnel_url.rstrip("/") + "/models"
-                        headers = {"Authorization": "Bearer " + os.getenv("COLAB_LLM_API_KEY", "")}
+                        headers = {"Authorization": "Bearer " + colab_api_key}
                         req = _ur.Request(health_url, headers=headers)
                         with _ur.urlopen(req, timeout=12) as response:
                             if response.status != 200:
