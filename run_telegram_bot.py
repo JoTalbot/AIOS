@@ -753,7 +753,41 @@ def run_bot(token: str) -> None:
                 if cmd == "/start" or cmd == "/menu":
                     reply = cmd_start(first_name)
                     keyboard = MAIN_MENU_INLINE
+                elif cmd == "/backtest" or cmd == "/bt":
+                    # Бэктест ML/RL стратегий
+                    reply = None
+                    keyboard = None
+                    sym = (args or "BTC").strip().upper().split()[0]
+                    api.send_message(chat_id, f"📈 Бэктест {sym} (ML/RL стратегии)…")
+                    try:
+                        import subprocess as _sp_bt
+                        _r = _sp_bt.run(
+                            ["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "aios_core" / "quant" / "backtest_ai_strategies.py"),
+                             "--symbol", sym, "--json"],
+                            capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+                        _out = (_r.stdout or "").strip()
+                        import json as _json
+                        try:
+                            d = _json.loads(_out)
+                        except Exception:
+                            api.send_message(chat_id, "❌ Не удалось бэктестить. Проверьте символ.")
+                            continue
+                        lines = [f"📈 <b>Бэктест {sym}</b>\n"]
+                        for strat, m in d.items():
+                            if strat == "symbol" or not isinstance(m, dict) or "error" in m:
+                                continue
+                            lines.append(f"<b>{strat}:</b>")
+                            lines.append(f"   • Доходность: {m.get('total_return_pct','?')}%")
+                            lines.append(f"   • Sharpe: {m.get('sharpe','?')} · Sortino: {m.get('sortino','?')}")
+                            lines.append(f"   • Max DD: {m.get('max_drawdown_pct','?')}% · Win: {m.get('win_rate_pct','?')}%")
+                            if m.get('ml_prob_up'):
+                                lines.append(f"   • ML prob_up: {m.get('ml_prob_up')}")
+                        api.send_message(chat_id, "\n".join(lines)[:3900])
+                    except Exception as e:
+                        api.send_message(chat_id, f"❌ Ошибка бэктеста: {e}")
+                    continue
                 elif cmd == "/signals" or cmd == "/signal":
+
                     # ML + RL консультирующие сигналы
                     reply = None
                     keyboard = None
