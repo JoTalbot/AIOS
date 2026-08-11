@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from .policy import AutonomyPolicy
@@ -21,6 +22,28 @@ from .escalate import notify_owner, resolve as resolve_approval
 from .security import detect_injection, validate_proposal
 
 _MANUAL_LIKE = {"create_ttn", "send_money", "accept_advance", "create_ad", "boost_ad", "publish"}
+
+# Only business/operational owner commands need the autonomy planner. Plain
+# conversation must go directly to the shared Telegram LLM chat; otherwise a
+# greeting incurs two sequential model calls before one visible response.
+_OWNER_ACTION_PATTERNS = tuple(re.compile(pattern, re.IGNORECASE) for pattern in (
+    r"\b(?:продал|продала|продано|продав|продаж[ауи])\b",
+    r"\b(?:расход|расходы|потратил|витрат|затрат)\w*",
+    r"(?:добавь|додай|обнови|онови|измени|зміни|спиши).{0,40}(?:склад|остат|залишк|товар|запчаст)",
+    r"(?:что|що|сколько|скільки|покажи|проверь|перевір).{0,30}(?:на складе|на складі|остат|залишк)",
+    r"\b(?:финанс|фінанс|прибыл|прибут|выруч|вируч|доход|баланс)\w*",
+    r"(?:истори|історі|динамик|динамік).{0,20}(?:цен|цін|стоим)",
+    r"(?:сними|зніми|деактивируй|деактивуй|удали|видали|закрой|закрий).{0,30}(?:объявлен|оголош|лот|публикац)",
+    r"(?:задач|завдан).{0,30}(?:отправ|відправ|продаж|достав)",
+    r"\b(?:отправил|відправив|отправлено|відправлено|доставлен|доставлено|вернул|повернув|вернулась|повернулось|возврат|повернен)\w*",
+    r"(?:создай|створи|сделай|зроби|оформи).{0,30}(?:ттн|накладн|объявлен|оголош)",
+    r"(?:подними|підніми|продвинь|просунь|опубликуй|опублікуй).{0,30}(?:объявлен|оголош|публикац)?",
+    r"(?:переведи|переказ|отправь|відправ).{0,30}(?:грн|₴|деньг|грош|карт)",
+))
+
+
+def _looks_like_owner_command(text: str) -> bool:
+    return any(pattern.search(text or "") for pattern in _OWNER_ACTION_PATTERNS)
 
 
 class AutonomyCore:
@@ -135,6 +158,13 @@ class AutonomyCore:
         """
         if not self.policy.enabled:
             return {"mode": "reply", "text": "", "decision": "DISABLED"}
+        if not execute_reply and not _looks_like_owner_command(text):
+            return {
+                "mode": "reply",
+                "text": "",
+                "decision": "OWNER_CHAT_FAST",
+                "action": "reply_customer",
+            }
         proposal = self.planner.propose("telegram", str(chat), text, owner=True)
         action = proposal.get("action", "")
 
