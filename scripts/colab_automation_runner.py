@@ -57,26 +57,47 @@ def _pick_notebook() -> str:
 
 
 async def _confirm_dialogs(page):
-    """Нажать кнопку подтверждения запуска (Run anyway) на разных языках."""
-    # Точный клик по кнопкам подтверждения через JS (shadow DOM / cross-origin надёжнее)
+    """Confirm known Colab dialogs, including reconnect and runtime changes."""
     js_confirm = """
     () => {
-      const EXACT = ["Усе одно запустити","Усе одно запустить","Всё равно запустить","Все равно запустить","Выполнить","Run anyway","Run","Подключиться повторно","Підключитися повторно","Reconnect","Reconnect runtime"];
-      const L = EXACT.map(function(s){return s.toLowerCase();});
-      let hit=null;
-      const walk=function(root){
-        root.querySelectorAll("*").forEach(function(el){
-          if(hit) return;
-          if(el.shadowRoot) walk(el.shadowRoot);
-          const t=(el.innerText||el.textContent||"").trim();
-          if(L.indexOf(t.toLowerCase())>=0){ el.click(); hit=t; }
-        });
+      const EXACT = [
+        "Усе одно запустити", "Усе одно запустить", "Всё равно запустить",
+        "Все равно запустить", "Выполнить", "Run anyway", "Run",
+        "Подключиться повторно", "Підключитися повторно", "Reconnect",
+        "Reconnect runtime", "Продолжить", "Continue", "ОК", "OK"
+      ];
+      const labels = EXACT.map(s => s.toLowerCase());
+      let hit = null;
+      const walk = root => {
+        for (const el of root.querySelectorAll("*")) {
+          if (hit) return;
+          if (el.shadowRoot) walk(el.shadowRoot);
+          const text = (el.innerText || el.textContent || "").trim();
+          if (labels.includes(text.toLowerCase())) {
+            el.click();
+            hit = text;
+          }
+        }
       };
-      walk(document);
-      document.querySelectorAll("iframe").forEach(function(f){
-        if(hit) return;
-        try{ if(f.contentDocument) walk(f.contentDocument);}catch(e){}
-      });
+      const dialogs = Array.from(document.querySelectorAll(
+        "mwc-dialog[open], md-dialog[open], paper-dialog[open]"
+      ));
+      if (dialogs.length) {
+        for (const dialog of dialogs) {
+          walk(dialog);
+          if (hit) break;
+        }
+      } else {
+        walk(document);
+      }
+      if (!hit) {
+        for (const frame of document.querySelectorAll("iframe")) {
+          try {
+            if (frame.contentDocument) walk(frame.contentDocument);
+          } catch (e) {}
+          if (hit) break;
+        }
+      }
       return hit;
     }
     """
@@ -89,47 +110,92 @@ async def _confirm_dialogs(page):
     except Exception:
         return None
 
-    selectors = [
-        # украинский
-        "button:has-text('Усе одно запустити')",
-        "button:has-text('Усе одно')",
-        "button:has-text('Все одно запустити')",
-        # русский
-        "button:has-text('Все равно запустить')",
-        "button:has-text('Всё равно запустить')",
-        "button:has-text('Все равно')",
-        "button:has-text('Всё равно')",
-        "button:has-text('Запустить')",
-        "button:has-text('Выполнить')",
-        # английский
-        "button:has-text('Run anyway')",
-        "button:has-text('Run all')",
-        # актуальный GitHub warning dialog в Colab
-        "mwc-dialog md-text-button:has-text('Выполнить')",
-        "mwc-dialog md-text-button:has-text('Run')",
-        # generic
-        "colab-callout button",
-        "#ok", "mwc-button#ok", "paper-button#ok",
-    ]
-    for selector in selectors:
-        try:
-            btn = page.locator(selector)
-            if await btn.is_visible(timeout=700):
-                await btn.click(timeout=2000)
-                print(f"👍 Подтверждено ({selector})")
-                await asyncio.sleep(1)
-        except Exception:
-            continue
-    # капча
+
+async def _ensure_t4_runtime(page):
+    """Select a T4 runtime for the LLM notebook without resetting an existing T4."""
+    if os.getenv("COLAB_SERVICE_KIND", "llm") != "llm":
+        return False
+    if os.getenv("COLAB_AUTO_T4", "1").strip().lower() in ("0", "false", "no", "off"):
+        return False
+
     try:
-        for fr in page.frames:
-            if "recaptcha" in fr.url:
-                cb = fr.locator("#recaptcha-anchor")
-                if await cb.is_visible(timeout=800):
-                    await cb.click()
-                    print("👍 Клик по reCAPTCHA checkbox")
-    except Exception:
-        pass
+        # Clear reconnect/runtime warnings that would intercept the menu click.
+        await _confirm_dialogs(page)
+        menu = page.locator("#runtime-menu-button")
+        await menu.click(timeout=5000)
+        await asyncio.sleep(0.5)
+
+        item = None
+        for label in ("Сменить среду выполнения", "Change runtime type"):
+            candidates = page.get_by_text(label, exact=True)
+            for index in range(await candidates.count()):
+                candidate = candidates.nth(index)
+                if await candidate.is_visible():
+                    item = candidate
+                    break
+            if item is not None:
+                break
+        if item is None:
+            await page.keyboard.press("Escape")
+            print("⚠️ Не найден пункт смены runtime; оставляю текущий тип")
+            return False
+
+        await item.click(timeout=5000)
+        await asyncio.sleep(1)
+        t4 = page.locator('mwc-radio[value="GPU,T4"]')
+        if not await t4.count():
+            await page.keyboard.press("Escape")
+            print("⚠️ T4 недоступна в диалоге Colab")
+            return False
+
+        if await t4.evaluate("e => !!e.checked"):
+            await page.evaluate("""() => {
+              const dialog = document.querySelector('mwc-dialog.change-runtime-type[open]');
+              if (!dialog) return;
+              const walk = root => {
+                for (const el of root.querySelectorAll('*')) {
+                  if (el.shadowRoot) walk(el.shadowRoot);
+                  const text = (el.innerText || el.textContent || '').trim();
+                  if (text === 'Отмена' || text === 'Cancel') { el.click(); return; }
+                }
+              };
+              walk(dialog);
+            }""")
+            print("✅ Runtime Colab уже настроен на T4")
+            return False
+
+        await t4.click(timeout=5000)
+        if not await t4.evaluate("e => !!e.checked"):
+            raise RuntimeError("T4 radio did not become checked")
+        saved = await page.evaluate("""() => {
+          const dialog = document.querySelector('mwc-dialog.change-runtime-type[open]');
+          if (!dialog) return false;
+          let hit = false;
+          const walk = root => {
+            for (const el of root.querySelectorAll('*')) {
+              if (hit) return;
+              if (el.shadowRoot) walk(el.shadowRoot);
+              const text = (el.innerText || el.textContent || '').trim();
+              if (text === 'Сохранить' || text === 'Save') { el.click(); hit = true; }
+            }
+          };
+          walk(dialog);
+          return hit;
+        }""")
+        if not saved:
+            raise RuntimeError("runtime Save button not found")
+        await asyncio.sleep(1)
+        await _confirm_dialogs(page)
+        await asyncio.sleep(12)
+        print("✅ Runtime Colab автоматически переключён на T4")
+        return True
+    except Exception as exc:
+        try:
+            await page.keyboard.press("Escape")
+        except Exception:
+            pass
+        print(f"⚠️ Auto-T4 note: {type(exc).__name__}: {str(exc)[:160]}")
+        return False
 
 
 async def _prepare_llm_notebook(page):
@@ -303,14 +369,18 @@ async def run_colab_automation():
             reconnect_hit = await _confirm_dialogs(page)
             if reconnect_hit and re.search(r"повторно|reconnect", reconnect_hit, re.I):
                 await asyncio.sleep(12)
+            await _ensure_t4_runtime(page)
             # После смены CPU→GPU Colab оставляет вкладку открытой, но runtime отключён.
             # У кнопки внутри shadow DOM нет доступного текста, поэтому проверяем сам #connect.
             try:
-                connect_btn = page.locator("#connect, #reconnect")
-                connect_tip = (await connect_btn.get_attribute("tooltiptext") or "") if await connect_btn.count() else ""
+                connect_state = page.locator("#connect, #reconnect")
+                connect_host = page.locator("colab-connect-button")
+                connect_tip = (await connect_state.get_attribute("tooltiptext") or "") if await connect_state.count() else ""
                 already_connected = bool(re.search(r"Подключено к|Connected to", connect_tip, re.I))
-                if await connect_btn.is_visible() and not already_connected:
-                    await connect_btn.click()
+                if await connect_host.is_visible() and not already_connected:
+                    # The #connect control lives in shadow DOM; clicking it directly
+                    # is intercepted by the colab-connect-button host in current Colab.
+                    await connect_host.click(timeout=5000)
                     print("👍 Runtime Colab подключён/переподключён")
                     await asyncio.sleep(10)
                 elif already_connected:
@@ -334,16 +404,22 @@ async def run_colab_automation():
             print("✅ Страница Google Colab успешно загружена!")
 
             await asyncio.sleep(5)
+            await _ensure_t4_runtime(page)
             await _prepare_llm_notebook(page)
 
             # Подключение GPU
             print("🔌 Проверка кнопки Подключиться к GPU...")
             try:
-                connect_btn = page.locator("#connect, #reconnect")
-                if await connect_btn.is_visible():
-                    await connect_btn.click()
+                connect_state = page.locator("#connect, #reconnect")
+                connect_host = page.locator("colab-connect-button")
+                connect_tip = (await connect_state.get_attribute("tooltiptext") or "") if await connect_state.count() else ""
+                already_connected = bool(re.search(r"Подключено к|Connected to", connect_tip, re.I))
+                if await connect_host.is_visible() and not already_connected:
+                    await connect_host.click(timeout=5000)
                     print("👍 Нажата кнопка Подключиться!")
                     await asyncio.sleep(5)
+                elif already_connected:
+                    print("✅ Runtime Colab уже подключён")
             except Exception as e:
                 print(f"Connect note: {e}")
 
@@ -375,6 +451,29 @@ async def run_colab_automation():
             wait_attempts = int(os.getenv("COLAB_TUNNEL_WAIT_ATTEMPTS", "100"))
             for attempt in range(wait_attempts):  # По умолчанию до 10 минут ожидания
                 await asyncio.sleep(6)
+
+                # Stop immediately on terminal cell errors instead of spending the
+                # full tunnel timeout scanning a CPU or failed vLLM runtime. Read
+                # output containers only: notebook sources contain the injected key.
+                if os.getenv("COLAB_SERVICE_KIND", "llm") == "llm":
+                    try:
+                        output_parts = await page.locator(
+                            ".output-content, colab-error-output"
+                        ).all_inner_texts()
+                        output_text = "\n".join(output_parts)
+                        fatal_markers = (
+                            "GPU available: False",
+                            "T4 GPU не подключён",
+                            "vLLM завершился:",
+                            "vLLM не запустился за 8 минут",
+                            "Cloudflare tunnel URL не получен",
+                        )
+                        if any(marker in output_text for marker in fatal_markers):
+                            print("❌ Обнаружена фатальная ошибка LLM-ячейки; прекращаю scan-loop для recovery.")
+                            return
+                    except Exception as output_err:
+                        print(f"Cell output check note: {type(output_err).__name__}")
+
                 page_text = await page.content()
                 # Выводы Colab рендерятся в отдельных googleusercontent iframe.
                 # page.content() содержит только iframe-теги, поэтому читаем frames явно.
@@ -447,14 +546,15 @@ async def run_colab_automation():
                 await page.mouse.wheel(0, -100)
 
                 # 2. Проверка диалога отключения / переподключения
-                rec_btn = page.locator("#connect, #reconnect")
-                rec_tip = (await rec_btn.get_attribute("tooltiptext") or "") if await rec_btn.count() else ""
+                rec_state = page.locator("#connect, #reconnect")
+                rec_host = page.locator("colab-connect-button")
+                rec_tip = (await rec_state.get_attribute("tooltiptext") or "") if await rec_state.count() else ""
                 rec_connected = bool(re.search(r"Подключено к|Connected to", rec_tip, re.I))
-                if await rec_btn.is_visible() and not rec_connected:
+                if await rec_host.is_visible() and not rec_connected:
                     reconnect_hit = await _confirm_dialogs(page)
                     if not reconnect_hit:
                         try:
-                            await rec_btn.click(timeout=5000)
+                            await rec_host.click(timeout=5000)
                         except Exception:
                             pass
                     print(f"⚡ [Minute {click_counter}] Runtime Colab потерян; перезапускаю полную automation.")
