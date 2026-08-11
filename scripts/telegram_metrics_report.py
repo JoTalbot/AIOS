@@ -5,15 +5,18 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import time
 from pathlib import Path
 
 from dotenv import load_dotenv
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
 from tg_bot.metrics import summarize_telegram_metrics
 
-ROOT = Path(__file__).resolve().parents[1]
 STATE = ROOT / "data" / "telegram_metrics_alert_state.json"
 load_dotenv(ROOT / ".env")
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -18,6 +19,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 STATE_FILE = ROOT / "data" / "telegram_colab_canary.json"
 load_dotenv(ROOT / ".env")
 
