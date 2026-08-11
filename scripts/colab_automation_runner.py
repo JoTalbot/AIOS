@@ -61,7 +61,7 @@ async def _confirm_dialogs(page):
     # Точный клик по кнопкам подтверждения через JS (shadow DOM / cross-origin надёжнее)
     js_confirm = """
     () => {
-      const EXACT = ["Усе одно запустити","Усе одно запустить","Всё равно запустить","Все равно запустить","Выполнить","Run anyway","Run"];
+      const EXACT = ["Усе одно запустити","Усе одно запустить","Всё равно запустить","Все равно запустить","Выполнить","Run anyway","Run","Подключиться повторно","Підключитися повторно","Reconnect","Reconnect runtime"];
       const L = EXACT.map(function(s){return s.toLowerCase();});
       let hit=null;
       const walk=function(root){
@@ -85,8 +85,9 @@ async def _confirm_dialogs(page):
         if hit:
             print(f"👍 Подтверждено (JS): {hit}")
             await asyncio.sleep(1)
+        return hit
     except Exception:
-        pass
+        return None
 
     selectors = [
         # украинский
@@ -196,6 +197,8 @@ else:
 """
     cell3 = """# === Защищённый Cloudflare tunnel ===
 import subprocess, re, time
+subprocess.run(["pkill", "-f", "cloudflared tunnel --url http://127.0.0.1:8000"], check=False)
+time.sleep(1)
 tunnel = subprocess.Popen(
     ["cloudflared", "tunnel", "--url", "http://127.0.0.1:8000", "--no-autoupdate"],
     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
@@ -295,6 +298,11 @@ async def run_colab_automation():
 
         if reused:
             print("ℹ️  Вкладка переиспользована. Проверяю runtime, подтверждаю диалоги и запускаю выполнение...")
+            # Диалог истёкшей среды выполнения перехватывает клики по #connect.
+            # Сначала подтверждаем Reconnect, затем повторно проверяем toolbar.
+            reconnect_hit = await _confirm_dialogs(page)
+            if reconnect_hit and re.search(r"повторно|reconnect", reconnect_hit, re.I):
+                await asyncio.sleep(12)
             # После смены CPU→GPU Colab оставляет вкладку открытой, но runtime отключён.
             # У кнопки внутри shadow DOM нет доступного текста, поэтому проверяем сам #connect.
             try:
@@ -418,13 +426,16 @@ async def run_colab_automation():
             except Exception as reg_err:
                 print(f"⚠️ [ColabFarm] Не удалось зарегистрировать сервис в реестре: {reg_err}")
         else:
-            print("⚠️ Ссылка туннеля пока не появилась в текстовом блоке. Переходим в режим вочдога активности...")
+            print("⚠️ Ссылка туннеля не появилась. Завершаю попытку для полного перезапуска automation.")
+            if kind_needs_tunnel:
+                return
 
         # === БЕСКОНЕЧНЫЙ ЦИКЛ ПОДДЕРЖАНИЯ АКТИВНОСТИ (COLAB ACTIVITY KEEPER) ===
         print("\n🔄 [Colab Activity Keeper] Включен вочдог поддержания активности сессии Colab!")
         print("   Каждые 60 секунд отправляется колесо мыши и проверяются кнопки подключения, чтобы Colab не отключался.")
 
         click_counter = 0
+        endpoint_failures = 0
         while True:
             await asyncio.sleep(60)
             click_counter += 1
@@ -440,8 +451,34 @@ async def run_colab_automation():
                 rec_tip = (await rec_btn.get_attribute("tooltiptext") or "") if await rec_btn.count() else ""
                 rec_connected = bool(re.search(r"Подключено к|Connected to", rec_tip, re.I))
                 if await rec_btn.is_visible() and not rec_connected:
-                    await rec_btn.click()
-                    print(f"⚡ [Minute {click_counter}] Переподключена сессия Colab!")
+                    reconnect_hit = await _confirm_dialogs(page)
+                    if not reconnect_hit:
+                        try:
+                            await rec_btn.click(timeout=5000)
+                        except Exception:
+                            pass
+                    print(f"⚡ [Minute {click_counter}] Runtime Colab потерян; перезапускаю полную automation.")
+                    return
+
+                # Every two minutes verify that the protected LLM tunnel itself
+                # is alive. Two consecutive failures trigger a full notebook rerun.
+                is_llm_mode = "whisper" not in sys.argv and "Whisper" not in notebook_url
+                if tunnel_url and is_llm_mode and click_counter % 2 == 0:
+                    try:
+                        import urllib.request as _ur
+                        health_url = tunnel_url.rstrip("/") + "/models"
+                        headers = {"Authorization": "Bearer " + os.getenv("COLAB_LLM_API_KEY", "")}
+                        req = _ur.Request(health_url, headers=headers)
+                        with _ur.urlopen(req, timeout=12) as response:
+                            if response.status != 200:
+                                raise RuntimeError(f"HTTP {response.status}")
+                        endpoint_failures = 0
+                    except Exception as health_err:
+                        endpoint_failures += 1
+                        print(f"⚠️ [Minute {click_counter}] Tunnel health failure {endpoint_failures}/2: {type(health_err).__name__}")
+                        if endpoint_failures >= 2:
+                            print("♻️ Tunnel недоступен; перезапускаю полную automation.")
+                            return
 
                 print(f"🟢 [Minute {click_counter}] Colab Activity Keeper: сессия активна.")
             except Exception as err:
