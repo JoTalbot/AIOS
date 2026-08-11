@@ -681,7 +681,9 @@ def run_bot(token: str) -> None:
                             if "_auto_core" not in globals():
                                 from aios_core.autonomy import AutonomyCore as _AutoCore
                                 globals()["_auto_core"] = _AutoCore()
-                            _ao = globals()["_auto_core"].process_owner(chat_id, text)
+                            _ao = globals()["_auto_core"].process_owner(
+                                chat_id, text, execute_reply=False
+                            )
                             _is_action = _ao.get("mode") == "action" and _ao.get("action") not in ("reply_customer", "query_platform")
                             if _is_action or _ao.get("mode") == "manual":
                                 _txt = _ao.get("text") or ""

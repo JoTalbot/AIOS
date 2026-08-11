@@ -126,12 +126,28 @@ class AutonomyCore:
         return outcome
 
     # ------------------------------------------------------------------
-    def process_owner(self, chat: str, text: str) -> dict:
-        """Обработка команды владельца в Telegram (обычным языком)."""
+    def process_owner(self, chat: str, text: str, *, execute_reply: bool = True) -> dict:
+        """Обработка команды владельца в Telegram (обычным языком).
+
+        ``execute_reply=False`` prevents ``reply_customer`` from sending a
+        Telegram message as a side effect. The main bot uses this mode so that
+        ordinary chat is answered exactly once by its shared LLM chat path.
+        """
         if not self.policy.enabled:
             return {"mode": "reply", "text": "", "decision": "DISABLED"}
         proposal = self.planner.propose("telegram", str(chat), text, owner=True)
         action = proposal.get("action", "")
+
+        # A plain owner conversation is handled by tg_bot.llm. In that path the
+        # autonomy planner may still classify text as reply_customer, but it
+        # must not send its own Telegram reply before the regular chat reply.
+        if action == "reply_customer" and not execute_reply:
+            return {
+                "mode": "reply",
+                "text": str(proposal.get("params", {}).get("text") or ""),
+                "decision": "OWNER_CHAT",
+                "action": action,
+            }
 
         # Действия, которые владелец отдаёт напрямую — выполняем (кроме денег/ТТН/публикации)
         if action in ("log_sale", "log_expense", "update_inventory",
