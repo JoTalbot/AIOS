@@ -429,6 +429,41 @@ def build() -> None:
     except Exception:
         pass
 
+    # ML/RL модели и сигналы
+    try:
+        from aios_core.quant_trading_engine import get_ai_signal_summary
+        ai = get_ai_signal_summary()
+        ml = ai.get("ml", {})
+        rl = ai.get("rl", {})
+        with ui.card().classes("w-full border-l-4 border-violet-500"):
+            ui.label("🤖 ML/RL Модели и Сигналы").classes("text-lg font-bold")
+            with ui.row().classes("w-full gap-4"):
+                with ui.card().classes("min-w-40 bg-slate-50"):
+                    ui.label("ML (CatBoost)").classes("text-xs text-gray-500")
+                    ui.label(f"Активов: {ml.get('total', 0)}").classes("text-xl font-bold")
+                    ui.label(f"Бычьих: {ml.get('bullish_strong', 0)} · Медвежьих: {ml.get('bearish_strong', 0)}").classes("text-xs")
+                    top = ml.get("top_momentum", [])
+                    if top:
+                        ui.label("Топ: " + ", ".join(top)).classes("text-xs")
+                with ui.card().classes("min-w-40 bg-slate-50"):
+                    ui.label("RL (PPO)").classes("text-xs text-gray-500")
+                    ui.label(f"Активов: {rl.get('total', 0)}").classes("text-xl font-bold")
+                    longs = rl.get("long", [])
+                    halves = rl.get("half", [])
+                    ui.label(f"LONG: {', '.join(longs) if longs else '—'}").classes("text-xs")
+                    ui.label(f"HALF: {', '.join(halves[:6]) if halves else '—'}{'…' if len(halves)>6 else ''}").classes("text-xs")
+            # статус моделей на диске
+            models_dir = ROOT / "data" / "quant" / "models"
+            if models_dir.exists():
+                files = sorted(models_dir.glob("*"))
+                if files:
+                    ui.label("Модели на диске:").classes("text-sm font-bold mt-2")
+                    for f in files:
+                        sz = f.stat().st_size
+                        ui.label(f"• {f.name} — {sz//1024} КБ").classes("text-xs text-gray-600")
+    except Exception as e:
+        pass
+
     # Префикс /crm обеспечивает nginx (strip + auth); приложение работает без root_path,
     # а его статика и ws проксируются nginx-локациями /_nicegui/ и /_nicegui_ws/.
     ui.run(host="127.0.0.1", port=8090, reload=False, show=False)
