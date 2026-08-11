@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MODEL_FILE = REPO_ROOT / "data" / "quant" / "models" / "ppo_trader.pt"
+MODEL_FILE = REPO_ROOT / "data" / "quant" / "models" / "ppo_v3.pt"  # лучшая рабочая PPO
 OUT_FILE = REPO_ROOT / "data" / "quant" / "rl_signals.json"
 
 LOG_TAG = "[RLSignalBridge]"
