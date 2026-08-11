@@ -22,7 +22,7 @@ OLLAMA_MODEL = "qwen2.5-coder:1.5b"
 
 
 def search_all(query: str, n_per: int = 4) -> list[dict]:
-    """Поиск по коллекциям aios_knowledge (проект) и aios_personal (чаты+профиль)."""
+    """Поиск по коллекциям aios_knowledge (проект) и aios_personal_fast (чаты+профиль)."""
     from aios_core.rag.embeddings_store import EmbeddingsStore
     results = []
     try:
@@ -30,9 +30,30 @@ def search_all(query: str, n_per: int = 4) -> list[dict]:
         results += [dict(r, collection="project") for r in k.search(query, n_results=n_per)]
     except Exception as e:
         print(f"[warn] knowledge: {e}", file=sys.stderr)
+
+    # личные данные — через fastembed мультиязычную модель (более точная семантика)
     try:
-        p = EmbeddingsStore(collection="aios_personal")
-        results += [dict(r, collection="personal") for r in p.search(query, n_results=n_per)]
+        from fastembed import TextEmbedding
+        import chromadb
+        from chromadb.config import Settings
+        client = chromadb.PersistentClient(path="/root/AIOS/chroma_db",
+                                           settings=Settings(anonymized_telemetry=False))
+        try:
+            col = client.get_collection("aios_personal_fast")
+            model = TextEmbedding(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+            qe = list(model.embed([query]))[0].tolist()
+            res = col.query(query_embeddings=[qe], n_results=n_per)
+            for i, doc in enumerate(res["documents"][0]):
+                results.append({
+                    "id": res["ids"][0][i],
+                    "text": doc,
+                    "distance": res["distances"][0][i] if res.get("distances") else None,
+                    "collection": "personal",
+                })
+        except Exception:
+            # фоллбэк на старую коллекцию
+            p = EmbeddingsStore(collection="aios_personal")
+            results += [dict(r, collection="personal") for r in p.search(query, n_results=n_per)]
     except Exception as e:
         print(f"[warn] personal: {e}", file=sys.stderr)
     return results
