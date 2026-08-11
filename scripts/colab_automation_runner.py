@@ -632,6 +632,7 @@ async def run_colab_automation():
                 )
                 await _scrub_live_notebook_secret(page, colab_api_key)
             else:
+                await _scrub_live_notebook_secret(page, colab_api_key)
                 print("♻️ Используется уже зарегистрированный здоровый endpoint")
 
             # AIOS Colab Farm registry is refreshed even on the idempotent path.
