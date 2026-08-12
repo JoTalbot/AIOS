@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _env(key: str) -> str:
-    """Прочитать credential, переменную окружения или legacy .env."""
+    """Прочитать systemd credential или явную переменную окружения."""
     if key in ("AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN"):
         from tg_bot.credentials import secret_from_env_or_credential
 
@@ -30,15 +30,6 @@ def _env(key: str) -> str:
     v = os.environ.get(key, "")
     if v:
         return v
-    p = PROJECT_ROOT / ".env"
-    if p.exists():
-        try:
-            for line in p.read_text(encoding="utf-8").splitlines():
-                line = line.strip()
-                if line.startswith(key + "="):
-                    return line.split("=", 1)[1].strip().strip('"').strip("'")
-        except Exception:
-            pass
     return ""
 
 

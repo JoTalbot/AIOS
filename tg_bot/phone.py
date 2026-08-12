@@ -7,6 +7,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import time
 import urllib.request
 from datetime import datetime, timedelta
@@ -17,6 +18,12 @@ from tg_bot.state import (
     _pending_confirm, _phone_route_drafts, _phone_brain_state,
     _last_phone_leads, _last_phone_crm_tasks, _last_bank_tasks,
 )
+
+
+def _entrypoint_override(name: str, default):
+    """Return a compatibility override exported by the loaded bot entrypoint."""
+    module = sys.modules.get("run_telegram_bot")
+    return getattr(module, name, default) if module is not None else default
 
 
 _PHONE_BRAIN_API = os.environ.get("PHONE_BRAIN_API", "http://127.0.0.1:8790")
@@ -1156,7 +1163,7 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
     if not any(word in t for word in phone_words):
         return False
     if any(phrase in t for phrase in ("статус телефона", "телефон статус", "android статус", "статус android", "состояние телефона")):
-        data = _android_gateway_run(["status"])
+        data = _entrypoint_override("_android_gateway_run", _android_gateway_run)(["status"])
         if data.get("status") == "ok":
             api.send_message(chat_id,
                              "📱 <b>Android Device Adapter</b>\n"
@@ -1169,14 +1176,14 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"⚠️ Android gateway: {_esc_tg(data.get('error') or data.get('status') or '?')}")
         return True
     if any(phrase in t for phrase in ("управление приложениями телефона", "доступность телефона", "accessibility телефона")):
-        data = _android_gateway_run(["accessibility"])
+        data = _entrypoint_override("_android_gateway_run", _android_gateway_run)(["accessibility"])
         if data.get("status") == "ok":
             api.send_message(chat_id, "🧩 Управление интерфейсом приложений: " + ("<b>разрешено</b>" if data.get("enabled") else "<b>не разрешено</b>"))
         else:
             api.send_message(chat_id, f"⚠️ Accessibility недоступен: {_esc_tg(data.get('error') or data.get('status') or '?')}")
         return True
     if any(phrase in t for phrase in ("уведомления телефона", "уведомления android", "уведомления андроид")):
-        data = _android_gateway_run(["notifications"])
+        data = _entrypoint_override("_android_gateway_run", _android_gateway_run)(["notifications"])
         notices = data.get("notifications") or []
         if data.get("status") == "ok" and notices:
             lines = ["🔔 <b>Последние уведомления телефона</b>"]
@@ -1193,7 +1200,7 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"⚠️ Уведомления недоступны: {_esc_tg(data.get('error') or data.get('status') or '?')}")
         return True
     if any(phrase in t for phrase in ("статус камеры телефона", "статус микрофона телефона", "статус камеры и микрофона", "готовность камеры")):
-        data = _android_gateway_run(["capture-status"])
+        data = _entrypoint_override("_android_gateway_run", _android_gateway_run)(["capture-status"])
         if data.get("status") == "ok":
             camera = bool(data.get("camera_permission"))
             microphone = bool(data.get("microphone_permission"))
@@ -1208,7 +1215,7 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"⚠️ Статус камеры/микрофона недоступен: {_esc_tg(data.get('error') or data.get('status') or '?')}")
         return True
     if any(phrase in t for phrase in ("статус геолокации телефона", "готовность геолокации", "геолокация доступна")):
-        data = _android_gateway_run(["location-status"])
+        data = _entrypoint_override("_android_gateway_run", _android_gateway_run)(["location-status"])
         if data.get("status") == "ok":
             permission = bool(data.get("permission"))
             ready = bool(data.get("ready"))
@@ -1227,7 +1234,7 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
         api.send_message(chat_id, "📍 Запросить текущую геолокацию телефона?\n\n«да» / «нет»")
         return True
     if any(phrase in t for phrase in ("файлы телефона", "файлы android", "загрузки телефона")):
-        data = _android_gateway_run(["files"])
+        data = _entrypoint_override("_android_gateway_run", _android_gateway_run)(["files"])
         if data.get("status") == "ok":
             lines = [f"📂 <b>{_esc_tg(data.get('directory') or '')}</b> · {data.get('count', 0)} файлов"]
             lines += [f"• {_esc_tg(name)}" for name in (data.get('files') or [])[:40]]
@@ -1242,7 +1249,7 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
         api.send_message(chat_id, f"📥 Скачать с телефона <code>{_esc_tg(path)}</code>?\n\n«да» / «нет»")
         return True
     if any(phrase in t for phrase in ("рабочие приложения", "приложения для работы", "профили приложений", "телефон приложения работа")):
-        data = _android_gateway_run(["profiles"])
+        data = _entrypoint_override("_android_gateway_run", _android_gateway_run)(["profiles"])
         profiles = data.get("profiles") or []
         if data.get("status") == "ok":
             lines = ["📱 <b>Рабочие приложения телефона</b>"]
@@ -1258,7 +1265,7 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"⚠️ Профили недоступны: {_esc_tg(data.get('error') or data.get('status') or '?')}")
         return True
     if any(phrase in t for phrase in ("приложения телефона", "список приложений", "приложения android", "андроид приложения")):
-        data = _android_gateway_run(["apps"])
+        data = _entrypoint_override("_android_gateway_run", _android_gateway_run)(["apps"])
         if data.get("status") == "ok":
             apps = data.get("apps") or []
             lines = [f"📱 <b>Приложения Android</b> · всего: {data.get('count', 0)}"]
@@ -1271,14 +1278,14 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
         return True
     if any(phrase in t for phrase in ("скрин телефона", "скриншот телефона", "снимок телефона", "экран телефона")):
         api.send_message(chat_id, "⏳ Получаю защищённый снимок экрана телефона…")
-        data = _android_gateway_run(["screenshot"], timeout=90)
+        data = _entrypoint_override("_android_gateway_run", _android_gateway_run)(["screenshot"], timeout=90)
         if data.get("status") == "ok" and data.get("file"):
             api.send_photo(chat_id, data["file"], caption="📱 Снимок Android-экрана")
         else:
             api.send_message(chat_id, f"⚠️ Скриншот недоступен: {_esc_tg(data.get('error') or data.get('status') or '?')}")
         return True
     if any(phrase in t for phrase in ("ui телефона", "структура интерфейса телефона", "дамп интерфейса телефона")):
-        data = _android_gateway_run(["ui-dump"], timeout=90)
+        data = _entrypoint_override("_android_gateway_run", _android_gateway_run)(["ui-dump"], timeout=90)
         if data.get("status") == "ok" and data.get("file"):
             api.send_document(chat_id, data["file"], caption="📱 UIAutomator dump Android")
         else:

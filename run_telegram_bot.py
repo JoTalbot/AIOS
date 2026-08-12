@@ -36,10 +36,6 @@ import time
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
-from dotenv import load_dotenv
-with contextlib.suppress(OSError):
-    load_dotenv(Path(__file__).resolve().parent / ".env")
-
 PROJECT_ROOT = Path(__file__).resolve().parent
 from tg_bot.paths import state_path
 
@@ -256,16 +252,14 @@ def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
     return _phone_workflow_impl(api, chat_id, text)
 
 
-def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
-    _sync_phone_compat()
-    return _phone_gateway_intent_impl(api, chat_id, text)
+# Keep identity with the extracted implementation for package consumers.
+_handle_android_gateway_intent = _phone_gateway_intent_impl
 
 
 def _handle_unified_inbox_intent(api, chat_id: int, text: str) -> bool:
     # Keep monkeypatch/operator overrides on the public entrypoint effective.
     from tg_bot import inbox_router as _router
     _router._inbox_mark_read = _inbox_mark_read
-    _router._send_unified_inbox = _send_unified_inbox
     return _inbox_intent_impl(api, chat_id, text)
 
 
@@ -370,7 +364,6 @@ def _handle_unified_inbox_intent(api, chat_id: int, text: str) -> bool:
     from tg_bot import inbox_router as _router
     # Preserve the historical public override points after modularisation.
     _router._inbox_mark_read = _inbox_mark_read
-    _router._send_unified_inbox = _send_unified_inbox
     return _router._handle_unified_inbox_intent(api, chat_id, text)
 
 
