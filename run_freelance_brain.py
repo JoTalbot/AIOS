@@ -40,7 +40,16 @@ def run_daemon(interval_seconds: int = 3600):
     while True:
         try:
             res = brain.run_market_scan_cycle(max_process_batch=2)
-            logger.info(f"📊 Сводка: Заработано ${res['income_earned_usd']:.2f}, Самообеспеченность: {res.get("financial_summary", {}).get("system_sustainability_pct", res.get("financial_summary", {}).get("self_sustainability_pct", 0.0))}%")
+            financial_summary = res.get("financial_summary", {})
+            sustainability_pct = financial_summary.get(
+                "system_sustainability_pct",
+                financial_summary.get("self_sustainability_pct", 0.0),
+            )
+            logger.info(
+                "📊 Сводка: Заработано $%.2f, Самообеспеченность: %s%%",
+                res.get("income_earned_usd", 0.0),
+                sustainability_pct,
+            )
             # v21.22: повторные попытки для застрявших PROPOSAL_READY (не чаще cooldown)
             try:
                 brain.retry_pending_submissions(max_retries=3, cooldown_sec=1800, batch=2)

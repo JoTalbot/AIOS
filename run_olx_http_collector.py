@@ -153,16 +153,7 @@ def fetch_page(client: httpx.Client, query: str, offset: int, limit: int = 50, m
                 raise httpx.HTTPStatusError("curl failed/empty", request=None, response=type("R", (), {"status_code": 502})())
             _data = _json.loads(_cur.stdout)
             return _data
-            
-            if r.status_code == 403:
-                log.warning(f"403 Forbidden (attempt {attempt + 1}/{max_retries})")
-                if attempt < max_retries - 1:
-                    continue
-                r.raise_for_status()
-            
-            r.raise_for_status()
-            return r.json()
-            
+
         except httpx.HTTPStatusError as e:
             if attempt == max_retries - 1:
                 raise

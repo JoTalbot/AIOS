@@ -254,7 +254,7 @@ setTimeout(function() {{
   if (url && url.includes("/app/")) {{
     // FIXED XSS: use textContent + escape, not innerHTML with unsanitized url
     var msgEl = document.getElementById('redirect-msg');
-    if (msgEl) { msgEl.textContent = 'Redirecting to: ' + url; }
+    if (msgEl) {{ msgEl.textContent = 'Redirecting to: ' + url; }}
     setTimeout(function() {{ window.location.href = url; }}, 2000);
   }}
 }}, 1000);

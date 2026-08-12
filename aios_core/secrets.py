@@ -21,9 +21,10 @@ if _real_secrets:
 
 import os
 import re
+import pathlib
 from pathlib import Path
 from cryptography.fernet import Fernet
-from typing import List
+from typing import List, Set
 
 def get_secret_paths() -> List[str]:
     """Get paths to all secret files in the project."""

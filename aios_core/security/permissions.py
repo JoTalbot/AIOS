@@ -4,6 +4,7 @@ Handles role-based access control with secure authentication and authorization.
 """
 
 import os
+import secrets
 from typing import Dict, List, Optional, Set, Tuple, TypedDict
 from dataclasses import dataclass
 import logging

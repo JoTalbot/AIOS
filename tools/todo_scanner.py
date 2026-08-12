@@ -186,7 +186,7 @@ def test_scan_for_tags(files: List[str]) -> None:
                 scanner = TodoScanner(os.path.dirname(file))
                 tags = scanner.find_tags()
                 expected_tags = json.loads(text)
-                self.assertEqual(tags, json.dumps(expected_tags))
+                assert tags == json.dumps(expected_tags)
         except Exception as e:
             print(f"Error testing file {file}: {e}")
 

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+
+import httpx
 from datetime import datetime, timezone
 from typing import Any, Dict
 
@@ -18,6 +20,7 @@ class InstagramAdapter(PlatformAdapter):
         super().__init__(config or {})
         self.access_token = self.config.get("access_token") or os.getenv("INSTAGRAM_ACCESS_TOKEN")
         self.instagram_account_id = self.config.get("account_id") or os.getenv("INSTAGRAM_ACCOUNT_ID")
+        self.app_id = self.config.get("app_id") or os.getenv("INSTAGRAM_APP_ID")
 
     async def receive_messages(self, since: datetime | None = None) -> list[IncomingMessage]:
         """Получить новые сообщения из Instagram Direct."""
@@ -47,7 +50,7 @@ class InstagramAdapter(PlatformAdapter):
                 method="POST",
                 url=f"{self.GRAPH_API_URL}/{self.instagram_account_id}/messages",
                 params={"access_token": self.access_token},
-                json={
+                json_data={
                     "recipient": {"id": recipient_id},
                     "message": {"text": text}
                 }
@@ -82,16 +85,26 @@ class InstagramAdapter(PlatformAdapter):
 
     async def setup_webhook(self, webhook_url: str, verify_token: str) -> bool:
         """Настроить webhook для получения сообщений в реальном времени."""
+        if not self.app_id:
+            raise ValueError("Instagram app_id is not configured")
         try:
-            response = await self._make_request(
+            await self._make_request(
                 method="POST",
-                url=f"{self.GRAPH_API_URL}/{app_id}/subscriptions",
-                params={"object": "instagram", "fields": ["messages"], "callback_url": webhook_url, "verify_token": verify_token}
+                url=f"{self.GRAPH_API_URL}/{self.app_id}/subscriptions",
+                params={"access_token": self.access_token},
+                json_data={"object": "instagram", "fields": ["messages"], "callback_url": webhook_url, "verify_token": verify_token},
             )
         except Exception as e:
-            raise RuntimeError(f"Failed to setup webhook: {e}")
+            raise RuntimeError(f"Failed to setup webhook: {e}") from e
+        return True
 
-    async def _make_request(self, method: str, url: str, params: dict[str, Any] = {}, json_data: dict | None = None) -> Dict[str, Any]:
+    async def _make_request(
+        self,
+        method: str,
+        url: str,
+        params: dict[str, Any] | None = None,
+        json_data: dict | None = None,
+    ) -> httpx.Response:
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.access_token}"
@@ -102,11 +115,11 @@ class InstagramAdapter(PlatformAdapter):
                 if method == "GET":
                     response = await client.get(url, params=params)
                 elif method == "POST":
-                    response = await client.post(url, headers=headers, json=json_data)
+                    response = await client.post(url, params=params, headers=headers, json=json_data)
                 else:
                     raise ValueError(f"Unsupported HTTP method: {method}")
 
             response.raise_for_status()
-            return response.json()
+            return response
         except httpx.HTTPError as e:
             raise RuntimeError(f"HTTP error occurred: {e}")

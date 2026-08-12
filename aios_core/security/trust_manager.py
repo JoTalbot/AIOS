@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import os
 import time
 from enum import IntEnum
 from pathlib import Path
@@ -12,6 +13,11 @@ from pydantic import BaseModel, Field, validator, root_validator
 from typing_extensions import Annotated
 
 logger = logging.getLogger(__name__)
+
+
+class SecurityException(ValueError):
+    """Raised when a trust operation fails its security contract."""
+
 
 BATCH_REQUEST_FIELDS = {"batch_id", "user_id", "timestamp", "signature"}
 BATCH_ID_CACHE = set()

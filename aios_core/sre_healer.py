@@ -15,7 +15,7 @@ import logging
 import traceback
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from aios_core.llm_balancer import LLMBalancer
 

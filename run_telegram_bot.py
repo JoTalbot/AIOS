@@ -99,6 +99,13 @@ from tg_bot.state import (  # noqa: E402
 
 
 from tg_bot.api import TelegramAPI  # noqa: E402
+from tg_bot.keyboards import (  # noqa: E402
+    ACCOUNTS_MENU_KEYBOARD,
+    CODER_MENU_KEYBOARD,
+    GOOGLE_MENU_KEYBOARD,
+    INSTAGRAM_MENU_KEYBOARD,
+    MAIN_MENU_INLINE,
+)
 
 
 @_safe

@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tg_bot.common import _safe, _local_api_json
+from tg_bot.common import PROJECT_ROOT, _safe, _local_api_json
 
 
 def cmd_system_health() -> str:

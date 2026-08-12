@@ -142,10 +142,10 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             best = res.get("best_opportunity", {})
             lines = [
                 "⚡ <b>AIOS Triangular Arbitrage Engine (Binance):</b>",
-                f"• Просканировано цепочек: <b>{res.get(triangles_scanned)}</b>",
-                f"• Лучшая цепочка: <b>{best.get(triangle)}</b>",
-                f"• Доходность после комиссий (0.075% x3): <b>{best.get(net_spread_pct)}%</b>",
-                f"• Моделируемый PnL ($100/сделка): <b>${best.get(net_pnl_usd)} USD</b>",
+                f"• Просканировано цепочек: <b>{res.get('triangles_scanned', 0)}</b>",
+                f"• Лучшая цепочка: <b>{best.get('triangle', '—')}</b>",
+                f"• Доходность после комиссий (0.075% x3): <b>{best.get('net_spread_pct', 0)}%</b>",
+                f"• Моделируемый PnL ($100/сделка): <b>${best.get('net_pnl_usd', 0)} USD</b>",
                 "",
                 "<i>Треугольный арбитраж постоянно ищет мимолетные расхождения кросс-курсов валютных пар внутри биржи.</i>"
             ]
@@ -161,17 +161,21 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             from aios_core.airdrop_radar import AIOSAirdropRadar
             radar = AIOSAirdropRadar()
             res = radar.scan_wallet_airdrops()
+            address = str(res.get("address", ""))
             lines = [
                 "🎁 <b>AIOS Web3 Airdrop Radar:</b>",
-                f"• Проверяемый кошелек: <code>{res.get("address")[:10]}...{res.get("address")[-6:]}</code>",
-                f"• Найдено доступных аирдропов: <b>{res.get("eligible_protocols_count")}</b>",
-                f"• Оценочная стоимость наград: <b>+${res.get("total_estimated_airdrops_usd"):.2f} USD</b>",
+                f"• Проверяемый кошелек: <code>{address[:10]}...{address[-6:]}</code>",
+                f"• Найдено доступных аирдропов: <b>{res.get('eligible_protocols_count', 0)}</b>",
+                f"• Оценочная стоимость наград: <b>+${res.get('total_estimated_airdrops_usd', 0.0):.2f} USD</b>",
                 "",
                 "📊 <b>Детализация по протоколам:</b>"
             ]
             for p in res.get("protocols", []):
-                icon = "🟢" if p["eligible"] else "⚪"
-                lines.append(f"{icon} <b>{p.get("protocol", "")}</b>: ${p.get("est_reward_usd", 0.0):.2f} [{p.get("status", "")}]")
+                icon = "🟢" if p.get("eligible") else "⚪"
+                lines.append(
+                    f"{icon} <b>{p.get('protocol', '')}</b>: "
+                    f"${p.get('est_reward_usd', 0.0):.2f} [{p.get('status', '')}]"
+                )
             lines.append("")
             lines.append("💡 <i>Сканер периодически запрашивает снэпшоты новых L1/L2 сетей.</i>")
             api.send_message(chat_id, "\n".join(lines))

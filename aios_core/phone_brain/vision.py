@@ -269,23 +269,25 @@ class VisionLocator:
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
         mime = _mime(image_bytes)
         frame_size = _png_size(image_bytes)  # реальные размеры кадра (если PNG)
-        # 1) Сначала пробуем напрямую Ollama (qwen2.5vl) для ABank — локально, без 429
-        direct_ollama = self._ask_ollama("", image_b64, hint, mime)
-        if direct_ollama and direct_ollama.get("found") is True:
-            try:
-                x, y = int(direct_ollama["x"]), int(direct_ollama["y"])
-                if frame_size is not None:
-                    max_x, max_y = frame_size[0] / scale, frame_size[1] / scale
-                else:
-                    max_x, max_y = 4000 * scale, 8000 * scale
-                if 0 <= x <= max_x and 0 <= y <= max_y:
-                    return {status: ok, x: int(x * scale), y: int(y * scale), provider: ollama_direct}
-            except (KeyError, TypeError, ValueError):
-                pass
-        # 2) Затем через LLMBalancer (ротация, fallback, локальный)
-        balancer_answer = self._ask_via_balancer(image_b64, hint, mime)
-        if balancer_answer:
-            if balancer_answer.get("found") is True:
+        # Explicit providers are a dependency-injection contract used by tests and
+        # offline callers. Never make hidden network/LLM calls before them.
+        if self._providers_override is None:
+            # 1) Сначала пробуем напрямую Ollama (qwen2.5vl) для ABank — локально, без 429
+            direct_ollama = self._ask_ollama("", image_b64, hint, mime)
+            if direct_ollama and direct_ollama.get("found") is True:
+                try:
+                    x, y = int(direct_ollama["x"]), int(direct_ollama["y"])
+                    if frame_size is not None:
+                        max_x, max_y = frame_size[0] / scale, frame_size[1] / scale
+                    else:
+                        max_x, max_y = 4000 * scale, 8000 * scale
+                    if 0 <= x <= max_x and 0 <= y <= max_y:
+                        return {"status": "ok", "x": int(x * scale), "y": int(y * scale), "provider": "ollama_direct"}
+                except (KeyError, TypeError, ValueError):
+                    pass
+            # 2) Затем через LLMBalancer (ротация, fallback, локальный)
+            balancer_answer = self._ask_via_balancer(image_b64, hint, mime)
+            if balancer_answer and balancer_answer.get("found") is True:
                 try:
                     x, y = int(balancer_answer["x"]), int(balancer_answer["y"])
                 except (KeyError, TypeError, ValueError):
@@ -297,9 +299,6 @@ class VisionLocator:
                         max_x, max_y = 4000 * scale, 8000 * scale
                     if 0 <= x <= max_x and 0 <= y <= max_y:
                         return {"status": "ok", "x": int(x * scale), "y": int(y * scale), "provider": "llm_balancer"}
-            elif balancer_answer.get("found") is False:
-                # Не останавливаемся, пробуем следующий провайдер (mistral/ollama) — разные модели видят по-разному
-                pass
 
         if self._providers_override is not None:
             providers = self._providers_override
