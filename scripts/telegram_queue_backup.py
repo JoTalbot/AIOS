@@ -217,9 +217,13 @@ def main() -> int:
             )
         ),
     )
-    parser.add_argument(
-        "--key-file", type=Path, default=Path("/etc/aios/credentials/telegram_queue_key")
+    credential_dir = os.environ.get("CREDENTIALS_DIRECTORY", "").strip()
+    default_key_file = (
+        Path(credential_dir) / "telegram_queue_key"
+        if credential_dir
+        else Path("/etc/aios/credentials/telegram_queue_key")
     )
+    parser.add_argument("--key-file", type=Path, default=default_key_file)
     parser.add_argument(
         "--key-backup-root",
         type=Path,

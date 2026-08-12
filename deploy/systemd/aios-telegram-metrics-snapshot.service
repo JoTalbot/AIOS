@@ -4,7 +4,8 @@ After=local-fs.target
 
 [Service]
 Type=simple
-User=root
+User=aios-telegram
+Group=aios-telegram
 WorkingDirectory=/root/AIOS
 Environment=AIOS_TELEGRAM_STATE_DIR=/var/lib/aios/telegram
 ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/telegram_metrics_snapshot.py --output /var/lib/aios-telegram-metrics/metrics.prom --interval 10
@@ -22,7 +23,7 @@ ReadWritePaths=/var/lib/aios-telegram-metrics
 RestrictSUIDSGID=true
 LockPersonality=true
 MemoryDenyWriteExecute=true
-CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+CapabilityBoundingSet=
 SystemCallArchitectures=native
 
 [Install]

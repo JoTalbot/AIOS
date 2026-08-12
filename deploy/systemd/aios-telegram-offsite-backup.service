@@ -5,7 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=root
+User=aios-telegram
+Group=aios-telegram
 WorkingDirectory=/root/AIOS
 EnvironmentFile=-/etc/aios/offsite-backup.env
 Environment=AIOS_TELEGRAM_STATE_DIR=/var/lib/aios/telegram
@@ -26,4 +27,4 @@ ReadOnlyPaths=/var/backups/aios/telegram-queues /var/backups/aios/telegram-queue
 ReadWritePaths=/var/lib/aios/telegram
 RestrictSUIDSGID=true
 LockPersonality=true
-CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH
+CapabilityBoundingSet=

@@ -5,7 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=root
+User=aios-telegram
+Group=aios-telegram
 WorkingDirectory=/root/AIOS
 EnvironmentFile=-/root/AIOS/.env
 EnvironmentFile=-/etc/aios/telegram-canary.env
