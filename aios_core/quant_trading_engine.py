@@ -297,6 +297,39 @@ class QuantSignalEngine:
             bearish_score += 1
             reasons.append(f"Long Squeeze риск (Funding {funding_rate:.4f}%)")
 
+        # ML/RL консультирующий фактор (новые модели)
+        try:
+            _sym = symbol.replace("KRAKEN_", "").split("/")[0].upper()
+            from aios_core.quant.ml_signal_bridge import MLSignalBridge
+            ml = MLSignalBridge()
+            _mls = {s["symbol"]: s for s in ml.all_signals()}
+            _ml_sig = _mls.get(_sym)
+            if _ml_sig:
+                _p_up = _ml_sig.get("prob_up", 0.5)
+                if _p_up >= 0.65:
+                    bullish_score += 1
+                    reasons.append(f"ML бычий (prob_up {_p_up:.2f})")
+                elif _p_up <= 0.35:
+                    bearish_score += 1
+                    reasons.append(f"ML медвежий (prob_up {_p_up:.2f})")
+        except Exception:
+            pass
+        try:
+            from aios_core.quant.rl_signal_bridge import RLSignalBridge
+            rl = RLSignalBridge()
+            _rls = {s.get("asset"): s for s in rl.run_all().get("signals", []) if s.get("ok")}
+            _rl_sig = _rls.get(_sym)
+            if _rl_sig:
+                _pos = _rl_sig.get("position", 0.5)
+                if _pos > 0.7:
+                    bullish_score += 1
+                    reasons.append(f"RL LONG (pos {_pos})")
+                elif _pos < 0.3:
+                    bearish_score += 1
+                    reasons.append(f"RL FLAT/шорт (pos {_pos})")
+        except Exception:
+            pass
+
         # Принятие решения
         signal = "HOLD"
         confidence = 0.50
