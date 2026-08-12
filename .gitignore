@@ -118,3 +118,7 @@ data/.cards_vault.json
 
 # Runtime selfguard snapshots (mutable, may contain protected source copies)
 /backups/selfguard/
+
+# SQLite sidecars are mutable runtime state
+*.db-shm
+*.db-wal
