@@ -42,6 +42,16 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
+
+def _redact_runtime_error(value: object) -> str:
+    """Remove credentials and sensitive endpoint fragments from log errors."""
+    text = str(value)
+    text = re.sub(r"bot[0-9]+:[A-Za-z0-9_-]+", "bot[redacted]", text)
+    text = re.sub(r"(?i)Bearer\s+[A-Za-z0-9._-]+", "Bearer [redacted]", text)
+    text = re.sub(r"https?://[^\s)]+", "[url-redacted]", text)
+    return text[:500]
+
+
 # === Inventory by photo v22.1 helpers ===
 import random as _rnd
 
@@ -444,6 +454,9 @@ def run_bot(token: str) -> None:
 
     def _request_shutdown(_signum: int, _frame: object) -> None:
         shutdown_requested.set()
+        # Interrupt long polling, periodic subprocess waits, or HTTP calls so
+        # systemd does not have to wait for their individual network timeout.
+        raise KeyboardInterrupt
 
     previous_handlers = {
         sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)
@@ -1188,7 +1201,7 @@ def run_bot(token: str) -> None:
                 break
             if "timed out" in str(exc).lower() or "timeout" in str(exc).lower():
                 continue  # normal for long polling
-            print(f"⚠️ Ошибка polling: {exc}")
+            print(f"⚠️ Ошибка polling: {_redact_runtime_error(exc)}")
             time.sleep(3)
 
     drain_timeout = max(5.0, float(os.environ.get("TELEGRAM_DRAIN_TIMEOUT", "45")))
