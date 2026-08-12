@@ -115,3 +115,6 @@ backups/messenger_profiles/
 !config/nodes.json
 !deploy/monitoring/grafana-telegram-llm.json
 data/.cards_vault.json
+
+# Runtime selfguard snapshots (mutable, may contain protected source copies)
+/backups/selfguard/
