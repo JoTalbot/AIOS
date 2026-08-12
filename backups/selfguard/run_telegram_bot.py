@@ -15,6 +15,7 @@ AIOS Telegram Bot — управление агентами через Telegram.
     /olx_list   — список моих подписок
     /olx_latest— последние объявления по подписке
     /olx_analytics — AI-аналитика цен по запросу
+    /resend [ID] — контролируемый повтор failed_unknown
     /help       — список команд
 
 Архитектура:
@@ -34,6 +35,8 @@ import time
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
@@ -48,7 +51,12 @@ from tg_bot.inventory_photos import (  # noqa: E402
 
 from tg_bot.common import _safe, _esc_tg, _run_account_control  # noqa: E402
 from tg_bot.callbacks import _handle_callback, _handle_button  # noqa: E402
-from tg_bot.llm import _llm_chat, _cmd_skills, _cmd_llm_mode, _cmd_console, _llm_status  # noqa: E402
+from tg_bot.llm import (  # noqa: E402
+    _llm_chat, _cmd_skills, _cmd_llm_mode, _cmd_console, _llm_status,
+    get_last_llm_metadata,
+)
+from tg_bot.outbox import TelegramOutbox  # noqa: E402
+from tg_bot.generation_queue import TelegramGenerationQueue  # noqa: E402
 from tg_bot.inbox import _llm_chat_direct, _parse_inbox_filters, _inbox_keyboard, _run_due_inbox, _collect_inbox, INBOX_SCHEDULE_FILE  # noqa: E402
 from tg_bot.voice import VOICE_REPLY_FILE, _voice_enabled, _set_voice_enabled, _send_voice_reply, _transcribe_audio  # noqa: E402
 from tg_bot.accounts import (  # noqa: E402
@@ -359,6 +367,72 @@ def _is_authorized_chat(chat_id: object) -> bool:
 
 def run_bot(token: str) -> None:
     api = TelegramAPI(token)
+    from tg_bot.metrics_exporter import start_metrics_exporter
+
+    metrics_server = start_metrics_exporter()
+    outbox = TelegramOutbox(api)
+    outbox.start()
+
+    def _process_generation_job(job: dict) -> bool:
+        dedup_key = str(job["dedup_key"])
+        chat_id = int(job["chat_id"])
+        if outbox.seen(dedup_key):
+            print(f"  [LLM] generated job already has outbound record ({dedup_key})")
+            return True
+
+        try:
+            import threading as _threading
+
+            def _show_typing(_chat_id):
+                with contextlib.suppress(Exception):
+                    api.send_chat_action(_chat_id)
+
+            _threading.Thread(target=_show_typing, args=(chat_id,), daemon=True).start()
+        except Exception:
+            pass
+
+        started = time.monotonic()
+        reply = _llm_chat(chat_id, str(job["text"]))
+        generation_sec = time.monotonic() - started
+        route = get_last_llm_metadata()
+        provider = str(route.get("provider") or "unknown")
+        model = str(route.get("model") or "unknown")
+        print(
+            f"  [LLM] reply ({len(reply or '')} chars, provider={provider}, "
+            f"model={model}, gen={generation_sec:.2f}s)"
+        )
+        if not reply:
+            raise RuntimeError("empty LLM reply")
+
+        import re as _re2
+        reply = _re2.sub(r'<cmd>.*?</cmd>', '', reply, flags=_re2.DOTALL)
+        reply = _re2.sub(r'```cmd\n.*?```', '', reply, flags=_re2.DOTALL).strip()
+        if not reply:
+            raise RuntimeError("empty sanitized LLM reply")
+
+        on_sent = None
+        if bool(job.get("voice_reply")):
+            def _voice_after_text(_result, _chat_id=chat_id, _text=reply[:1500]):
+                _send_voice_reply(api, _chat_id, _text)
+            on_sent = _voice_after_text
+
+        queued = outbox.enqueue(
+            dedup_key=dedup_key,
+            chat_id=chat_id,
+            text=reply[:3900],
+            parse_mode="",
+            generation_sec=generation_sec,
+            provider=provider,
+            model=model,
+            on_sent=on_sent,
+            reply_to_message_id=job.get("source_message_id"),
+        )
+        if queued:
+            print(f"  [LLM] queued ({dedup_key}); awaiting terminal send status")
+        return queued or outbox.seen(dedup_key)
+
+    generation_queue = TelegramGenerationQueue(_process_generation_job)
+    generation_queue.start()
     offset = 0
 
     print("🤖 AIOS Telegram Bot запущен (v10.0 with inline menu)")
@@ -415,8 +489,16 @@ def run_bot(token: str) -> None:
 
                 if not chat_id:
                     continue
+                content_kind = "voice" if (msg.get("voice") or msg.get("audio")) else "text"
+                print(
+                    f"📩 [TG INCOMING] chat={chat_id} kind={content_kind} chars={len(text)}"
+                )
                 if not _is_authorized_chat(chat_id):
                     print(f"  [SECURITY] ignored message from unauthorized chat {chat_id}")
+                    try:
+                        api.send_message(chat_id, f"⛔ Доступ к AIOS боту ограничен.\nВаш chat_id: `{chat_id}`.\nДобавьте этот ID в `.env` (`TELEGRAM_CHAT_ID={chat_id}`).", parse_mode="Markdown")
+                    except Exception:
+                        pass
                     continue
 
                 # Голосовое сообщение — распознать и выполнить как команду
@@ -438,16 +520,15 @@ def run_bot(token: str) -> None:
                         except Exception as a_err:
                             print(f"  [VOICE] intent error: {a_err}")
                         if not handled:
-                            llm_reply = _llm_chat(chat_id, transcript)
-                            if llm_reply:
-                                try:
-                                    api.send_message(chat_id, llm_reply[:3900])
-                                except Exception:
-                                    try:
-                                        api.send_message(chat_id, llm_reply[:3900], parse_mode="")
-                                    except Exception:
-                                        pass
-                        print(f"  [VOICE] transcript: {transcript[:80]}")
+                            voice_key = f"llm:{upd.get('update_id', msg.get('message_id', 'unknown'))}"
+                            generation_queue.enqueue(
+                                dedup_key=voice_key,
+                                chat_id=chat_id,
+                                text=transcript,
+                                source_message_id=msg.get("message_id"),
+                                voice_reply=_voice_enabled(chat_id),
+                            )
+                        print(f"  [VOICE] transcript queued ({len(transcript)} chars)")
                     except Exception as v_err:
                         print(f"  [VOICE] error: {v_err}")
                         try:
@@ -647,6 +728,10 @@ def run_bot(token: str) -> None:
 
                     # Natural language control of Google / Instagram accounts
                     try:
+                        from tg_bot.calls import _handle_calls_intent
+                        if _handle_calls_intent(api, chat_id, text):
+                            print(f"  -> calls-intent handled (chat {chat_id})")
+                            continue
                         if _handle_account_intent(api, chat_id, text):
                             print(f"  -> account-intent handled (chat {chat_id})")
                             continue
@@ -670,7 +755,9 @@ def run_bot(token: str) -> None:
                             if "_auto_core" not in globals():
                                 from aios_core.autonomy import AutonomyCore as _AutoCore
                                 globals()["_auto_core"] = _AutoCore()
-                            _ao = globals()["_auto_core"].process_owner(chat_id, text)
+                            _ao = globals()["_auto_core"].process_owner(
+                                chat_id, text, execute_reply=False
+                            )
                             _is_action = _ao.get("mode") == "action" and _ao.get("action") not in ("reply_customer", "query_platform")
                             if _is_action or _ao.get("mode") == "manual":
                                 _txt = _ao.get("text") or ""
@@ -689,29 +776,21 @@ def run_bot(token: str) -> None:
                         except Exception as _au_err:
                             print(f"  [AUTONOMY] err: {_au_err}")
 
-                    # Regular chat message — send to LLM
-                    llm_reply = _llm_chat(chat_id, text)
-                    print(f"  [LLM] reply ({len(llm_reply or '')} chars): {(llm_reply or '')[:100]}")
-                    if llm_reply:
-                        # Remove any remaining cmd tags
-                        import re as _re2
-                        llm_reply = _re2.sub(r'<cmd>.*?</cmd>', '', llm_reply, flags=_re2.DOTALL)
-                        llm_reply = _re2.sub(r'```cmd\n.*?```', '', llm_reply, flags=_re2.DOTALL).strip()
-                        # Escape HTML but preserve code blocks
-                        llm_reply = llm_reply.replace("&", "&amp;")
-                        try:
-                            api.send_message(chat_id, llm_reply[:3900])
-                            print(f"  -> LLM sent (chat {chat_id})")
-                        except Exception as send_err:
-                            # Retry without parse_mode
-                            try:
-                                api.send_message(chat_id, llm_reply[:3900], parse_mode='')
-                                print(f"  -> LLM sent plain (chat {chat_id})")
-                            except Exception as e2:
-                                print(f"  [ERR] send failed: {e2}")
-                        # голосовой ответ, если включён
-                        if _voice_enabled(chat_id):
-                            _send_voice_reply(api, chat_id, llm_reply[:1500])
+                    # Persist generation and return to polling immediately. One
+                    # sequential worker per chat preserves conversational order;
+                    # different chats can generate concurrently.
+                    dedup_key = f"llm:{upd.get('update_id', msg.get('message_id', 'unknown'))}"
+                    queued = generation_queue.enqueue(
+                        dedup_key=dedup_key,
+                        chat_id=chat_id,
+                        text=text,
+                        source_message_id=msg.get("message_id"),
+                        voice_reply=_voice_enabled(chat_id),
+                    )
+                    if queued:
+                        print(f"  [LLM] generation queued ({dedup_key}); polling continues")
+                    else:
+                        print(f"  [LLM] duplicate generation skipped ({dedup_key})")
                     continue
 
                 reply = None
@@ -720,10 +799,106 @@ def run_bot(token: str) -> None:
                 if cmd == "/start" or cmd == "/menu":
                     reply = cmd_start(first_name)
                     keyboard = MAIN_MENU_INLINE
+                elif cmd == "/backtest" or cmd == "/bt":
+                    # Бэктест ML/RL стратегий
+                    reply = None
+                    keyboard = None
+                    sym = (args or "BTC").strip().upper().split()[0]
+                    api.send_message(chat_id, f"📈 Бэктест {sym} (ML/RL стратегии)…")
+                    try:
+                        import subprocess as _sp_bt
+                        _r = _sp_bt.run(
+                            ["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "aios_core" / "quant" / "backtest_ai_strategies.py"),
+                             "--symbol", sym, "--json"],
+                            capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+                        _out = (_r.stdout or "").strip()
+                        import json as _json
+                        try:
+                            d = _json.loads(_out)
+                        except Exception:
+                            api.send_message(chat_id, "❌ Не удалось бэктестить. Проверьте символ.")
+                            continue
+                        lines = [f"📈 <b>Бэктест {sym}</b>\n"]
+                        for strat, m in d.items():
+                            if strat == "symbol" or not isinstance(m, dict) or "error" in m:
+                                continue
+                            lines.append(f"<b>{strat}:</b>")
+                            lines.append(f"   • Доходность: {m.get('total_return_pct','?')}%")
+                            lines.append(f"   • Sharpe: {m.get('sharpe','?')} · Sortino: {m.get('sortino','?')}")
+                            lines.append(f"   • Max DD: {m.get('max_drawdown_pct','?')}% · Win: {m.get('win_rate_pct','?')}%")
+                            if m.get('ml_prob_up'):
+                                lines.append(f"   • ML prob_up: {m.get('ml_prob_up')}")
+                        api.send_message(chat_id, "\n".join(lines)[:3900])
+                    except Exception as e:
+                        api.send_message(chat_id, f"❌ Ошибка бэктеста: {e}")
+                    continue
+                elif cmd == "/signals" or cmd == "/signal":
+
+                    # ML + RL консультирующие сигналы
+                    reply = None
+                    keyboard = None
+                    api.send_message(chat_id, "📊 Собираю ML/RL-сигналы…")
+                    try:
+                        from aios_core.quant_trading_engine import get_ai_signal_summary
+                        d = get_ai_signal_summary()
+                        ml = d.get("ml", {})
+                        rl = d.get("rl", {})
+                        lines = ["📊 <b>AIOS Quant Сигналы</b>\n"]
+                        lines.append("🔮 <b>ML (CatBoost):</b>")
+                        lines.append(f"   • Активов: {ml.get('total', 0)}")
+                        lines.append(f"   • Бычьих: <b>{ml.get('bullish_strong', 0)}</b> · Медвежьих: {ml.get('bearish_strong', 0)}")
+                        top = ml.get("top_momentum", [])
+                        if top:
+                            lines.append(f"   • Топ-моментум: {', '.join(top)}")
+                        lines.append("")
+                        lines.append("🤖 <b>RL (PPO):</b>")
+                        rl_long = rl.get("long", [])
+                        rl_half = rl.get("half", [])
+                        lines.append(f"   • LONG: {', '.join(rl_long) if rl_long else '—'}")
+                        lines.append(f"   • HALF (0.5): {', '.join(rl_half) if rl_half else '—'}")
+                        lines.append("")
+                        lines.append("<i>Консультирующие сигналы. Не финансовая рекомендация.</i>")
+                        api.send_message(chat_id, "\n".join(lines)[:3900])
+                    except Exception as e:
+                        api.send_message(chat_id, f"❌ Ошибка сигналов: {e}")
+                    continue
+                elif cmd == "/ask" or cmd == "/rag":
+
+                    # RAG-запрос к знаниям AIOS (проект + чаты + профиль владельца)
+                    reply = None
+                    keyboard = None
+                    question = (args or "").strip()
+                    if not question:
+                        api.send_message(chat_id, "❓ Задайте вопрос через /ask <ваш вопрос>\nПример: /ask кто владелец AIOS")
+                        continue
+                    api.send_message(chat_id, "🔎 Ищу в базе знаний AIOS…")
+                    try:
+                        import subprocess as _sp_ask
+                        _r = _sp_ask.run(
+                            ["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "aios_ask.py"),
+                             question, "--llm", "--top", "5"],
+                            capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT))
+                        _out = (_r.stdout or "").strip()
+                        # берём ответ LLM (после маркера "=== Ответ LLM ===")
+                        if "=== Ответ LLM ===" in _out:
+                            _ans = _out.split("=== Ответ LLM ===")[-1].strip()
+                        else:
+                            _ans = _out[-2000:]
+                        if _ans:
+                            api.send_message(chat_id, _ans[:3900])
+                        else:
+                            api.send_message(chat_id, "🤷 Не нашёл ответа. Сформулируйте иначе.")
+                    except Exception as e:
+                        api.send_message(chat_id, f"❌ Ошибка RAG: {e}")
+                    continue
                 elif cmd == "/stats":
                     reply = cmd_stats()
                 elif cmd in ("/status", "/platforms"):
                     reply = cmd_platforms()
+                elif cmd in ("/calls", "/whisper"):
+                    from tg_bot.calls import _handle_calls_intent
+                    _handle_calls_intent(api, chat_id, "/calls")
+                    continue
                 elif cmd == "/olx":
                     reply = cmd_olx(args)
                 elif cmd == "/olx_sub" or cmd == "/subscribe":
@@ -902,6 +1077,34 @@ def run_bot(token: str) -> None:
                     else:
                         reply = cmd_instagram("")
                         keyboard = INSTAGRAM_MENU_KEYBOARD
+                elif cmd == "/resend":
+                    resend_arg = args.strip()
+                    if resend_arg:
+                        try:
+                            uncertain_id = int(resend_arg)
+                        except ValueError:
+                            reply = "❌ Формат: <code>/resend ID</code>"
+                        else:
+                            if outbox.manual_resend(uncertain_id):
+                                reply = f"✅ Повторная отправка для uncertain ID <code>{uncertain_id}</code> поставлена в очередь."
+                            else:
+                                reply = "❌ Запись не найдена, уже обработана или не имеет статуса failed_unknown."
+                    else:
+                        uncertain = outbox.list_uncertain(limit=10)
+                        if not uncertain:
+                            reply = "✅ Нет отправок со статусом failed_unknown."
+                        else:
+                            lines = ["⚠️ <b>Неопределённые отправки</b> (только метаданные):"]
+                            for item in uncertain:
+                                created = time.strftime(
+                                    "%Y-%m-%d %H:%M:%S", time.localtime(float(item["created_at"]))
+                                )
+                                lines.append(
+                                    f"• ID <code>{item['id']}</code> · chat <code>{item['chat_id']}</code> "
+                                    f"· {created} · {item['error_class'] or 'unknown'}"
+                                )
+                            lines.append("\nПовторить явно: <code>/resend ID</code>")
+                            reply = "\n".join(lines)
                 elif cmd == "/help":
                     reply = cmd_help()
                 elif cmd == "/coder":
@@ -932,6 +1135,10 @@ def run_bot(token: str) -> None:
                     print(f"  → ответил на {cmd} (chat {chat_id})")
 
         except KeyboardInterrupt:
+            generation_queue.stop()
+            outbox.stop()
+            if metrics_server:
+                metrics_server.shutdown()
             print("\n👋 Бот остановлен.")
             break
         except Exception as exc:
@@ -946,7 +1153,11 @@ def run_bot(token: str) -> None:
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    TOKEN = os.environ.get("AIOS_TELEGRAM_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN")
+    from tg_bot.credentials import secret_from_env_or_credential
+
+    TOKEN = secret_from_env_or_credential(
+        "AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token"
+    )
     if not TOKEN:
         print("❌ Установите AIOS_TELEGRAM_TOKEN или TELEGRAM_BOT_TOKEN")
         sys.exit(1)

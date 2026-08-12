@@ -58,6 +58,9 @@ class APIKey:
     error_count: int = 0
     cooldown_until: float = 0.0
     permanently_dead: bool = False
+    base_url: str = ""
+    model: str = ""
+    node_id: str = ""
 
     @property
     def is_available(self) -> bool:
@@ -370,23 +373,36 @@ class LLMBalancer:
 
     def __init__(self):
         self.providers: dict[str, Provider] = {}
+        self._runtime_config_signature: tuple | None = None
+        self._runtime_lock = threading.RLock()
+        self._route_local = threading.local()
+        self.last_route = {}
         self._load_from_env()
         self._total_requests = 0
         self._total_errors = 0
         self._provider_stats: dict[str, int] = {}
         self._cache: dict[str, str] = {}
         self._cache_max = int(os.environ.get("LLM_CACHE_MAX", "256"))
-        # FIXED PRIORITY: groq и deepseek первыми (самые надежные), openrouter и local последними
+        # Private Colab is preferred for text tasks; cloud providers and local
+        # Ollama remain automatic fallbacks when the Colab session is unavailable.
         self.task_priority = {
             "vision": ["gemini", "mistral", "openrouter", "local"],
-            "chat": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "deepseek", "zai", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "ibm", "local"],
-            "code": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "huggingface", "gemini", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
-            "analysis": ["groq", "cerebras", "github", "gemini", "mistral", "cohere", "together", "nvidia", "huggingface", "openai", "airforce", "openrouter", "local"],
-            "general": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
+            "chat": ["colab", "groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "deepseek", "zai", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "ibm", "local"],
+            "code": ["colab", "groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "huggingface", "gemini", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
+            "analysis": ["colab", "groq", "cerebras", "github", "gemini", "mistral", "cohere", "together", "nvidia", "huggingface", "openai", "airforce", "openrouter", "local"],
+            "general": ["colab", "groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
             # Планировщик автономии (JSON-структурированный вывод) — приоритет на
             # надёжные модели: groq llama-3.1-8b-instant, затем mistral/gemini/zai.
-            "reasoning": ["groq", "mistral", "zai", "gemini", "cohere", "deepseek", "openrouter", "local"],
+            "reasoning": ["colab", "groq", "mistral", "zai", "gemini", "cohere", "deepseek", "openrouter", "local"],
         }
+
+    @property
+    def last_route(self) -> dict[str, object]:
+        return dict(getattr(self._route_local, "value", {}))
+
+    @last_route.setter
+    def last_route(self, value: dict[str, object]) -> None:
+        self._route_local.value = dict(value or {})
 
     def _load_from_env(self):
         for key_file in (Path("/app/data/.llm_keys.json"), Path(__file__).resolve().parents[1] / "data/.llm_keys.json"):
@@ -479,6 +495,169 @@ class LLMBalancer:
                     installed=_installed,
                 )
 
+        # Private OpenAI-compatible model hosted in Google Colab. The runtime
+        # registry is authoritative over process environment because keeper can
+        # rotate URL/key without restarting Telegram.
+        self.refresh_runtime_config(force=True)
+
+    @staticmethod
+    def _runtime_key_paths() -> tuple[Path, ...]:
+        return (
+            Path("/app/data/.llm_keys.json"),
+            Path(__file__).resolve().parents[1] / "data" / ".llm_keys.json",
+        )
+
+    def _read_colab_runtime(self) -> tuple[dict, tuple]:
+        for path in self._runtime_key_paths():
+            try:
+                stat = path.stat()
+                data = json.loads(path.read_text(encoding="utf-8"))
+                candidate = data.get("colab_llm", {})
+                nodes = data.get("colab_llm_nodes", [])
+                valid_nodes = [
+                    item for item in nodes if isinstance(item, dict)
+                ] if isinstance(nodes, list) else []
+                if not isinstance(candidate, dict) or not candidate:
+                    candidate = valid_nodes[0] if valid_nodes else {}
+                if isinstance(candidate, dict) and candidate:
+                    candidate = dict(candidate)
+                    candidate["_nodes"] = valid_nodes
+                    signature = (str(path), stat.st_mtime_ns, stat.st_size)
+                    return candidate, signature
+            except (OSError, ValueError):
+                continue
+        env_cfg = {
+            "enabled": os.environ.get("COLAB_LLM_ENABLED", "1"),
+            "base_url": os.environ.get("COLAB_LLM_URL", ""),
+            "api_key": os.environ.get("COLAB_LLM_API_KEY", ""),
+            "model": os.environ.get("COLAB_LLM_MODEL", "colab/qwen2.5-coder"),
+        }
+        # Include only a process-local hash in the signature; never log it.
+        signature = ("env", hash(tuple(str(env_cfg[key]) for key in sorted(env_cfg))))
+        return env_cfg, signature
+
+    @staticmethod
+    def _colab_endpoint(config: dict) -> tuple[str, str, str, str] | None:
+        enabled_raw = str(config.get("enabled", True)).strip().lower()
+        if enabled_raw in ("0", "false", "no", "off"):
+            return None
+        base_url = str(config.get("base_url", "")).strip().rstrip("/")
+        api_key = str(config.get("api_key", "")).strip()
+        model = str(config.get("model", "colab/qwen2.5-coder")).strip()
+        node_id = str(config.get("node_id", "primary")).strip() or "primary"
+        if not base_url or not api_key or not model:
+            return None
+        if base_url.endswith("/chat/completions"):
+            endpoint = base_url
+        elif base_url.endswith("/v1"):
+            endpoint = base_url + "/chat/completions"
+        else:
+            endpoint = base_url + "/v1/chat/completions"
+        return endpoint, api_key, model, node_id
+
+    @classmethod
+    def _build_colab_provider(cls, config: dict) -> Provider | None:
+        candidates = [config] + list(config.get("_nodes", []))
+        endpoints: list[tuple[str, str, str, str]] = []
+        seen: set[tuple[str, str]] = set()
+        for candidate in candidates:
+            parsed = cls._colab_endpoint(candidate)
+            if not parsed:
+                continue
+            identity = (parsed[0], parsed[1])
+            if identity in seen:
+                continue
+            seen.add(identity)
+            endpoints.append(parsed)
+        if not endpoints:
+            return None
+        keys = [
+            APIKey(
+                key=api_key,
+                provider="colab",
+                base_url=endpoint,
+                model=model,
+                node_id=node_id,
+            )
+            for endpoint, api_key, model, node_id in endpoints
+        ]
+        models = list(dict.fromkeys(item[2] for item in endpoints))
+        return Provider(
+            name="colab",
+            base_url=endpoints[0][0],
+            keys=keys,
+            models=models,
+        )
+
+    def refresh_runtime_config(self, *, force: bool = False) -> bool:
+        """Hot-reload a rotated Colab generation while preserving other cooldowns."""
+        with self._runtime_lock:
+            return self._refresh_runtime_config_unlocked(force=force)
+
+    def _refresh_runtime_config_unlocked(self, *, force: bool = False) -> bool:
+        config, signature = self._read_colab_runtime()
+        if not force and signature == self._runtime_config_signature:
+            return False
+        replacement = self._build_colab_provider(config)
+        current = self.providers.get("colab")
+        current_nodes = [
+            (key.base_url or current.base_url, key.key, key.model, key.node_id)
+            for key in current.keys
+        ] if current else []
+        replacement_nodes = [
+            (key.base_url or replacement.base_url, key.key, key.model, key.node_id)
+            for key in replacement.keys
+        ] if replacement else []
+        unchanged = bool(current and replacement and current_nodes == replacement_nodes)
+        if not unchanged:
+            if replacement is None:
+                self.providers.pop("colab", None)
+            else:
+                self.providers["colab"] = replacement
+        self._runtime_config_signature = signature
+        return not unchanged
+
+    @staticmethod
+    def _fit_colab_messages(messages: list[dict], max_chars: int = 6000) -> list[dict]:
+        """Fit the large AIOS prompt into the Colab model's 4096-token window.
+
+        Keep the beginning of the system prompt (identity and safety rules) and
+        the newest dialogue turns. This applies only to the private Colab
+        provider; cloud providers retain the full context.
+        """
+        max_chars = max(1000, int(max_chars))
+        system_messages = [m for m in messages if m.get("role") == "system"]
+        dialogue = [m for m in messages if m.get("role") != "system"]
+
+        dialogue_total = sum(len(str(m.get("content", ""))) for m in dialogue)
+        dialogue_limit = max_chars if not system_messages else min(dialogue_total, max_chars // 3)
+        kept_reversed: list[dict] = []
+        remaining = dialogue_limit
+        for message in reversed(dialogue):
+            if remaining <= 0:
+                break
+            content = str(message.get("content", ""))
+            if len(content) > remaining:
+                truncation_marker = "\n...[earlier content truncated for Colab context]...\n"
+                usable = max(0, remaining - len(truncation_marker))
+                head = usable // 2
+                tail = usable - head
+                suffix = content[-tail:] if tail else ""
+                content = content[:head] + truncation_marker + suffix
+            kept_reversed.append({**message, "content": content})
+            remaining -= len(content)
+        kept_dialogue = list(reversed(kept_reversed))
+
+        system_budget = max_chars - sum(len(str(m.get("content", ""))) for m in kept_dialogue)
+        kept_system: list[dict] = []
+        for message in system_messages:
+            if system_budget <= 0:
+                break
+            content = str(message.get("content", ""))[:system_budget]
+            kept_system.append({**message, "content": content})
+            system_budget -= len(content)
+        return kept_system + kept_dialogue
+
     def add_key(self, provider: str, key: str):
         if provider not in self.providers:
             if provider in self.PROVIDERS:
@@ -495,7 +674,9 @@ class LLMBalancer:
     def chat(self, messages: list[dict], model: str = "", system: str = "",
              max_tokens: int = 2000, temperature: float = 0.3,
              task_type: str = "general") -> str:
+        self.refresh_runtime_config()
         self._total_requests += 1
+        self.last_route = {}
 
         if not model:
             # Игнорируем LLM_MODEL, если это плейсхолдер/устаревшая gpt-3.5-turbo,
@@ -508,6 +689,7 @@ class LLMBalancer:
         if os.environ.get("LLM_CACHE", "1") == "1":
             _key = str((system or "", [tuple(sorted(m.items())) for m in messages if isinstance(m, dict) and "role" in m and "content" in m]))
             if _key in self._cache:
+                self.last_route = {"provider": "cache", "model": model, "latency_sec": 0.0}
                 return self._cache[_key]
 
         models_to_try = [model] + self.MODEL_FALLBACKS.get(model, [])
@@ -547,6 +729,10 @@ class LLMBalancer:
                     # Check model support
                     if prov_name == "openrouter":
                         model_supported = True
+                    elif prov_name == "colab":
+                        # The private Colab runtime serves one configured model;
+                        # map any text task to it and keep normal provider fallback.
+                        model_supported = True
                     elif prov_name == "local":
                         inst = getattr(provider, "installed", set())
                         model_supported = try_model in inst or try_model in provider.models
@@ -572,14 +758,16 @@ class LLMBalancer:
 
                 keys_tried += 1
                 prov_name = best_provider.name
+                req_model = try_model
 
                 try:
                     import requests as _req_lib
                     # v2.3: маппинг модели на провайдера. Имя вида
                     # "llama-3.3-70b-versatile" существует только у groq — mistral/zai/
                     # openrouter отвечают 400. Подставляем родную модель провайдера.
-                    req_model = try_model
-                    if prov_name == "openrouter":
+                    if prov_name == "colab":
+                        req_model = best_key.model or best_provider.models[0]
+                    elif prov_name == "openrouter":
                         if "/" not in try_model:
                             # Голое имя (gpt-3.5-turbo и т.п.) → корректный openrouter slug.
                             # Не льёмся в устаревший :free-модель, от которой OpenRouter
@@ -598,10 +786,17 @@ class LLMBalancer:
                                 continue
                     elif prov_name != "local" and try_model not in provider.models:
                         req_model = provider.models[0] if provider.models else try_model
+                    req_messages = all_messages
+                    req_max_tokens = max_tokens
+                    if prov_name == "colab":
+                        _colab_chars = int(os.environ.get("COLAB_LLM_MAX_INPUT_CHARS", "6000"))
+                        _colab_output = int(os.environ.get("COLAB_LLM_MAX_OUTPUT_TOKENS", "768"))
+                        req_messages = self._fit_colab_messages(all_messages, _colab_chars)
+                        req_max_tokens = min(max_tokens, max(1, _colab_output))
                     payload = {
                         "model": req_model,
-                        "messages": all_messages,
-                        "max_tokens": max_tokens,
+                        "messages": req_messages,
+                        "max_tokens": req_max_tokens,
                         "temperature": temperature,
                     }
 
@@ -616,7 +811,9 @@ class LLMBalancer:
                         "X-Title": "AIOS Coder Orchestrator v2",
                     }
 
-                    _resp = _req_lib.post(best_provider.base_url, json=payload, headers=headers, timeout=120)
+                    _request_started = time.monotonic()
+                    request_url = best_key.base_url or best_provider.base_url
+                    _resp = _req_lib.post(request_url, json=payload, headers=headers, timeout=120)
                     _resp.raise_for_status()
                     data = _resp.json()
 
@@ -658,6 +855,12 @@ class LLMBalancer:
                         content = str(data["result"])
 
                     if content:
+                        self.last_route = {
+                            "provider": prov_name,
+                            "model": req_model,
+                            "latency_sec": round(time.monotonic() - _request_started, 3),
+                            "node_id": best_key.node_id if prov_name == "colab" else "",
+                        }
                         if os.environ.get("LLM_CACHE", "1") == "1":
                             _cache_key = str((system or "", [tuple(sorted(m.items())) for m in messages if isinstance(m, dict) and "role" in m and "content" in m]))
                             if len(self._cache) < self._cache_max:
@@ -672,7 +875,7 @@ class LLMBalancer:
                     _code = getattr(getattr(e, "response", None), "status_code", None) or getattr(e, "code", None)
                     if _code:
                         code = int(_code)
-                        print(f"  [Balancer] {prov_name}/{try_model}: HTTP {code}")
+                        print(f"  [Balancer] {prov_name}/{req_model}: HTTP {code}")
                         if code == 402:
                             best_provider.mark_key_error(best_key, f"HTTP {code} Payment Required", cooldown=86400)
                             continue
@@ -695,7 +898,7 @@ class LLMBalancer:
                         else:
                             best_provider.mark_key_error(best_key, f"HTTP {code}", cooldown=300)
                             continue
-                    print(f"  [Balancer] {prov_name}/{try_model}: {str(e)[:80]}")
+                    print(f"  [Balancer] {prov_name}/{req_model}: {str(e)[:80]}")
                     best_provider.mark_key_error(best_key, str(e)[:60], cooldown=60)
                     continue
 
@@ -722,6 +925,7 @@ class LLMBalancer:
         for local_model in provider.models:
             try:
                 print(f"  [Balancer] CLOUDS DOWN -> local fallback: {local_model}")
+                _local_started = time.monotonic()
                 _resp = _req_lib.post(
                     provider.base_url,
                     json={
@@ -745,6 +949,11 @@ class LLMBalancer:
                     content = _c if isinstance(_c, str) else ""
                 if content.strip():
                     self._provider_stats["local"] = self._provider_stats.get("local", 0) + 1
+                    self.last_route = {
+                        "provider": "local",
+                        "model": local_model,
+                        "latency_sec": round(time.monotonic() - _local_started, 3),
+                    }
                     print(f"  [Balancer] LOCAL fallback OK: {local_model}")
                     return content
                 print(f"  [Balancer] LOCAL fallback {local_model}: пустой ответ")
@@ -758,6 +967,7 @@ class LLMBalancer:
             "total_requests": self._total_requests,
             "total_errors": self._total_errors,
             "providers": {},
+            "last_route": dict(self.last_route),
         }
         for name, prov in self.providers.items():
             result["providers"][name] = {
@@ -765,5 +975,62 @@ class LLMBalancer:
                 "keys_available": sum(1 for k in prov.keys if k.is_available),
                 "requests": self._provider_stats.get(name, 0),
                 "models": prov.models[:5],
+                "nodes": len(prov.keys) if name == "colab" else 0,
             }
         return result
+
+
+    
+
+    def _query_colab_llm(self, all_messages: list[dict], max_tokens: int = 2000, temperature: float = 0.3) -> str | None:
+        """Запрос к кастомной кодинг-модели LLM, запущенной в Google Colab через OpenAI API."""
+        import urllib.request
+        import json
+        import os
+        from pathlib import Path
+
+        colab_url = os.environ.get("COLAB_LLM_URL", "").strip().rstrip("/")
+        colab_api_key = os.environ.get("COLAB_LLM_API_KEY", "").strip()
+        keys_p = Path("/root/AIOS/data/.llm_keys.json")
+        if keys_p.exists():
+            try:
+                kd = json.loads(keys_p.read_text(encoding="utf-8"))
+                colab_cfg = kd.get("colab_llm", {})
+                if not colab_url:
+                    colab_url = colab_cfg.get("base_url", "").strip().rstrip("/")
+                if not colab_api_key:
+                    colab_api_key = colab_cfg.get("api_key", "").strip()
+            except Exception:
+                pass
+
+        if not colab_url:
+            return None
+
+        if not colab_url.endswith("/v1"):
+            colab_url += "/v1"
+
+        endpoint = f"{colab_url}/chat/completions"
+        payload = {
+            "model": os.environ.get("COLAB_LLM_MODEL", "colab/qwen2.5-coder"),
+            "messages": all_messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
+
+        try:
+            headers = {"Content-Type": "application/json", "User-Agent": "AIOS-LLMBalancer/1.0"}
+            if colab_api_key:
+                headers["Authorization"] = f"Bearer {colab_api_key}"
+            req = urllib.request.Request(
+                endpoint,
+                data=json.dumps(payload).encode("utf-8"),
+                headers=headers,
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                choices = data.get("choices", [])
+                if choices:
+                    return choices[0].get("message", {}).get("content", "").strip()
+        except Exception as e:
+            return None
+        return None
