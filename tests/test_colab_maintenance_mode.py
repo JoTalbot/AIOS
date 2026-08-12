@@ -26,6 +26,7 @@ def test_human_action_mode_uses_free_managed_qwen_without_colab(monkeypatch, tmp
     monkeypatch.delenv("AIOS_TELEGRAM_TOKEN", raising=False)
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.setenv("CREDENTIALS_DIRECTORY", str(tmp_path / "missing"))
+    monkeypatch.setenv("AIOS_CREDENTIAL_SOURCE_DIR", str(tmp_path / "missing"))
 
     result = canary.run_canary(send_telegram=False)
 
