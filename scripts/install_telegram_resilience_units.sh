@@ -82,6 +82,14 @@ for unit in \
 done
 
 systemctl daemon-reload
+# The credential-backed aios-colab-keeper replaces the historical LLM runner.
+# Keep automatic Colab recovery and the unused Whisper transcriber disabled
+# until the owner explicitly resumes the managed keeper after any CAPTCHA.
+for legacy_unit in aios-colab-llm.service aios-colab-whisper-keeper.service; do
+    if systemctl cat "$legacy_unit" >/dev/null 2>&1; then
+        systemctl disable --now "$legacy_unit" || true
+    fi
+done
 systemctl enable --now aios-telegram-metrics-snapshot.service
 systemctl enable --now aios-telegram-colab-canary.timer
 systemctl enable --now aios-telegram-metrics-report.timer

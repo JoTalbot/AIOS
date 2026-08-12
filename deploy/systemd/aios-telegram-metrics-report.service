@@ -9,6 +9,7 @@ WorkingDirectory=/root/AIOS
 EnvironmentFile=-/root/AIOS/.env
 EnvironmentFile=-/root/AIOS/data/.telegram_canary.env
 LoadCredential=telegram_token:/etc/aios/credentials/telegram_token
+LoadCredential=telegram_owner_chat_id:/etc/aios/credentials/telegram_owner_chat_id
 LoadCredential=telegram_queue_key:/etc/aios/credentials/telegram_queue_key
 Environment=TELEGRAM_QUEUE_KEY_FILE=%d/telegram_queue_key
 ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/telegram_metrics_report.py

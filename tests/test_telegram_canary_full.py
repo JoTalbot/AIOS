@@ -56,8 +56,12 @@ def test_owner_canary_sends_silently_and_auto_deletes(tmp_path, monkeypatch):
     monkeypatch.setattr(canary, "STATE_FILE", tmp_path / "canary.json")
     monkeypatch.setattr(metrics_module, "METRICS_FILE", tmp_path / "metrics.jsonl")
     monkeypatch.setattr(metrics_module, "SUMMARY_FILE", tmp_path / "summary.json")
+    credentials = tmp_path / "credentials"
+    credentials.mkdir()
+    (credentials / "telegram_owner_chat_id").write_text("777\n", encoding="utf-8")
+    monkeypatch.setenv("CREDENTIALS_DIRECTORY", str(credentials))
     monkeypatch.setenv("AIOS_TELEGRAM_TOKEN", "test-token")
-    monkeypatch.setenv("TELEGRAM_CHAT_ID", "777")
+    monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
     monkeypatch.delenv("TELEGRAM_CANARY_CHAT_ID", raising=False)
 
     result = canary.run_canary(send_telegram=True)

@@ -75,11 +75,11 @@ def main() -> int:
     _save_state(state)
 
     alert_status = "not_needed"
-    chat = os.environ.get("TELEGRAM_ALERT_CHAT_ID", "").strip() or os.environ.get(
-        "TELEGRAM_CANARY_CHAT_ID", ""
-    ).strip()
     from tg_bot.credentials import secret_from_env_or_credential
 
+    chat = secret_from_env_or_credential(
+        "TELEGRAM_CHAT_ID", credential="telegram_owner_chat_id"
+    ).split(",", 1)[0].strip()
     token = secret_from_env_or_credential(
         "AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token"
     )

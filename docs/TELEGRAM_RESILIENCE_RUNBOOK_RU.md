@@ -36,7 +36,10 @@ key-копия — отдельно в `/root/aios-secret-backups/telegram-queue
 Canonical source: `/etc/aios/credentials/`, directory `0700`, files `0600`.
 `install_telegram_resilience_units.sh` переносит managed secrets и удаляет
 `AIOS_TELEGRAM_TOKEN`, `TELEGRAM_BOT_TOKEN`, `COLAB_LLM_API_KEY`,
-`TAILSCALE_AUTH_KEY` и owner chat ID из legacy env-файлов. Проверка без вывода значений:
+`TAILSCALE_AUTH_KEY` и owner chat ID из legacy env-файлов. Owner chat ID для bot,
+canary и alerts хранится только в credential `telegram_owner_chat_id`; не
+добавлять `TELEGRAM_CHAT_ID`, `TELEGRAM_CANARY_CHAT_ID` или
+`TELEGRAM_ALERT_CHAT_ID` обратно в `.env`. Проверка без вывода значений:
 
 ```bash
 python scripts/audit_legacy_secrets.py --fail-on-findings
