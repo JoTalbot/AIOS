@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MODEL_FILE = REPO_ROOT / "data" / "quant" / "models" / "ppo_v5.pt"  # лучшая LSTM-PPO (200 эп)
+MODEL_FILE = REPO_ROOT / "data" / "quant" / "models" / "ppo_v8.pt"  # лучшая LSTM-PPO (300 эп, +75.23%)
 OUT_FILE = REPO_ROOT / "data" / "quant" / "rl_signals.json"
 
 LOG_TAG = "[RLSignalBridge]"
