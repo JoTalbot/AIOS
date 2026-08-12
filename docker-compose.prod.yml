@@ -9,7 +9,7 @@
 #   AIOS_API_KEYS and GRAFANA_PASSWORD; Telegram uses /etc/aios/credentials
 
 x-aios-image: &aios-image
-  image: aios:19.9.0
+  image: ghcr.io/jotalbot/aios:9ac0d88@sha256:bbc287d4b2989413184b26c10b45da7700ffcf6ee721d590305fe53016aaa15f
   build:
     context: .
 
