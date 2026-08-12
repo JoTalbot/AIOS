@@ -31,3 +31,16 @@ def test_canary_env_update_preserves_non_secret_settings(tmp_path):
     assert "TELEGRAM_MIN_SUCCESS_RATE=0.95" in value
     assert "TELEGRAM_CANARY_CHAT_ID=123" in value
     assert path.stat().st_mode & 0o777 == 0o600
+
+
+def test_resilience_units_mount_credentials_and_enable_full_canary():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    canary = (root / "deploy/systemd/aios-telegram-colab-canary.service").read_text()
+    metrics = (root / "deploy/systemd/aios-telegram-metrics-report.service").read_text()
+    assert "LoadCredential=telegram_token:" in canary
+    assert "LoadCredential=telegram_queue_key:" in canary
+    assert "Environment=CANARY_SEND_TELEGRAM=1" in canary
+    assert "LoadCredential=telegram_token:" in metrics
+    assert "LoadCredential=telegram_queue_key:" in metrics

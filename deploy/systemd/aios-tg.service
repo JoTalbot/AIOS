@@ -14,6 +14,7 @@ Environment=TELEGRAM_QUEUE_KEY_FILE=%d/telegram_queue_key
 ExecStart=/usr/bin/python3 -u /root/AIOS/run_telegram_bot.py
 Restart=always
 RestartSec=5
+UMask=0077
 StandardOutput=append:/root/AIOS/logs/tg.log
 StandardError=append:/root/AIOS/logs/tg.log
 
