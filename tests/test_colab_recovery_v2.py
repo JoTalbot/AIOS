@@ -257,3 +257,23 @@ def test_first_standby_registration_does_not_publish_primary(tmp_path, monkeypat
     assert "colab_llm" not in saved
     assert saved["colab_llm_nodes"][0]["node_id"] == "standby-only"
     assert not env_file.exists()
+
+
+def test_live_notebook_patch_can_be_applied_twice(monkeypatch):
+    import asyncio
+
+    scripts: list[str] = []
+
+    class Page:
+        async def evaluate(self, script, _cells):
+            scripts.append(script)
+            return True
+
+    monkeypatch.setenv("COLAB_SERVICE_KIND", "llm")
+    monkeypatch.setenv("COLAB_LLM_API_KEY", "unit-secret")
+    monkeypatch.setenv("COLAB_TUNNEL_PROVIDER", "quick")
+    first = asyncio.run(runner._prepare_llm_notebook(Page()))
+    second = asyncio.run(runner._prepare_llm_notebook(Page()))
+
+    assert first and second and first != second
+    assert all("# === Быстрая подготовка" in script for script in scripts)

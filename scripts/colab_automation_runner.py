@@ -271,18 +271,34 @@ async def _scrub_live_notebook_secrets(page, values: list[str]) -> bool:
 
 async def _run_tunnel_cell(page) -> bool:
     """Run only the tunnel cell when vLLM is already healthy in this runtime."""
+    selectors = ("colab-code-cell", ".cell.code.notebook-cell", ".cell.code", ".code-cell")
     try:
-        cells = page.locator(".cell.code.notebook-cell")
-        for index in range(await cells.count() - 1, -1, -1):
-            cell = cells.nth(index)
-            text = await cell.inner_text(timeout=1500)
-            if "# === Защищённый tunnel" in text or "# === Защищённый Cloudflare tunnel" in text:
+        for selector in selectors:
+            cells = page.locator(selector)
+            for index in range(await cells.count() - 1, -1, -1):
+                cell = cells.nth(index)
+                text = await cell.inner_text(timeout=1500)
+                if (
+                    "# === Защищённый tunnel" not in text
+                    and "# === Защищённый Cloudflare tunnel" not in text
+                ):
+                    continue
                 await cell.click(timeout=3000)
                 await page.keyboard.press("Control+Enter")
                 await asyncio.sleep(2)
                 await _confirm_dialogs(page)
                 print("▶️ Запущена только tunnel-ячейка; vLLM сохранён")
                 return True
+        # Colab DOM variants may not expose a stable cell class, while the
+        # source text is still searchable through Playwright's text engine.
+        source = page.get_by_text("# === Защищённый tunnel", exact=False).last
+        if await source.count() and await source.is_visible():
+            await source.click(timeout=3000)
+            await page.keyboard.press("Control+Enter")
+            await asyncio.sleep(2)
+            await _confirm_dialogs(page)
+            print("▶️ Запущена tunnel-ячейка через source fallback; vLLM сохранён")
+            return True
     except Exception as exc:
         print(f"Tunnel-only note: {type(exc).__name__}")
     return False
@@ -657,7 +673,7 @@ if not tunnel_url:
     patch_js = """([c1,c2,c3]) => {
       const models = monaco.editor.getModels();
       const find = (patterns) => models.find(m => patterns.some(p => m.getLineContent(1).startsWith(p)));
-      const m1 = find(['# === ЯЧЕЙКА 1', '# === Установка vLLM']);
+      const m1 = find(['# === ЯЧЕЙКА 1', '# === Установка vLLM', '# === Быстрая подготовка']);
       const m2 = find(['# === ЯЧЕЙКА 2', '# === Защищённый vLLM']);
       const m3 = find(['# === ЯЧЕЙКА 3', '# === Защищённый Cloudflare', '# === Защищённый tunnel']);
       if (!m1 || !m2 || !m3) return false;
