@@ -14,6 +14,7 @@ from pathlib import Path
 BASE = Path(os.path.expanduser("~/agents/-Octopus"))
 AGENTS_BASE = Path(os.path.expanduser("~/agents"))
 LOGS_DIR = BASE / "logs"
+REPORTS_DIR = BASE / "reports"
 EXPERIENCE_DIR = BASE / "experience"
 INSTRUCTIONS_DIR = BASE / "instructions"
 COMPACT_CTX = INSTRUCTIONS_DIR / "COMPACT_CONTEXT.md"
@@ -246,6 +247,7 @@ class AutonomousAgent:
         return {"action": "skill_evolution", "success": success, "actions": actions}
 
     def _execute_external_data(self):
+        """Fetch external data and cache a bounded JSON report."""
         sys.path.insert(0, str(BASE / "skills/core/octopus-external-data/code"))
         try:
             from octopus_external_data import run as external_run
@@ -254,30 +256,13 @@ class AutonomousAgent:
             result = {"skill": "octopus-external-data", "error": str(exc), "ok": False}
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         report = REPORTS_DIR / f"{stamp}_external_data_snapshot.json"
+        report.parent.mkdir(parents=True, exist_ok=True)
         report.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
-        return {"action": "external_data", "success": result.get("ok", True), "actions": ["Wrote " + str(report.relative_to(BASE))]}
-
-        """Fetch external data and cache results."""
-        sys.path.insert(0, str(BASE / "skills/core/octopus-external-data/code"))
-        try:
-            from octopus_external_data import run as external_run
-            result = external_run("all")
-        except Exception as exc:
-            result = {"skill": "octopus-external-data", "error": str(exc), "ok": False}
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        report = REPORTS_DIR / f"{stamp}_external_data_snapshot.json"
-        report.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
-        return {"action": "external_data", "success": result.get("ok", True), "actions": ["Wrote " + str(report.relative_to(BASE))]}
-        sys.path.insert(0, str(BASE / "skills/core/octopus-external-data/code"))
-        try:
-            from octopus_external_data import run as external_run
-            result = external_run("all")
-        except Exception as exc:
-            result = {"skill": "octopus-external-data", "error": str(exc), "ok": False}
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        report = REPORTS_DIR / f"{stamp}_external_data_snapshot.json"
-        report.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
-        return {"action": "external_data", "success": result.get("ok", True), "actions": ["Wrote " + str(report.relative_to(BASE))]}
+        return {
+            "action": "external_data",
+            "success": result.get("ok", True),
+            "actions": ["Wrote " + str(report.relative_to(BASE))],
+        }
 
     def _execute_todo_task(self):
         """Выполнение задачи из TODO"""

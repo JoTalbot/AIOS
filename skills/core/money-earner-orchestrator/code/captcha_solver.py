@@ -7,6 +7,7 @@ from captcha_paid_gate import paid_captcha_slot
 """
 
 import json
+import os
 import time
 import logging
 import urllib.request
