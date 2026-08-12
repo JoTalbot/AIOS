@@ -21,4 +21,4 @@ ReadOnlyPaths=/var/lib/aios/telegram
 ReadWritePaths=/var/backups/aios/telegram-queues /var/backups/aios/telegram-queue-keys
 RestrictSUIDSGID=true
 LockPersonality=true
-CapabilityBoundingSet=
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH

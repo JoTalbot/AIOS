@@ -57,6 +57,28 @@ def test_resilience_units_mount_credentials_and_enable_full_canary():
     assert "LoadCredential=telegram_queue_key:" in metrics
 
 
+def test_root_resilience_readers_keep_only_required_dac_capabilities():
+    from pathlib import Path
+
+    units = Path(__file__).resolve().parents[1] / "deploy/systemd"
+    read_only = (
+        "aios-telegram-queue-backup.service",
+        "aios-telegram-metrics-snapshot.service",
+        "aios-alertmanager-delivery-canary.service",
+    )
+    for name in read_only:
+        unit = (units / name).read_text(encoding="utf-8")
+        assert "CapabilityBoundingSet=CAP_DAC_READ_SEARCH" in unit
+        assert "CAP_DAC_OVERRIDE" not in unit
+
+    offsite = (units / "aios-telegram-offsite-backup.service").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH" in offsite
+    )
+
+
 def test_secondary_colab_chrome_starts_memory_safe():
     from pathlib import Path
 

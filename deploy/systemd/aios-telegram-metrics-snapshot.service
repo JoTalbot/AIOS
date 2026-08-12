@@ -22,7 +22,7 @@ ReadWritePaths=/var/lib/aios-telegram-metrics
 RestrictSUIDSGID=true
 LockPersonality=true
 MemoryDenyWriteExecute=true
-CapabilityBoundingSet=
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
 SystemCallArchitectures=native
 
 [Install]

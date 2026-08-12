@@ -18,4 +18,4 @@ ProtectHome=read-only
 ReadOnlyPaths=/var/lib/aios-alert-canary
 RestrictSUIDSGID=true
 LockPersonality=true
-CapabilityBoundingSet=
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
