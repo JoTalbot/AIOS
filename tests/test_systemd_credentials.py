@@ -62,7 +62,6 @@ def test_root_resilience_readers_keep_only_required_dac_capabilities():
 
     units = Path(__file__).resolve().parents[1] / "deploy/systemd"
     read_only = (
-        "aios-telegram-queue-backup.service",
         "aios-telegram-metrics-snapshot.service",
         "aios-alertmanager-delivery-canary.service",
     )
@@ -71,12 +70,16 @@ def test_root_resilience_readers_keep_only_required_dac_capabilities():
         assert "CapabilityBoundingSet=CAP_DAC_READ_SEARCH" in unit
         assert "CAP_DAC_OVERRIDE" not in unit
 
-    offsite = (units / "aios-telegram-offsite-backup.service").read_text(
+    for name in (
+        "aios-telegram-queue-backup.service",
+        "aios-telegram-offsite-backup.service",
+    ):
+        unit = (units / name).read_text(encoding="utf-8")
+        assert "CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH" in unit
+    queue_backup = (units / "aios-telegram-queue-backup.service").read_text(
         encoding="utf-8"
     )
-    assert (
-        "CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH" in offsite
-    )
+    assert "ReadWritePaths=/var/lib/aios/telegram" in queue_backup
 
 
 def test_secondary_colab_chrome_starts_memory_safe():

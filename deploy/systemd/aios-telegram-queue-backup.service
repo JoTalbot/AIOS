@@ -17,8 +17,8 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadOnlyPaths=/etc/aios/credentials
-ReadOnlyPaths=/var/lib/aios/telegram
-ReadWritePaths=/var/backups/aios/telegram-queues /var/backups/aios/telegram-queue-keys
+# SQLite may update its shared-memory sidecar while reading a live WAL database.
+ReadWritePaths=/var/lib/aios/telegram /var/backups/aios/telegram-queues /var/backups/aios/telegram-queue-keys
 RestrictSUIDSGID=true
 LockPersonality=true
-CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH
