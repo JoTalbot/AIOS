@@ -84,6 +84,24 @@ services:
     networks:
       - aios-prod-net
 
+  aios-telegram-exporter:
+    image: python:3.11-slim
+    container_name: aios-telegram-exporter-prod
+    working_dir: /app
+    command: ["python", "-u", "-m", "tg_bot.metrics_exporter"]
+    environment:
+      TELEGRAM_PROMETHEUS_HOST: "0.0.0.0"
+      TELEGRAM_PROMETHEUS_PORT: "9103"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ../..:/app:ro
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    networks:
+      - aios-prod-net
+
   prometheus:
     image: prom/prometheus:latest
     container_name: aios-prometheus-prod

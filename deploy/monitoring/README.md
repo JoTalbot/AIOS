@@ -22,7 +22,8 @@ exposition format с gauges флота:
 
 Telegram-бот поднимает redacted exporter на `:9103/metrics`; payload сообщений,
 chat ID, token, tunnel URL и Bearer keys в метрики не попадают. Docker Compose
-передаёт Prometheus доступ к host exporter через `host.docker.internal`.
+запускает read-only sidecar `aios-telegram-exporter`, который читает только
+redacted JSONL/state и агрегаты SQLite из общего `data/`.
 
 ## Alert-правила
 

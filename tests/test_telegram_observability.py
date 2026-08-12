@@ -58,3 +58,15 @@ def test_grafana_dashboard_is_valid_json():
     dashboard = json.loads(path.read_text(encoding="utf-8"))
     assert dashboard["uid"] == "aios-telegram-llm"
     assert len(dashboard["panels"]) >= 6
+
+
+def test_sidecar_exporter_can_bind_ephemeral_port(monkeypatch):
+    from tg_bot.metrics_exporter import _create_server
+
+    monkeypatch.setenv("TELEGRAM_PROMETHEUS_ENABLED", "1")
+    monkeypatch.setenv("TELEGRAM_PROMETHEUS_HOST", "127.0.0.1")
+    monkeypatch.setenv("TELEGRAM_PROMETHEUS_PORT", "0")
+    server = _create_server()
+    assert server is not None
+    assert server.server_address[1] > 0
+    server.server_close()

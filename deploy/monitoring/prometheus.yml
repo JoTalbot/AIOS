@@ -45,6 +45,6 @@ scrape_configs:
   - job_name: aios-telegram
     metrics_path: /metrics
     static_configs:
-      - targets: ["host.docker.internal:9103"]
+      - targets: ["aios-telegram-exporter:9103"]
         labels:
           service: telegram-llm
