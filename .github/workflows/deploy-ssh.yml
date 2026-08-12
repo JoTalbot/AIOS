@@ -1,9 +1,8 @@
 name: Deploy to VPS via SSH
 
+# Manual only: the legacy SSH secret set is stale and automated production
+# mutation is intentionally disabled until a coordinated credential repair.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 concurrency:
