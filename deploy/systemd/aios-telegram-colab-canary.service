@@ -8,15 +8,18 @@ Type=oneshot
 User=root
 WorkingDirectory=/root/AIOS
 EnvironmentFile=-/root/AIOS/.env
-EnvironmentFile=-/root/AIOS/data/.telegram_canary.env
+EnvironmentFile=-/etc/aios/telegram-canary.env
 LoadCredential=telegram_token:/etc/aios/credentials/telegram_token
 LoadCredential=telegram_owner_chat_id:/etc/aios/credentials/telegram_owner_chat_id
 LoadCredential=telegram_queue_key:/etc/aios/credentials/telegram_queue_key
 Environment=TELEGRAM_QUEUE_KEY_FILE=%d/telegram_queue_key
+Environment=AIOS_TELEGRAM_STATE_DIR=/var/lib/aios/telegram
+Environment=AIOS_TELEGRAM_LOG_DIR=/var/log/aios/telegram
+Environment=AIOS_COLAB_MODE_FILE=/etc/aios/colab-mode
 Environment=CANARY_SEND_TELEGRAM=1
 ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/telegram_colab_canary.py
-StandardOutput=append:/root/AIOS/logs/telegram_colab_canary.log
-StandardError=append:/root/AIOS/logs/telegram_colab_canary.log
+StandardOutput=append:/var/log/aios/telegram/telegram_colab_canary.log
+StandardError=append:/var/log/aios/telegram/telegram_colab_canary.log
 TimeoutStartSec=180
 UMask=0077
 Nice=10

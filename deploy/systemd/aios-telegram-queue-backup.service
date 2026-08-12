@@ -6,6 +6,9 @@ After=local-fs.target
 Type=oneshot
 User=root
 WorkingDirectory=/root/AIOS
+Environment=AIOS_TELEGRAM_STATE_DIR=/var/lib/aios/telegram
+Environment=AIOS_TELEGRAM_BACKUP_DIR=/var/backups/aios/telegram-queues
+Environment=AIOS_TELEGRAM_KEY_BACKUP_DIR=/var/backups/aios/telegram-queue-keys
 ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/telegram_queue_backup.py --keep-days 30
 UMask=0077
 Nice=10
@@ -14,7 +17,8 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadOnlyPaths=/etc/aios/credentials
-ReadWritePaths=/root/AIOS/data /root/AIOS/backups /root/aios-secret-backups
+ReadOnlyPaths=/var/lib/aios/telegram
+ReadWritePaths=/var/backups/aios/telegram-queues /var/backups/aios/telegram-queue-keys
 RestrictSUIDSGID=true
 LockPersonality=true
 CapabilityBoundingSet=

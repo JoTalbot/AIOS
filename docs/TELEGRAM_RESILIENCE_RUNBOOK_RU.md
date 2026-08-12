@@ -4,8 +4,8 @@
 
 `aios-telegram-queue-backup.timer` ежедневно вызывает SQLite Online Backup API.
 WAL-файлы копировать вручную не требуется. Базы сохраняются в
-`/root/AIOS/backups/telegram-queues/<UTC timestamp>/`, а соответствующая Fernet
-key-копия — отдельно в `/root/aios-secret-backups/telegram-queue-keys/`.
+`/var/backups/aios/telegram-queues/<UTC timestamp>/`, а соответствующая Fernet
+key-копия — отдельно в `/var/backups/aios/telegram-queue-keys/`.
 Оба каталога имеют mode `0700`, файлы — `0600`.
 
 Еженедельный `aios-telegram-queue-restore-drill.timer` проверяет SHA-256,
@@ -22,7 +22,7 @@ key-копия — отдельно в `/root/aios-secret-backups/telegram-queue
 
 ```bash
 /opt/aios/.venv/bin/python scripts/telegram_queue_backup.py \
-  --verify /root/AIOS/backups/telegram-queues/<timestamp> \
+  --verify /var/backups/aios/telegram-queues/<timestamp> \
   --restore-to /root/telegram-restore-drill/<timestamp>
 ```
 
@@ -55,3 +55,6 @@ token.
 
 Не передавать token в аргументах процесса, shell history, Git, alert annotations
 или backup manifest.
+
+
+Расширенный hardening, FHS migration, non-root execution, Colab modes и B2 off-host DR описаны в `docs/TELEGRAM_HARDENING_RUNBOOK_RU.md`.

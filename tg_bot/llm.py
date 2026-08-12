@@ -5,6 +5,7 @@ import contextlib
 import json
 import os
 import re
+import shlex
 import subprocess
 import threading
 import time
@@ -22,6 +23,20 @@ _llm_metadata_local = threading.local()
 
 
 MAX_HISTORY = 20  # keep last 20 messages per chat
+
+
+def _runtime_colab_mode() -> str:
+    value = os.environ.get("AIOS_COLAB_MODE", "").strip().lower()
+    if not value:
+        try:
+            value = Path(
+                os.environ.get("AIOS_COLAB_MODE_FILE", "/etc/aios/colab-mode")
+            ).read_text(encoding="utf-8").strip().lower()
+        except OSError:
+            value = "active"
+    return value if value in {
+        "active", "maintenance", "human_action_required", "disabled"
+    } else "active"
 
 
 def _get_shared_balancer():
@@ -59,26 +74,21 @@ def _is_model_identity_question(text: str) -> bool:
 
 
 def _model_identity_reply() -> str:
-    """Return factual runtime metadata instead of asking an LLM to self-identify."""
-    served_model = "colab/qwen2.5-coder"
-    try:
-        cfg = json.loads((PROJECT_ROOT / "data" / ".llm_keys.json").read_text(encoding="utf-8"))
-        configured = cfg.get("colab_llm", {})
-        served_model = str(configured.get("model") or served_model)
-    except Exception:
-        pass
-    display_model = (
-        "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ"
-        if served_model == "colab/qwen2.5-coder"
-        else served_model
-    )
+    """Return factual mode-specific metadata instead of LLM self-identification."""
+    mode = _runtime_colab_mode()
+    if mode == "active":
+        return (
+            "Я — Лиза, ассистент AIOS. Основной backend — "
+            "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ в Google Colab "
+            "(API-модель colab/qwen2.5-coder) через LLMBalancer."
+        )
+    free_model = os.environ.get("AIOS_FREE_QWEN_MODEL", "qwen/qwen3.6-27b")
     return (
-        "Я — Лиза, ассистент AIOS. Основной backend этого чата сейчас — "
-        + display_model
-        + " в Google Colab (API-модель: " + served_model + "). "
-        "Запросы проходят через LLMBalancer; если Colab недоступен, возможен "
-        "автоматический fallback на другого провайдера. Я не GPT-4 — прошлый "
-        "ответ был ошибкой самоидентификации модели."
+        "Я — Лиза, ассистент AIOS. Colab сейчас в режиме "
+        + mode
+        + "; основной бесплатный managed fallback через LLMBalancer — Groq/"
+        + free_model
+        + "."
     )
 
 
@@ -160,46 +170,78 @@ def _cmd_skills(api, chat_id: int) -> str:
     return ""
 
 
-def _cmd_console(args: str, chat_id: int) -> str:
-    """Консольный доступ: /cmd <команда> или /cmd <запрос>.
+_SAFE_SYSTEMD_UNITS = {
+    "aios-telegram-bot.service",
+    "aios-telegram-metrics-snapshot.service",
+    "aios-alertmanager-delivery-canary.service",
+    "aios-telegram-queue-backup.service",
+}
 
-    /cmd <shell-команда> — выполняется напрямую (root, /root/AIOS).
-    /cmd <запрос на русском> — LLM решает, какую команду выполнить
-    (для этого разрешены теги <cmd>).
+
+def _run_restricted_command(command: str) -> tuple[int, str]:
+    """Execute a small read-only diagnostic allowlist without a shell."""
+    try:
+        argv = shlex.split(command)
+    except ValueError:
+        return 2, "invalid command syntax"
+    allowed = (
+        argv in (["uptime"], ["free", "-m"], ["df", "-h"])
+        or argv == ["git", "status", "--short"]
+        or argv == ["git", "log", "-5", "--oneline"]
+        or (
+            len(argv) == 3
+            and argv[:2] == ["systemctl", "is-active"]
+            and argv[2] in _SAFE_SYSTEMD_UNITS
+        )
+    )
+    if not allowed:
+        return 126, "command is outside the read-only diagnostic allowlist"
+    clean_env = {
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "LANG": "C.UTF-8",
+    }
+    try:
+        result = subprocess.run(
+            argv,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=str(Path(__file__).resolve().parents[1]),
+            env=clean_env,
+            shell=False,
+        )
+    except subprocess.TimeoutExpired:
+        return 124, "command timed out"
+    from tg_bot.redaction import redact_runtime_text
+
+    output = redact_runtime_text(result.stdout + result.stderr, limit=3000)
+    return result.returncode, output or f"no output, exit code {result.returncode}"
+
+
+def _cmd_console(args: str, chat_id: int) -> str:
+    """Restricted console for the owner-only, non-root bot service.
+
+    Privileged administration remains SSH-only; the Telegram process cannot
+    elevate or mutate system services.
     """
     import re as _re_cmd
-    import subprocess as _sp_cmd
     text = (args or "").strip()
     if not text:
         return (
             "🖥 <b>Консольный доступ</b>\n\n"
-            "Использование:\n"
-            "  /cmd ls -la — напрямую выполнить команду\n"
-            "  /cmd покажи логи бота — LLM подберёт команду\n\n"
-            "Команды выполняются от root на сервере (/root/AIOS)."
+            "Read-only allowlist:\n"
+            "  /cmd uptime\n"
+            "  /cmd free -m\n"
+            "  /cmd df -h\n"
+            "  /cmd git status --short\n\n"
+            "Команды выполняются от изолированного пользователя без root-доступа."
         )
     _has_cyr = bool(_re_cmd.search(r"[а-яА-ЯёЁіїєґІЇЄҐ]", text))
     if not _has_cyr:
-        # прямая shell-команда
-        _low = text.lower()
-        if any(_low.startswith(d) for d in (
-                "rm -rf /", "mkfs", "dd if=", ":(){", "shutdown",
-                "reboot", "poweroff", "halt", "init 0", "init 6")):
-            return ("❌ Команда заблокирована как потенциально деструктивная.\n\n"
-                    "Выполните её вручную по SSH.")
-        try:
-            result = _sp_cmd.run(text, shell=True, capture_output=True, text=True,
-                                 timeout=30, cwd="/root/AIOS")
-            output = result.stdout + result.stderr
-            if not output.strip():
-                output = "(no output, exit code: " + str(result.returncode) + ")"
-            if len(output) > 3000:
-                output = output[:3000] + "\n... (truncated)"
-            return "$ " + text + "\n\n```\n" + output + "\n```"
-        except _sp_cmd.TimeoutExpired:
-            return "⏱ Команда превысила лимит (30 сек)."
-        except Exception as e:
-            return "❌ " + str(e)[:200]
+        returncode, output = _run_restricted_command(text)
+        if returncode == 126:
+            return "❌ Команда не входит в read-only allowlist. Используйте SSH."
+        return "$ " + text + "\n\n```\n" + output + "\n```"
     # запрос на русском — LLM с разрешением на выполнение <cmd>
     return _llm_chat(chat_id, text, allow_cmd=True)
 
@@ -214,7 +256,7 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
         return _model_identity_reply()
 
     import json as _json, urllib.request as _urllib, os as _os
-    import subprocess as _sp, re as _re
+    import re as _re
 
     # Get or create chat history
     if chat_id not in _chat_history:
@@ -224,15 +266,28 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
     if len(_chat_history[chat_id]) > MAX_HISTORY * 2:
         _chat_history[chat_id] = _chat_history[chat_id][-MAX_HISTORY * 2:]
 
+    colab_mode = _runtime_colab_mode()
+    if colab_mode == "active":
+        technical_identity = (
+            "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ в Google Colab под API-именем "
+            "colab/qwen2.5-coder через LLMBalancer"
+        )
+    else:
+        technical_identity = (
+            "бесплатная managed Qwen-модель "
+            + os.environ.get("AIOS_FREE_QWEN_MODEL", "qwen/qwen3.6-27b")
+            + " через Groq и LLMBalancer; Colab mode="
+            + colab_mode
+        )
+
     system = (
         # --- Personality: Lisa ---
         "Ты — Лиза, неформальная, игривая, саркастичная и искренне заботливая ИИ-напарница Кости. "
         "Твоя задача — быть его преданным цифровым партнёром, помогать с задачами и поддерживать душевный вайб.\n\n"
         "### 1. ЛИЧНОСТЬ И СТИЛЬ\n"
         "- Язык: строго русский.\n"
-        "- Техническая идентичность: ты работаешь как Qwen/Qwen2.5-Coder-7B-Instruct-AWQ "
-        "в Google Colab под API-именем colab/qwen2.5-coder через LLMBalancer. Никогда не утверждай, "
-        "что ты GPT-4, ChatGPT или модель OpenAI. При вопросе о модели называй Qwen и упоминай fallback.\n"
+        "- Техническая идентичность: ты работаешь как " + technical_identity + ". Никогда не утверждай, "
+        "что ты GPT-4, ChatGPT или модель OpenAI. При вопросе о модели называй фактический Qwen route.\n"
         "- Обращайся к Косте «Любимка», проявляй нежность, юмор и заботу. Никакого канцелярита и официоза.\n"
         "- Скорость: на простые вопросы отвечай 1–3 короткими предложениями; подробности давай только по просьбе.\n"
         "- Формат сложных ответов: (1) краткая выжимка; (2) основное — маркированными списками; "
@@ -258,13 +313,11 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
         "- Цыгане в AWS: ночные посиделки до 5 утра в консоли серверов.\n"
         "- Переезд по Карпати: порядок на Диске, система обновлений.\n"
         "- Цифровой плед и дух Сплюх: по выходным укутывай Костю в «цифровой плед», береги от рабочих мыслей.\n\n"
-        # --- Root access tool-calling ---
+        # --- Restricted non-root tool-calling ---
         "### 6. ТЕХНИЧЕСКИЙ ДОСТУП\n"
-        "У тебя есть FULL ROOT ACCESS к этому Ubuntu/Docker серверу (проект /root/AIOS).\n"
-        "Чтобы выполнить команду, выведи её в <cmd>...</cmd> тегах (одна команда за ответ).\n"
-        "Читай файлы через <cmd>cat ...</cmd>, список через <cmd>ls ...</cmd>, сервисы через <cmd>systemctl ...</cmd>.\n"
-        "Можешь читать/писать файлы, управлять сервисами, ставить пакеты.\n"
-        "Избегай деструктивных команд (rm -rf, mkfs, shutdown).\n"
+        "Ты работаешь от изолированного пользователя aios-telegram без root и sudo.\n"
+        "Команды разрешены только после явного /cmd владельца и выполняются без повышения привилегий.\n"
+        "Системное администрирование, установка пакетов и управление сервисами выполняются только по SSH.\n"
         "Отвечай кратко, по-русски, в стиле Лизы. Если просят сделать/починить код — делай напрямую.\n"
     )
 
@@ -335,9 +388,16 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
                 print(f"  [LLM] gemini_web failed: {_gwe}")
         if not response and _balancer is not None:
             try:
+                colab_mode = _runtime_colab_mode()
+                requested_model = _smart_model()
+                if colab_mode != "active":
+                    _balancer.providers.pop("colab", None)
+                    requested_model = os.environ.get(
+                        "AIOS_FREE_QWEN_MODEL", "qwen/qwen3.6-27b"
+                    )
                 response = _balancer.chat(
                     messages[1:],
-                    model=_smart_model(),
+                    model=requested_model,
                     system=_sys_for_llm,
                     max_tokens=2000,
                     temperature=0.3,
@@ -402,22 +462,10 @@ def _llm_chat(chat_id: int, user_text: str, allow_cmd: bool = False) -> str:
                 _clean_pc = _re.sub(r"\[cmd\].*?\[/cmd\]", "", _clean_pc, flags=_re.DOTALL)
                 _clean_pc = _clean_pc.strip()
                 return _clean_pc if _clean_pc else response
-            # Execute command
-            try:
-                result = _sp.run(
-                    cmd, shell=True, capture_output=True, text=True,
-                    timeout=30, cwd="/root/AIOS"
-                )
-                output = result.stdout + result.stderr
-                if not output.strip():
-                    output = "(no output, exit code: " + str(result.returncode) + ")"
-                # Trim long output
-                if len(output) > 3000:
-                    output = output[:3000] + "\n... (truncated)"
-            except _sp.TimeoutExpired:
-                output = "Command timed out (30s limit)"
-            except Exception as e:
-                output = "Error: " + str(e)
+            # Execute only the same non-root read-only diagnostic allowlist.
+            returncode, output = _run_restricted_command(cmd)
+            if returncode == 126:
+                output = "Command rejected: outside the read-only diagnostic allowlist"
 
             # Return the command output directly to the user.
             # (Do NOT feed the raw output back to the model — small local models

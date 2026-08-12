@@ -18,6 +18,7 @@ MANAGED = {
     "AIOS_OWNER_CHAT_ID",
     "AIOS_AUTO_CODER_CHAT_ID",
 }
+DEPRECATED_METADATA_FILES = (Path("/etc/aios/alertmanager.yml"),)
 DEFAULT_PATHS = (
     Path("/root/AIOS/.env"),
     Path("/etc/aios/aios-telegram-bot.env"),
@@ -48,6 +49,12 @@ def main() -> int:
     parser.add_argument("--fail-on-findings", action="store_true")
     args = parser.parse_args()
     findings = audit(args.paths or list(DEFAULT_PATHS))
+    if not args.paths:
+        findings.extend(
+            {"path": str(path), "key": "deprecated-persistent-metadata"}
+            for path in DEPRECATED_METADATA_FILES
+            if path.exists()
+        )
     if args.json:
         print(json.dumps({"legacy_secret_findings": findings}, separators=(",", ":")))
     else:

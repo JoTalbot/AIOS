@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Callable
 
 from tg_bot.crypto_store import QueueCipher
+from tg_bot.paths import state_path
 
 GenerationHandler = Callable[[dict], bool]
 
@@ -40,7 +41,7 @@ class TelegramGenerationQueue:
         self.db_path = Path(
             db_path
             or os.environ.get("TELEGRAM_GENERATION_DB", "")
-            or Path(__file__).resolve().parents[1] / "data" / "telegram_generation.sqlite3"
+            or state_path("telegram_generation.sqlite3")
         )
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         key_path = (
@@ -93,6 +94,7 @@ class TelegramGenerationQueue:
                     worker_pid INTEGER,
                     worker_id TEXT,
                     lease_until REAL,
+                    lease_epoch INTEGER NOT NULL DEFAULT 0,
                     last_heartbeat_at REAL,
                     created_at REAL NOT NULL,
                     started_at REAL,
@@ -105,6 +107,11 @@ class TelegramGenerationQueue:
                 db.execute("ALTER TABLE telegram_generation ADD COLUMN worker_id TEXT")
             if "last_heartbeat_at" not in columns:
                 db.execute("ALTER TABLE telegram_generation ADD COLUMN last_heartbeat_at REAL")
+            if "lease_epoch" not in columns:
+                db.execute(
+                    "ALTER TABLE telegram_generation "
+                    "ADD COLUMN lease_epoch INTEGER NOT NULL DEFAULT 0"
+                )
             # Previous releases used ``failed`` for exhausted bounded retries.
             # Preserve those rows as explicit operator-visible dead letters.
             db.execute(
@@ -322,9 +329,9 @@ class TelegramGenerationQueue:
             changed = db.execute(
                 """
                 UPDATE telegram_generation
-                SET status='generating', attempts=attempts+1, started_at=?,
-                    finished_at=NULL, worker_pid=?, worker_id=?, lease_until=?,
-                    last_heartbeat_at=?
+                SET status='generating', attempts=attempts+1, lease_epoch=lease_epoch+1,
+                    started_at=?, finished_at=NULL, worker_pid=?, worker_id=?,
+                    lease_until=?, last_heartbeat_at=?
                 WHERE id=? AND status='pending'
                 """,
                 (
@@ -344,7 +351,9 @@ class TelegramGenerationQueue:
             db.commit()
             return claimed
 
-    def _renew_lease(self, item_id: int, stop: threading.Event) -> None:
+    def _renew_lease(
+        self, item_id: int, lease_epoch: int, stop: threading.Event
+    ) -> None:
         interval = max(1.0, min(30.0, self.lease_seconds / 3.0))
         while not stop.wait(interval):
             now = time.time()
@@ -354,13 +363,27 @@ class TelegramGenerationQueue:
                     UPDATE telegram_generation
                     SET lease_until=?, last_heartbeat_at=?
                     WHERE id=? AND status='generating' AND worker_id=?
+                      AND lease_epoch=?
                     """,
-                    (now + self.lease_seconds, now, item_id, self._worker_id),
+                    (
+                        now + self.lease_seconds,
+                        now,
+                        item_id,
+                        self._worker_id,
+                        lease_epoch,
+                    ),
                 ).rowcount
             if changed != 1:
                 return
 
-    def _finish(self, item_id: int, *, status: str, error_class: str = "") -> bool:
+    def _finish(
+        self,
+        item_id: int,
+        lease_epoch: int,
+        *,
+        status: str,
+        error_class: str = "",
+    ) -> bool:
         with self._connect() as db:
             changed = db.execute(
                 """
@@ -368,24 +391,42 @@ class TelegramGenerationQueue:
                 SET status=?, error_class=?, worker_pid=NULL, worker_id=NULL,
                     lease_until=NULL, last_heartbeat_at=NULL, finished_at=?
                 WHERE id=? AND status='generating' AND worker_id=?
+                  AND lease_epoch=?
                 """,
-                (status, error_class, time.time(), item_id, self._worker_id),
+                (
+                    status,
+                    error_class,
+                    time.time(),
+                    item_id,
+                    self._worker_id,
+                    lease_epoch,
+                ),
             ).rowcount
         return changed == 1
 
-    def _retry_or_dead_letter(self, row: sqlite3.Row, error_class: str) -> None:
+    def _retry_or_dead_letter(self, row: sqlite3.Row, error_class: str) -> bool:
         status = "pending" if int(row["attempts"]) < self.max_attempts else "dead_letter"
         with self._connect() as db:
-            db.execute(
+            changed = db.execute(
                 """
                 UPDATE telegram_generation
                 SET status=?, error_class=?, worker_pid=NULL, worker_id=NULL,
                     lease_until=NULL, last_heartbeat_at=NULL,
                     finished_at=CASE WHEN ?='dead_letter' THEN ? ELSE NULL END
                 WHERE id=? AND status='generating' AND worker_id=?
+                  AND lease_epoch=?
                 """,
-                (status, error_class, status, time.time(), row["id"], self._worker_id),
-            )
+                (
+                    status,
+                    error_class,
+                    status,
+                    time.time(),
+                    row["id"],
+                    self._worker_id,
+                    row["lease_epoch"],
+                ),
+            ).rowcount
+        return changed == 1
 
     def _chat_worker(self, chat_id: int) -> None:
         try:
@@ -396,7 +437,7 @@ class TelegramGenerationQueue:
                 heartbeat_stop = threading.Event()
                 heartbeat = threading.Thread(
                     target=self._renew_lease,
-                    args=(int(row["id"]), heartbeat_stop),
+                    args=(int(row["id"]), int(row["lease_epoch"]), heartbeat_stop),
                     name=f"telegram-generation-heartbeat-{row['id']}",
                     daemon=True,
                 )
@@ -408,7 +449,11 @@ class TelegramGenerationQueue:
                     )
                     completed = bool(self.handler(job))
                     if completed:
-                        self._finish(int(row["id"]), status="completed")
+                        self._finish(
+                            int(row["id"]),
+                            int(row["lease_epoch"]),
+                            status="completed",
+                        )
                     else:
                         self._retry_or_dead_letter(row, "handler_incomplete")
                 except Exception as exc:

@@ -1,9 +1,8 @@
 """
 AIOS Telegram Bot — управление агентами через Telegram.
 
-Запуск::
-    export AIOS_TELEGRAM_TOKEN="123456:ABC-DEF..."
-    python run_telegram_bot.py
+Запуск production выполняется через systemd credentials; token не передаётся
+через shell environment или аргументы процесса.
 
 Команды:
     /start      — приветствие
@@ -38,18 +37,18 @@ import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv(Path(__file__).resolve().parent / ".env")
+with contextlib.suppress(OSError):
+    load_dotenv(Path(__file__).resolve().parent / ".env")
 
 PROJECT_ROOT = Path(__file__).resolve().parent
+from tg_bot.paths import state_path
 
 
 def _redact_runtime_error(value: object) -> str:
-    """Remove credentials and sensitive endpoint fragments from log errors."""
-    text = str(value)
-    text = re.sub(r"bot[0-9]+:[A-Za-z0-9_-]+", "bot[redacted]", text)
-    text = re.sub(r"(?i)Bearer\s+[A-Za-z0-9._-]+", "Bearer [redacted]", text)
-    text = re.sub(r"https?://[^\s)]+", "[url-redacted]", text)
-    return text[:500]
+    """Remove credentials and chat metadata from log errors."""
+    from tg_bot.redaction import redact_runtime_text
+
+    return redact_runtime_text(value, limit=500)
 
 
 # === Inventory by photo v22.1 helpers ===
@@ -143,8 +142,8 @@ def cmd_help() -> str:
     return _f()
 
 
-TEMPLATES_FILE = PROJECT_ROOT / "data" / "templates.json"
-REMINDERS_FILE = PROJECT_ROOT / "data" / "reminders.json"
+TEMPLATES_FILE = state_path("templates.json")
+REMINDERS_FILE = state_path("reminders.json")
 
 
 def _load_templates() -> dict:
@@ -523,11 +522,9 @@ def run_bot(token: str) -> None:
                 content_kind = "voice" if (msg.get("voice") or msg.get("audio")) else "text"
                 print(f"📩 [TG INCOMING] kind={content_kind} chars={len(text)}")
                 if not _is_authorized_chat(chat_id):
+                    # Silent drop avoids turning the bot into an account oracle
+                    # or amplification endpoint for arbitrary Telegram users.
                     print("  [SECURITY] ignored message from unauthorized chat")
-                    try:
-                        api.send_message(chat_id, "⛔ Доступ к AIOS боту ограничен.", parse_mode="Markdown")
-                    except Exception:
-                        pass
                     continue
 
                 # Голосовое сообщение — распознать и выполнить как команду

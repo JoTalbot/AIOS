@@ -262,7 +262,7 @@ jobs:
 
       - name: Загрузить зашифрованный результат
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: hetzner-create-result-encrypted
           path: /tmp/hetzner-create-result.enc

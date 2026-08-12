@@ -39,7 +39,7 @@ services:
       - aios-data:/app/data
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
-      - /etc/aios/credentials/telegram_token:/run/secrets/telegram_token:ro
+      - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -128,7 +128,7 @@ services:
       - aios-data:/app/data
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
-      - /etc/aios/credentials/telegram_token:/run/secrets/telegram_token:ro
+      - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
     depends_on:
       aios-api: {condition: service_healthy}
     restart: unless-stopped
@@ -162,7 +162,7 @@ services:
       - aios-data:/app/data
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
-      - /etc/aios/credentials/telegram_token:/run/secrets/telegram_token:ro
+      - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
       - /etc/aios/credentials/telegram_queue_key:/run/secrets/telegram_queue_key:ro
     restart: unless-stopped
     deploy:
@@ -245,13 +245,14 @@ services:
     image: python:3.11.15-slim-bookworm@sha256:d29f48a31a8b408ed19272ca1e7b10ebae13b240a27e862d3d4217c528e2e0c3
     container_name: aios-alert-canary-receiver
     command: ["python", "-u", "/receiver.py"]
+    user: "65534:65534"
     environment:
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
     volumes:
       - ./deploy/monitoring/alertmanager_canary_receiver.py:/receiver.py:ro
-      - /etc/aios/credentials/telegram_token:/run/secrets/telegram_token:ro
-      - /etc/aios/credentials/telegram_owner_chat_id:/run/secrets/telegram_owner_chat_id:ro
+      - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
+      - /run/aios-docker-credentials/telegram_owner_chat_id:/run/secrets/telegram_owner_chat_id:ro
       - /var/lib/aios-alert-canary:/state
     read_only: true
     cap_drop: [ALL]
@@ -267,15 +268,15 @@ services:
     container_name: aios-alertmanager
     ports: ["127.0.0.1:9093:9093"]
     volumes:
-      - /etc/aios/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-      - /etc/aios/credentials/telegram_token:/run/secrets/telegram_token:ro
+      - /run/aios-docker-credentials/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
-    user: "0:0"
+    user: "65534:65534"
     read_only: true
     cap_drop: [ALL]
     tmpfs:
-      - /alertmanager:rw,noexec,nosuid,nodev,size=32m
+      - /alertmanager:rw,noexec,nosuid,nodev,size=32m,uid=65534,gid=65534,mode=0770
       - /tmp:rw,noexec,nosuid,nodev,size=8m,mode=1777
     security_opt:
       - no-new-privileges:true

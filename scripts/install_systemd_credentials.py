@@ -104,6 +104,20 @@ def _purge_env(path: Path) -> None:
     _atomic(path, ("\n".join(kept) + ("\n" if kept else "")).encode("utf-8"))
 
 
+def _migrate_canary_settings(source: Path, destination: Path) -> None:
+    """Move non-sensitive canary thresholds into /etc without chat metadata."""
+    if not source.exists():
+        if not destination.exists():
+            _atomic(destination, b"")
+        return
+    kept = [
+        line
+        for line in source.read_text(encoding="utf-8").splitlines()
+        if line.partition("=")[0].strip() not in MANAGED_ENV_KEYS
+    ]
+    _atomic(destination, ("\n".join(kept) + ("\n" if kept else "")).encode("utf-8"))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--purge-managed-env", action="store_true")
@@ -137,6 +151,17 @@ def main() -> int:
         queue_key = Fernet.generate_key()
     _atomic(SOURCE_DIR / "telegram_queue_key", queue_key)
 
+    existing_offsite_key = _existing("telegram_offsite_backup_key")
+    if existing_offsite_key:
+        offsite_key = existing_offsite_key
+    else:
+        import base64
+
+        offsite_key = base64.urlsafe_b64encode(os.urandom(32))
+    _atomic(SOURCE_DIR / "telegram_offsite_backup_key", offsite_key)
+    _write_if_value("b2_access_key_id", "")
+    _write_if_value("b2_secret_access_key", "")
+
     existing_colab_key = _existing("colab_llm_api_key").decode("utf-8")
     colab_key = (
         existing_colab_key
@@ -151,7 +176,9 @@ def main() -> int:
     tailscale_key = existing_tailscale_key or values.get("TAILSCALE_AUTH_KEY", "")
     _write_if_value("tailscale_auth_key", tailscale_key)
 
-    canary_values = _parse_env(ROOT / "data" / ".telegram_canary.env")
+    canary_env = ROOT / "data" / ".telegram_canary.env"
+    canary_values = _parse_env(canary_env)
+    _migrate_canary_settings(canary_env, Path("/etc/aios/telegram-canary.env"))
     owner_chat = (
         _existing("telegram_owner_chat_id").decode("utf-8")
         or service_values.get("TELEGRAM_CHAT_ID")

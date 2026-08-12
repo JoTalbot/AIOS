@@ -27,6 +27,10 @@ class TelegramAPIError(RuntimeError):
     """Definitive Bot API rejection received as a complete response."""
 
 
+class TelegramTransportError(RuntimeError):
+    """Value-free transport failure after a Telegram request may have started."""
+
+
 class TelegramAPI:
     """Minimal Telegram Bot API client (polling mode)."""
 
@@ -39,14 +43,24 @@ class TelegramAPI:
         # getUpdates holds the response for up to 30 seconds by design. Other
         # Bot API methods must fail promptly instead of blocking all polling.
         timeout = (5, 40) if method == "getUpdates" else (5, 20)
-        response = requests.post(url, json=data or {}, timeout=timeout)
-        response.raise_for_status()
-        payload = response.json()
+        try:
+            response = requests.post(url, json=data or {}, timeout=timeout)
+            response.raise_for_status()
+            payload = response.json()
+        except requests.HTTPError as exc:
+            status = int(getattr(exc.response, "status_code", 0) or 0)
+            if status and status < 500:
+                raise TelegramAPIError(f"Telegram {method} HTTP {status}") from None
+            raise TelegramTransportError(
+                f"Telegram {method} transport HTTP {status or 'unknown'}"
+            ) from None
+        except (requests.RequestException, ValueError) as exc:
+            raise TelegramTransportError(
+                f"Telegram {method} transport {type(exc).__name__}"
+            ) from None
         if payload.get("ok") is False:
-            raise RuntimeError(
-                f"Telegram {method} failed: {payload.get('error_code')} "
-                f"{str(payload.get('description') or '')[:160]}"
-            )
+            code = int(payload.get("error_code") or 0)
+            raise TelegramAPIError(f"Telegram {method} rejected with code {code}")
         return payload
 
     def get_updates(self, offset: int = 0) -> list[dict]:
@@ -96,8 +110,13 @@ class TelegramAPI:
         if not path:
             raise ValueError(f"Нет file_path для file_id {file_id}")
         url = f"https://api.telegram.org/file/bot{self._token}/{path}"
-        with urllib.request.urlopen(url, timeout=90) as resp:
-            data = resp.read()
+        try:
+            with urllib.request.urlopen(url, timeout=90) as resp:
+                data = resp.read()
+        except Exception as exc:
+            raise TelegramTransportError(
+                f"Telegram getFile transport {type(exc).__name__}"
+            ) from None
         if not dest:
             ext = Path(path).suffix or ".jpg"
             dest = f"/tmp/aios_tg_{int(__import__('time').time() * 1000)}{ext}"
@@ -128,8 +147,18 @@ class TelegramAPI:
         req = urllib.request.Request(
             f"{self._base}/{method}", data=body,
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
-        with urllib.request.urlopen(req, timeout=180) as resp:
-            return json.loads(resp.read())
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                payload = json.loads(resp.read())
+        except Exception as exc:
+            raise TelegramTransportError(
+                f"Telegram {method} transport {type(exc).__name__}"
+            ) from None
+        if payload.get("ok") is False:
+            raise TelegramAPIError(
+                f"Telegram {method} rejected with code {int(payload.get('error_code') or 0)}"
+            )
+        return payload
 
     def send_photo(self, chat_id: int, photo_path: str, caption: str = "") -> dict:
         return self._multipart("sendPhoto", chat_id, "photo", photo_path, caption)

@@ -60,7 +60,11 @@ def test_polling_errors_are_redacted_and_sigterm_interrupts_blocking_work():
     source = (Path(__file__).resolve().parents[1] / "run_telegram_bot.py").read_text(
         encoding="utf-8"
     )
-    assert 're.sub(r"bot[0-9]+:[A-Za-z0-9_-]+", "bot[redacted]"' in source
+    assert "from tg_bot.redaction import redact_runtime_text" in source
+    redaction = (
+        Path(__file__).resolve().parents[1] / "tg_bot" / "redaction.py"
+    ).read_text(encoding="utf-8")
+    assert "token-redacted" in redaction
     assert "raise KeyboardInterrupt" in source
     assert "Ошибка polling: {_redact_runtime_error(exc)}" in source
 
@@ -73,3 +77,5 @@ def test_runtime_logs_do_not_include_chat_ids():
     )
     assert "chat={chat_id}" not in source
     assert "chat {chat_id}" not in source
+    assert "Доступ к AIOS боту ограничен" not in source
+    assert "Silent drop avoids turning the bot into an account oracle" in source

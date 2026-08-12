@@ -45,6 +45,9 @@ def test_resilience_units_mount_credentials_and_enable_full_canary():
     root = Path(__file__).resolve().parents[1]
     canary = (root / "deploy/systemd/aios-telegram-colab-canary.service").read_text()
     metrics = (root / "deploy/systemd/aios-telegram-metrics-report.service").read_text()
+    bot = (root / "deploy/systemd/aios-tg.service").read_text()
+    assert "User=aios-telegram" in bot
+    assert "AIOS_TELEGRAM_STATE_DIR=/var/lib/aios/telegram" in bot
     assert "LoadCredential=telegram_token:" in canary
     assert "LoadCredential=telegram_owner_chat_id:" in canary
     assert "LoadCredential=telegram_queue_key:" in canary
@@ -109,6 +112,8 @@ def test_installer_enables_snapshot_backup_drill_and_alert_canary():
     assert "aios-telegram-metrics-snapshot.service" in script
     assert "aios-telegram-queue-backup.timer" in script
     assert "aios-telegram-queue-restore-drill.timer" in script
+    assert "aios-telegram-offsite-backup.timer" in script
+    assert "aios-docker-runtime-credentials.service" in script
     assert "aios-alertmanager-delivery-canary.timer" in script
 
 

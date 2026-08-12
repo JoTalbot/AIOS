@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily encrypted immutable off-host Telegram backup
+
+[Timer]
+OnCalendar=*-*-* 04:45:00 UTC
+RandomizedDelaySec=20m
+Persistent=true
+Unit=aios-telegram-offsite-backup.service
+
+[Install]
+WantedBy=timers.target

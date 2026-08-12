@@ -37,16 +37,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 for _env_path in (Path(__file__).resolve().parents[1] / ".env",):
-    if _env_path.exists():
-        for _line in _env_path.read_text(encoding="utf-8").splitlines():
-            _line = _line.strip()
-            if not _line or _line.startswith("#") or "=" not in _line:
-                continue
-            _key, _, _value = _line.partition("=")
-            _key = _key.strip()
-            _value = _value.strip().strip('"').strip("'")
-            if _key and _key not in os.environ:
-                os.environ[_key] = _value
+    try:
+        _env_lines = _env_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        _env_lines = []
+    for _line in _env_lines:
+        _line = _line.strip()
+        if not _line or _line.startswith("#") or "=" not in _line:
+            continue
+        _key, _, _value = _line.partition("=")
+        _key = _key.strip()
+        _value = _value.strip().strip('"').strip("'")
+        if _key and _key not in os.environ:
+            os.environ[_key] = _value
 
 
 @dataclass
@@ -158,6 +161,7 @@ class LLMBalancer:
         "groq": {
             "base_url": "https://api.groq.com/openai/v1/chat/completions",
             "models": [
+                "qwen/qwen3.6-27b",
                 "llama-3.3-70b-versatile",
                 "llama-3.1-8b-instant",
                 "mixtral-8x7b-32768",
@@ -508,6 +512,16 @@ class LLMBalancer:
         )
 
     def _read_colab_runtime(self) -> tuple[dict, tuple]:
+        mode = os.environ.get("AIOS_COLAB_MODE", "").strip().lower()
+        if not mode:
+            try:
+                mode = Path(
+                    os.environ.get("AIOS_COLAB_MODE_FILE", "/etc/aios/colab-mode")
+                ).read_text(encoding="utf-8").strip().lower()
+            except OSError:
+                mode = "active"
+        if mode in ("maintenance", "human_action_required", "disabled"):
+            return {"enabled": False}, ("colab-mode", mode)
         for path in self._runtime_key_paths():
             try:
                 stat = path.stat()

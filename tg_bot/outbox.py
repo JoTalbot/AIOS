@@ -15,10 +15,12 @@ import os
 import sqlite3
 import threading
 import time
+import uuid
 from pathlib import Path
 from typing import Any, Callable
 
 from tg_bot.crypto_store import QueueCipher
+from tg_bot.paths import state_path
 
 OnSent = Callable[[dict], None]
 
@@ -29,7 +31,7 @@ class TelegramOutbox:
         self.db_path = Path(
             db_path
             or os.environ.get("TELEGRAM_OUTBOX_DB", "")
-            or Path(__file__).resolve().parents[1] / "data" / "telegram_outbox.sqlite3"
+            or state_path("telegram_outbox.sqlite3")
         )
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         default_key = (
@@ -44,6 +46,7 @@ class TelegramOutbox:
         self._accepting = True
         self._callbacks: dict[int, OnSent] = {}
         self._callbacks_lock = threading.Lock()
+        self._worker_id = f"{os.getpid()}:{uuid.uuid4().hex}"
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
@@ -81,7 +84,9 @@ class TelegramOutbox:
                     telegram_message_id INTEGER,
                     error_class TEXT NOT NULL DEFAULT '',
                     worker_pid INTEGER,
+                    worker_id TEXT,
                     lease_until REAL,
+                    lease_epoch INTEGER NOT NULL DEFAULT 0,
                     created_at REAL NOT NULL,
                     started_at REAL,
                     finished_at REAL
@@ -94,6 +99,13 @@ class TelegramOutbox:
                 db.execute("ALTER TABLE telegram_outbox ADD COLUMN worker_pid INTEGER")
             if "lease_until" not in columns:
                 db.execute("ALTER TABLE telegram_outbox ADD COLUMN lease_until REAL")
+            if "worker_id" not in columns:
+                db.execute("ALTER TABLE telegram_outbox ADD COLUMN worker_id TEXT")
+            if "lease_epoch" not in columns:
+                db.execute(
+                    "ALTER TABLE telegram_outbox "
+                    "ADD COLUMN lease_epoch INTEGER NOT NULL DEFAULT 0"
+                )
             if "encrypted" not in columns:
                 db.execute("ALTER TABLE telegram_outbox ADD COLUMN encrypted INTEGER NOT NULL DEFAULT 0")
             if "options_json" not in columns:
@@ -124,7 +136,9 @@ class TelegramOutbox:
                     db.execute(
                         """
                         UPDATE telegram_outbox
-                        SET status='failed_unknown', error_class='process_interrupted', finished_at=?
+                        SET status='failed_unknown', error_class='process_interrupted',
+                            finished_at=?, worker_pid=NULL, worker_id=NULL,
+                            lease_until=NULL, lease_epoch=lease_epoch+1
                         WHERE id=? AND status='sending'
                         """,
                         (now, row["id"]),
@@ -306,7 +320,7 @@ class TelegramOutbox:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute(
                 """
-                SELECT * FROM telegram_outbox AS candidate
+                SELECT id FROM telegram_outbox AS candidate
                 WHERE candidate.status='pending'
                   AND NOT EXISTS (
                       SELECT 1 FROM telegram_outbox AS active WHERE active.status='sending'
@@ -317,36 +331,62 @@ class TelegramOutbox:
             if not row:
                 db.commit()
                 return None
+            now = time.time()
             updated = db.execute(
                 """
                 UPDATE telegram_outbox
-                SET status='sending', attempts=attempts+1, started_at=?,
-                    worker_pid=?, lease_until=?
+                SET status='sending', attempts=attempts+1,
+                    lease_epoch=lease_epoch+1, started_at=?, worker_pid=?,
+                    worker_id=?, lease_until=?
                 WHERE id=? AND status='pending'
                 """,
-                (time.time(), os.getpid(), time.time() + 60, row["id"]),
+                (
+                    now,
+                    os.getpid(),
+                    self._worker_id,
+                    now + 60,
+                    row["id"],
+                ),
             ).rowcount
+            claimed = (
+                db.execute(
+                    "SELECT * FROM telegram_outbox WHERE id=?", (row["id"],)
+                ).fetchone()
+                if updated == 1
+                else None
+            )
             db.commit()
-            return row if updated == 1 else None
+            return claimed
 
     def _finish(
         self,
         item_id: int,
+        lease_epoch: int,
         *,
         status: str,
         telegram_message_id: int | None = None,
         error_class: str = "",
-    ) -> None:
+    ) -> bool:
         with self._connect() as db:
-            db.execute(
+            changed = db.execute(
                 """
                 UPDATE telegram_outbox
                 SET status=?, telegram_message_id=?, error_class=?, finished_at=?,
-                    worker_pid=NULL, lease_until=NULL
-                WHERE id=?
+                    worker_pid=NULL, worker_id=NULL, lease_until=NULL
+                WHERE id=? AND status='sending' AND worker_id=?
+                  AND lease_epoch=?
                 """,
-                (status, telegram_message_id, error_class, time.time(), item_id),
-            )
+                (
+                    status,
+                    telegram_message_id,
+                    error_class,
+                    time.time(),
+                    item_id,
+                    self._worker_id,
+                    lease_epoch,
+                ),
+            ).rowcount
+        return changed == 1
 
     def _record_metric(self, event: dict) -> None:
         try:
@@ -402,12 +442,18 @@ class TelegramOutbox:
                 ):
                     status = "failed"
             send_sec = time.monotonic() - send_started
-            self._finish(
+            finalized = self._finish(
                 int(row["id"]),
+                int(row["lease_epoch"]),
                 status=status,
                 telegram_message_id=telegram_message_id,
                 error_class=error_class,
             )
+            if not finalized:
+                # A newer lease epoch invalidated this worker. Never overwrite
+                # the operator-visible ambiguous state or invoke callbacks.
+                status = "stale_fenced"
+                error_class = "StaleLeaseEpoch"
             total_sec = float(row["generation_sec"]) + send_sec
             event = {
                 "event": str(options.get("metric_event") or "telegram_send"),
@@ -418,7 +464,7 @@ class TelegramOutbox:
                 "gen_sec": round(float(row["generation_sec"]), 3),
                 "send_sec": round(send_sec, 3),
                 "total_sec": round(total_sec, 3),
-                "attempts": int(row["attempts"]) + 1,
+                "attempts": int(row["attempts"]),
                 "error_class": error_class,
                 "timestamp": time.time(),
             }

@@ -20,7 +20,9 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-STATE_FILE = ROOT / "data" / "telegram_colab_canary.json"
+from tg_bot.paths import state_path
+
+STATE_FILE = state_path("telegram_colab_canary.json")
 load_dotenv(ROOT / ".env")
 
 
@@ -47,13 +49,28 @@ def _previous_state() -> dict:
         return {}
 
 
+def _colab_mode() -> str:
+    allowed = {"active", "maintenance", "human_action_required", "disabled"}
+    value = os.environ.get("AIOS_COLAB_MODE", "").strip().lower()
+    if not value:
+        path = Path(os.environ.get("AIOS_COLAB_MODE_FILE", "/etc/aios/colab-mode"))
+        try:
+            value = path.read_text(encoding="utf-8").strip().lower()
+        except OSError:
+            value = "active"
+    return value if value in allowed else "active"
+
+
 def run_canary(*, send_telegram: bool = False) -> dict:
     os.environ["LLM_CACHE"] = "0"
     started = time.monotonic()
+    mode = _colab_mode()
     result = {
         "timestamp": time.time(),
         "ok": False,
-        "colab": {"ok": False},
+        "mode": mode,
+        "colab": {"ok": False, "status": mode},
+        "route": {"ok": False},
         "telegram": {"status": "skipped"},
     }
 
@@ -61,10 +78,18 @@ def run_canary(*, send_telegram: bool = False) -> dict:
         from aios_core.llm_balancer import LLMBalancer
 
         balancer = LLMBalancer()
+        free_qwen_model = os.environ.get(
+            "AIOS_FREE_QWEN_MODEL", "qwen/qwen3.6-27b"
+        ).strip()
+        if mode != "active":
+            # Do not probe a CAPTCHA-blocked/stale tunnel while the owner has
+            # explicitly placed Colab in a human-action or maintenance mode.
+            balancer.providers.pop("colab", None)
+        requested_model = "llama-3.1-8b-instant" if mode == "active" else free_qwen_model
         generation_started = time.monotonic()
         answer = balancer.chat(
             [{"role": "user", "content": "Ответь ровно: ok"}],
-            model="llama-3.1-8b-instant",
+            model=requested_model,
             system="Ответь кратко.",
             max_tokens=4,
             temperature=0,
@@ -74,15 +99,29 @@ def run_canary(*, send_telegram: bool = False) -> dict:
         route = dict(balancer.last_route)
         provider = str(route.get("provider") or "unknown")
         model = str(route.get("model") or "unknown")
-        colab_ok = bool(answer.strip()) and provider == "colab" and model == "colab/qwen2.5-coder"
+        colab_ok = (
+            bool(answer.strip())
+            and provider == "colab"
+            and model == "colab/qwen2.5-coder"
+        )
+        managed_qwen_ok = (
+            bool(answer.strip())
+            and provider == "groq"
+            and model == free_qwen_model
+        )
+        route_ok = colab_ok if mode == "active" else managed_qwen_ok
         result["colab"] = {
             "ok": colab_ok,
+            "status": "active" if colab_ok else mode,
+        }
+        result["route"] = {
+            "ok": route_ok,
             "provider": provider,
             "model": model,
             "generation_sec": round(generation_sec, 3),
         }
     except Exception as exc:
-        result["colab"] = {"ok": False, "error_class": type(exc).__name__}
+        result["route"] = {"ok": False, "error_class": type(exc).__name__}
 
     from tg_bot.credentials import secret_from_env_or_credential
 
@@ -99,21 +138,21 @@ def run_canary(*, send_telegram: bool = False) -> dict:
 
             api = TelegramAPI(token)
             dedup_key = f"canary:{time.time_ns()}"
-            outbox = TelegramOutbox(api, ROOT / "data" / "telegram_canary_outbox.sqlite3")
+            outbox = TelegramOutbox(api, state_path("telegram_canary_outbox.sqlite3"))
             outbox.start()
             send_started = time.monotonic()
             queued = outbox.enqueue(
                 dedup_key=dedup_key,
                 chat_id=int(owner_chat),
                 text=(
-                    "✅ AIOS canary: Colab/Qwen и Telegram outbox работают."
-                    if result["colab"]["ok"]
-                    else "⚠️ AIOS canary: Colab/Qwen использовал fallback или недоступен."
+                    "✅ AIOS canary: LLM route и Telegram outbox работают."
+                    if result["route"]["ok"]
+                    else "⚠️ AIOS canary: требуемый LLM route недоступен."
                 ),
                 parse_mode="",
-                generation_sec=float(result["colab"].get("generation_sec", 0)),
-                provider=str(result["colab"].get("provider", "unknown")),
-                model=str(result["colab"].get("model", "unknown")),
+                generation_sec=float(result["route"].get("generation_sec", 0)),
+                provider=str(result["route"].get("provider", "unknown")),
+                model=str(result["route"].get("model", "unknown")),
                 disable_notification=True,
                 metric_event="canary_delivery",
             )
@@ -159,7 +198,7 @@ def run_canary(*, send_telegram: bool = False) -> dict:
         result["telegram"] = {"status": "missing_token"}
 
     telegram_ok = result["telegram"]["status"] in ("api_ok", "sent")
-    result["ok"] = bool(result["colab"]["ok"] and telegram_ok)
+    result["ok"] = bool(result["route"]["ok"] and telegram_ok)
     previous = _previous_state()
     result["consecutive_failures"] = (
         0 if result["ok"] else int(previous.get("consecutive_failures", 0)) + 1
@@ -175,14 +214,14 @@ def run_canary(*, send_telegram: bool = False) -> dict:
                 "event": "canary",
                 "source": "telegram_colab_canary",
                 "status": "sent" if result["ok"] else "failed",
-                "provider": result["colab"].get("provider", "unknown"),
-                "model": result["colab"].get("model", "unknown"),
-                "gen_sec": result["colab"].get("generation_sec", 0),
+                "provider": result["route"].get("provider", "unknown"),
+                "model": result["route"].get("model", "unknown"),
+                "gen_sec": result["route"].get("generation_sec", 0),
                 "send_sec": result["telegram"].get(
                     "send_sec", result["telegram"].get("api_sec", 0)
                 ),
                 "total_sec": result["total_sec"],
-                "error_class": result["colab"].get("error_class", ""),
+                "error_class": result["route"].get("error_class", ""),
                 "timestamp": result["timestamp"],
             }
         )
@@ -192,8 +231,9 @@ def run_canary(*, send_telegram: bool = False) -> dict:
     # Safe one-line status: no chat id, endpoint, prompt, token or answer.
     print(
         "canary_status=" + ("ok" if result["ok"] else "failed")
-        + f" provider={result['colab'].get('provider', 'unknown')}"
-        + f" model={result['colab'].get('model', 'unknown')}"
+        + f" mode={result['mode']}"
+        + f" provider={result['route'].get('provider', 'unknown')}"
+        + f" model={result['route'].get('model', 'unknown')}"
         + f" telegram={result['telegram']['status']}"
         + f" total={result['total_sec']:.2f}s"
     )

@@ -1,0 +1,29 @@
+[Unit]
+Description=Encrypted immutable off-host Telegram queue backup
+After=network-online.target aios-telegram-queue-backup.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+EnvironmentFile=-/etc/aios/offsite-backup.env
+Environment=AIOS_TELEGRAM_STATE_DIR=/var/lib/aios/telegram
+Environment=AIOS_TELEGRAM_BACKUP_DIR=/var/backups/aios/telegram-queues
+Environment=AIOS_TELEGRAM_KEY_BACKUP_DIR=/var/backups/aios/telegram-queue-keys
+LoadCredential=b2_access_key_id:/etc/aios/credentials/b2_access_key_id
+LoadCredential=b2_secret_access_key:/etc/aios/credentials/b2_secret_access_key
+LoadCredential=telegram_offsite_backup_key:/etc/aios/credentials/telegram_offsite_backup_key
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/telegram_offsite_backup.py --retention-days 30
+TimeoutStartSec=300
+UMask=0077
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=/var/backups/aios/telegram-queues /var/backups/aios/telegram-queue-keys /etc/aios
+ReadWritePaths=/var/lib/aios/telegram
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=

@@ -112,8 +112,8 @@ groups:
         for: 12m
         labels: {severity: critical}
         annotations:
-          summary: "Full Colab → Telegram canary is failing"
-          description: "The latest silent sendMessage canary, route check, or auto-delete did not pass."
+          summary: "Required LLM route → Telegram canary is failing"
+          description: "The mode-specific LLM route, silent sendMessage, or auto-delete did not pass."
 
       - alert: AIOSTelegramCanaryStale
         expr: aios_telegram_canary_age_seconds < 0 or aios_telegram_canary_age_seconds > 900
@@ -171,8 +171,32 @@ groups:
           summary: "Alertmanager delivery canary is stale"
           description: "No successful end-to-end Alertmanager Telegram canary has been recorded for 90 minutes."
 
+      - alert: AIOSTelegramOffsiteBackupNotConfigured
+        expr: aios_telegram_offsite_backup_configured == 0
+        for: 1h
+        labels: {severity: info}
+        annotations:
+          summary: "Off-host Telegram backup is not configured"
+          description: "Create a free Backblaze B2 Object-Lock bucket and install its restricted S3 credentials."
+
+      - alert: AIOSTelegramOffsiteBackupFailed
+        expr: aios_telegram_offsite_backup_configured == 1 and (aios_telegram_offsite_backup_ok == 0 or aios_telegram_offsite_backup_age_seconds > 129600)
+        for: 30m
+        labels: {severity: warning}
+        annotations:
+          summary: "Immutable off-host Telegram backup failed or is stale"
+          description: "The latest configured encrypted B2 upload is unsuccessful or older than 36 hours."
+
+      - alert: AIOSColabHumanActionRequired
+        expr: aios_colab_human_action_required == 1
+        for: 1m
+        labels: {severity: info}
+        annotations:
+          summary: "Colab recovery waits for owner action"
+          description: "Automatic recovery is intentionally disabled; complete CAPTCHA or change the declared mode before resuming the managed keeper."
+
       - alert: AIOSColabRecoverySLOMissed
-        expr: aios_colab_recovery_slo_seconds > 0 and aios_colab_recovery_slo_met == 0
+        expr: aios_colab_recovery_slo_seconds > 0 and aios_colab_recovery_slo_met == 0 and aios_colab_human_action_required == 0
         for: 15m
         labels: {severity: warning}
         annotations:

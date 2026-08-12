@@ -9,9 +9,10 @@ import threading
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-METRICS_FILE = ROOT / "data" / "telegram_metrics.jsonl"
-SUMMARY_FILE = ROOT / "data" / "telegram_metrics_summary.json"
+from tg_bot.paths import ROOT, state_path
+
+METRICS_FILE = state_path("telegram_metrics.jsonl")
+SUMMARY_FILE = state_path("telegram_metrics_summary.json")
 _LOCK = threading.Lock()
 _ALLOWED = {
     "event",
@@ -221,14 +222,14 @@ def render_telegram_prometheus(hours: float = 24) -> str:
     queue_specs = (
         (
             "outbox",
-            Path(os.environ.get("TELEGRAM_OUTBOX_DB", "") or ROOT / "data" / "telegram_outbox.sqlite3"),
+            Path(os.environ.get("TELEGRAM_OUTBOX_DB", "") or state_path("telegram_outbox.sqlite3")),
             "telegram_outbox",
         ),
         (
             "generation",
             Path(
                 os.environ.get("TELEGRAM_GENERATION_DB", "")
-                or ROOT / "data" / "telegram_generation.sqlite3"
+                or state_path("telegram_generation.sqlite3")
             ),
             "telegram_generation",
         ),
@@ -251,13 +252,15 @@ def render_telegram_prometheus(hours: float = 24) -> str:
                 f'{int(counts.get(status, 0))}'
             )
 
-    state_path = ROOT / "data" / "telegram_colab_canary.json"
+    canary_state_path = state_path("telegram_colab_canary.json")
     try:
-        canary = json.loads(state_path.read_text(encoding="utf-8"))
+        canary = json.loads(canary_state_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         canary = {}
     timestamp = float(canary.get("timestamp", 0) or 0)
     age = max(0.0, time.time() - timestamp) if timestamp else -1.0
+    colab_mode = _prom_label(canary.get("mode") or "unknown")
+    human_action_required = colab_mode == "human_action_required"
     lines.extend(
         [
             "# HELP aios_telegram_canary_ok Whether the latest Colab and Telegram canary passed.",
@@ -269,6 +272,12 @@ def render_telegram_prometheus(hours: float = 24) -> str:
             "# HELP aios_telegram_canary_age_seconds Age of the latest canary result; -1 means absent.",
             "# TYPE aios_telegram_canary_age_seconds gauge",
             f'aios_telegram_canary_age_seconds {age:.3f}',
+            "# HELP aios_colab_mode Current owner-selected Colab operating mode.",
+            "# TYPE aios_colab_mode gauge",
+            f'aios_colab_mode{{mode="{colab_mode}"}} 1',
+            "# HELP aios_colab_human_action_required Whether Colab waits for owner action such as CAPTCHA.",
+            "# TYPE aios_colab_human_action_required gauge",
+            f'aios_colab_human_action_required {1 if human_action_required else 0}',
         ]
     )
 
@@ -295,7 +304,28 @@ def render_telegram_prometheus(hours: float = 24) -> str:
         ]
     )
 
-    recovery_path = ROOT / "data" / "colab_recovery_metrics.json"
+    offsite_path = state_path("offsite_backup_state.json")
+    try:
+        offsite = json.loads(offsite_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        offsite = {}
+    offsite_timestamp = float(offsite.get("timestamp", 0) or 0)
+    offsite_age = max(0.0, time.time() - offsite_timestamp) if offsite_timestamp else -1.0
+    lines.extend(
+        [
+            "# HELP aios_telegram_offsite_backup_configured Whether immutable off-host backup credentials are configured.",
+            "# TYPE aios_telegram_offsite_backup_configured gauge",
+            f'aios_telegram_offsite_backup_configured {1 if offsite.get("configured") else 0}',
+            "# HELP aios_telegram_offsite_backup_ok Whether the latest configured off-host upload passed verification.",
+            "# TYPE aios_telegram_offsite_backup_ok gauge",
+            f'aios_telegram_offsite_backup_ok {1 if offsite.get("ok") else 0}',
+            "# HELP aios_telegram_offsite_backup_age_seconds Age of the latest off-host backup attempt; -1 means absent.",
+            "# TYPE aios_telegram_offsite_backup_age_seconds gauge",
+            f'aios_telegram_offsite_backup_age_seconds {offsite_age:.3f}',
+        ]
+    )
+
+    recovery_path = state_path("colab_recovery_metrics.json")
     try:
         recovery = json.loads(recovery_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):

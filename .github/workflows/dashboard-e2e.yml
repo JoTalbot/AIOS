@@ -19,8 +19,8 @@ jobs:
       AIOS_API_AUTH_REQUIRED: "0"
       GRAFANA_PASSWORD: ci-only-password
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.11"
       - name: Start API and Dashboard
@@ -44,7 +44,7 @@ jobs:
         run: docker compose -f docker-compose.prod.yml logs --no-color > dashboard-e2e-docker.log
       - name: Upload failure diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: dashboard-e2e-diagnostics
           path: |

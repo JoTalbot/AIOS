@@ -203,9 +203,19 @@ def rotate_backups(backup_root: Path, key_backup_root: Path, keep_days: int) -> 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-dir", type=Path, default=Path("/root/AIOS/data"))
     parser.add_argument(
-        "--backup-root", type=Path, default=Path("/root/AIOS/backups/telegram-queues")
+        "--data-dir",
+        type=Path,
+        default=Path(os.environ.get("AIOS_TELEGRAM_STATE_DIR", "/root/AIOS/data")),
+    )
+    parser.add_argument(
+        "--backup-root",
+        type=Path,
+        default=Path(
+            os.environ.get(
+                "AIOS_TELEGRAM_BACKUP_DIR", "/root/AIOS/backups/telegram-queues"
+            )
+        ),
     )
     parser.add_argument(
         "--key-file", type=Path, default=Path("/etc/aios/credentials/telegram_queue_key")
@@ -213,7 +223,12 @@ def main() -> int:
     parser.add_argument(
         "--key-backup-root",
         type=Path,
-        default=Path("/root/aios-secret-backups/telegram-queue-keys"),
+        default=Path(
+            os.environ.get(
+                "AIOS_TELEGRAM_KEY_BACKUP_DIR",
+                "/root/aios-secret-backups/telegram-queue-keys",
+            )
+        ),
     )
     parser.add_argument("--keep-days", type=int, default=30)
     parser.add_argument("--verify", type=Path)

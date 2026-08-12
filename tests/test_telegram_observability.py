@@ -12,6 +12,7 @@ def test_prometheus_export_has_latency_queues_and_canary_without_content(tmp_pat
     monkeypatch.setattr(metrics, "ROOT", tmp_path)
     monkeypatch.setattr(metrics, "METRICS_FILE", metrics_file)
     monkeypatch.setattr(metrics, "SUMMARY_FILE", tmp_path / "summary.json")
+    monkeypatch.setenv("AIOS_TELEGRAM_STATE_DIR", str(tmp_path / "data"))
 
     now = time.time()
     metrics.record_telegram_event(

@@ -6,6 +6,7 @@ After=local-fs.target
 Type=simple
 User=root
 WorkingDirectory=/root/AIOS
+Environment=AIOS_TELEGRAM_STATE_DIR=/var/lib/aios/telegram
 ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/telegram_metrics_snapshot.py --output /var/lib/aios-telegram-metrics/metrics.prom --interval 10
 Restart=always
 RestartSec=3
@@ -16,7 +17,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadOnlyPaths=/root/AIOS/data -/var/lib/aios-alert-canary
+ReadOnlyPaths=/var/lib/aios/telegram -/var/lib/aios-alert-canary
 ReadWritePaths=/var/lib/aios-telegram-metrics
 RestrictSUIDSGID=true
 LockPersonality=true
