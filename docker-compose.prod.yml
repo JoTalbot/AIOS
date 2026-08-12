@@ -43,6 +43,7 @@ services:
       LOCAL_LLM_BASE_URL: http://172.18.0.1:11434/v1/chat/completions
     volumes:
       - aios-data:/app/data
+      - aios-chroma:/app/chroma_db
       - aios-logs:/app/logs
       - aios-backups:/app/backups
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
@@ -116,6 +117,7 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
       - aios-data:/app/data
+      - aios-chroma:/app/chroma_db
       - aios-logs:/app/logs
       - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
     init: true
@@ -149,6 +151,7 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
       - aios-data:/app/data
+      - aios-chroma:/app/chroma_db
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
     depends_on:
@@ -186,6 +189,7 @@ services:
       AIOS_PROFILES_DB: /app/data/profiles.sqlite
     volumes:
       - aios-data:/app/data
+      - aios-chroma:/app/chroma_db
     depends_on:
       aios-api: {condition: service_healthy}
     init: true
@@ -223,6 +227,7 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
       - aios-data:/app/data
+      - aios-chroma:/app/chroma_db
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
       - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
@@ -266,6 +271,7 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
       - aios-data:/app/data
+      - aios-chroma:/app/chroma_db
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
       - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
@@ -410,6 +416,7 @@ services:
     networks: [aios-net]
 volumes:
   aios-data:
+  aios-chroma:
   aios-backups:
   aios-logs:
   prometheus-data:
