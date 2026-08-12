@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Callable
 
 from tg_bot.crypto_store import QueueCipher
-from tg_bot.paths import state_path
+from tg_bot.paths import credential_path, state_path
 
 GenerationHandler = Callable[[dict], bool]
 
@@ -49,7 +49,10 @@ class TelegramGenerationQueue:
             if db_path is not None
             else Path(__file__).resolve().parents[1] / "data" / "credentials" / "telegram_queue.key"
         )
-        self._cipher = QueueCipher(os.environ.get("TELEGRAM_QUEUE_KEY_FILE", "") or key_path)
+        self._cipher = QueueCipher(
+            os.environ.get("TELEGRAM_QUEUE_KEY_FILE", "")
+            or credential_path("telegram_queue_key", key_path)
+        )
         self.max_attempts = max(1, int(max_attempts))
         self.lease_seconds = max(
             2.0,

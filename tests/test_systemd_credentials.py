@@ -70,6 +70,23 @@ def test_secondary_colab_chrome_starts_memory_safe():
     assert "MemoryMax=1200M" in dropin
 
 
+def test_queue_cipher_uses_systemd_credential_directory(tmp_path, monkeypatch):
+    from cryptography.fernet import Fernet
+    from tg_bot.outbox import TelegramOutbox
+
+    credentials = tmp_path / "credentials"
+    credentials.mkdir()
+    (credentials / "telegram_queue_key").write_bytes(Fernet.generate_key() + b"\n")
+    monkeypatch.setenv("CREDENTIALS_DIRECTORY", str(credentials))
+
+    class API:
+        pass
+
+    database = tmp_path / "state" / "outbox.sqlite3"
+    TelegramOutbox(API(), database)
+    assert not database.with_suffix(database.suffix + ".key").exists()
+
+
 def test_root_only_source_credential_supports_legacy_cron(tmp_path, monkeypatch):
     source = tmp_path / "credentials"
     source.mkdir(mode=0o700)

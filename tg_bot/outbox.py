@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from tg_bot.crypto_store import QueueCipher
-from tg_bot.paths import state_path
+from tg_bot.paths import credential_path, state_path
 
 OnSent = Callable[[dict], None]
 
@@ -39,7 +39,10 @@ class TelegramOutbox:
             if db_path is not None
             else Path(__file__).resolve().parents[1] / "data" / "credentials" / "telegram_queue.key"
         )
-        self._cipher = QueueCipher(os.environ.get("TELEGRAM_QUEUE_KEY_FILE", "") or default_key)
+        self._cipher = QueueCipher(
+            os.environ.get("TELEGRAM_QUEUE_KEY_FILE", "")
+            or credential_path("telegram_queue_key", default_key)
+        )
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None

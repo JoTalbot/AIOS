@@ -29,3 +29,8 @@ def backup_dir() -> Path:
 
 def state_path(name: str) -> Path:
     return state_dir() / name
+
+
+def credential_path(name: str, fallback: Path) -> Path:
+    directory = os.environ.get("CREDENTIALS_DIRECTORY", "").strip()
+    return Path(directory) / name if directory else fallback

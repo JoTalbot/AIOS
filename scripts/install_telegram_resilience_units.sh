@@ -48,7 +48,6 @@ Group=aios-telegram
 LoadCredential=telegram_token:$CRED_DIR/telegram_token
 LoadCredential=telegram_queue_key:$CRED_DIR/telegram_queue_key
 LoadCredential=telegram_owner_chat_id:$CRED_DIR/telegram_owner_chat_id
-Environment=TELEGRAM_QUEUE_KEY_FILE=%d/telegram_queue_key
 Environment=AIOS_TELEGRAM_STATE_DIR=/var/lib/aios/telegram
 Environment=AIOS_TELEGRAM_LOG_DIR=/var/log/aios/telegram
 Environment=AIOS_TELEGRAM_BACKUP_DIR=/var/backups/aios/telegram-queues

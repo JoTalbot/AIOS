@@ -12,7 +12,6 @@ EnvironmentFile=-/root/AIOS/.env
 LoadCredential=telegram_token:/etc/aios/credentials/telegram_token
 LoadCredential=telegram_queue_key:/etc/aios/credentials/telegram_queue_key
 LoadCredential=telegram_owner_chat_id:/etc/aios/credentials/telegram_owner_chat_id
-Environment=TELEGRAM_QUEUE_KEY_FILE=%d/telegram_queue_key
 Environment=AIOS_TELEGRAM_STATE_DIR=/var/lib/aios/telegram
 Environment=AIOS_TELEGRAM_LOG_DIR=/var/log/aios/telegram
 Environment=AIOS_TELEGRAM_BACKUP_DIR=/var/backups/aios/telegram-queues
