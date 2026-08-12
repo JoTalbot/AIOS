@@ -856,7 +856,7 @@ def format_kraken_demo_report(report: Dict[str, Any]) -> str:
         "🤖 <b>Алгоритм & Стратегия:</b>",
         "• Количественный робот AIOS (SMA 3/10 Crossover + RSI 14)",
         "• Риск-менеджмент: Take-Profit +2.0%, Trailing Stop-Loss -1.0%",
-        "• Торговые пары: 24 пары на 5 биржах (Kraken, Binance, Bybit, OKX, Uniswap V3)",
+        "• Торговые пары: 24 пары; в этом отчёте учитывается paper-счёт Kraken",
         "",
         "💡 <i>Команды:</i>",
         "<code>баланс кракен</code> — реальный баланс активов",
@@ -959,7 +959,7 @@ def format_unified_crypto_earnings_report(report: Dict[str, Any]) -> str:
         f"{pnl_icon} <b>Совокупный PnL:</b> <b>{pnl_sign}${total_pnl:.2f} USD ({pnl_sign}{total_ret:.2f}%)</b>",
         "",
         "🌐 <b>4 Активных Вектора Заработка:</b>",
-        "1. 📈 <b>Квантовый трейдинг (5 бирж: Kraken, Binance, Bybit, OKX, UniV3):</b>",
+        "1. 📈 <b>Квантовый paper-trading (отчёт Kraken):</b>",
         f"   • Сделок: <b>{trades}</b> (Успешных: {wins}, Винрейт: <b>{win_rate:.1f}%</b>)",
         "   • Сигналы: SMA 3/10 + RSI 14 + Полосы Боллинджера (20)",
         "2. ⚡ <b>Кросс-DEX Арбитраж (Kraken/Binance/UniV3):</b>",
@@ -1012,7 +1012,7 @@ def format_unified_crypto_earnings_report(report: Dict[str, Any]) -> str:
 
 
 class MultiExchangeQuantEngine:
-    """Двигатель мульти-биржевого трейдинга и арбитража на 5 биржах (Kraken, Binance, Bybit, OKX, Uniswap V3) с демо-счетами по $1,000."""
+    """Paper-trading по нескольким биржам; арбитражные спрэды — только сигналы, не прибыль."""
 
     EXCHANGES = ["kraken", "binance", "bybit", "okx", "uniswap_v3", "coinbase", "kucoin", "bitfinex", "bitstamp", "mexc"]
     INITIAL_PER_EXCHANGE = 1000.0
@@ -1041,9 +1041,14 @@ class MultiExchangeQuantEngine:
                     "positions": {}
                 }
             default_data["cross_arbitrage"] = {
-                "total_arbitrage_trades": 0,
-                "arbitrage_pnl_usd": 0.0,
-                "history": []
+                "accounting_version": 2,
+                "settled_trades": 0,
+                "settled_pnl_usd": 0.0,
+                "legacy_simulated_trades": 0,
+                "legacy_simulated_pnl_usd": 0.0,
+                "last_scan_opportunities": 0,
+                "last_scan_theoretical_pnl_usd": 0.0,
+                "history": [],
             }
             with open(self.portfolio_file, "w", encoding="utf-8") as f:
                 json.dump(default_data, f, indent=2)
@@ -1063,7 +1068,7 @@ class MultiExchangeQuantEngine:
                             "positions": {}
                         }
                 if "cross_arbitrage" not in data:
-                    data["cross_arbitrage"] = {"total_arbitrage_trades": 0, "arbitrage_pnl_usd": 0.0, "history": []}
+                    data["cross_arbitrage"] = {"accounting_version": 2, "settled_trades": 0, "settled_pnl_usd": 0.0, "legacy_simulated_trades": 0, "legacy_simulated_pnl_usd": 0.0, "history": []}
                 return data
         except Exception:
             self._ensure_file()
@@ -1075,7 +1080,7 @@ class MultiExchangeQuantEngine:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
     def fetch_all_exchange_prices(self) -> Dict[str, Dict[str, float]]:
-        """Запрашивает котировки 24 активов со всех 5 бирж."""
+        """Запрашивает котировки 24 активов со всех настроенных бирж."""
         symbols = [
             "BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "DOGE", "AVAX", "DOT", "LINK",
             "POL", "NEAR", "LTC", "UNI", "SHIB", "SUI", "APT", "ARB", "OP", "PEPE",
@@ -1146,10 +1151,9 @@ class MultiExchangeQuantEngine:
         except Exception:
             pass
 
-        # Uniswap V3 (DEX)
-        for s in symbols:
-            base_p = results["binance"].get(s) or results["kraken"].get(s) or 100.0
-            results["uniswap_v3"][s] = round(base_p * 1.0008, 4)
+        # Uniswap V3 intentionally remains empty until a real pool/quote-token
+        # adapter validates pool address, liquidity, block timestamp and slippage.
+        # A CEX price multiplied by a constant is not a DEX quote.
 
         # Новые биржи (Coinbase, KuCoin, Bitfinex, Bitstamp, MEXC) через ccxt (batch fetchTickers)
         # Новые биржи (Coinbase, KuCoin, Bitfinex, Bitstamp, MEXC) через ccxt (batch fetchTickers)
@@ -1173,7 +1177,11 @@ class MultiExchangeQuantEngine:
                 for _sym, _t in (tickers or {}).items():
                     _base = _sym.split("/")[0]
                     _p = _t.get("last") if _t else None
-                    if _p and _p > 0 and _base in symbols:
+                    _ts = _t.get("timestamp") if _t else None
+                    # For accounting/scanning, an undated or stale last trade is
+                    # not a current executable quote.
+                    _fresh = bool(_ts) and (time.time() * 1000.0 - float(_ts) <= 120_000)
+                    if _p and _p > 0 and _fresh and _base in symbols:
                         results[_ex_name][_base] = float(_p)
             except Exception:
                 pass
@@ -1181,7 +1189,7 @@ class MultiExchangeQuantEngine:
         return results
 
     def run_multi_exchange_cycle(self) -> Dict[str, Any]:
-        """Прогоняет цикл торгов на каждой из 5 бирж и межбиржевой арбитраж."""
+        """Прогоняет paper-trading и фиксирует неисполненные арбитражные сигналы."""
         all_prices = self.fetch_all_exchange_prices()
         data = self.load_portfolios()
 
@@ -1210,7 +1218,7 @@ class MultiExchangeQuantEngine:
         except Exception:
             pass
 
-        # 1. Одиночные биржевые торги на каждой из 5 бирж
+        # 1. Одиночные paper-сделки на каждой настроенной бирже
         for ex in self.EXCHANGES:
             ex_port = data[ex]
             ex_prices = all_prices.get(ex, {})
@@ -1260,8 +1268,50 @@ class MultiExchangeQuantEngine:
                             ex_port["winning_trades"] += 1
                         cycle_trades.append({"exchange": ex, "action": "CLOSE", "symbol": sym, "pnl_usd": pnl_usd})
 
-        # 2. Межбиржевой трейдинг & Арбитраж (Cross-Exchange Arbitrage)
-        cross_arb = data.get("cross_arbitrage", {"total_arbitrage_trades": 0, "arbitrage_pnl_usd": 0.0, "history": []})
+        # 2. Cross-exchange scan. Это только наблюдение котировок: ордера не
+        # выставляются, капитал не резервируется, поэтому найденный spread/PnL
+        # нельзя учитывать как заработанную прибыль портфеля.
+        cross_arb = data.get("cross_arbitrage", {})
+        legacy_pnl = float(
+            cross_arb.get(
+                "legacy_simulated_pnl_usd",
+                cross_arb.get("arbitrage_pnl_usd", 0.0),
+            )
+            or 0.0
+        )
+        legacy_trades = int(
+            cross_arb.get(
+                "legacy_simulated_trades",
+                cross_arb.get("total_arbitrage_trades", 0),
+            )
+            or 0
+        )
+        cross_arb.update(
+            {
+                "accounting_version": 2,
+                "legacy_simulated_pnl_usd": legacy_pnl,
+                "legacy_simulated_trades": legacy_trades,
+                "settled_pnl_usd": float(cross_arb.get("settled_pnl_usd", 0.0) or 0.0),
+                "settled_trades": int(cross_arb.get("settled_trades", 0) or 0),
+                # Legacy keys now mean settled values for backward compatibility.
+                "arbitrage_pnl_usd": float(cross_arb.get("settled_pnl_usd", 0.0) or 0.0),
+                "total_arbitrage_trades": int(cross_arb.get("settled_trades", 0) or 0),
+                "history": list(cross_arb.get("history", [])),
+            }
+        )
+        scan_opportunities = 0
+        scan_theoretical_pnl = 0.0
+        quote_currency = {
+            "kraken": "USD",
+            "coinbase": "USD",
+            "bitfinex": "USD",
+            "bitstamp": "USD",
+            "binance": "USDT",
+            "bybit": "USDT",
+            "okx": "USDT",
+            "kucoin": "USDT",
+            "mexc": "USDT",
+        }
         symbols = [
             "BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "DOGE", "AVAX", "DOT", "LINK",
             "POL", "NEAR", "LTC", "UNI", "SHIB", "SUI", "APT", "ARB", "OP", "PEPE",
@@ -1275,11 +1325,19 @@ class MultiExchangeQuantEngine:
                 if p > 0:
                     sym_prices[ex] = p
 
-            if len(sym_prices) >= 2:
-                min_ex = min(sym_prices, key=sym_prices.get)
-                max_ex = max(sym_prices, key=sym_prices.get)
-                p_low = sym_prices[min_ex]
-                p_high = sym_prices[max_ex]
+            # Never compare USD with USDT as if they were the same asset.
+            for quote in ("USD", "USDT"):
+                comparable = {
+                    ex: price
+                    for ex, price in sym_prices.items()
+                    if quote_currency.get(ex) == quote
+                }
+                if len(comparable) < 2:
+                    continue
+                min_ex = min(comparable, key=comparable.get)
+                max_ex = max(comparable, key=comparable.get)
+                p_low = comparable[min_ex]
+                p_high = comparable[max_ex]
                 spread_pct = ((p_high - p_low) / p_low) * 100.0
 
                 if spread_pct >= 0.5:
@@ -1287,28 +1345,34 @@ class MultiExchangeQuantEngine:
                     net_spread_pct = spread_pct - 0.15
                     arb_pnl = (arb_trade_usd * net_spread_pct) / 100.0
 
-                    cross_arb["total_arbitrage_trades"] += 1
-                    cross_arb["arbitrage_pnl_usd"] += arb_pnl
+                    scan_opportunities += 1
+                    scan_theoretical_pnl += arb_pnl
                     hist = cross_arb.get("history", [])
                     hist.append({
                         "timestamp": time.time(),
+                        "kind": "theoretical_opportunity",
+                        "executed": False,
+                        "quote_currency": quote,
                         "symbol": sym,
                         "buy_ex": min_ex,
                         "buy_price": p_low,
                         "sell_ex": max_ex,
                         "sell_price": p_high,
                         "spread_pct": round(spread_pct, 3),
-                        "pnl_usd": round(arb_pnl, 2)
+                        "theoretical_pnl_usd": round(arb_pnl, 2),
                     })
                     cross_arb["history"] = hist[-30:]
 
+        cross_arb["last_scan_at"] = time.time()
+        cross_arb["last_scan_opportunities"] = scan_opportunities
+        cross_arb["last_scan_theoretical_pnl_usd"] = round(scan_theoretical_pnl, 8)
         data["cross_arbitrage"] = cross_arb
         self.save_portfolios(data)
         return {"cycle_trades": cycle_trades, "portfolios": data, "prices": all_prices}
 
 
 def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[str, Any]:
-    """Получает полную аналитику по 5 биржам (по $1,000 на каждой) и межбиржевому арбитражу."""
+    """Считает PnL только из equity бирж и фактически исполненного арбитража."""
     engine = MultiExchangeQuantEngine(data_dir=data_dir)
     portfolios = engine.load_portfolios()
     all_prices = engine.fetch_all_exchange_prices()
@@ -1321,6 +1385,7 @@ def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[st
     total_unrealized_pnl = 0.0
     total_trades = 0
     total_wins = 0
+    total_unpriced_positions = 0
 
     ex_names = {
         "kraken": "🐙 Kraken",
@@ -1344,9 +1409,14 @@ def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[st
         pos_invested = 0.0
         pos_val = 0.0
 
+        unpriced_positions = 0
         for pos_key, pos_data in p_data.get("positions", {}).items():
             sym = pos_key.replace("USD", "")
+            price_is_live = sym in ex_prices and ex_prices.get(sym, 0.0) > 0
             live_p = ex_prices.get(sym, pos_data.get("entry_price", 0.0))
+            if not price_is_live:
+                unpriced_positions += 1
+                total_unpriced_positions += 1
             entry_p = pos_data.get("entry_price", 0.0)
             qty = pos_data.get("qty", 0.0)
             inv = pos_data.get("invested_usd", 0.0)
@@ -1364,6 +1434,8 @@ def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[st
                 "qty": qty,
                 "entry_price": entry_p,
                 "live_price": live_p,
+                "price_is_live": price_is_live,
+                "valuation_basis": "live_quote" if price_is_live else "entry_cost",
                 "invested_usd": inv,
                 "current_value_usd": curr_v,
                 "unrealized_pnl_usd": un_pnl,
@@ -1393,30 +1465,60 @@ def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[st
             "total_trades": trades,
             "winning_trades": wins,
             "win_rate_pct": win_rate,
+            "unpriced_positions": unpriced_positions,
             "positions": pos_details
         }
 
     cross_arb = portfolios.get("cross_arbitrage", {})
-    arb_trades = cross_arb.get("total_arbitrage_trades", 0)
-    arb_pnl = cross_arb.get("arbitrage_pnl_usd", 0.0)
+    settled_arb_trades = int(cross_arb.get("settled_trades", 0) or 0)
+    settled_arb_pnl = float(cross_arb.get("settled_pnl_usd", 0.0) or 0.0)
+    legacy_simulated_pnl = float(
+        cross_arb.get(
+            "legacy_simulated_pnl_usd",
+            cross_arb.get("arbitrage_pnl_usd", 0.0),
+        )
+        or 0.0
+    )
+    legacy_simulated_trades = int(
+        cross_arb.get(
+            "legacy_simulated_trades",
+            cross_arb.get("total_arbitrage_trades", 0),
+        )
+        or 0
+    )
     arb_history = cross_arb.get("history", [])
 
-    grand_total_pnl = (total_equity - total_initial) + arb_pnl
+    # Single source of truth: marked exchange equity. Any genuinely settled
+    # arbitrage must first move exchange cash/positions and is therefore already
+    # included here; adding a separate accumulator would double-count it.
+    exchange_pnl = total_equity - total_initial
+    grand_total_pnl = exchange_pnl
     grand_return_pct = (grand_total_pnl / total_initial * 100.0) if total_initial > 0 else 0.0
 
     split_25 = max(0.0, grand_total_pnl) * 0.25
 
     return {
+        "exchange_count": len(ex_reports),
+        "initial_per_exchange_usd": MultiExchangeQuantEngine.INITIAL_PER_EXCHANGE,
         "total_initial_balance_usd": total_initial,
         "total_cash_usd": total_cash,
-        "total_equity_usd": total_equity + arb_pnl,
+        "total_equity_usd": total_equity,
+        "exchange_pnl_usd": exchange_pnl,
+        "unpriced_positions": total_unpriced_positions,
         "grand_total_pnl_usd": grand_total_pnl,
         "grand_return_pct": grand_return_pct,
         "exchanges": ex_reports,
         "cross_arbitrage": {
-            "total_trades": arb_trades,
-            "pnl_usd": arb_pnl,
-            "recent_trades": arb_history[-5:]
+            "accounting": "settled_only",
+            "total_trades": settled_arb_trades,
+            "pnl_usd": settled_arb_pnl,
+            "last_scan_opportunities": int(cross_arb.get("last_scan_opportunities", 0) or 0),
+            "last_scan_theoretical_pnl_usd": float(
+                cross_arb.get("last_scan_theoretical_pnl_usd", 0.0) or 0.0
+            ),
+            "legacy_simulated_trades": legacy_simulated_trades,
+            "legacy_simulated_pnl_usd": legacy_simulated_pnl,
+            "recent_trades": arb_history[-5:],
         },
         "profit_split_25_usd": split_25,
         "ai_signals": _load_ai_signals()
@@ -1424,7 +1526,7 @@ def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[st
 
 
 def reset_multi_exchange_demo(data_dir: str = "/root/AIOS/data") -> bool:
-    """Сбрасывает все 5 демо-счетов к исходному балансу $1,000 ($5,000 всего)."""
+    """Сбрасывает все настроенные paper-счета к исходному балансу."""
     engine = MultiExchangeQuantEngine(data_dir=data_dir)
     default_data = {}
     for ex in MultiExchangeQuantEngine.EXCHANGES:
@@ -1437,9 +1539,14 @@ def reset_multi_exchange_demo(data_dir: str = "/root/AIOS/data") -> bool:
             "positions": {}
         }
     default_data["cross_arbitrage"] = {
-        "total_arbitrage_trades": 0,
-        "arbitrage_pnl_usd": 0.0,
-        "history": []
+        "accounting_version": 2,
+        "settled_trades": 0,
+        "settled_pnl_usd": 0.0,
+        "legacy_simulated_trades": 0,
+        "legacy_simulated_pnl_usd": 0.0,
+        "last_scan_opportunities": 0,
+        "last_scan_theoretical_pnl_usd": 0.0,
+        "history": [],
     }
     try:
         engine.save_portfolios(default_data)
@@ -1449,15 +1556,19 @@ def reset_multi_exchange_demo(data_dir: str = "/root/AIOS/data") -> bool:
 
 
 def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
-    """Форматирует 360-градусный отчёт по 5 демо-счетам ($5,000), арбитражу и ИИ-индикаторам для Telegram."""
-    tot_init = report.get("total_initial_balance_usd", 5000.0)
-    tot_cash = report.get("total_cash_usd", 5000.0)
-    tot_equity = report.get("total_equity_usd", 5000.0)
+    """Форматирует прозрачный paper-trading отчёт с settled-only PnL."""
+    tot_init = report.get("total_initial_balance_usd", 10000.0)
+    tot_cash = report.get("total_cash_usd", 10000.0)
+    tot_equity = report.get("total_equity_usd", 10000.0)
     tot_pnl = report.get("grand_total_pnl_usd", 0.0)
     tot_ret = report.get("grand_return_pct", 0.0)
+    exchange_count = int(report.get("exchange_count", len(report.get("exchanges", {}))) or 0)
+    initial_per_exchange = report.get("initial_per_exchange_usd", 1000.0)
+    unpriced_positions = int(report.get("unpriced_positions", 0) or 0)
 
     pnl_icon = "🚀" if tot_pnl >= 0 else "📉"
-    pnl_sign = "+" if tot_pnl > 0 else ""
+    pnl_money = f"+${tot_pnl:,.2f}" if tot_pnl > 0 else f"-${abs(tot_pnl):,.2f}"
+    pnl_pct = f"+{tot_ret:.2f}%" if tot_ret > 0 else f"{tot_ret:.2f}%"
 
     # Запрос сентимента и рисков
     sent_verdict = "🟢 BULLISH"
@@ -1477,12 +1588,17 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
         pass
 
     lines = [
-        "🏛️ <b>Мульти-Биржевой Крипто-Заработок AIOS ($5,000 Демо)</b>",
+        f"🏛️ <b>Мультибиржевой Paper Trading AIOS ({exchange_count} бирж)</b>",
         "━━━━━━━━━━━━━━━━━━━━━",
-        f"💵 <b>Совокупный капитал:</b> <b>${tot_init:,.2f} USD</b> (5 бирж по $1,000)",
+        f"💵 <b>Начальный капитал:</b> <b>${tot_init:,.2f} USD</b> ({exchange_count} × ${initial_per_exchange:,.0f})",
         f"💳 <b>Свободный кэш:</b> ${tot_cash:,.2f} USD",
         f"📊 <b>Текущий капитал (Equity):</b> <b>${tot_equity:,.2f} USD</b>",
-        f"{pnl_icon} <b>Совокупный PnL:</b> <b>{pnl_sign}${tot_pnl:,.2f} USD ({pnl_sign}{tot_ret:.2f}%)</b>",
+        f"{pnl_icon} <b>Совокупный PnL (только equity/исполненное):</b> <b>{pnl_money} USD ({pnl_pct})</b>",
+        *(
+            [f"⚠️ <b>{unpriced_positions} поз. без свежей котировки:</b> оценены по себестоимости."]
+            if unpriced_positions
+            else []
+        ),
         "",
         "🌐 <b>10 Автономных Категорий ИИ-Заработка:</b>",
         "• 1. Алгоритмы: <b>Mean Reversion (Z-Score) + VWAP + VCP Pattern</b>",
@@ -1492,11 +1608,11 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
         "• 5. On-Chain Flow: <b>Whale Alert (> $1M) + Smart Money Mirroring</b>",
         f"• 6. AI Sentiment: <b>{sent_verdict} (CryptoPanic RSS Guard)</b>",
         "• 7. Риск-Менеджмент: <b>Kill-Switch (5%) + Kelly Sizing (1/2) + Correlation Guard</b>",
-        "• 8. Инфраструктура: <b>5 бирж x $1k + 0.09s Batch Ticker Fetching</b>",
+        f"• 8. Инфраструктура: <b>{exchange_count} paper-бирж × ${initial_per_exchange:,.0f}</b>",
         "• 9. Telegram UI: <b>PNG Chart + Collapsible Positions + Voice Commands</b>",
         "• 10. Монетизация: <b>4-Way Split (25%x4) + Copy-Trading + API Key Store ($0.10)</b>",
         "",
-        "🏦 <b>Результаты торгов по каждой из 5 бирж:</b>"
+        f"🏦 <b>Результаты торгов по каждой из {exchange_count} бирж:</b>"
     ]
 
     exchanges = report.get("exchanges", {})
@@ -1505,13 +1621,13 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
         eq = ex_data.get("equity_usd", 1000.0)
         c_sh = ex_data.get("cash_usd", 1000.0)
         pnl = ex_data.get("pnl_usd", 0.0)
-        p_sign = "+" if pnl > 0 else ""
+        pnl_money_ex = f"+${pnl:.2f}" if pnl > 0 else f"-${abs(pnl):.2f}"
         tr_cnt = ex_data.get("total_trades", 0)
         wr = ex_data.get("win_rate_pct", 0.0)
         poss = ex_data.get("positions", [])
 
         lines.append(f"\n<b>{ex_name}:</b>")
-        lines.append(f"• Баланс: <b>${eq:,.2f} USD</b> (Кэш: ${c_sh:,.2f}) | PnL: <b>{p_sign}${pnl:.2f} USD</b>")
+        lines.append(f"• Баланс: <b>${eq:,.2f} USD</b> (Кэш: ${c_sh:,.2f}) | PnL: <b>{pnl_money_ex} USD</b>")
         lines.append(f"• Сделок: <b>{tr_cnt}</b> (Винрейт: <b>{wr:.1f}%</b>)")
 
         if poss:
@@ -1525,17 +1641,24 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
             lines.append("• Позиции: <i>нет (100% в кэше)</i>")
 
     arb = report.get("cross_arbitrage", {})
-    arb_cnt = arb.get("total_trades", 0)
-    arb_pnl = arb.get("pnl_usd", 0.0)
-    arb_sign = "+" if arb_pnl > 0 else ""
+    arb_cnt = int(arb.get("total_trades", 0) or 0)
+    arb_pnl = float(arb.get("pnl_usd", 0.0) or 0.0)
+    scan_count = int(arb.get("last_scan_opportunities", 0) or 0)
+    scan_theoretical = float(arb.get("last_scan_theoretical_pnl_usd", 0.0) or 0.0)
+    legacy_simulated = float(arb.get("legacy_simulated_pnl_usd", 0.0) or 0.0)
     rec_trades = arb.get("recent_trades", [])
 
     lines.extend([
         "",
-        "⚡ <b>Межбиржевой Арбитраж (Cross-Exchange):</b>",
-        f"• Выполнено арбитражных сделок: <b>{arb_cnt}</b>",
-        f"• Безрисковая прибыль со спрэдов: <b>{arb_sign}${arb_pnl:.2f} USD</b>"
+        "⚡ <b>Межбиржевой арбитраж:</b>",
+        f"• Фактически исполнено/settled: <b>{arb_cnt}</b> | PnL: <b>${arb_pnl:.2f}</b>",
+        f"• Последний скан: {scan_count} сигналов, теоретически ${scan_theoretical:.2f}",
+        "• ⚠️ Сигналы не считаются прибылью без исполнения двух ордеров и settlement.",
     ])
+    if legacy_simulated:
+        lines.append(
+            f"• Ранее ошибочно начисленная симуляция: ${legacy_simulated:.2f} — исключена из PnL."
+        )
 
     if rec_trades:
         last = rec_trades[-1]
@@ -1545,7 +1668,7 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
         bp = last.get('buy_price', 0.0)
         sp = last.get('sell_price', 0.0)
         spr = last.get('spread_pct', 0.0)
-        lines.append(f"• Последняя сделка: Buy <b>{b_ex}</b> {sym} @ ${bp:.2f} ➔ Sell <b>{s_ex}</b> @ ${sp:.2f} (Спрэд +{spr}%)")
+        lines.append(f"• Последний сигнал: Buy <b>{b_ex}</b> {sym} @ ${bp:.4f} ➔ Sell <b>{s_ex}</b> @ ${sp:.4f} (spread {spr}%, не исполнен)")
 
     split_25 = report.get("profit_split_25_usd", 0.0)
     lines.extend([
@@ -1557,8 +1680,8 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
         f"• 🤖 AIOS Фонд (25%): <b>${split_25:.2f} USD</b>",
         "",
         "💡 <i>Команды:</i>",
-        "<code>крипто заработок</code> — полный отчёт по 5 биржам",
-        "<code>5 бирж сброс</code> — сбросить счета по $1,000",
+        f"<code>крипто заработок</code> — полный отчёт по {exchange_count} биржам",
+        "<code>биржи сброс</code> — сбросить paper-счета",
         "<code>баланс кракен</code> — реальный баланс"
     ])
 
@@ -1568,7 +1691,7 @@ def format_multi_exchange_demo_report(report: Dict[str, Any]) -> str:
 
 
 def generate_crypto_pnl_chart(report: Dict[str, Any], output_path: str = "/tmp/crypto_pnl_chart.png") -> str:
-    """Генерирует дашборд-график PnL и распределения активов по 5 биржам в формате PNG."""
+    """Генерирует график PnL по настроенным paper-биржам."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -1586,13 +1709,13 @@ def generate_crypto_pnl_chart(report: Dict[str, Any], output_path: str = "/tmp/c
     ax1.bar(x, cashes, color="#3b82f6", width=0.4, alpha=0.6, label="Cash ($)")
     ax1.set_xticks(x)
     ax1.set_xticklabels(labels, rotation=15, fontsize=9)
-    ax1.set_title("Equity Distribution across 5 Exchanges ($5,000)", fontsize=11, fontweight="bold", pad=10)
+    ax1.set_title(f"Equity Distribution across {len(labels)} Exchanges", fontsize=11, fontweight="bold", pad=10)
     ax1.set_ylabel("USD ($)")
     ax1.legend(loc="lower right", fontsize=8)
     ax1.grid(axis="y", linestyle="--", alpha=0.3)
 
-    tot_cash = report.get("total_cash_usd", 5000.0)
-    tot_pos_val = report.get("total_equity_usd", 5000.0) - tot_cash
+    tot_cash = report.get("total_cash_usd", 10000.0)
+    tot_pos_val = report.get("total_equity_usd", 10000.0) - tot_cash
     pie_labels = ["Free Cash", "Active Positions"]
     pie_vals = [max(0.1, tot_cash), max(0.1, tot_pos_val)]
     colors = ["#3b82f6", "#f59e0b"]
@@ -1608,9 +1731,9 @@ def generate_crypto_pnl_chart(report: Dict[str, Any], output_path: str = "/tmp/c
 
 
 def format_positions_only_report(report: Dict[str, Any]) -> str:
-    """Форматирует детальный отчёт обо всех открытых позициях на 5 биржах с ограничением длины для Telegram."""
+    """Форматирует позиции по всем настроенным paper-биржам."""
     exchanges = report.get("exchanges", {})
-    lines = ["💼 <b>Сводка открытых позиций по 5 биржам AIOS:</b>", ""]
+    lines = [f"💼 <b>Сводка открытых позиций по {len(exchanges)} биржам AIOS:</b>", ""]
     total_pos = 0
 
     for ex_key, ex_data in exchanges.items():
@@ -1642,7 +1765,7 @@ def format_positions_only_report(report: Dict[str, Any]) -> str:
 
 
 def analyze_single_asset_360(symbol: str) -> Dict[str, Any]:
-    """Проводит 360-градусный ИИ-анализ выбранной криптовалюты по 5 биржам, индикаторам, стакану и сентименту."""
+    """Проводит анализ актива по доступным источникам котировок и индикаторам."""
     clean_sym = symbol.upper().replace("USD", "").replace("USDT", "").replace("BTC-", "").replace("KRAKEN_", "")
 
     from aios_core.quant_trading_engine import MultiExchangeQuantEngine, QuantSignalEngine
@@ -1841,14 +1964,14 @@ def format_backtest_report(data: Dict[str, Any]) -> str:
 
 
 def export_crypto_excel_report(report: Dict[str, Any], output_path: str = "/tmp/AIOS_Crypto_Report.xlsx") -> str:
-    """Генерирует профессиональный бухгалтерский отчёт .xlsx по 5 биржам и открытым позициям."""
+    """Генерирует бухгалтерский .xlsx по всем настроенным paper-биржам."""
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment
 
     wb = openpyxl.Workbook()
 
     ws1 = wb.active
-    ws1.title = "Сводка Портфеля $5,000"
+    ws1.title = "Сводка портфеля"
 
     title_font = Font(name="Arial", size=14, bold=True, color="FFFFFF")
     header_font = Font(name="Arial", size=11, bold=True, color="FFFFFF")
@@ -1857,7 +1980,7 @@ def export_crypto_excel_report(report: Dict[str, Any], output_path: str = "/tmp/
     accent_fill = PatternFill(start_color="111827", end_color="111827", fill_type="solid")
 
     ws1.merge_cells("A1:E1")
-    ws1["A1"] = "AIOS — Отчёт Мульти-Биржевого Крипто-Заработка ($5,000 Демо)"
+    ws1["A1"] = f"AIOS — Paper Trading: {len(report.get('exchanges', {}))} бирж"
     ws1["A1"].font = title_font
     ws1["A1"].fill = accent_fill
     ws1["A1"].alignment = Alignment(horizontal="center", vertical="center")
@@ -1915,7 +2038,7 @@ def export_crypto_excel_report(report: Dict[str, Any], output_path: str = "/tmp/
 
 
 def get_ai_portfolio_advice(data_dir: str = "/root/AIOS/data") -> Dict[str, Any]:
-    """Генерирует ИИ-совет по ребалансировке и оптимизации рисков портфеля $5,000."""
+    """Генерирует ИИ-совет по paper-портфелю."""
     report = get_multi_exchange_demo_report(data_dir=data_dir)
     exchanges = report.get("exchanges", {})
 
@@ -1928,13 +2051,13 @@ def get_ai_portfolio_advice(data_dir: str = "/root/AIOS/data") -> Dict[str, Any]
     from aios_core.llm_balancer import LLMBalancer
     balancer = LLMBalancer()
 
-    eq = report.get("total_equity_usd", 5000.0)
-    cash = report.get("total_cash_usd", 5000.0)
+    eq = report.get("total_equity_usd", 10000.0)
+    cash = report.get("total_cash_usd", 10000.0)
     pnl = report.get("grand_total_pnl_usd", 0.0)
     top_pos = ", ".join(pos_summary[:10])
 
     prompt = (
-        f"Ты — шеф-управляющий портфелем $5,000 AIOS. Капитал ${eq:.2f}, кэш ${cash:.2f}, PnL ${pnl:.2f}. "
+        f"Ты — шеф-управляющий paper-портфелем AIOS. Капитал ${eq:.2f}, кэш ${cash:.2f}, PnL ${pnl:.2f}. "
         f"Позиции: {top_pos}. "
         f"Дай 3 коротких практических совета по оптимизации рисков и ребалансировке."
     )
@@ -1953,10 +2076,10 @@ def format_portfolio_advice_report(data: Dict[str, Any]) -> str:
     adv = data.get("advice_text", "")
 
     lines = [
-        "🧠 <b>ИИ-Советник по Оптимизации Портфеля AIOS ($5,000)</b>",
+        "🧠 <b>ИИ-Советник по Оптимизации Paper-Портфеля AIOS</b>",
         "━━━━━━━━━━━━━━━━━━━━━",
-        f"📊 <b>Текущий капитал:</b> <b>${rep.get('total_equity_usd', 5000.0):,.2f} USD</b>",
-        f"💳 <b>Свободный кэш:</b> ${rep.get('total_cash_usd', 5000.0):,.2f} USD",
+        f"📊 <b>Текущий капитал:</b> <b>${rep.get('total_equity_usd', 10000.0):,.2f} USD</b>",
+        f"💳 <b>Свободный кэш:</b> ${rep.get('total_cash_usd', 10000.0):,.2f} USD",
         f"📈 <b>Результат (PnL):</b> <b>${rep.get('grand_total_pnl_usd', 0.0):.2f} USD</b>",
         "",
         "💡 <b>Рекомендации ИИ-Управляющего:</b>",

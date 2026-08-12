@@ -108,18 +108,18 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ Ошибка Android Mesh: {e}")
         return True
 
-    # 0. Сброс всех 5 демо-счетов по $1,000 ($5,000)
+    # 0. Сброс всех настроенных paper-счетов
     if any(phrase in t for phrase in ("сбрось демо", "сбросить демо", "5 бирж сброс", "сбросить 5 бирж", "сброс 5 бирж", "кракен демо сброс", "сброс демо")):
         from aios_core.quant_trading_engine import reset_multi_exchange_demo
         if reset_multi_exchange_demo():
-            api.send_message(chat_id, "✅ <b>Все 5 демонстрационных счетов (Kraken, Binance, Bybit, OKX, Uniswap V3) успешно сброшены на $1,000.00 USD каждый ($5,000.00 USD всего)!</b>")
+            api.send_message(chat_id, "✅ <b>Все настроенные paper-счета успешно сброшены.</b>")
         else:
             api.send_message(chat_id, "❌ Не удалось сбросить мульти-биржевые демонстрационные счета.")
         return True
 
     # Запрос генерации Excel-отчёта по крипто-портфелю
     if any(phrase in t for phrase in ("крипто эксель", "крипто excel", "excel отчёт", "excel отчет", "скачать эксель", "скачать excel")):
-        api.send_message(chat_id, "📊 <b>Генерирую детальный бухгалтерский Excel-отчёт .xlsx по 5 биржам...</b>")
+        api.send_message(chat_id, "📊 <b>Генерирую бухгалтерский Excel-отчёт по всем paper-биржам...</b>")
         try:
             from aios_core.quant_trading_engine import (
                 get_multi_exchange_demo_report,
@@ -127,7 +127,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             )
             rep = get_multi_exchange_demo_report()
             excel_file = export_crypto_excel_report(rep)
-            api.send_document(chat_id, excel_file, caption="📊 <b>Бухгалтерский Excel-отчёт по 5 биржам AIOS ($5,000 Демо)</b>")
+            api.send_document(chat_id, excel_file, caption="📊 <b>Бухгалтерский отчёт по всем paper-биржам AIOS</b>")
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка экспорта Excel-отчёта: {e}")
         return True
@@ -185,7 +185,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
 
     # Запрос ИИ-совета по ребалансировке и оптимизации портфеля
     if any(phrase in t for phrase in ("совет по портфелю", "ребалансировка", "совет портфель", "совет трейдеру", "оптимизация рисков")):
-        api.send_message(chat_id, "🧠 <b>Запускаю ИИ-анализ портфеля $5,000 и генерацию советов по ребалансировке...</b>")
+        api.send_message(chat_id, "🧠 <b>Запускаю ИИ-анализ paper-портфеля...</b>")
         try:
             from aios_core.quant_trading_engine import (
                 get_ai_portfolio_advice,
@@ -234,7 +234,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
 
     # Запрос графика PnL и распределения активов
     if any(phrase in t for phrase in ("крипто график", "график крипто", "график бирж", "pnl график", "покажи график")):
-        api.send_message(chat_id, "📊 <b>Генерирую визуальный дашборд-график PnL и распределения по 5 биржам...</b>")
+        api.send_message(chat_id, "📊 <b>Генерирую PnL-график по всем paper-биржам...</b>")
         try:
             from aios_core.quant_trading_engine import (
                 get_multi_exchange_demo_report,
@@ -242,14 +242,14 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             )
             report = get_multi_exchange_demo_report()
             chart_file = generate_crypto_pnl_chart(report)
-            api.send_photo(chat_id, chart_file, caption="📊 <b>Дашборд распределения капитала и PnL по 5 биржам ($5,000 Демо)</b>")
+            api.send_photo(chat_id, chart_file, caption="📊 <b>Дашборд капитала и PnL по всем paper-биржам</b>")
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка генерации графика: {e}")
         return True
 
     # Запрос открытых позиций
     if any(phrase in t for phrase in ("крипто позиции", "позиции крипто", "все позиции", "покажи позиции")):
-        api.send_message(chat_id, "💼 <b>Запрашиваю список открытых позиций по 5 биржам...</b>")
+        api.send_message(chat_id, "💼 <b>Запрашиваю позиции по всем paper-биржам...</b>")
         try:
             from aios_core.quant_trading_engine import (
                 get_multi_exchange_demo_report,
@@ -262,7 +262,7 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ Ошибка получения позиций: {e}")
         return True
 
-    # Отчет мульти-биржевого крипто-заработка (5 бирж по $1,000 = $5,000 Демо)
+    # Отчёт мультибиржевого paper-trading
     if any(phrase in t for phrase in (
         "крипто заработок", "заработок", "крипто отчёт", "крипто отчет", "крипто сводка",
         "трейдинг", "сигналы", "квант", "торговля", "paper trading",
@@ -270,20 +270,16 @@ def _handle_treasury_intent(api, chat_id: int, text: str) -> bool:
         "заработок кракен", "кракен заработок", "кракен трейдинг", "демо",
         "5 бирж", "мульти биржа", "межбиржа", "арбитраж бирж"
     )):
-        api.send_message(chat_id, "🏛️ <b>Запрашиваю показатели мульти-биржевого крипто-заработка (5 бирж по $1,000)...</b>")
+        api.send_message(chat_id, "🏛️ <b>Запрашиваю прозрачный отчёт мультибиржевого paper-trading...</b>")
         try:
             from aios_core.quant_trading_engine import (
-                MultiExchangeQuantEngine,
                 get_multi_exchange_demo_report,
                 format_multi_exchange_demo_report
             )
             from tg_bot.keyboards import CRYPTO_ACTIONS_INLINE
-            try:
-                engine = MultiExchangeQuantEngine()
-                engine.run_multi_exchange_cycle()
-            except Exception:
-                pass
 
+            # Формирование отчёта должно быть read-only: торговые циклы запускает
+            # только плановый daemon, а не пользовательский запрос Telegram.
             report = get_multi_exchange_demo_report()
             msg_text = format_multi_exchange_demo_report(report)
             api.send_message(chat_id, msg_text, reply_markup=CRYPTO_ACTIONS_INLINE)
