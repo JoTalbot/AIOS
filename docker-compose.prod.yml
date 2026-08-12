@@ -255,6 +255,7 @@ services:
   aios-telegram-bot:
     <<: *aios-image
     container_name: aios-telegram-bot
+    profiles: ["bot"]
     command: ["python", "run_telegram_bot.py"]
     environment:
       CREDENTIALS_DIRECTORY: /run/secrets
