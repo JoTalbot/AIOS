@@ -10,7 +10,7 @@ websockets
 grpcio
 graphql-core
 PyJWT
-cryptography>=42,<46
+cryptography>=50,<51
 opencv-python-headless
 aiosqlite
 asyncpg

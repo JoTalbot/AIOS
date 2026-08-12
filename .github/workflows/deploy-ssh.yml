@@ -14,8 +14,31 @@ permissions:
   contents: read
 
 jobs:
+  check-secrets:
+    name: Check SSH deploy secrets
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - name: Verify required secrets exist
+        id: check
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          if [ -n "$SSH_PRIVATE_KEY" ] && [ -n "$SSH_HOST" ] && [ -n "$SSH_PORT" ] && [ -n "$SSH_USER" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "SSH deploy secrets are not configured; skipping redundant pull workflow."
+          fi
+
   deploy:
     name: Pull main on VPS
+    needs: check-secrets
+    if: needs.check-secrets.outputs.configured == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

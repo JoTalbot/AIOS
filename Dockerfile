@@ -24,9 +24,10 @@ RUN apt-get update \
 COPY requirements.txt requirements.lock ./
 
 # Pin pip too: an unbounded installer upgrade makes otherwise locked builds drift.
-RUN python -m pip install --upgrade pip==26.2.1 \
+RUN python -m pip install --upgrade pip==26.2.1 setuptools==84.0.0 wheel==0.46.3 \
     && python -m pip install -r requirements.lock \
        --extra-index-url https://download.pytorch.org/whl/cpu \
+    && python -m pip install --upgrade setuptools==84.0.0 wheel==0.46.3 \
     && python -m pip check
 
 COPY . .
