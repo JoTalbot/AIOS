@@ -366,7 +366,12 @@ class QuantSignalEngine:
 
 
 class PaperTradingSimulator:
-    """Симулятор бумажной торговли с учетом рисков."""
+    """Симулятор бумажной торговли с учетом комиссий и рисков."""
+
+    # Консервативная оценка taker fee на каждой стороне сделки.
+    FEE_RATE = 0.0015
+    MAX_OPEN_POSITIONS = 5
+    MIN_CASH_RESERVE_PCT = 0.30
 
     def __init__(self, data_dir: str = "/root/AIOS/data", portfolio_filename: str = "paper_portfolio.json", initial_balance: float = 1000.0):
         # Умное разрешение путей (Docker/Host)
@@ -422,15 +427,29 @@ class PaperTradingSimulator:
 
         # 1. Покупка (BUY_LONG)
         if signal == "BUY_LONG" and not pos:
+            max_positions = self.MAX_OPEN_POSITIONS if is_kraken else 5
+            cash_reserve = (
+                port.get("initial_balance_usd", self.initial_balance) * self.MIN_CASH_RESERVE_PCT
+            )
+            if len(positions) >= max_positions or port.get("cash_usd", 0.0) <= cash_reserve:
+                return {
+                    "trade": {"executed": False, "details": "Риск-фильтр: лимит позиций или резерв cash"},
+                    "portfolio_summary": {
+                        "cash_usd": round(port.get("cash_usd", 0.0), 2),
+                        "open_positions": len(positions),
+                    },
+                }
             buy_amount_usd = min(port["cash_usd"] * 0.20, max_trade_usd)
             if buy_amount_usd >= 2.0:
-                asset_qty = buy_amount_usd / price
+                fee_usd = buy_amount_usd * self.FEE_RATE
+                asset_qty = (buy_amount_usd - fee_usd) / price
                 port["cash_usd"] -= buy_amount_usd
                 positions[symbol] = {
                     "side": "LONG",
                     "entry_price": price,
                     "qty": asset_qty,
                     "invested_usd": buy_amount_usd,
+                    "entry_fee_usd": round(fee_usd, 8),
                     "opened_at": time.time()
                 }
                 port["positions"] = positions
@@ -454,7 +473,9 @@ class PaperTradingSimulator:
             qty = pos["qty"]
             invested = pos["invested_usd"]
             current_value = qty * price
-            pnl_usd = current_value - invested
+            exit_fee_usd = current_value * self.FEE_RATE
+            net_current_value = current_value - exit_fee_usd
+            pnl_usd = net_current_value - invested
             pnl_pct = (pnl_usd / invested) * 100.0
             
             # Обновляем максимальную зафиксированную цену для трейлинга
@@ -483,7 +504,7 @@ class PaperTradingSimulator:
                 close_reason = "🔴 Сигнал SELL_SHORT (медвежье пересечение SMA/RSI)"
 
             if should_close:
-                port["cash_usd"] += current_value
+                port["cash_usd"] += net_current_value
                 port["realized_pnl_usd"] += pnl_usd
                 del positions[symbol]
                 port["positions"] = positions
@@ -504,7 +525,8 @@ class PaperTradingSimulator:
                     "entry_price": entry_price,
                     "exit_price": price,
                     "pnl_usd": round(pnl_usd, 2),
-                    "pnl_pct": round(pnl_pct, 2)
+                    "pnl_pct": round(pnl_pct, 2),
+                    "fees_usd": round(pos.get("entry_fee_usd", 0.0) + exit_fee_usd, 8)
                 }
                 logger.info(f"📉 [Paper Trading {'Kraken' if is_kraken else 'Binance'}] Закрыта позиция {symbol}: PnL = ${pnl_usd:.2f} ({pnl_pct:.2f}%) | {close_reason}")
                 icon = "🎯" if pnl_usd > 0 else "🛑"
@@ -1014,6 +1036,11 @@ def format_unified_crypto_earnings_report(report: Dict[str, Any]) -> str:
 class MultiExchangeQuantEngine:
     """Paper-trading по нескольким биржам; арбитражные спрэды — только сигналы, не прибыль."""
 
+    FEE_RATE = 0.0015
+    MIN_NET_ARBITRAGE_SPREAD_PCT = 0.60
+    MAX_OPEN_POSITIONS_PER_EXCHANGE = 5
+    MIN_CASH_RESERVE_PCT = 0.30
+
     EXCHANGES = ["kraken", "binance", "bybit", "okx", "uniswap_v3", "coinbase", "kucoin", "bitfinex", "bitstamp", "mexc"]
     INITIAL_PER_EXCHANGE = 1000.0
 
@@ -1263,15 +1290,25 @@ class MultiExchangeQuantEngine:
 
                 # Покупка
                 if sig == "BUY_LONG" and not pos:
+                    cash_reserve = (
+                        ex_port.get("initial_balance_usd", self.INITIAL_PER_EXCHANGE) * self.MIN_CASH_RESERVE_PCT
+                    )
+                    if (
+                        len(positions) >= self.MAX_OPEN_POSITIONS_PER_EXCHANGE
+                        or ex_port.get("cash_usd", 0.0) <= cash_reserve
+                    ):
+                        continue
                     max_invest = min(ex_port["cash_usd"] * 0.20, 200.0)
                     if max_invest >= 10.0:
-                        qty = max_invest / price
+                        entry_fee = max_invest * self.FEE_RATE
+                        qty = (max_invest - entry_fee) / price
                         ex_port["cash_usd"] -= max_invest
                         positions[pos_key] = {
                             "side": "LONG",
                             "entry_price": price,
                             "qty": qty,
                             "invested_usd": max_invest,
+                            "entry_fee_usd": round(entry_fee, 8),
                             "opened_at": time.time()
                         }
                         ex_port["positions"] = positions
@@ -1284,11 +1321,13 @@ class MultiExchangeQuantEngine:
                     qty = pos["qty"]
                     invested = pos["invested_usd"]
                     curr_val = qty * price
-                    pnl_usd = curr_val - invested
+                    exit_fee = curr_val * self.FEE_RATE
+                    net_curr_val = curr_val - exit_fee
+                    pnl_usd = net_curr_val - invested
                     pnl_pct = (pnl_usd / invested * 100.0) if invested > 0 else 0.0
 
                     if pnl_pct >= 2.0 or pnl_pct <= -1.0 or sig == "SELL_SHORT":
-                        ex_port["cash_usd"] += curr_val
+                        ex_port["cash_usd"] += net_curr_val
                         ex_port["realized_pnl_usd"] += pnl_usd
                         del positions[pos_key]
                         ex_port["positions"] = positions
@@ -1368,9 +1407,9 @@ class MultiExchangeQuantEngine:
                 p_high = comparable[max_ex]
                 spread_pct = ((p_high - p_low) / p_low) * 100.0
 
-                if spread_pct >= 0.5:
+                if spread_pct >= (self.MIN_NET_ARBITRAGE_SPREAD_PCT + 2 * self.FEE_RATE * 100):
                     arb_trade_usd = 100.0
-                    net_spread_pct = spread_pct - 0.15
+                    net_spread_pct = spread_pct - (2 * self.FEE_RATE * 100) - 0.20
                     arb_pnl = (arb_trade_usd * net_spread_pct) / 100.0
 
                     scan_opportunities += 1

@@ -111,7 +111,7 @@ def test_scan_migrates_legacy_accumulator_without_new_income(monkeypatch, tmp_pa
     assert arb["settled_trades"] == 0
     assert arb["settled_pnl_usd"] == 0.0
     assert arb["last_scan_opportunities"] == 1
-    assert arb["last_scan_theoretical_pnl_usd"] == pytest.approx(0.85)
+    assert arb["last_scan_theoretical_pnl_usd"] == pytest.approx(0.50)
     assert arb["history"][-1]["executed"] is False
     assert arb["history"][-1]["kind"] == "theoretical_opportunity"
     assert arb["history"][-1]["quote_currency"] == "USDT"
