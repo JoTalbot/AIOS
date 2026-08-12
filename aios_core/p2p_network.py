@@ -13,13 +13,15 @@ import os
 import socket
 
 from fastapi import FastAPI, HTTPException
+
+from aios_core import __version__ as AIOS_VERSION
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="AIOS P2P Node",
-    version="22.0.0",
+    version=AIOS_VERSION,
     description="Облегчённый демонстрационный API AIOS для Fly.io.",
 )
 

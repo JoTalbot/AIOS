@@ -6,6 +6,8 @@ This brings ``app.py`` under 300 lines — just the class skeleton + lifecycle.
 
 from __future__ import annotations
 
+from aios_core import __version__ as AIOS_VERSION
+
 import json
 import os
 from datetime import datetime, timezone
@@ -879,7 +881,7 @@ class CoreHandlersMixin:
             return JSONResponse(
                 {
                     "status": "ok",
-                    "version": "9.0.0",
+                    "version": AIOS_VERSION,
                     "constitution_articles": stats.get("constitution_articles", 0),
                     "memory_items": stats.get("memory_items", 0),
                     "active_tasks": stats.get("active_tasks", 0),
@@ -887,7 +889,7 @@ class CoreHandlersMixin:
                 }
             )
         except Exception:
-            return JSONResponse({"status": "ok", "version": "9.0.0"})
+            return JSONResponse({"status": "ok", "version": AIOS_VERSION})
 
     async def _metrics(self, request: Request) -> JSONResponse:
         """Prometheus-compatible metrics endpoint.

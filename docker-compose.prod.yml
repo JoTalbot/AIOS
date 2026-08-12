@@ -1,4 +1,4 @@
-# AIOS Production Stack — v9.3.1
+# AIOS Production Stack — v19.9.0
 # Services: API, MCP, Dashboard, Autopilot, Telegram Bot, Prometheus, Grafana
 #
 # Usage:
@@ -8,14 +8,21 @@
 # Environment (.env or shell):
 #   AIOS_API_KEYS and GRAFANA_PASSWORD; Telegram uses /etc/aios/credentials
 
+x-aios-image: &aios-image
+  image: aios:19.9.0
+  build:
+    context: .
+
 services:
   aios-api:
-    build: .
+    <<: *aios-image
     container_name: aios-api
+    command: ["python", "run_rest_api.py", "--host", "0.0.0.0", "--port", "8000", "--db", "/app/data/aios.sqlite"]
     ports: ["127.0.0.1:8000:8000"]
     environment:
       AIOS_API_KEYS: ${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
-      AIOS_API_AUTH_REQUIRED: ${AIOS_API_AUTH_REQUIRED:-0}
+      AIOS_API_AUTH_REQUIRED: ${AIOS_API_AUTH_REQUIRED:-1}
+      AIOS_MAIN_DB: /app/data/aios.sqlite
       AIOS_PROFILES_DB: /app/data/profiles.sqlite
       AIOS_DEVICES_DB: /app/data/devices.sqlite
       AIOS_SHARDS_DB: /app/data/shards.sqlite
@@ -41,9 +48,14 @@ services:
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
       - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
     init: true
+    user: "65534:65534"
+    read_only: true
     cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777
     security_opt:
       - no-new-privileges:true
+    stop_grace_period: 30s
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -60,8 +72,72 @@ services:
       options: {max-size: "50m", max-file: "3"}
     networks: [aios-net]
 
+  aios-p2p:
+    <<: *aios-image
+    container_name: aios-p2p
+    command: ["python", "-m", "uvicorn", "aios_core.p2p_network:app", "--host", "0.0.0.0", "--port", "8001"]
+    init: true
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 20s
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 256M}
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+    networks: [aios-net]
+
+  aios-commercial:
+    <<: *aios-image
+    container_name: aios-commercial
+    command: ["python", "scripts/run_commercial_daemon.py"]
+    environment:
+      CREDENTIALS_DIRECTORY: /run/secrets
+      AIOS_COMMERCIAL_INTERVAL: ${AIOS_COMMERCIAL_INTERVAL:-3600}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GITHUB_API_KEY: ${GITHUB_API_KEY:-}
+      LLM_API_KEY: ${LLM_API_KEY:-${OPENROUTER_API_KEY:-}}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.ai/api/v1}
+      LLM_MODEL: ${LLM_MODEL:-anthropic/claude-3.5-sonnet}
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - aios-data:/app/data
+      - aios-logs:/app/logs
+      - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
+    init: true
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 45s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: {cpus: "0.75", memory: 768M}
+    logging:
+      driver: json-file
+      options: {max-size: "20m", max-file: "3"}
+    networks: [aios-net]
+
   aios-mcp:
-    build: .
+    <<: *aios-image
     container_name: aios-mcp
     command: ["python", "run_mcp_server.py", "--host", "0.0.0.0", "--port", "8471", "--db", "/app/data/aios.sqlite"]
     ports: ["127.0.0.1:8471:8471"]
@@ -78,9 +154,14 @@ services:
     depends_on:
       aios-api: {condition: service_healthy}
     init: true
+    user: "65534:65534"
+    read_only: true
     cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777
     security_opt:
       - no-new-privileges:true
+    stop_grace_period: 30s
     restart: unless-stopped
     deploy:
       resources:
@@ -92,7 +173,7 @@ services:
     networks: [aios-net]
 
   aios-dashboard:
-    build: .
+    <<: *aios-image
     container_name: aios-dashboard
     command: ["python", "run_dashboard_nicegui.py"]
     ports:
@@ -108,9 +189,14 @@ services:
     depends_on:
       aios-api: {condition: service_healthy}
     init: true
+    user: "65534:65534"
+    read_only: true
     cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777
     security_opt:
       - no-new-privileges:true
+    stop_grace_period: 30s
     restart: unless-stopped
     deploy:
       resources:
@@ -121,7 +207,7 @@ services:
     networks: [aios-net]
 
   aios-autopilot:
-    build: .
+    <<: *aios-image
     container_name: aios-autopilot
     command: ["python", "run_production_autopilot.py", "--daemon", "--interval", "900"]
     environment:
@@ -143,9 +229,14 @@ services:
     depends_on:
       aios-api: {condition: service_healthy}
     init: true
+    user: "65534:65534"
+    read_only: true
     cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777
     security_opt:
       - no-new-privileges:true
+    stop_grace_period: 30s
     restart: unless-stopped
     deploy:
       resources:
@@ -157,7 +248,7 @@ services:
     networks: [aios-net]
 
   aios-telegram-bot:
-    build: .
+    <<: *aios-image
     container_name: aios-telegram-bot
     command: ["python", "run_telegram_bot.py"]
     environment:
@@ -180,9 +271,14 @@ services:
       - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
       - /etc/aios/credentials/telegram_queue_key:/run/secrets/telegram_queue_key:ro
     init: true
+    user: "65534:65534"
+    read_only: true
     cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777
     security_opt:
       - no-new-privileges:true
+    stop_grace_period: 30s
     restart: unless-stopped
     deploy:
       resources:

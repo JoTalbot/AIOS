@@ -19,11 +19,18 @@ import uvicorn
 from aios_core.api.app import create_app
 
 
+def _env_flag(name: str, default: bool = True) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def main():
     parser = argparse.ArgumentParser(description="AIOS REST API Server")
     parser.add_argument("--host", default="127.0.0.1", help="Host to bind to")
     parser.add_argument("--port", default=8000, type=int, help="Port to bind to")
-    parser.add_argument("--db", default="aios.sqlite", help="Database path (default: aios.sqlite)")
+    parser.add_argument("--db", default=os.environ.get("AIOS_MAIN_DB", os.environ.get("AIOS_DB_PATH", "aios.sqlite")), help="Database path")
     parser.add_argument("--constitution-dir", default=None, help="Constitution directory")
     parser.add_argument("--policies-dir", default=None, help="Policies directory")
     args = parser.parse_args()
@@ -44,6 +51,8 @@ def main():
         db_path=args.db,
         constitution_dir=constitution_dir,
         policies_dir=policies_dir,
+        auth_required=_env_flag("AIOS_API_AUTH_REQUIRED", default=True),
+        api_keys=None,
     )
 
     try:
@@ -71,6 +80,8 @@ def _get_app():
             db_path=db_path,
             constitution_dir=const_dir,
             policies_dir=pol_dir,
+            auth_required=_env_flag("AIOS_API_AUTH_REQUIRED", default=True),
+            api_keys=None,
         )
     return _app
 
