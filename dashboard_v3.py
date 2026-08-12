@@ -194,6 +194,31 @@ def _llm_keys() -> dict:
     return out
 
 
+def _llm_usage() -> dict:
+    """Агрегированная статистика из usage.jsonl (за сутки)."""
+    out = {"calls": 0, "tokens": 0, "by_provider": {}}
+    log = ROOT / "data" / "llm" / "usage.jsonl"
+    if not log.exists():
+        return out
+    import time as _t
+    day_ago = _t.time() - 86400
+    for line in log.read_text(encoding="utf-8").splitlines():
+        try:
+            rec = json.loads(line)
+        except Exception:
+            continue
+        if (rec.get("ts") or 0) < day_ago:
+            continue
+        out["calls"] += 1
+        tok = int(rec.get("total_tokens") or 0)
+        out["tokens"] += tok
+        prov = str(rec.get("provider") or "?")
+        pr = out["by_provider"].setdefault(prov, {"calls": 0, "tokens": 0})
+        pr["calls"] += 1
+        pr["tokens"] += tok
+    return out
+
+
 def build() -> None:
     ui.page_title("AIOS Dashboard")
     with ui.header().classes("bg-blue-900"):
@@ -517,6 +542,28 @@ def build() -> None:
     except Exception as e:
         pass
 
+
+
+    # LLM-расход за сутки
+    try:
+        usage = _llm_usage()
+        if usage.get("calls"):
+            with ui.card().classes("w-full border-l-4 border-cyan-500"):
+                ui.label("📈 LLM-расход (24ч)").classes("text-lg font-bold")
+                with ui.row().classes("w-full gap-4"):
+                    with ui.card().classes("min-w-36 bg-slate-50"):
+                        ui.label("Вызовов").classes("text-xs text-gray-500")
+                        ui.label(f"{usage['calls']:,}").classes("text-xl font-bold")
+                    with ui.card().classes("min-w-36 bg-slate-50"):
+                        ui.label("Токенов").classes("text-xs text-gray-500")
+                        ui.label(f"{usage['tokens']:,}").classes("text-xl font-bold")
+                    for prov, info in sorted(usage["by_provider"].items())[:5]:
+                        with ui.card().classes("min-w-32 bg-slate-50"):
+                            ui.label(prov).classes("text-xs text-gray-500")
+                            ui.label(f"{info['tokens']:,}").classes("text-lg font-bold")
+                            ui.label(f"{info['calls']} вызовов").classes("text-xs")
+    except Exception:
+        pass
 
     # LLM-провайдеры и ключи
     try:

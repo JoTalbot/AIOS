@@ -85,6 +85,39 @@ class Provider:
     # когда падает последний стоящий ключ, не долбимся в провайдера ещё 240с.
     account_cooldown_until: float = 0.0
 
+    def _notify_all_keys_dead(self) -> None:
+        """Telegram-алерт при полном исчерпании ключей провайдера (не чаще раза в 4ч)."""
+        if self.name != "groq":
+            return
+        try:
+            _last = float(os.environ.get("_AIOS_GROQ_DEAD_ALERT_TS", "0") or 0)
+            if time.time() - _last < 14400:
+                return
+            os.environ["_AIOS_GROQ_DEAD_ALERT_TS"] = str(time.time())
+            _root = Path(__file__).resolve().parents[1]
+            _token = ""
+            _chat = ""
+            for line in (_root / ".env").read_text(encoding="utf-8").splitlines():
+                if line.strip().startswith("TELEGRAM_BOT_TOKEN="):
+                    _token = line.split("=", 1)[1].strip().strip('"').strip("'")
+                if line.strip().startswith("TELEGRAM_CHAT_ID="):
+                    _chat = line.split("=", 1)[1].strip().strip('"').strip("'")
+            if not _token or not _chat:
+                return
+            import json as _json
+            _payload = _json.dumps({
+                "chat_id": int(_chat),
+                "text": "🚨 <b>Groq: все ключи в cooldown!</b>\nПополните/создайте ключи:\n<code>python tools/make_groq_keys.py 4 aios-server &lt;2captcha_key&gt; &lt;org&gt; &lt;project&gt;</code>",
+                "parse_mode": "HTML",
+            }).encode()
+            import urllib.request as _ur
+            _req = _ur.Request(f"https://api.telegram.org/bot{_token}/sendMessage", data=_payload,
+                               headers={"Content-Type": "application/json"})
+            with _ur.urlopen(_req, timeout=15):
+                pass
+        except Exception:
+            pass
+
     def get_next_key(self) -> APIKey | None:
         with self._lock:
             if time.time() < self.account_cooldown_until:
@@ -145,7 +178,6 @@ class LLMBalancer:
         "gemini": {
             "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
             "models": [
-                "gemini-2.0-flash",
                 "gemini-2.5-flash",
                 "gemini-2.5-pro",
             ],
@@ -274,7 +306,7 @@ class LLMBalancer:
         "meta-llama/llama-4-maverick": [
             "llama-3.3-70b-versatile",
             "llama-3.1-8b-instant",
-            "gemini-2.0-flash",
+            "gemini-2.5-flash",
             "mistralai/mistral-small-3.2-24b-instruct",
             "gpt-4o-mini",
             "deepseek-chat",
@@ -391,13 +423,13 @@ class LLMBalancer:
         # Ollama remain automatic fallbacks when the Colab session is unavailable.
         self.task_priority = {
             "vision": ["gemini", "mistral", "openrouter", "local"],
-            "chat": ["colab", "groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "deepseek", "zai", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "ibm", "local"],
+            "chat": ["colab", "groq", "gemini", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "deepseek", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "ibm", "local"],
             "code": ["colab", "groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "huggingface", "gemini", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
-            "analysis": ["colab", "groq", "cerebras", "github", "gemini", "mistral", "cohere", "together", "nvidia", "huggingface", "openai", "airforce", "openrouter", "local"],
-            "general": ["colab", "groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
+            "analysis": ["colab", "groq", "gemini", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "huggingface", "openai", "airforce", "openrouter", "local"],
+            "general": ["colab", "groq", "gemini", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "ibm", "local"],
             # Планировщик автономии (JSON-структурированный вывод) — приоритет на
             # надёжные модели: groq llama-3.1-8b-instant, затем mistral/gemini/zai.
-            "reasoning": ["colab", "groq", "mistral", "zai", "gemini", "cohere", "deepseek", "openrouter", "local"],
+            "reasoning": ["colab", "groq", "gemini", "mistral", "cohere", "deepseek", "openrouter", "local"],
         }
 
     @property
@@ -875,6 +907,26 @@ class LLMBalancer:
                             "latency_sec": round(time.monotonic() - _request_started, 3),
                             "node_id": best_key.node_id if prov_name == "colab" else "",
                         }
+                        # Usage tracking (v2.4): пишем лог токенов/латентности по вызову
+                        try:
+                            _usage = (data or {}).get("usage") or {}
+                            _usage_log = {
+                                "ts": time.time(),
+                                "provider": prov_name,
+                                "model": req_model,
+                                "key_tail": str(best_key.key)[-6:] if best_key.key else "",
+                                "prompt_tokens": int(_usage.get("prompt_tokens") or 0),
+                                "completion_tokens": int(_usage.get("completion_tokens") or 0),
+                                "total_tokens": int(_usage.get("total_tokens") or 0),
+                                "latency_sec": round(time.monotonic() - _request_started, 3),
+                                "task_type": task_type,
+                            }
+                            _log_dir = Path(__file__).resolve().parents[1] / "data" / "llm"
+                            _log_dir.mkdir(parents=True, exist_ok=True)
+                            with open(_log_dir / "usage.jsonl", "a", encoding="utf-8") as _f:
+                                _f.write(json.dumps(_usage_log, ensure_ascii=False) + "\n")
+                        except Exception:
+                            pass
                         if os.environ.get("LLM_CACHE", "1") == "1":
                             _cache_key = str((system or "", [tuple(sorted(m.items())) for m in messages if isinstance(m, dict) and "role" in m and "content" in m]))
                             if len(self._cache) < self._cache_max:
