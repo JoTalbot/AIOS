@@ -100,12 +100,12 @@ groups:
   - name: aios-telegram-llm
     rules:
       - alert: AIOSTelegramExporterDown
-        expr: up{job="aios-telegram"} == 0
+        expr: max by (job) (up{job="aios-telegram"}) == 0 or absent(up{job="aios-telegram"})
         for: 3m
         labels: {severity: critical}
         annotations:
           summary: "Telegram/LLM metrics exporter is down"
-          description: "The bot process or its metrics endpoint has been unavailable for more than 3 minutes."
+          description: "The metrics endpoint has been unavailable for more than 3 minutes."
 
       - alert: AIOSTelegramCanaryFailed
         expr: aios_telegram_canary_ok == 0
