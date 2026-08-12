@@ -8,7 +8,10 @@ import os
 import signal
 import threading
 
-from run_commercial_pipeline import execute_commercial_mission
+try:
+    from .run_commercial_pipeline import execute_commercial_mission
+except ImportError:  # Direct script execution places /app/scripts on sys.path.
+    from run_commercial_pipeline import execute_commercial_mission
 
 LOG = logging.getLogger("aios.commercial")
 _STOP = threading.Event()
