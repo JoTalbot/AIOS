@@ -241,7 +241,7 @@ def render_telegram_prometheus(hours: float = 24) -> str:
     )
     known_statuses = {
         "outbox": ("pending", "sending", "sent", "failed", "failed_unknown", "resend_queued"),
-        "generation": ("pending", "generating", "completed", "failed"),
+        "generation": ("pending", "generating", "completed", "failed", "dead_letter"),
     }
     for queue_name, db_path, table in queue_specs:
         counts = _sqlite_status_counts(db_path, table)
@@ -269,6 +269,49 @@ def render_telegram_prometheus(hours: float = 24) -> str:
             "# HELP aios_telegram_canary_age_seconds Age of the latest canary result; -1 means absent.",
             "# TYPE aios_telegram_canary_age_seconds gauge",
             f'aios_telegram_canary_age_seconds {age:.3f}',
+        ]
+    )
+
+    alert_state_path = Path(
+        os.environ.get("AIOS_ALERT_CANARY_STATE", "/var/lib/aios-alert-canary/state.json")
+    )
+    try:
+        alert_canary = json.loads(alert_state_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        alert_canary = {}
+    alert_timestamp = float(alert_canary.get("timestamp", 0) or 0)
+    alert_age = max(0.0, time.time() - alert_timestamp) if alert_timestamp else -1.0
+    lines.extend(
+        [
+            "# HELP aios_alertmanager_delivery_canary_ok Whether Alertmanager delivered and deleted the latest silent Telegram canary.",
+            "# TYPE aios_alertmanager_delivery_canary_ok gauge",
+            f'aios_alertmanager_delivery_canary_ok {1 if alert_canary.get("ok") else 0}',
+            "# HELP aios_alertmanager_delivery_canary_age_seconds Age of the latest end-to-end alert canary; -1 means absent.",
+            "# TYPE aios_alertmanager_delivery_canary_age_seconds gauge",
+            f'aios_alertmanager_delivery_canary_age_seconds {alert_age:.3f}',
+            "# HELP aios_alertmanager_delivery_canary_duration_seconds Latest end-to-end alert delivery latency.",
+            "# TYPE aios_alertmanager_delivery_canary_duration_seconds gauge",
+            f'aios_alertmanager_delivery_canary_duration_seconds {float(alert_canary.get("duration_seconds", 0) or 0):.3f}',
+        ]
+    )
+
+    recovery_path = ROOT / "data" / "colab_recovery_metrics.json"
+    try:
+        recovery = json.loads(recovery_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        recovery = {}
+    recovery_mode = _prom_label(recovery.get("mode") or "unknown")
+    lines.extend(
+        [
+            "# HELP aios_colab_recovery_duration_seconds Duration of the latest Colab recovery by mode.",
+            "# TYPE aios_colab_recovery_duration_seconds gauge",
+            f'aios_colab_recovery_duration_seconds{{mode="{recovery_mode}"}} {float(recovery.get("duration_seconds", 0) or 0):.3f}',
+            "# HELP aios_colab_recovery_slo_seconds SLO budget for the latest Colab recovery mode.",
+            "# TYPE aios_colab_recovery_slo_seconds gauge",
+            f'aios_colab_recovery_slo_seconds{{mode="{recovery_mode}"}} {float(recovery.get("slo_seconds", 0) or 0):.3f}',
+            "# HELP aios_colab_recovery_slo_met Whether the latest Colab recovery met its mode-specific SLO.",
+            "# TYPE aios_colab_recovery_slo_met gauge",
+            f'aios_colab_recovery_slo_met{{mode="{recovery_mode}"}} {1 if recovery.get("slo_met") else 0}',
         ]
     )
     return "\n".join(lines) + "\n"

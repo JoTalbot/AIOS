@@ -112,7 +112,11 @@ def _handle_reminder(api, chat_id: int, text: str) -> None:
 
 def _run_due_reminders() -> int:
     """Отправить созревшие напоминания (вызывается по таймеру и при старте бота)."""
-    token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("AIOS_TELEGRAM_TOKEN", "")
+    from tg_bot.credentials import secret_from_env_or_credential
+
+    token = secret_from_env_or_credential(
+        "TELEGRAM_BOT_TOKEN", "AIOS_TELEGRAM_TOKEN", credential="telegram_token"
+    )
     reminders = _load_reminders()
     if not reminders:
         return 0

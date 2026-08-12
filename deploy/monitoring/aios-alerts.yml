@@ -146,3 +146,35 @@ groups:
         annotations:
           summary: "Telegram delivery success ratio below 95%"
           description: "The rolling Telegram delivery success ratio has stayed below the SLO for 10 minutes."
+
+      - alert: AIOSTelegramGenerationDeadLetter
+        expr: aios_telegram_queue_jobs{queue="generation",status="dead_letter"} > 0
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "Telegram generation job moved to dead letter"
+          description: "At least one generation job exhausted bounded retries and needs explicit operator review."
+
+      - alert: AIOSAlertmanagerDeliveryCanaryFailed
+        expr: aios_alertmanager_delivery_canary_ok == 0
+        for: 10m
+        labels: {severity: critical}
+        annotations:
+          summary: "Alertmanager end-to-end Telegram delivery canary failed"
+          description: "The latest synthetic Alertmanager alert was not silently sent and deleted in the owner chat."
+
+      - alert: AIOSAlertmanagerDeliveryCanaryStale
+        expr: aios_alertmanager_delivery_canary_age_seconds < 0 or aios_alertmanager_delivery_canary_age_seconds > 5400
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Alertmanager delivery canary is stale"
+          description: "No successful end-to-end Alertmanager Telegram canary has been recorded for 90 minutes."
+
+      - alert: AIOSColabRecoverySLOMissed
+        expr: aios_colab_recovery_slo_seconds > 0 and aios_colab_recovery_slo_met == 0
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "Latest Colab recovery missed its mode-specific SLO"
+          description: "Inspect the recovery mode and stage timings before the next runtime outage."

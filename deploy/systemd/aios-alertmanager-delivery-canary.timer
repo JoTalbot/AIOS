@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Alertmanager Telegram delivery canary hourly
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+RandomizedDelaySec=5m
+Persistent=true
+Unit=aios-alertmanager-delivery-canary.service
+
+[Install]
+WantedBy=timers.target

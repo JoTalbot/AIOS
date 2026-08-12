@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily encrypted Telegram queue backup
+
+[Timer]
+OnCalendar=*-*-* 03:25:00
+RandomizedDelaySec=10m
+Persistent=true
+Unit=aios-telegram-queue-backup.service
+
+[Install]
+WantedBy=timers.target

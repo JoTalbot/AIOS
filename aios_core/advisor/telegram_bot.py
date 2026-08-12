@@ -25,8 +25,16 @@ class TelegramApprovalBot:
     """Реальный Telegram-бот для одобрения черновиков."""
 
     def __init__(self, bot_token: str | None = None, chat_id: str | None = None):
-        self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN")
-        self.chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID")
+        from tg_bot.credentials import read_systemd_credential, secret_from_env_or_credential
+
+        self.bot_token = bot_token or secret_from_env_or_credential(
+            "TELEGRAM_BOT_TOKEN", "AIOS_TELEGRAM_TOKEN", credential="telegram_token"
+        )
+        self.chat_id = (
+            chat_id
+            or os.getenv("TELEGRAM_CHAT_ID")
+            or read_systemd_credential("telegram_owner_chat_id")
+        )
         self.pending_drafts: dict[str, PendingDraft] = {}
         self.api_base = f"https://api.telegram.org/bot{self.bot_token}"
         self._on_approved: Callable | None = None

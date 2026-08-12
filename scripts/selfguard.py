@@ -57,8 +57,16 @@ _sp_mod = _load_file_module("aios_self_protection_direct", REPO / "aios_core" / 
 WATCH_FILES = _sp_mod.WATCH_FILES
 check_code_health = _sp_mod.check_code_health
 
-TG_TOKEN = os.environ.get("AIOS_TELEGRAM_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TG_CHAT_ID = os.environ.get("AIOS_AUTO_CODER_CHAT_ID") or os.environ.get("TELEGRAM_CHAT_ID", "")
+from tg_bot.credentials import read_systemd_credential, secret_from_env_or_credential  # noqa: E402
+
+TG_TOKEN = secret_from_env_or_credential(
+    "AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token"
+)
+TG_CHAT_ID = (
+    os.environ.get("AIOS_AUTO_CODER_CHAT_ID")
+    or os.environ.get("TELEGRAM_CHAT_ID", "")
+    or read_systemd_credential("telegram_owner_chat_id")
+)
 
 
 def tg_send(text: str) -> None:

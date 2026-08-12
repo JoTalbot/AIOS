@@ -1,0 +1,19 @@
+[Unit]
+Description=Verify latest encrypted Telegram queue backup and key escrow
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/telegram_queue_backup.py --verify-latest
+UMask=0077
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=/root/AIOS/backups /root/aios-secret-backups
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=

@@ -196,3 +196,19 @@ def test_definitive_api_rejection_is_not_failed_unknown(tmp_path, monkeypatch):
     outbox.stop()
     assert row["status"] == "failed"
     assert outbox.list_uncertain() == []
+
+
+def test_outbox_graceful_drain_finishes_pending_send(tmp_path, monkeypatch):
+    monkeypatch.setenv("TELEGRAM_METRICS_ENABLED", "0")
+    api = FakeAPI(delay=0.2)
+    outbox = TelegramOutbox(api, tmp_path / "outbox.sqlite3")
+    outbox.start()
+    assert outbox.enqueue(dedup_key="drain:1", chat_id=7, text="finish")
+    assert outbox.stop(timeout=2, drain=True)
+    assert outbox.get("drain:1")["status"] == "sent"
+    try:
+        outbox.enqueue(dedup_key="drain:2", chat_id=7, text="reject")
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("new sends must be rejected while draining")

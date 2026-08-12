@@ -6,7 +6,7 @@
 #   docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 #
 # Environment (.env or shell):
-#   AIOS_API_KEYS, AIOS_TELEGRAM_TOKEN (optional), GRAFANA_PASSWORD
+#   AIOS_API_KEYS and GRAFANA_PASSWORD; Telegram uses /etc/aios/credentials
 
 services:
   aios-api:
@@ -25,9 +25,7 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:-${OPENROUTER_API_KEY:-}}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.ai/api/v1}
       LLM_MODEL: ${LLM_MODEL:-anthropic/claude-3.5-sonnet}
-      TELEGRAM_BOT_TOKEN: ${AIOS_TELEGRAM_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
-      AIOS_TELEGRAM_TOKEN: ${AIOS_TELEGRAM_TOKEN:-}
+      CREDENTIALS_DIRECTORY: /run/secrets
       OLX_CLIENT_ID: ${OLX_CLIENT_ID:-}
       OLX_CLIENT_SECRET: ${OLX_CLIENT_SECRET:-}
       OLX_ACCESS_TOKEN: ${OLX_ACCESS_TOKEN:-}
@@ -41,6 +39,7 @@ services:
       - aios-data:/app/data
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
+      - /etc/aios/credentials/telegram_token:/run/secrets/telegram_token:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -121,8 +120,7 @@ services:
       AIOS_WEBHOOK_URL: ${AIOS_WEBHOOK_URL:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       GITHUB_API_KEY: ${GITHUB_API_KEY:-}
-      TELEGRAM_BOT_TOKEN: ${AIOS_TELEGRAM_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      CREDENTIALS_DIRECTORY: /run/secrets
       OLX_CLIENT_ID: ${OLX_CLIENT_ID:-}
       PYTHONUNBUFFERED: "1"
     volumes:
@@ -130,6 +128,7 @@ services:
       - aios-data:/app/data
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
+      - /etc/aios/credentials/telegram_token:/run/secrets/telegram_token:ro
     depends_on:
       aios-api: {condition: service_healthy}
     restart: unless-stopped
@@ -147,9 +146,9 @@ services:
     container_name: aios-telegram-bot
     command: ["python", "run_telegram_bot.py"]
     environment:
-      TELEGRAM_BOT_TOKEN: ${AIOS_TELEGRAM_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
-      AIOS_TELEGRAM_TOKEN: ${AIOS_TELEGRAM_TOKEN:-}
+      CREDENTIALS_DIRECTORY: /run/secrets
+      TELEGRAM_QUEUE_KEY_FILE: /run/secrets/telegram_queue_key
+      TELEGRAM_PROMETHEUS_ENABLED: "0"
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       GITHUB_API_KEY: ${GITHUB_API_KEY:-}
       LLM_API_KEY: ${LLM_API_KEY:-${OPENROUTER_API_KEY:-}}
@@ -163,6 +162,8 @@ services:
       - aios-data:/app/data
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
+      - /etc/aios/credentials/telegram_token:/run/secrets/telegram_token:ro
+      - /etc/aios/credentials/telegram_queue_key:/run/secrets/telegram_queue_key:ro
     restart: unless-stopped
     deploy:
       resources:
@@ -173,24 +174,29 @@ services:
     networks: [aios-net]
 
   aios-telegram-exporter:
-    image: python:3.11-slim
+    image: python:3.11.15-slim-bookworm@sha256:d29f48a31a8b408ed19272ca1e7b10ebae13b240a27e862d3d4217c528e2e0c3
     container_name: aios-telegram-exporter
-    working_dir: /app
-    command: ["python", "-u", "-m", "tg_bot.metrics_exporter"]
+    command: ["python", "-u", "/server.py"]
     environment:
       TELEGRAM_PROMETHEUS_HOST: "0.0.0.0"
       TELEGRAM_PROMETHEUS_PORT: "9103"
+      PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
     volumes:
-      - .:/app:ro
+      - ./deploy/monitoring/telegram_exporter_server.py:/server.py:ro
+      - /var/lib/aios-telegram-metrics:/metrics:ro
+    user: "65534:65534"
     read_only: true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=8m,mode=1777
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
     networks: [aios-net]
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.13.2@sha256:508729e0e2d18e11fd742a5a5ca70e557b940a93948c3c95fd0123a6fd538b69
     container_name: aios-prometheus
     ports: ["127.0.0.1:9090:9090"]
     extra_hosts:
@@ -212,7 +218,7 @@ services:
     networks: [aios-net]
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:13.1.3@sha256:ab5cb380e3ff3172d6c8bd2e7cfd31cce977d2881b260e1f5bc089bf0b759b43
     container_name: aios-grafana
     ports: ["127.0.0.1:3000:3000"]
     environment:
@@ -235,19 +241,50 @@ services:
     networks: [aios-net]
 
 
+  aios-alert-canary-receiver:
+    image: python:3.11.15-slim-bookworm@sha256:d29f48a31a8b408ed19272ca1e7b10ebae13b240a27e862d3d4217c528e2e0c3
+    container_name: aios-alert-canary-receiver
+    command: ["python", "-u", "/receiver.py"]
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./deploy/monitoring/alertmanager_canary_receiver.py:/receiver.py:ro
+      - /etc/aios/credentials/telegram_token:/run/secrets/telegram_token:ro
+      - /etc/aios/credentials/telegram_owner_chat_id:/run/secrets/telegram_owner_chat_id:ro
+      - /var/lib/aios-alert-canary:/state
+    read_only: true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=8m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    networks: [aios-net]
+
   alertmanager:
-    image: prom/alertmanager:latest
+    image: prom/alertmanager:v0.33.1@sha256:9e082985f56f4c8c9f724e18f2288c6708f472e56a5286b8863d080434ea065d
     container_name: aios-alertmanager
     ports: ["127.0.0.1:9093:9093"]
     volumes:
-      - ./deploy/monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - /etc/aios/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - /etc/aios/credentials/telegram_token:/run/secrets/telegram_token:ro
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
+    user: "0:0"
+    read_only: true
+    cap_drop: [ALL]
+    tmpfs:
+      - /alertmanager:rw,noexec,nosuid,nodev,size=32m
+      - /tmp:rw,noexec,nosuid,nodev,size=8m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    depends_on: [aios-alert-canary-receiver]
     restart: unless-stopped
     networks: [aios-net]
 
   aios-exporter:
-    image: python:3.11-slim
+    image: python:3.11.15-slim-bookworm@sha256:d29f48a31a8b408ed19272ca1e7b10ebae13b240a27e862d3d4217c528e2e0c3
     container_name: aios-exporter
     volumes:
       - ./deploy/aios-exporter/server.py:/server.py:ro

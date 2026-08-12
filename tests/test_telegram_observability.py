@@ -43,6 +43,23 @@ def test_prometheus_export_has_latency_queues_and_canary_without_content(tmp_pat
         json.dumps({"ok": True, "timestamp": now, "consecutive_failures": 0}),
         encoding="utf-8",
     )
+    alert_state = tmp_path / "alert-canary.json"
+    alert_state.write_text(
+        json.dumps({"ok": True, "timestamp": now, "duration_seconds": 0.4}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("AIOS_ALERT_CANARY_STATE", str(alert_state))
+    (tmp_path / "data" / "colab_recovery_metrics.json").write_text(
+        json.dumps(
+            {
+                "mode": "endpoint_reuse",
+                "duration_seconds": 5.5,
+                "slo_seconds": 15,
+                "slo_met": True,
+            }
+        ),
+        encoding="utf-8",
+    )
 
     rendered = metrics.render_telegram_prometheus()
 
@@ -50,6 +67,8 @@ def test_prometheus_export_has_latency_queues_and_canary_without_content(tmp_pat
     assert 'aios_telegram_queue_jobs{queue="outbox",status="failed_unknown"} 1' in rendered
     assert 'aios_telegram_queue_jobs{queue="generation",status="pending"} 2' in rendered
     assert "aios_telegram_canary_ok 1" in rendered
+    assert "aios_alertmanager_delivery_canary_ok 1" in rendered
+    assert 'aios_colab_recovery_slo_met{mode="endpoint_reuse"} 1' in rendered
     assert "must never be exported" not in rendered
 
 

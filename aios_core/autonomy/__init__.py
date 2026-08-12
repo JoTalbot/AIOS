@@ -12,7 +12,21 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _env(key: str) -> str:
-    """Прочитать переменную окружения или из .env."""
+    """Прочитать credential, переменную окружения или legacy .env."""
+    if key in ("AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN"):
+        from tg_bot.credentials import secret_from_env_or_credential
+
+        value = secret_from_env_or_credential(
+            "AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token"
+        )
+        if value:
+            return value
+    if key in ("TELEGRAM_CHAT_ID", "AIOS_OWNER_CHAT_ID", "AIOS_AUTO_CODER_CHAT_ID"):
+        from tg_bot.credentials import read_systemd_credential
+
+        value = read_systemd_credential("telegram_owner_chat_id")
+        if value:
+            return value
     v = os.environ.get(key, "")
     if v:
         return v

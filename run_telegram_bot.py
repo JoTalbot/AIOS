@@ -30,7 +30,9 @@ import contextlib
 import json
 import os
 import re
+import signal
 import sys
+import threading
 import time
 import urllib.request
 from datetime import datetime, timedelta
@@ -348,7 +350,11 @@ BUTTON_ACTIONS = {
 
 def _allowed_chat_ids() -> set[int]:
     """Return the explicit Telegram operator allowlist from the environment."""
-    raw = os.environ.get("TELEGRAM_CHAT_ID", "")
+    from tg_bot.credentials import read_systemd_credential
+
+    raw = os.environ.get("TELEGRAM_CHAT_ID", "") or read_systemd_credential(
+        "telegram_owner_chat_id"
+    )
     allowed: set[int] = set()
     for value in raw.split(","):
         try:
@@ -434,6 +440,16 @@ def run_bot(token: str) -> None:
     generation_queue = TelegramGenerationQueue(_process_generation_job)
     generation_queue.start()
     offset = 0
+    shutdown_requested = threading.Event()
+
+    def _request_shutdown(_signum: int, _frame: object) -> None:
+        shutdown_requested.set()
+
+    previous_handlers = {
+        sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)
+    }
+    for sig in previous_handlers:
+        signal.signal(sig, _request_shutdown)
 
     print("🤖 AIOS Telegram Bot запущен (v10.0 with inline menu)")
     print("   Ожидание сообщений...\n")
@@ -441,7 +457,7 @@ def run_bot(token: str) -> None:
     _last_reminder_check = 0.0
     _last_inbox_check = 0.0
 
-    while True:
+    while not shutdown_requested.is_set():
         try:
             # периодическая обработка альбомов (галерея)
             try:
@@ -466,6 +482,8 @@ def run_bot(token: str) -> None:
 
             updates = api.get_updates(offset)
             for upd in updates:
+                if shutdown_requested.is_set():
+                    break
                 offset = upd["update_id"] + 1
 
                 # Handle callback queries (button presses) — always process even when paused
@@ -1105,6 +1123,34 @@ def run_bot(token: str) -> None:
                                 )
                             lines.append("\nПовторить явно: <code>/resend ID</code>")
                             reply = "\n".join(lines)
+                elif cmd in ("/dead", "/retrygen"):
+                    dead_arg = args.strip()
+                    if cmd == "/retrygen":
+                        try:
+                            dead_id = int(dead_arg)
+                        except ValueError:
+                            reply = "❌ Формат: <code>/retrygen ID</code>"
+                        else:
+                            if generation_queue.requeue_dead_letter(dead_id):
+                                reply = f"✅ Generation dead-letter ID <code>{dead_id}</code> явно возвращён в очередь."
+                            else:
+                                reply = "❌ Dead-letter запись не найдена или уже обработана."
+                    else:
+                        dead = generation_queue.list_dead_letters(limit=10)
+                        if not dead:
+                            reply = "✅ Generation dead-letter очередь пуста."
+                        else:
+                            lines = ["⚠️ <b>Generation dead-letter</b> (только метаданные):"]
+                            for item in dead:
+                                created = time.strftime(
+                                    "%Y-%m-%d %H:%M:%S", time.localtime(float(item["created_at"]))
+                                )
+                                lines.append(
+                                    f"• ID <code>{item['id']}</code> · attempts {item['attempts']} "
+                                    f"· {created} · {item['error_class'] or 'unknown'}"
+                                )
+                            lines.append("\nПовторить явно: <code>/retrygen ID</code>")
+                            reply = "\n".join(lines)
                 elif cmd == "/help":
                     reply = cmd_help()
                 elif cmd == "/coder":
@@ -1135,17 +1181,25 @@ def run_bot(token: str) -> None:
                     print(f"  → ответил на {cmd} (chat {chat_id})")
 
         except KeyboardInterrupt:
-            generation_queue.stop()
-            outbox.stop()
-            if metrics_server:
-                metrics_server.shutdown()
-            print("\n👋 Бот остановлен.")
+            shutdown_requested.set()
             break
         except Exception as exc:
+            if shutdown_requested.is_set():
+                break
             if "timed out" in str(exc).lower() or "timeout" in str(exc).lower():
                 continue  # normal for long polling
             print(f"⚠️ Ошибка polling: {exc}")
             time.sleep(3)
+
+    drain_timeout = max(5.0, float(os.environ.get("TELEGRAM_DRAIN_TIMEOUT", "45")))
+    print(f"  [SHUTDOWN] draining durable queues for up to {drain_timeout:.0f}s")
+    generation_queue.stop(timeout=drain_timeout, drain=True)
+    outbox.stop(timeout=drain_timeout, drain=True)
+    if metrics_server:
+        metrics_server.shutdown()
+    for sig, previous in previous_handlers.items():
+        signal.signal(sig, previous)
+    print("\n👋 Бот остановлен.")
 
 
 # ---------------------------------------------------------------------------

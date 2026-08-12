@@ -13,8 +13,11 @@ class BrowserVisionSensor:
 class TelegramControlSensor:
     def __init__(self, token=None):
         if token is None:
-            import os
-            token = os.environ.get("AIOS_TELEGRAM_TOKEN", "")
+            from tg_bot.credentials import secret_from_env_or_credential
+
+            token = secret_from_env_or_credential(
+                "AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token"
+            )
         self.token = token
         self.api_url = f"https://api.telegram.org/bot{self.token}"
 

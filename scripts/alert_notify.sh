@@ -1,16 +1,15 @@
 #!/bin/bash
 # AIOS alert notifier: polls Prometheus for firing alerts and sends to Telegram.
-# Reads Telegram credentials from /etc/aios/aios-auto-coder.env (root-only).
+# Reads root-only credential sources; no token is kept in a legacy env file.
 # Run every minute via cron. Avoids duplicate sends by tracking last fired set.
 set -uo pipefail
 
 PROM="http://127.0.0.1:9090"
-# Load secrets from env file (no secrets hardcoded here)
-if [ -f /etc/aios/aios-auto-coder.env ]; then
-  export $(grep -E "^(AIOS_TELEGRAM_TOKEN|TELEGRAM_CHAT_ID)=" /etc/aios/aios-auto-coder.env | xargs)
-fi
-TOKEN="${AIOS_TELEGRAM_TOKEN:-}"
-CHAT="${TELEGRAM_CHAT_ID:-}"
+CRED_DIR="${AIOS_CREDENTIAL_SOURCE_DIR:-/etc/aios/credentials}"
+TOKEN=""
+CHAT=""
+[ -r "$CRED_DIR/telegram_token" ] && TOKEN="$(tr -d '\r\n' < "$CRED_DIR/telegram_token")"
+[ -r "$CRED_DIR/telegram_owner_chat_id" ] && CHAT="$(tr -d '\r\n' < "$CRED_DIR/telegram_owner_chat_id")"
 STATE="/root/AIOS/data/metrics_exporter/.alerts_state"
 mkdir -p "$(dirname "$STATE")"
 
