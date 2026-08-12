@@ -5,12 +5,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 import tempfile
 from pathlib import Path
 
-from scripts.render_alertmanager_config import render
-
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts.render_alertmanager_config import render
 
 
 def _owner_uid() -> int:
