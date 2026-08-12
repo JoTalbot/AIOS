@@ -82,17 +82,17 @@ jobs:
         id: img
         run: echo "name=$(echo '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-      - name: Run Trivy
-        uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956 # master
-        with:
-          # OCI references must be lowercase; github.repository keeps the display case
-          image-ref: ${{ steps.img.outputs.name }}:latest
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          trivyignores: .trivyignore
-          exit-code: '1'
+      - name: Run pinned Trivy scanner
+        env:
+          SCAN_IMAGE: ${{ steps.img.outputs.name }}:latest
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace" -w /workspace \
+            aquasec/trivy:0.69.3@sha256:bcc376de8d77cfe086a917230e818dc9f8528e3c852f7b1aff648949b6258d1c \
+            image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+            --ignorefile /workspace/.trivyignore --exit-code 1 \
+            --format sarif --output /workspace/trivy-results.sarif "$SCAN_IMAGE"
 
       - name: Upload to GitHub Security
         uses: github/codeql-action/upload-sarif@c4dd10e44af883a891fe31ced449bcb4a6728b9b # v3
@@ -116,11 +116,12 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Trivy critical vulnerability gate
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
-        with:
-          image-ref: ${{ matrix.image }}
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          trivyignores: .trivyignore
-          exit-code: '1'
+        env:
+          SCAN_IMAGE: ${{ matrix.image }}
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace" -w /workspace \
+            aquasec/trivy:0.69.3@sha256:bcc376de8d77cfe086a917230e818dc9f8528e3c852f7b1aff648949b6258d1c \
+            image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+            --ignorefile /workspace/.trivyignore --exit-code 1 "$SCAN_IMAGE"
