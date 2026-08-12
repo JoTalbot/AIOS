@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Canary for Colab routing and the at-most-once Telegram outbox.
 
-The canary sends a silent ``sendMessage`` to ``TELEGRAM_CANARY_CHAT_ID`` or
-the first owner ``TELEGRAM_CHAT_ID``, verifies the full outbox path, and deletes
-the message immediately. Message text and chat identifiers are never logged.
+The canary sends a silent ``sendMessage`` to the credential-backed owner chat,
+verifies the full outbox path, and deletes the message immediately. Message
+text and chat identifiers are never logged.
 """
 
 from __future__ import annotations
@@ -89,9 +89,10 @@ def run_canary(*, send_telegram: bool = False) -> dict:
     token = secret_from_env_or_credential(
         "AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token"
     )
-    owner_chat = os.environ.get("TELEGRAM_CHAT_ID", "").split(",", 1)[0].strip()
-    canary_chat = os.environ.get("TELEGRAM_CANARY_CHAT_ID", "").strip() or owner_chat
-    if send_telegram and token and canary_chat:
+    owner_chat = secret_from_env_or_credential(
+        "TELEGRAM_CHAT_ID", credential="telegram_owner_chat_id"
+    ).split(",", 1)[0].strip()
+    if send_telegram and token and owner_chat:
         try:
             from tg_bot.api import TelegramAPI
             from tg_bot.outbox import TelegramOutbox
@@ -103,7 +104,7 @@ def run_canary(*, send_telegram: bool = False) -> dict:
             send_started = time.monotonic()
             queued = outbox.enqueue(
                 dedup_key=dedup_key,
-                chat_id=int(canary_chat),
+                chat_id=int(owner_chat),
                 text=(
                     "✅ AIOS canary: Colab/Qwen и Telegram outbox работают."
                     if result["colab"]["ok"]
@@ -124,7 +125,7 @@ def run_canary(*, send_telegram: bool = False) -> dict:
             if status == "sent" and message_id:
                 for attempt in range(3):
                     try:
-                        api.delete_message(int(canary_chat), message_id)
+                        api.delete_message(int(owner_chat), message_id)
                         deleted = True
                         break
                     except Exception:

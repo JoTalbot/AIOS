@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from scripts.install_systemd_credentials import _update_env
+from scripts.install_systemd_credentials import _purge_env
 from tg_bot.credentials import import_runtime_credential, secret_from_env_or_credential
 
 
@@ -23,13 +23,19 @@ def test_runtime_credential_populates_legacy_process_env(tmp_path, monkeypatch):
     assert __import__("os").environ["TAILSCALE_AUTH_KEY"] == "ts-secret"
 
 
-def test_canary_env_update_preserves_non_secret_settings(tmp_path):
+def test_canary_env_purge_preserves_non_secret_settings(tmp_path):
     path = tmp_path / ".telegram_canary.env"
-    path.write_text("TELEGRAM_MIN_SUCCESS_RATE=0.95\n", encoding="utf-8")
-    _update_env(path, {"TELEGRAM_CANARY_CHAT_ID": "123"})
+    path.write_text(
+        "TELEGRAM_MIN_SUCCESS_RATE=0.95\n"
+        "TELEGRAM_CANARY_CHAT_ID=123\n"
+        "TELEGRAM_ALERT_CHAT_ID=123\n",
+        encoding="utf-8",
+    )
+    _purge_env(path)
     value = path.read_text(encoding="utf-8")
     assert "TELEGRAM_MIN_SUCCESS_RATE=0.95" in value
-    assert "TELEGRAM_CANARY_CHAT_ID=123" in value
+    assert "TELEGRAM_CANARY_CHAT_ID" not in value
+    assert "TELEGRAM_ALERT_CHAT_ID" not in value
     assert path.stat().st_mode & 0o777 == 0o600
 
 
@@ -40,9 +46,11 @@ def test_resilience_units_mount_credentials_and_enable_full_canary():
     canary = (root / "deploy/systemd/aios-telegram-colab-canary.service").read_text()
     metrics = (root / "deploy/systemd/aios-telegram-metrics-report.service").read_text()
     assert "LoadCredential=telegram_token:" in canary
+    assert "LoadCredential=telegram_owner_chat_id:" in canary
     assert "LoadCredential=telegram_queue_key:" in canary
     assert "Environment=CANARY_SEND_TELEGRAM=1" in canary
     assert "LoadCredential=telegram_token:" in metrics
+    assert "LoadCredential=telegram_owner_chat_id:" in metrics
     assert "LoadCredential=telegram_queue_key:" in metrics
 
 
@@ -77,10 +85,17 @@ def test_legacy_secret_audit_never_returns_values(tmp_path):
     from scripts.audit_legacy_secrets import audit
 
     env = tmp_path / ".env"
-    env.write_text("AIOS_TELEGRAM_TOKEN=super-private\nSAFE=value\n", encoding="utf-8")
+    env.write_text(
+        "AIOS_TELEGRAM_TOKEN=super-private\nTELEGRAM_CANARY_CHAT_ID=123\nSAFE=value\n",
+        encoding="utf-8",
+    )
     findings = audit([env])
-    assert findings == [{"path": str(env), "key": "AIOS_TELEGRAM_TOKEN"}]
+    assert findings == [
+        {"path": str(env), "key": "AIOS_TELEGRAM_TOKEN"},
+        {"path": str(env), "key": "TELEGRAM_CANARY_CHAT_ID"},
+    ]
     assert "super-private" not in str(findings)
+    assert "123" not in str(findings)
 
 
 def test_installer_enables_snapshot_backup_drill_and_alert_canary():

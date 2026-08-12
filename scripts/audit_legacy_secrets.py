@@ -13,6 +13,8 @@ MANAGED = {
     "COLAB_LLM_API_KEY",
     "TAILSCALE_AUTH_KEY",
     "TELEGRAM_CHAT_ID",
+    "TELEGRAM_CANARY_CHAT_ID",
+    "TELEGRAM_ALERT_CHAT_ID",
     "AIOS_OWNER_CHAT_ID",
     "AIOS_AUTO_CODER_CHAT_ID",
 }
@@ -21,6 +23,7 @@ DEFAULT_PATHS = (
     Path("/etc/aios/aios-telegram-bot.env"),
     Path("/etc/aios/aios-auto-coder.env"),
     Path("/root/AIOS/data/.colab_llm.env"),
+    Path("/root/AIOS/data/.telegram_canary.env"),
 )
 
 
