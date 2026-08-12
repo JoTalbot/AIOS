@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MODEL_FILE = REPO_ROOT / "data" / "quant" / "models" / "ppo_v3.pt"  # лучшая рабочая PPO
+MODEL_FILE = REPO_ROOT / "data" / "quant" / "models" / "ppo_v4.pt"  # лучшая LSTM-PPO
 OUT_FILE = REPO_ROOT / "data" / "quant" / "rl_signals.json"
 
 LOG_TAG = "[RLSignalBridge]"
@@ -44,7 +44,29 @@ class RLSignalBridge:
             import torch
             import torch.nn as nn
 
-            class PolicyNet(nn.Module):
+            # поддерживаем обе архитектуры: MLP (v3) и LSTM (v4)
+            class LSTMPolicy(nn.Module):
+                def __init__(self, obs_dim, act_dim=3, hidden=128, seq=10):
+                    super().__init__()
+                    self.seq = seq
+                    self.static_dim = obs_dim - seq
+                    self.lstm = nn.LSTM(1, hidden // 2, batch_first=True)
+                    self.fc_pre = nn.Linear(self.static_dim + hidden // 2, hidden)
+                    self.fc1 = nn.Linear(hidden, hidden)
+                    self.mean = nn.Linear(hidden, act_dim)
+                    self.logstd = nn.Parameter(torch.zeros(act_dim))
+                    self.value = nn.Linear(hidden, 1)
+                def forward(self, x):
+                    seq_part = x[:, :self.seq].unsqueeze(-1)
+                    lstm_out, _ = self.lstm(seq_part)
+                    lstm_last = lstm_out[:, -1, :]
+                    static = x[:, self.seq:]
+                    h = torch.cat([lstm_last, static], dim=-1)
+                    h = torch.relu(self.fc_pre(h))
+                    h = torch.relu(self.fc1(h))
+                    return self.mean(h), self.logstd.exp(), self.value(h)
+
+            class MLPPolicy(nn.Module):
                 def __init__(self, obs_dim, act_dim=3, hidden=128):
                     super().__init__()
                     self.fc_pre = nn.Linear(obs_dim, hidden)
@@ -53,7 +75,6 @@ class RLSignalBridge:
                     self.mean = nn.Linear(hidden, act_dim)
                     self.logstd = nn.Parameter(torch.zeros(act_dim))
                     self.value = nn.Linear(hidden, 1)
-
                 def forward(self, x):
                     x = torch.relu(self.fc_pre(x))
                     x = torch.relu(self.fc1(x))
@@ -62,14 +83,29 @@ class RLSignalBridge:
 
             ckpt = torch.load(self.model_file, map_location="cpu")
             sd = ckpt.get("policy", ckpt)
-            w = sd["fc_pre.weight"]
-            obs_dim = w.shape[1]
-            self._obs_dim = obs_dim
-            net = PolicyNet(obs_dim)
-            net.load_state_dict(sd)
+            # определяем архитектуру по наличию lstm-слоя
+            if "lstm.weight_ih_l0" in sd:
+                w = sd["fc_pre.weight"]
+                static_dim = w.shape[1]
+                hidden = w.shape[0]
+                seq = 10
+                obs_dim = seq + (static_dim - hidden // 2)
+                self._obs_dim = obs_dim
+                net = LSTMPolicy(obs_dim, hidden=hidden, seq=seq)
+                net.load_state_dict(sd)
+                self._policy = net
+                self._is_lstm = True
+                print(f"{LOG_TAG} LSTM-PPO v4 загружена (obs_dim={obs_dim})")
+            else:
+                w = sd["fc_pre.weight"]
+                obs_dim = w.shape[1]
+                self._obs_dim = obs_dim
+                net = MLPPolicy(obs_dim)
+                net.load_state_dict(sd)
+                self._policy = net
+                self._is_lstm = False
+                print(f"{LOG_TAG} MLP-PPO v3 загружена (obs_dim={obs_dim})")
             net.eval()
-            self._policy = net
-            print(f"{LOG_TAG} Модель PPO v3 загружена (obs_dim={obs_dim})")
         except Exception as e:
             print(f"{LOG_TAG} [WARN] Ошибка загрузки PPO-модели: {e}")
             self._policy = None
