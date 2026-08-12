@@ -30,6 +30,18 @@ logger = logging.getLogger("AIOS.RunArbitrageScanner")
 _LAST_ALERT_TS = [0.0]
 
 def _load_env_var(name):
+    if name in ("AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN"):
+        from tg_bot.credentials import secret_from_env_or_credential
+        value = secret_from_env_or_credential(
+            "AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token"
+        )
+        if value:
+            return value
+    if name in ("TELEGRAM_CHAT_ID", "AIOS_OWNER_CHAT_ID", "AIOS_AUTO_CODER_CHAT_ID"):
+        from tg_bot.credentials import read_systemd_credential
+        value = read_systemd_credential("telegram_owner_chat_id")
+        if value:
+            return value
     import os
     v = os.getenv(name)
     if v:

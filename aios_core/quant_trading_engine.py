@@ -10,8 +10,14 @@ def _disabled_send_trading_tg_alert(message: str) -> bool:
     import os
     from pathlib import Path
     
-    token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("AIOS_TELEGRAM_TOKEN")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    from tg_bot.credentials import read_systemd_credential, secret_from_env_or_credential
+
+    token = secret_from_env_or_credential(
+        "TELEGRAM_BOT_TOKEN", "AIOS_TELEGRAM_TOKEN", credential="telegram_token"
+    )
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID") or read_systemd_credential(
+        "telegram_owner_chat_id"
+    )
     
     if not token or not chat_id:
         env_file = Path("/root/AIOS/.env")

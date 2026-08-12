@@ -4,11 +4,14 @@
 # Keeps last $KEEP days. Run daily via cron.
 
 set -euo pipefail
+umask 077
 
 DATE=$(date +%Y%m%d_%H%M%S)
 BK="/root/AIOS/backups/daily"
+SECRET_BK="/root/aios-secret-backups/config"
 KEEP=${KEEP_DAYS:-7}
-mkdir -p "$BK"
+mkdir -p "$BK" "$SECRET_BK"
+chmod 0700 "$BK" "$SECRET_BK"
 LOG="/root/AIOS/logs/backup.log"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
@@ -59,7 +62,7 @@ if tar -czf "$CHROMA" -C /root/AIOS chroma_db 2>/dev/null; then
 fi
 
 # --- Secrets & config backup (critical: API keys, env, compose) ---
-SECRETS_TAR="$BK/${DATE}__secrets-config.tar.gz"
+SECRETS_TAR="$SECRET_BK/${DATE}__secrets-config.tar.gz"
 if tar -czf "$SECRETS_TAR" \
    -C /root/AIOS \
    .env .env.example docker-compose.prod.yml \
@@ -71,7 +74,7 @@ else
 fi
 
 # --- Rotate: delete old backups ---
-DEL=$(find "$BK" -type f -mtime +"$KEEP" -delete 2>>"$LOG" | wc -l)
+DEL=$(find "$BK" "$SECRET_BK" -type f -mtime +"$KEEP" -delete 2>>"$LOG" | wc -l)
 log "  Rotation: removed old files > ${KEEP}d"
 
 # --- Summary ---

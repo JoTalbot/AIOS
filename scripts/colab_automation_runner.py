@@ -693,7 +693,10 @@ if not tunnel_url:
 
 async def run_colab_automation():
     from tg_bot.credentials import import_runtime_credential
+    from tg_bot.recovery_slo import record_recovery
 
+    recovery_started = time.monotonic()
+    recovery_mode = "full_cold"
     import_runtime_credential("COLAB_LLM_API_KEY", "colab_llm_api_key")
     import_runtime_credential("TAILSCALE_AUTH_KEY", "tailscale_auth_key")
     cdp_url = (
@@ -765,6 +768,7 @@ async def run_colab_automation():
         tunnel_provider = _configured_tunnel_provider()
 
         if reused:
+            recovery_mode = "runtime_restart"
             print("ℹ️  Вкладка переиспользована. Проверяю runtime и endpoint перед recovery...")
             reconnect_hit = await _confirm_dialogs(page)
             if reconnect_hit and re.search(r"повторно|reconnect", reconnect_hit, re.I):
@@ -780,6 +784,7 @@ async def run_colab_automation():
                     tunnel_url = str(healthy.get("base_url", "")).strip().rstrip("/")
                     colab_api_key = str(healthy.get("api_key", "")).strip()
                     endpoint_reused = True
+                    recovery_mode = "endpoint_reuse"
                     print("✅ STAGE endpoint:healthy — выполнение ячеек пропущено")
                 else:
                     current = _load_colab_runtime_config()
@@ -799,6 +804,7 @@ async def run_colab_automation():
                         old_tunnel_urls.clear()
                     tunnel_only_recovery = await _run_tunnel_cell(page)
                     if tunnel_only_recovery:
+                        recovery_mode = "tunnel_only"
                         print("⚡ STAGE recovery:tunnel-only")
                     else:
                         colab_api_key = _rotate_colab_api_key()
@@ -870,6 +876,7 @@ async def run_colab_automation():
                     old_tunnel_urls.clear()
                 await page.keyboard.press("Control+F9")
                 full_run_started = True
+                recovery_mode = "runtime_restart" if reused else "full_cold"
                 print("▶️ STAGE recovery:full после неудачи tunnel-only")
                 await asyncio.sleep(3)
                 await _confirm_dialogs(page)
@@ -887,6 +894,12 @@ async def run_colab_automation():
             if fatal:
                 await _scrub_live_notebook_secrets(
                     page, [colab_api_key, os.getenv("TAILSCALE_AUTH_KEY", "")]
+                )
+                record_recovery(
+                    mode=recovery_mode,
+                    duration_seconds=time.monotonic() - recovery_started,
+                    success=False,
+                    error_class="tunnel_fatal",
                 )
                 return
         elif not kind_needs_tunnel:
@@ -945,7 +958,24 @@ async def run_colab_automation():
                 page, [colab_api_key, os.getenv("TAILSCALE_AUTH_KEY", "")]
             )
             print("⚠️ Новый tunnel generation не появился; запускаю полный recovery")
+            record_recovery(
+                mode=recovery_mode,
+                duration_seconds=time.monotonic() - recovery_started,
+                success=False,
+                error_class="tunnel_missing",
+            )
             return
+
+        recovery = record_recovery(
+            mode=recovery_mode,
+            duration_seconds=time.monotonic() - recovery_started,
+            success=True,
+        )
+        print(
+            "✅ STAGE recovery:slo "
+            f"mode={recovery['mode']} duration={recovery['duration_seconds']:.1f}s "
+            f"met={'yes' if recovery['slo_met'] else 'no'}"
+        )
 
         # === БЕСКОНЕЧНЫЙ ЦИКЛ ПОДДЕРЖАНИЯ АКТИВНОСТИ (COLAB ACTIVITY KEEPER) ===
         print("\n🔄 [Colab Activity Keeper] Включен вочдог поддержания активности сессии Colab!")

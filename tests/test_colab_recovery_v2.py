@@ -277,3 +277,18 @@ def test_live_notebook_patch_can_be_applied_twice(monkeypatch):
 
     assert first and second and first != second
     assert all("# === Быстрая подготовка" in script for script in scripts)
+
+
+def test_mode_specific_recovery_slo_state_is_redacted(tmp_path):
+    import json
+    from tg_bot.recovery_slo import record_recovery
+
+    state = tmp_path / "recovery.json"
+    result = record_recovery(
+        mode="endpoint_reuse", duration_seconds=8.5, success=True, path=state
+    )
+    assert result["slo_seconds"] == 15
+    assert result["slo_met"] is True
+    stored = json.loads(state.read_text(encoding="utf-8"))
+    assert stored["mode"] == "endpoint_reuse"
+    assert "base_url" not in stored and "api_key" not in stored

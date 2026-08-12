@@ -41,6 +41,7 @@ class TelegramOutbox:
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._accepting = True
         self._callbacks: dict[int, OnSent] = {}
         self._callbacks_lock = threading.Lock()
         self._init_db()
@@ -138,14 +139,36 @@ class TelegramOutbox:
         if self._thread and self._thread.is_alive():
             return
         self._stop.clear()
+        self._accepting = True
         self._thread = threading.Thread(target=self._worker, name="telegram-outbox", daemon=True)
         self._thread.start()
 
-    def stop(self, timeout: float = 3.0) -> None:
+    def begin_drain(self) -> None:
+        self._accepting = False
+        self._wake.set()
+
+    def stop(self, timeout: float = 3.0, *, drain: bool = False) -> bool:
+        if drain:
+            self.begin_drain()
+            deadline = time.monotonic() + max(0.0, timeout)
+            while time.monotonic() < deadline:
+                with self._connect() as db:
+                    remaining = int(
+                        db.execute(
+                            "SELECT COUNT(*) FROM telegram_outbox "
+                            "WHERE status IN ('pending','sending')"
+                        ).fetchone()[0]
+                    )
+                if remaining == 0:
+                    break
+                self._wake.set()
+                time.sleep(0.05)
         self._stop.set()
         self._wake.set()
         if self._thread:
-            self._thread.join(timeout=timeout)
+            self._thread.join(timeout=max(0.0, timeout))
+            return not self._thread.is_alive()
+        return True
 
     def seen(self, dedup_key: str) -> bool:
         with self._connect() as db:
@@ -171,6 +194,8 @@ class TelegramOutbox:
         metric_event: str = "telegram_send",
     ) -> bool:
         """Persist one message. Return ``False`` when its dedup key already exists."""
+        if not self._accepting:
+            raise RuntimeError("Telegram outbox is draining")
         if not dedup_key or not text:
             raise ValueError("dedup_key and text are required")
         with self._connect() as db:

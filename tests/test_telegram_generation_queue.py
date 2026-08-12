@@ -107,9 +107,10 @@ def test_failed_generation_has_bounded_retries(tmp_path):
     row = queue.wait("llm:fail", timeout=2)
     queue.stop()
 
-    assert row["status"] == "failed"
+    assert row["status"] == "dead_letter"
     assert row["attempts"] == 2
     assert row["error_class"] == "TimeoutError"
+    assert queue.list_dead_letters()[0]["dedup_key"] == "llm:fail"
     assert calls == 2
 
 
@@ -125,3 +126,80 @@ def test_two_process_views_cannot_generate_same_chat_out_of_order(tmp_path):
     second = TelegramGenerationQueue(lambda _job: True, db_path)
     second.stop()
     assert second._claim(5) is None
+
+
+def test_generation_lease_is_renewed_during_long_handler(tmp_path):
+    started = threading.Event()
+    release = threading.Event()
+
+    def slow(_job: dict) -> bool:
+        started.set()
+        assert release.wait(3)
+        return True
+
+    db = tmp_path / "generation.sqlite3"
+    queue = TelegramGenerationQueue(slow, db, lease_seconds=2)
+    queue.start()
+    assert queue.enqueue(dedup_key="llm:lease", chat_id=1, text="slow")
+    assert started.wait(1)
+    first_lease = queue.get("llm:lease")["lease_until"]
+    time.sleep(1.2)
+    second_lease = queue.get("llm:lease")["lease_until"]
+    assert second_lease > first_lease
+
+    competing = TelegramGenerationQueue(lambda _job: True, db, lease_seconds=2)
+    competing.stop()
+    assert competing._claim(1) is None
+    release.set()
+    assert queue.wait("llm:lease", timeout=2)["status"] == "completed"
+    queue.stop()
+
+
+def test_dead_letter_can_be_explicitly_requeued(tmp_path):
+    calls = 0
+
+    def recover(_job: dict) -> bool:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("poison")
+        return True
+
+    queue = TelegramGenerationQueue(
+        recover, tmp_path / "generation.sqlite3", max_attempts=1
+    )
+    queue.start()
+    assert queue.enqueue(dedup_key="llm:dead", chat_id=3, text="retry explicitly")
+    dead = queue.wait("llm:dead", timeout=2)
+    assert dead["status"] == "dead_letter"
+    assert queue.requeue_dead_letter(dead["id"])
+    assert queue.wait("llm:dead", timeout=2)["status"] == "completed"
+    queue.stop()
+
+
+def test_graceful_drain_finishes_durable_jobs_and_rejects_new(tmp_path):
+    release = threading.Event()
+
+    def slow(_job: dict) -> bool:
+        assert release.wait(2)
+        return True
+
+    queue = TelegramGenerationQueue(slow, tmp_path / "generation.sqlite3")
+    queue.start()
+    assert queue.enqueue(dedup_key="llm:drain", chat_id=4, text="finish me")
+    done: list[bool] = []
+    thread = threading.Thread(target=lambda: done.append(queue.stop(2, drain=True)))
+    thread.start()
+    time.sleep(0.1)
+    from tg_bot.generation_queue import QueueDrainingError
+
+    try:
+        queue.enqueue(dedup_key="llm:new", chat_id=4, text="reject me")
+    except QueueDrainingError:
+        pass
+    else:
+        raise AssertionError("new work must be rejected during drain")
+    release.set()
+    thread.join(3)
+    assert done == [True]
+    assert queue.get("llm:drain")["status"] == "completed"

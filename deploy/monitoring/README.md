@@ -19,11 +19,14 @@ exposition format с gauges флота:
 | `aios_telegram_latency_seconds{phase,quantile}` | generation/send/total p50/p95 |
 | `aios_telegram_queue_jobs{queue,status}` | durable generation/outbox rows |
 | `aios_telegram_canary_ok`, `aios_telegram_canary_age_seconds` | полный silent sendMessage canary и его свежесть |
+| `aios_alertmanager_delivery_canary_*` | Alertmanager → Telegram silent send/delete canary |
+| `aios_colab_recovery_*` | mode-specific recovery duration, budget и SLO result |
 
-Telegram-бот поднимает redacted exporter на `:9103/metrics`; payload сообщений,
-chat ID, token, tunnel URL и Bearer keys в метрики не попадают. Docker Compose
-запускает read-only sidecar `aios-telegram-exporter`, который читает только
-redacted JSONL/state и агрегаты SQLite из общего `data/`.
+Host-service раз в 10 секунд атомарно создаёт только redacted Prometheus
+snapshot. Непривилегированный read-only sidecar `aios-telegram-exporter` видит
+только этот snapshot и отдельный HTTP server script: checkout, `.env`, SQLite,
+payload сообщений, chat ID, token, tunnel URL и Bearer keys в контейнер не
+монтируются.
 
 ## Alert-правила
 
@@ -31,9 +34,10 @@ redacted JSONL/state и агрегаты SQLite из общего `data/`.
 падение агента / отсутствие живых shard-worker'ов при pending-джобах,
 бэклог очереди (>50 warning, >200 critical), зависшие claim'ы,
 исчерпание пула устройств, отставание одобрения outbox (>100 за час),
-а также Telegram exporter/canary, ambiguous delivery, generation backlog и
-Telegram delivery SLO. Группы видны в Prometheus → Alerts; роутинг в Alertmanager настраивается
-на вашей стороне.
+а также Telegram exporter/canary, ambiguous delivery, generation backlog,
+dead-letter jobs, Alertmanager delivery canary и mode-specific Colab recovery
+SLO. Runtime Alertmanager config генерируется из публичного template без
+секретов; token и owner chat ID монтируются отдельными credential-файлами.
 
 ## Prometheus (docker)
 

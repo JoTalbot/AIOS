@@ -2,8 +2,14 @@ import json, urllib.request, sys, os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # Токен из окружения (security-fix 02.08: hard-coded ключ найден сканером secrets_scan_repo.py)
-TG_TOKEN = os.environ.get("AIOS_TELEGRAM_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TG_CHAT = os.environ.get("TELEGRAM_CHAT_ID", "588113957")
+from tg_bot.credentials import read_systemd_credential, secret_from_env_or_credential
+
+TG_TOKEN = secret_from_env_or_credential(
+    "AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token"
+)
+TG_CHAT = os.environ.get("TELEGRAM_CHAT_ID") or read_systemd_credential(
+    "telegram_owner_chat_id"
+)
 
 def tg_send(text):
     if not TG_TOKEN:

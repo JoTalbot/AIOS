@@ -166,17 +166,20 @@ def analyze(only_price_min: bool = False) -> Dict[str, Any]:
 
 def _tg(text: str) -> bool:
     import urllib.request
-    token = ""
-    chat = ""
-    for env_path in ("/root/AIOS/.env", "/etc/aios/aios-telegram-bot.env"):
-        p = Path(env_path)
-        if not p.exists():
-            continue
-        for line in p.read_text(encoding="utf-8").splitlines():
-            if line.startswith("AIOS_TELEGRAM_TOKEN="):
-                token = line.split("=", 1)[1].strip().strip('"')
-            if line.startswith("AIOS_OWNER_CHAT_ID="):
-                chat = line.split("=", 1)[1].strip().strip('"')
+    from tg_bot.credentials import read_systemd_credential, secret_from_env_or_credential
+
+    token = secret_from_env_or_credential(
+        "AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token"
+    )
+    chat = read_systemd_credential("telegram_owner_chat_id")
+    if not chat:
+        for env_path in ("/root/AIOS/.env", "/etc/aios/aios-telegram-bot.env"):
+            p = Path(env_path)
+            if not p.exists():
+                continue
+            for line in p.read_text(encoding="utf-8").splitlines():
+                if line.startswith("AIOS_OWNER_CHAT_ID="):
+                    chat = line.split("=", 1)[1].strip().strip('"')
     if not token or not chat:
         return False
     try:

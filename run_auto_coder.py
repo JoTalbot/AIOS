@@ -14,8 +14,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_PATH = os.environ.get("AIOS_REPO_PATH", "/root/AIOS")
-TG_TOKEN = os.environ.get("AIOS_TELEGRAM_TOKEN", "")
-TG_CHAT_ID = os.environ.get("AIOS_AUTO_CODER_CHAT_ID") or os.environ.get("TELEGRAM_CHAT_ID", "")
+from tg_bot.credentials import secret_from_env_or_credential
+TG_TOKEN = secret_from_env_or_credential("AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token")
+from tg_bot.credentials import read_systemd_credential
+TG_CHAT_ID = (os.environ.get("AIOS_AUTO_CODER_CHAT_ID") or os.environ.get("TELEGRAM_CHAT_ID", "") or read_systemd_credential("telegram_owner_chat_id"))
 
 # ---------------------------------------------------------------------------
 # Telegram

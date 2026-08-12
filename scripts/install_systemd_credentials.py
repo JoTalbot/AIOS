@@ -23,6 +23,9 @@ MANAGED_ENV_KEYS = {
     "TELEGRAM_BOT_TOKEN",
     "COLAB_LLM_API_KEY",
     "TAILSCALE_AUTH_KEY",
+    "TELEGRAM_CHAT_ID",
+    "AIOS_OWNER_CHAT_ID",
+    "AIOS_AUTO_CODER_CHAT_ID",
 }
 
 
@@ -146,11 +149,19 @@ def main() -> int:
     tailscale_key = existing_tailscale_key or values.get("TAILSCALE_AUTH_KEY", "")
     _write_if_value("tailscale_auth_key", tailscale_key)
 
+    canary_values = _parse_env(ROOT / "data" / ".telegram_canary.env")
     owner_chat = (
-        service_values.get("TELEGRAM_CHAT_ID")
+        _existing("telegram_owner_chat_id").decode("utf-8")
+        or service_values.get("TELEGRAM_CHAT_ID")
         or values.get("TELEGRAM_CHAT_ID", "")
+        or canary_values.get("TELEGRAM_CANARY_CHAT_ID", "")
     ).split(",", 1)[0].strip()
     if owner_chat:
+        try:
+            int(owner_chat)
+        except ValueError as exc:
+            raise RuntimeError("Telegram owner chat ID is invalid") from exc
+        _write_if_value("telegram_owner_chat_id", owner_chat)
         _update_env(
             ROOT / "data" / ".telegram_canary.env",
             {"TELEGRAM_CANARY_CHAT_ID": owner_chat},
@@ -158,6 +169,10 @@ def main() -> int:
 
     if args.purge_managed_env:
         _purge_env(env_file)
+        _purge_env(
+            Path(os.environ.get("AIOS_TELEGRAM_ENV_FILE", "/etc/aios/aios-telegram-bot.env"))
+        )
+        _purge_env(Path("/etc/aios/aios-auto-coder.env"))
         (ROOT / "data" / ".colab_llm.env").unlink(missing_ok=True)
 
     os.chmod(SOURCE_DIR, 0o700)

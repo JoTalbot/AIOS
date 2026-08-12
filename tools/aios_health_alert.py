@@ -61,7 +61,14 @@ def check() -> dict[str, bool]:
 
 
 def notify(env: dict[str, str], text: str) -> None:
-    token, chat_id = env.get("TELEGRAM_BOT_TOKEN"), env.get("TELEGRAM_CHAT_ID")
+    from tg_bot.credentials import read_systemd_credential, secret_from_env_or_credential
+
+    token = env.get("TELEGRAM_BOT_TOKEN") or secret_from_env_or_credential(
+        "TELEGRAM_BOT_TOKEN", "AIOS_TELEGRAM_TOKEN", credential="telegram_token"
+    )
+    chat_id = env.get("TELEGRAM_CHAT_ID") or read_systemd_credential(
+        "telegram_owner_chat_id"
+    )
     if not token or not chat_id:
         return
     data = json.dumps({"chat_id": chat_id, "text": text}).encode()

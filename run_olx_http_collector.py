@@ -325,7 +325,8 @@ def main():
     conn = init_db(args.db)
 
     # Lazy import alerts
-    tg_token = os.environ.get("AIOS_TELEGRAM_TOKEN")
+    from tg_bot.credentials import secret_from_env_or_credential
+    tg_token = secret_from_env_or_credential("AIOS_TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN", credential="telegram_token")
     alerts_module = None
     subs_conn = None
     if tg_token and not args.no_alerts:

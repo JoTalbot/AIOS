@@ -168,6 +168,7 @@ def cmd_help() -> str:
         "  /instagram — быстрые команды Instagram (профиль, посты)\n"
         "  /llm_mode [auto|gemini] — режим LLM в чате (балансер / Gemini Web)\n"
         "  /resend [ID] — список ambiguous-отправок или явный повтор\n"
+        "  /dead — generation dead-letter metadata; /retrygen ID — явный повтор\n"
         "  /cmd &lt;команда&gt; — выполнить команду на сервере (root, /root/AIOS)\n"
         "  /skills — возможности системы (скилы, модули, адаптеры, команды)\n\n"
         "<i>Просто напишите боту обычным текстом, например:</i>\n"

@@ -10,10 +10,14 @@ WorkingDirectory=/root/AIOS
 EnvironmentFile=-/root/AIOS/.env
 LoadCredential=telegram_token:/etc/aios/credentials/telegram_token
 LoadCredential=telegram_queue_key:/etc/aios/credentials/telegram_queue_key
+LoadCredential=telegram_owner_chat_id:/etc/aios/credentials/telegram_owner_chat_id
 Environment=TELEGRAM_QUEUE_KEY_FILE=%d/telegram_queue_key
+Environment=TELEGRAM_PROMETHEUS_ENABLED=0
 ExecStart=/usr/bin/python3 -u /root/AIOS/run_telegram_bot.py
 Restart=always
 RestartSec=5
+TimeoutStopSec=110
+KillSignal=SIGTERM
 UMask=0077
 StandardOutput=append:/root/AIOS/logs/tg.log
 StandardError=append:/root/AIOS/logs/tg.log

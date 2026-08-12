@@ -210,8 +210,18 @@ class ReactionEngine:
         if self._sender is not None:
             result = self._sender(text)
             return result if isinstance(result, dict) else {"status": "ok"}
-        token = str(self.env.get("TELEGRAM_BOT_TOKEN") or "")
-        chat_id = str(self.env.get("TELEGRAM_CHAT_ID") or "")
+        from tg_bot.credentials import read_systemd_credential, secret_from_env_or_credential
+
+        token = str(
+            self.env.get("TELEGRAM_BOT_TOKEN")
+            or secret_from_env_or_credential(
+                "TELEGRAM_BOT_TOKEN", "AIOS_TELEGRAM_TOKEN", credential="telegram_token"
+            )
+        )
+        chat_id = str(
+            self.env.get("TELEGRAM_CHAT_ID")
+            or read_systemd_credential("telegram_owner_chat_id")
+        )
         if not token or not chat_id:
             return {"status": "error", "error": "нет TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID"}
         payload = {"chat_id": chat_id, "text": text[:900], "parse_mode": "HTML",
