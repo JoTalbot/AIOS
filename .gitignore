@@ -122,3 +122,6 @@ data/.cards_vault.json
 # SQLite sidecars are mutable runtime state
 *.db-shm
 *.db-wal
+
+# Private call recordings/PII live in /srv/aios-private and are bind-mounted here
+/Calls/
