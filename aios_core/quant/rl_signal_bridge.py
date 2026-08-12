@@ -20,15 +20,10 @@ from datetime import datetime, timezone
 from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MODEL_FILE = REPO_ROOT / "data" / "quant" / "models" / "ppo_v4.pt"  # лучшая LSTM-PPO
+MODEL_FILE = REPO_ROOT / "data" / "quant" / "models" / "ppo_v5.pt"  # лучшая LSTM-PPO (200 эп)
 OUT_FILE = REPO_ROOT / "data" / "quant" / "rl_signals.json"
 
 LOG_TAG = "[RLSignalBridge]"
-
-import threading
-_CACHE = {"data": None, "ts": 0.0}
-_CACHE_LOCK = threading.Lock()
-_CACHE_TTL = 300.0  # 5 минут
 
 
 class RLSignalBridge:
@@ -203,12 +198,6 @@ class RLSignalBridge:
 
     def run_all(self, symbols: Optional[dict] = None) -> dict:
         """Предсказать позиции для набора активов. symbols: {name: binance_sym}"""
-        # кеш на 5 минут, чтобы не перезагружать модель на каждый вызов
-        global _CACHE
-        import time as _t
-        with _CACHE_LOCK:
-            if _CACHE["data"] is not None and _t.time() - _CACHE["ts"] < _CACHE_TTL:
-                return _CACHE["data"]
         if not self.available:
             return {"model_available": False, "signals": [], "generated_at": None}
         if symbols is None:
@@ -227,17 +216,12 @@ class RLSignalBridge:
                 time.sleep(0.3)
             except Exception as e:
                 signals.append({"asset": name, "symbol": sym, "ok": False, "error": str(e)[:80]})
-        _result = {
+        return {
             "engine": "quant_rl_ppo",
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "model_available": True,
             "signals": signals,
         }
-        import time as _t2
-        with _CACHE_LOCK:
-            _CACHE["data"] = _result
-            _CACHE["ts"] = _t2.time()
-        return _result
 
     def save(self, out_file: Optional[Path] = None) -> Path:
         data = self.run_all()
