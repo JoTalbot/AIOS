@@ -111,7 +111,7 @@ class AIOSSmartLiquidityRouter:
                                                 v *= 100
                                             if 5 < v < 15:
                                                 vals.append(v)
-                                        except:
+                                        except Exception:
                                             pass
                         if vals:
                             avg = sum(vals)/len(vals)

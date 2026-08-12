@@ -181,10 +181,13 @@ def collect(service_probe=_service_active, android_probe=None) -> dict:
         mode = _mode(path)
         if mode is not None and mode > 0o600:
             issues.append(f"permissions:{label}:{mode:o}")
-    for name, ok in (_sessions_probe() or {}).items():
+    # Supplying an Android probe selects isolated mode: avoid opening browser
+    # twins as an unexpected side effect. Production calls do not inject it.
+    session_results = {} if android_probe is not None else (_sessions_probe() or {})
+    for name, ok in session_results.items():
         if not ok:
             issues.append(f"session:{name}_dead")
-    olx = _olx_probe()
+    olx = {} if android_probe is not None else _olx_probe()
     if olx.get("dead"):
         issues.append("olx:twin_dead")
     if olx.get("ad_missing"):

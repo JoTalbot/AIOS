@@ -30,6 +30,7 @@ def test_colab_runtime_hot_reload_preserves_other_provider_cooldowns(tmp_path, m
     _write_runtime(runtime, url="https://first.test/v1", key="first-key")
     monkeypatch.setattr(LLMBalancer, "_runtime_key_paths", staticmethod(lambda: (runtime,)))
     monkeypatch.setenv("LOCAL_LLM", "0")
+    monkeypatch.setenv("AIOS_COLAB_MODE", "active")
 
     balancer = LLMBalancer()
     groq_key = APIKey(key="groq-key", provider="groq", cooldown_until=time.time() + 600)
@@ -53,6 +54,7 @@ def test_unchanged_runtime_keeps_colab_circuit_state(tmp_path, monkeypatch):
     _write_runtime(runtime, url="https://same.test/v1", key="same-key")
     monkeypatch.setattr(LLMBalancer, "_runtime_key_paths", staticmethod(lambda: (runtime,)))
     monkeypatch.setenv("LOCAL_LLM", "0")
+    monkeypatch.setenv("AIOS_COLAB_MODE", "active")
     balancer = LLMBalancer()
     provider = balancer.providers["colab"]
     provider.keys[0].cooldown_until = time.time() + 60
@@ -64,6 +66,7 @@ def test_unchanged_runtime_keeps_colab_circuit_state(tmp_path, monkeypatch):
 
 def test_telegram_uses_one_shared_balancer(monkeypatch):
     monkeypatch.setenv("LOCAL_LLM", "0")
+    monkeypatch.setenv("AIOS_COLAB_MODE", "active")
     monkeypatch.setattr(telegram_llm, "_balancer_instance", None)
     first = telegram_llm._get_shared_balancer()
     second = telegram_llm._get_shared_balancer()

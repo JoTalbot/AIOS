@@ -98,6 +98,177 @@ from tg_bot.state import (  # noqa: E402
 )
 
 
+# Compatibility exports for the modular Telegram bot.  The public entrypoint
+# historically exposed these helpers; keeping the aliases avoids breaking
+# operator tooling while implementation lives in ``tg_bot`` modules.
+from tg_bot import phone as _phone_module  # noqa: E402
+from tg_bot.phone import (  # noqa: E402
+    _followup_templates,
+    _mask_android_notification,
+    _parse_uklon_route_request,
+    _phone_adapter,
+    _phone_error,
+    _phone_lead_queue,
+    _send_phone_status,
+    _uklon_next_route_field,
+    _uklon_route_field_allowed,
+    _uklon_route_field_label,
+)
+from tg_bot.inbox import (  # noqa: E402
+    _format_inbox,
+    _inbox_mark_read,
+    _is_service_preview,
+)
+from tg_bot.callbacks import _handle_button_inner, _handle_inbox_callback  # noqa: E402
+from tg_bot.keyboards import PHONE_MENU_KEYBOARD  # noqa: E402
+from tg_bot.state import (  # noqa: E402
+    _last_bank_tasks,
+    _last_phone_crm_tasks,
+    _last_phone_leads,
+    _phone_route_drafts,
+)
+
+# These assignments intentionally remain visible in this entrypoint: recovery
+# diagnostics extract this small bridge with ``ast`` without importing the bot.
+_PHONE_BRAIN_API = os.environ.get("PHONE_BRAIN_API", "http://127.0.0.1:8790")
+_phone_brain_state: dict[str, object] = {"ok": None, "checked": 0.0}
+
+def _phone_brain_gateway_run(args: list[str], timeout: int) -> dict | None:
+    """Выполнить команду Android-шлюза через очередь Phone Brain.
+
+    Единая аренда устройства — никаких гонок процессов за ADB/экран.
+    Возвращает dict как у legacy CLI, либо ``None``, если демон недоступен
+    или команда не поддержана (тогда вызывающий код идёт legacy-путём).
+    """
+    import time as _time
+    import urllib.request as _ureq
+
+    plain = [str(a) for a in args if a != "--confirm"]
+    command = plain[0] if plain else "status"
+    confirmed = "--confirm" in args
+    kind, payload = "", {}
+    read_only = {"status", "apps", "profiles", "companion", "notifications", "accessibility",
+                 "capture-status", "location-status", "files", "screenshot", "ui-dump", "audit"}
+    if command in read_only and len(plain) == 1:
+        kind, payload = "gateway.cli", {"command": command}
+    elif command == "open" and len(plain) >= 2 and confirmed:
+        kind, payload = "app.open", {"package": plain[1], "confirm": True}
+    elif command == "location" and confirmed:
+        kind, payload = "device.location", {"confirm": True}
+    elif command == "pull" and len(plain) >= 2 and confirmed:
+        kind, payload = "device.pull", {"path": plain[1], "confirm": True}
+    else:
+        return None  # команда не замаплена — legacy-путь
+
+    now = _time.monotonic()
+    if _phone_brain_state["ok"] is False and now - _phone_brain_state["checked"] < 20:
+        return None
+
+    def _api(method: str, path: str, body: dict | None = None, req_timeout: float = 4.0) -> dict:
+        data = json.dumps(body).encode("utf-8") if body is not None else None
+        request = _ureq.Request(_PHONE_BRAIN_API + path, data=data, method=method,
+                                headers={"Content-Type": "application/json"})
+        with _ureq.urlopen(request, timeout=req_timeout) as response:
+            return json.loads(response.read().decode("utf-8"))
+
+    try:
+        created = _api("POST", "/jobs", {"kind": kind, "payload": payload})
+        job_id = int((created.get("job") or {}).get("id") or 0)
+        if not job_id:
+            return None
+        _phone_brain_state.update(ok=True, checked=now)
+    except Exception:
+        _phone_brain_state.update(ok=False, checked=now)
+        return None
+
+    deadline = now + max(5, min(int(timeout), 240))
+    while _time.monotonic() < deadline:
+        try:
+            job = _api("GET", f"/jobs/{job_id}").get("job") or {}
+        except Exception:
+            return None
+        status = job.get("status")
+        if status == "done":
+            result = job.get("result") or {}
+            if kind == "gateway.cli":
+                output = result.get("output")
+                if isinstance(output, dict):
+                    return output
+                return {"status": "error", "error": "пустой ответ очереди"}
+            output = {"status": "ok"}
+            for key, value in result.items():
+                if key != "status":
+                    output[key] = value
+            return output
+        if status in ("failed", "need_confirm", "cancelled"):
+            return {"status": "error",
+                    "error": str(job.get("error") or (job.get("result") or {}).get("error") or status)[:200]}
+        _time.sleep(0.8)
+    return {"status": "error", "error": "таймаут ожидания задачи Phone Brain"}
+
+
+_phone_cancel_pending_impl = _cancel_phone_pending
+_phone_confirm_pending_impl = _confirm_phone_pending
+_phone_audit_impl = _handle_phone_audit_intent
+_phone_bank_impl = _handle_phone_bank_monitor_intent
+_phone_lead_impl = _handle_phone_lead_intent
+_phone_workflow_impl = _handle_android_phone_workflow_intent
+_phone_gateway_intent_impl = _handle_android_gateway_intent
+_inbox_intent_impl = _handle_unified_inbox_intent
+
+
+def _sync_phone_compat() -> None:
+    """Propagate entrypoint overrides to the extracted implementation module."""
+    _phone_module.PROJECT_ROOT = PROJECT_ROOT
+    _phone_module._android_gateway_run = _android_gateway_run
+    _phone_module._phone_adapter = _phone_adapter
+    _phone_module._phone_lead_queue = _phone_lead_queue
+    _phone_module._followup_templates = _followup_templates
+
+
+def _cancel_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
+    _sync_phone_compat()
+    return _phone_cancel_pending_impl(api, chat_id, kind, data)
+
+
+def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
+    _sync_phone_compat()
+    return _phone_confirm_pending_impl(api, chat_id, kind, data)
+
+
+def _handle_phone_audit_intent(api, chat_id: int, text: str) -> bool:
+    _sync_phone_compat()
+    return _phone_audit_impl(api, chat_id, text)
+
+
+def _handle_phone_bank_monitor_intent(api, chat_id: int, text: str) -> bool:
+    _sync_phone_compat()
+    return _phone_bank_impl(api, chat_id, text)
+
+
+def _handle_phone_lead_intent(api, chat_id: int, text: str) -> bool:
+    _sync_phone_compat()
+    return _phone_lead_impl(api, chat_id, text)
+
+
+def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
+    _sync_phone_compat()
+    return _phone_workflow_impl(api, chat_id, text)
+
+
+def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
+    _sync_phone_compat()
+    return _phone_gateway_intent_impl(api, chat_id, text)
+
+
+def _handle_unified_inbox_intent(api, chat_id: int, text: str) -> bool:
+    # Keep monkeypatch/operator overrides on the public entrypoint effective.
+    from tg_bot import inbox_router as _router
+    _router._inbox_mark_read = _inbox_mark_read
+    _router._send_unified_inbox = _send_unified_inbox
+    return _inbox_intent_impl(api, chat_id, text)
+
+
 from tg_bot.api import TelegramAPI  # noqa: E402
 from tg_bot.keyboards import (  # noqa: E402
     ACCOUNTS_MENU_KEYBOARD,
@@ -196,8 +367,11 @@ def _send_unified_inbox(api, chat_id: int, text: str = "", filters: dict | None 
 
 
 def _handle_unified_inbox_intent(api, chat_id: int, text: str) -> bool:
-    from tg_bot.inbox_router import _handle_unified_inbox_intent as _f
-    return _f(api, chat_id, text)
+    from tg_bot import inbox_router as _router
+    # Preserve the historical public override points after modularisation.
+    _router._inbox_mark_read = _inbox_mark_read
+    _router._send_unified_inbox = _send_unified_inbox
+    return _router._handle_unified_inbox_intent(api, chat_id, text)
 
 
 def _handle_freelance_intent(api, chat_id: int, text: str) -> bool:

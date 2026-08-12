@@ -28,11 +28,31 @@ def build_manifest() -> dict[str, object]:
         ["git", "-C", str(ROOT), "rev-parse", "HEAD^{tree}"], text=True
     ).strip()
     compose = ROOT / "docker-compose.prod.yml"
-    images = sorted(
+    image_refs = sorted(
         match.group(1)
         for line in compose.read_text(encoding="utf-8").splitlines()
         if (match := re.match(r"\s*image:\s*([^\s#]+)", line))
     )
+    images: list[str] = []
+    for image in image_refs:
+        if "@sha256:" in image:
+            images.append(image)
+            continue
+        # Locally built production images have no registry tag in Compose, but
+        # Docker still exposes a content-addressed RepoDigest/Image ID.
+        details = json.loads(
+            subprocess.check_output(["docker", "image", "inspect", image], text=True)
+        )[0]
+        digests = details.get("RepoDigests") or []
+        if digests:
+            images.append(str(digests[0]))
+            continue
+        image_id = str(details.get("Id") or "")
+        if not image_id.startswith("sha256:"):
+            raise RuntimeError(f"image has no immutable digest: {image}")
+        repository = image.rsplit(":", 1)[0] if ":" in image.rsplit("/", 1)[-1] else image
+        images.append(f"{repository}@{image_id}")
+    images.sort()
     units = {
         str(path.relative_to(ROOT)): _sha(path)
         for path in sorted((ROOT / "deploy" / "systemd").rglob("*.service"))

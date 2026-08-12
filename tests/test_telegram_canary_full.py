@@ -61,6 +61,7 @@ def test_owner_canary_sends_silently_and_auto_deletes(tmp_path, monkeypatch):
     (credentials / "telegram_owner_chat_id").write_text("777\n", encoding="utf-8")
     monkeypatch.setenv("CREDENTIALS_DIRECTORY", str(credentials))
     monkeypatch.setenv("AIOS_TELEGRAM_TOKEN", "test-token")
+    monkeypatch.setenv("AIOS_COLAB_MODE", "active")
     monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
     monkeypatch.delenv("TELEGRAM_CANARY_CHAT_ID", raising=False)
 

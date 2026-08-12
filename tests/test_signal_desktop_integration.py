@@ -17,12 +17,18 @@ def test_signal_read_marks_right_bubbles_as_mine(monkeypatch):
     monkeypatch.setattr(sc, "_click", lambda *args, **kwargs: None)
     monkeypatch.setattr(sc, "_shot", lambda name: f"/tmp/{name}.png")
     monkeypatch.setattr(sc.time, "sleep", lambda *_: None)
-    calls = iter([
-        [_word("Чат", 100, 100)],
-        [_word("Входящее", 760, 400), _word("сообщение", 840, 400),
-         _word("Моё", 1420, 450), _word("сообщение", 1500, 450)],
-    ])
-    monkeypatch.setattr(sc, "_ocr", lambda _path: next(calls))
+    first = [_word("Чат", 100, 100)]
+    viewport = [
+        _word("Входящее", 760, 400), _word("сообщение", 840, 400),
+        _word("Моё", 1420, 450), _word("сообщение", 1500, 450),
+    ]
+    calls = {"count": 0}
+
+    def stable_ocr(_path):
+        calls["count"] += 1
+        return first if calls["count"] == 1 else viewport
+
+    monkeypatch.setattr(sc, "_ocr", stable_ocr)
 
     result = sc.read_chat("Чат")
     assert result["status"] == "ok"

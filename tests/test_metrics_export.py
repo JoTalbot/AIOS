@@ -31,10 +31,10 @@ _SAMPLE_RE = re.compile(r"[a-z_]+(\{[^}]*\})? -?\d+(\.\d+)?")
 
 def test_render_contains_core_series():
     memory, engine, scheduler = _built_trio()
-    text = render_prometheus(memory_system=memory, engine=engine, scheduler=scheduler, version="16.0.0")
+    text = render_prometheus(memory_system=memory, engine=engine, scheduler=scheduler, version="19.9.0")
     assert "# HELP aios_info AIOS build information (constant 1)." in text
     assert "# TYPE aios_info gauge" in text
-    assert 'aios_info{version="16.0.0"} 1' in text
+    assert 'aios_info{version="19.9.0"} 1' in text
     # Memory block
     assert 'aios_memory_entries{pool="long_term"} 1' in text
     assert 'aios_memory_entries{pool="short_term"} 0' in text
@@ -120,7 +120,7 @@ def test_metrics_endpoint_shape(client):
     assert resp.headers["content-type"].startswith("text/plain")
     assert "version=0.0.4" in resp.headers["content-type"]
     body = resp.text
-    assert 'aios_info{version="16.0.0"} 1' in body
+    assert 'aios_info{version="19.9.0"} 1' in body
     # Seeded memory singleton: 3 LT + 4 EP demo entries.
     assert 'aios_memory_entries{pool="long_term"} 3' in body
     assert 'aios_memory_entries{pool="episodic"} 4' in body

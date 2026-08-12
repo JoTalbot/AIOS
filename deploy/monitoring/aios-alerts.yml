@@ -174,7 +174,7 @@ groups:
       - alert: AIOSTelegramOffsiteBackupNotConfigured
         expr: aios_telegram_offsite_backup_configured == 0
         for: 1h
-        labels: {severity: info}
+        labels: {severity: warning}
         annotations:
           summary: "Off-host Telegram backup is not configured"
           description: "Create a free Backblaze B2 Object-Lock bucket and install its restricted S3 credentials."
@@ -190,7 +190,7 @@ groups:
       - alert: AIOSColabHumanActionRequired
         expr: aios_colab_human_action_required == 1
         for: 1m
-        labels: {severity: info}
+        labels: {severity: warning}
         annotations:
           summary: "Colab recovery waits for owner action"
           description: "Automatic recovery is intentionally disabled; complete CAPTCHA or change the declared mode before resuming the managed keeper."

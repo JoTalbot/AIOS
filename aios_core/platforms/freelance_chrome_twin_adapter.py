@@ -259,7 +259,7 @@ class FreelanceChromeTwinAdapter(ChromeTwinAdapter):
                             continue
                     try:
                         await page.context.clear_cookies()
-                    except:
+                    except Exception:
                         pass
                     try:
                         await page.context.add_cookies(_pw)
@@ -538,7 +538,7 @@ class FreelanceChromeTwinAdapter(ChromeTwinAdapter):
                 screenshot = f"/tmp/fh_uc_error_{int(_time.time())}.png"
                 try:
                     driver.save_screenshot(screenshot)
-                except:
+                except Exception:
                     screenshot = None
                 driver.quit()
                 return {"status": "error", "error": str(e), "screenshot": screenshot}
