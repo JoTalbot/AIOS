@@ -125,3 +125,7 @@ data/.cards_vault.json
 
 # Private call recordings/PII live in /srv/aios-private and are bind-mounted here
 /Calls/
+
+# Generated Calls dashboards (runtime output, may reflect private CRM schema)
+/converge/static/calls_dashboard.html
+/data/stitch_calls_dashboard.html
