@@ -47,7 +47,7 @@ groups:
         labels: {severity: warning}
         annotations:
           summary: "Батарея телефона <20%"
-          description: "G1 на {{  }}% и, вероятно, не на зарядке"
+          description: "G1 на {{ $value }}% и, вероятно, не на зарядке"
 
       - alert: NoCardsCollected
         expr: rate(aios_cards_collected[30m]) == 0
