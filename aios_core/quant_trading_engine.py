@@ -1008,7 +1008,7 @@ def format_unified_crypto_earnings_report(report: Dict[str, Any]) -> str:
 class MultiExchangeQuantEngine:
     """Двигатель мульти-биржевого трейдинга и арбитража на 5 биржах (Kraken, Binance, Bybit, OKX, Uniswap V3) с демо-счетами по $1,000."""
 
-    EXCHANGES = ["kraken", "binance", "bybit", "okx", "uniswap_v3"]
+    EXCHANGES = ["kraken", "binance", "bybit", "okx", "uniswap_v3", "coinbase", "kucoin", "bitfinex", "bitstamp", "mexc"]
     INITIAL_PER_EXCHANGE = 1000.0
 
     def __init__(self, data_dir: str = "/root/AIOS/data"):
@@ -1145,6 +1145,27 @@ class MultiExchangeQuantEngine:
             base_p = results["binance"].get(s) or results["kraken"].get(s) or 100.0
             results["uniswap_v3"][s] = round(base_p * 1.0008, 4)
 
+        # Новые биржи (Coinbase, KuCoin, Bitfinex, Bitstamp, MEXC) через ccxt (batch fetchTickers)
+        # Новые биржи (Coinbase, KuCoin, Bitfinex, Bitstamp, MEXC) через ccxt (batch fetchTickers)
+        import ccxt
+        _ccxt_map = {
+            "coinbase": (ccxt.coinbase, "USD"), "kucoin": (ccxt.kucoin, "USDT"),
+            "bitfinex": (ccxt.bitfinex, "USD"), "bitstamp": (ccxt.bitstamp, "USD"),
+            "mexc": (ccxt.mexc, "USDT"),
+        }
+        for _ex_name, (_ex_cls, _quote) in _ccxt_map.items():
+            try:
+                _ex = _ex_cls({"enableRateLimit": True, "timeout": 8000})
+                _pairs = [f"{s}/{_quote}" for s in symbols]
+                tickers = _ex.fetch_tickers(_pairs)
+                for _sym, _t in (tickers or {}).items():
+                    _base = _sym.split("/")[0]
+                    _p = _t.get("last") if _t else None
+                    if _p and _p > 0 and _base in symbols:
+                        results[_ex_name][_base] = float(_p)
+            except Exception:
+                pass
+
         return results
 
     def run_multi_exchange_cycle(self) -> Dict[str, Any]:
@@ -1153,6 +1174,29 @@ class MultiExchangeQuantEngine:
         data = self.load_portfolios()
 
         cycle_trades = []
+
+        # Сеяние истории для новых бирж (coinbase/kucoin/bitfinex/bitstamp/mexc):
+        # чтобы индикаторы SMA/RSI сразу работали, копируем ряд цен из binance
+        _new_ex = {"coinbase", "kucoin", "bitfinex", "bitstamp", "mexc"}
+        try:
+            _hist = self.signal_engine.load_history()
+            _bin_prices = all_prices.get("binance", {})
+            for _ex in _new_ex:
+                _ex_p = all_prices.get(_ex, {})
+                for _sym in _ex_p:
+                    _key = f"{_ex.upper()}_{_sym}"
+                    if _key not in _hist or len(_hist.get(_key, [])) < 20:
+                        # используем binance-ряд (тот же актив) как базовую историю
+                        _bin_key = f"BINANCE_{_sym}"
+                        _seed = list(_hist.get(_bin_key, []))[-30:] if _bin_key in _hist else []
+                        # дополняем текущими ценами новой биржи
+                        _cur = _ex_p.get(_sym, 0)
+                        if _cur > 0:
+                            _seed = _seed[-29:] + [_cur]
+                        _hist[_key] = _seed
+            self.signal_engine.save_history(_hist)
+        except Exception:
+            pass
 
         # 1. Одиночные биржевые торги на каждой из 5 бирж
         for ex in self.EXCHANGES:
