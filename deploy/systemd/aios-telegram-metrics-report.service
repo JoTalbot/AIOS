@@ -1,6 +1,6 @@
 [Unit]
 Description=AIOS Telegram structured metrics thresholds and deduplicated alerts
-After=network-online.target aios-tg.service
+After=network-online.target aios-telegram-bot.service aios-tg.service
 
 [Service]
 Type=oneshot

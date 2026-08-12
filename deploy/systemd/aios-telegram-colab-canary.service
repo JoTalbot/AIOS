@@ -1,6 +1,6 @@
 [Unit]
 Description=AIOS Colab/Qwen and Telegram outbox canary
-After=network-online.target aios-tg.service aios-colab-keeper.service
+After=network-online.target aios-telegram-bot.service aios-tg.service aios-colab-keeper.service
 Wants=network-online.target
 
 [Service]

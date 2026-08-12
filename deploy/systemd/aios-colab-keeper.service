@@ -8,6 +8,9 @@ Type=simple
 User=root
 WorkingDirectory=/root/AIOS
 EnvironmentFile=-/root/AIOS/.env
+EnvironmentFile=-/root/AIOS/data/.colab_llm.env
+Environment=DISPLAY=:1
+Environment=PYTHONPATH=/root/AIOS
 Environment=AIOS_SYSTEMD_CREDENTIALS=1
 Environment=AIOS_CREDENTIAL_SOURCE_DIR=/etc/aios/credentials
 Environment=COLAB_TUNNEL_PROVIDER=auto

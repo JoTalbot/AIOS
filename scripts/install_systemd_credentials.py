@@ -92,9 +92,17 @@ def main() -> int:
 
     env_file = ROOT / ".env"
     values = _parse_env(env_file)
+    service_values = _parse_env(
+        Path(os.environ.get("AIOS_TELEGRAM_ENV_FILE", "/etc/aios/aios-telegram-bot.env"))
+    )
+    keeper_values = _parse_env(ROOT / "data" / ".colab_llm.env")
     existing_token = _existing("telegram_token").decode("utf-8")
-    token = existing_token or values.get("AIOS_TELEGRAM_TOKEN") or values.get(
-        "TELEGRAM_BOT_TOKEN", ""
+    token = (
+        existing_token
+        or service_values.get("AIOS_TELEGRAM_TOKEN")
+        or service_values.get("TELEGRAM_BOT_TOKEN")
+        or values.get("AIOS_TELEGRAM_TOKEN")
+        or values.get("TELEGRAM_BOT_TOKEN", "")
     )
     if not token:
         raise RuntimeError("Telegram token is absent; credential migration aborted")
@@ -111,7 +119,11 @@ def main() -> int:
     _atomic(SOURCE_DIR / "telegram_queue_key", queue_key)
 
     existing_colab_key = _existing("colab_llm_api_key").decode("utf-8")
-    colab_key = existing_colab_key or values.get("COLAB_LLM_API_KEY", "")
+    colab_key = (
+        existing_colab_key
+        or keeper_values.get("COLAB_LLM_API_KEY")
+        or values.get("COLAB_LLM_API_KEY", "")
+    )
     if not colab_key:
         colab_key = secrets.token_urlsafe(36)
     _write_if_value("colab_llm_api_key", colab_key)
