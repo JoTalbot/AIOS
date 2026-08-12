@@ -74,6 +74,20 @@ def _write_if_value(name: str, value: str) -> None:
         _atomic(target, b"")
 
 
+def _update_env(path: Path, values: dict[str, str]) -> None:
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    remaining = dict(values)
+    updated: list[str] = []
+    for line in lines:
+        key = line.partition("=")[0].strip() if "=" in line else ""
+        if key in remaining:
+            updated.append(f"{key}={remaining.pop(key)}")
+        else:
+            updated.append(line)
+    updated.extend(f"{key}={value}" for key, value in remaining.items())
+    _atomic(path, ("\n".join(updated) + "\n").encode("utf-8"))
+
+
 def _purge_env(path: Path) -> None:
     if not path.exists():
         return
@@ -131,6 +145,16 @@ def main() -> int:
     existing_tailscale_key = _existing("tailscale_auth_key").decode("utf-8")
     tailscale_key = existing_tailscale_key or values.get("TAILSCALE_AUTH_KEY", "")
     _write_if_value("tailscale_auth_key", tailscale_key)
+
+    owner_chat = (
+        service_values.get("TELEGRAM_CHAT_ID")
+        or values.get("TELEGRAM_CHAT_ID", "")
+    ).split(",", 1)[0].strip()
+    if owner_chat:
+        _update_env(
+            ROOT / "data" / ".telegram_canary.env",
+            {"TELEGRAM_CANARY_CHAT_ID": owner_chat},
+        )
 
     if args.purge_managed_env:
         _purge_env(env_file)
