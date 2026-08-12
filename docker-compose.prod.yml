@@ -333,7 +333,7 @@ services:
       - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./deploy/monitoring/aios-alerts.yml:/etc/prometheus/aios-alerts.yml:ro
       - ./deploy/monitoring/production-alerts.yml:/etc/prometheus/production-alerts.yml:ro
-      - /run/aios-docker-credentials/metrics_api_key:/run/secrets/metrics_api_key:ro
+      - /etc/aios/credentials/metrics_api_key:/run/secrets/metrics_api_key:ro
       - prometheus-data:/prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
