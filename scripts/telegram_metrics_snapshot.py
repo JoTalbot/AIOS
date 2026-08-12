@@ -6,10 +6,14 @@ from __future__ import annotations
 import argparse
 import os
 import signal
+import sys
 import tempfile
 import threading
 import time
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 from tg_bot.metrics import render_telegram_prometheus
 
