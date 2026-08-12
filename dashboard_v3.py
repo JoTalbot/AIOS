@@ -412,6 +412,37 @@ def build() -> None:
     except Exception:
         pass
 
+    # Бэктест ML/RL стратегий
+    try:
+        bt_file = ROOT / "data" / "quant" / "backtest_results.json"
+        if bt_file.exists():
+            bt = json.loads(bt_file.read_text(encoding="utf-8"))
+            with ui.card().classes("w-full border-l-4 border-emerald-500"):
+                ui.label("📈 Бэктест стратегий").classes("text-lg font-bold")
+                for sym, res in list(bt.items())[:6]:
+                    if not isinstance(res, dict):
+                        continue
+                    ml = res.get("ml_50pct", {})
+                    bh = res.get("buy_hold", {})
+                    if isinstance(ml, dict) and "total_return_pct" in ml:
+                        ui.label(f"{sym}: ML {ml.get('total_return_pct',0):+.2f}% | Sharpe {ml.get('sharpe',0)} | BuyHold {bh.get('total_return_pct',0):+.2f}%").classes("text-xs")
+    except Exception:
+        pass
+
+    # RL-модель результат (best)
+    try:
+        rl_res = ROOT / "data" / "quant" / "backtest_summary.json"
+        if rl_res.exists():
+            rl = json.loads(rl_res.read_text(encoding="utf-8"))
+            with ui.card().classes("w-full border-l-4 border-violet-500"):
+                ui.label("🤖 RL-модель (валидация)").classes("text-lg font-bold")
+                ui.label(f"Активов: {rl.get('assets', 0)}").classes("text-sm")
+                ui.label("Топ-3 по ML-доходности:").classes("text-sm font-bold mt-1")
+                for r in rl.get("results", [])[:3]:
+                    ui.label(f"  {r['symbol']}: ML {r.get('ml_pct',0):+.2f}% | Sharpe {r.get('ml_sharpe',0)}").classes("text-xs")
+    except Exception:
+        pass
+
     # фотокаталог склада
     try:
         inv = json.loads((ROOT / "data" / "inventory.json").read_text(encoding="utf-8"))
