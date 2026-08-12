@@ -44,6 +44,7 @@ services:
     volumes:
       - aios-data:/app/data
       - aios-chroma:/app/chroma_db
+      - aios-model-cache:/tmp/.cache
       - aios-logs:/app/logs
       - aios-backups:/app/backups
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
@@ -118,6 +119,7 @@ services:
     volumes:
       - aios-data:/app/data
       - aios-chroma:/app/chroma_db
+      - aios-model-cache:/tmp/.cache
       - aios-logs:/app/logs
       - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
     init: true
@@ -152,6 +154,7 @@ services:
     volumes:
       - aios-data:/app/data
       - aios-chroma:/app/chroma_db
+      - aios-model-cache:/tmp/.cache
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
     depends_on:
@@ -190,6 +193,7 @@ services:
     volumes:
       - aios-data:/app/data
       - aios-chroma:/app/chroma_db
+      - aios-model-cache:/tmp/.cache
     depends_on:
       aios-api: {condition: service_healthy}
     init: true
@@ -228,6 +232,7 @@ services:
     volumes:
       - aios-data:/app/data
       - aios-chroma:/app/chroma_db
+      - aios-model-cache:/tmp/.cache
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
       - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
@@ -273,6 +278,7 @@ services:
     volumes:
       - aios-data:/app/data
       - aios-chroma:/app/chroma_db
+      - aios-model-cache:/tmp/.cache
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
       - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
@@ -327,12 +333,21 @@ services:
       - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./deploy/monitoring/aios-alerts.yml:/etc/prometheus/aios-alerts.yml:ro
       - ./deploy/monitoring/production-alerts.yml:/etc/prometheus/production-alerts.yml:ro
+      - /run/aios-docker-credentials/metrics_api_key:/run/secrets/metrics_api_key:ro
       - prometheus-data:/prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=30d
       - --web.enable-lifecycle
+    init: true
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m,mode=1777
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     logging:
       driver: json-file
@@ -356,6 +371,14 @@ services:
       - ./deploy/monitoring/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/aios.yml:ro
       - grafana-data:/var/lib/grafana
     depends_on: [prometheus]
+    init: true
+    user: "472:472"
+    read_only: true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m,mode=1777
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     logging:
       driver: json-file
@@ -413,11 +436,20 @@ services:
       - ./deploy/aios-exporter/server.py:/server.py:ro
       - aios-data:/data:ro
     command: ["python", "/server.py"]
+    init: true
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=8m,mode=1777
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     networks: [aios-net]
 volumes:
   aios-data:
   aios-chroma:
+  aios-model-cache:
   aios-backups:
   aios-logs:
   prometheus-data:
