@@ -172,6 +172,28 @@ def _olx_stats() -> dict:
         return {"total": 0, "min_price": None}
 
 
+def _llm_keys() -> dict:
+    """Статус LLM-провайдеров и ключей (без раскрытия значений)."""
+    out = {"providers": {}, "captcha_balance": None, "error": ""}
+    try:
+        from aios_core.llm_balancer import LLMBalancer
+        b = LLMBalancer()
+        for name, prov in b.providers.items():
+            keys = getattr(prov, "keys", [])
+            out["providers"][name] = {
+                "total": len(keys),
+                "healthy": sum(1 for k in keys if not getattr(k, "in_cooldown", lambda: False)()),
+            }
+    except Exception as exc:  # noqa: BLE001
+        out["error"] = "balancer: " + str(exc)
+    try:
+        state = json.loads((ROOT / "data" / "captcha_balance_state.json").read_text(encoding="utf-8"))
+        out["captcha_balance"] = state.get("balance")
+    except Exception:
+        pass
+    return out
+
+
 def build() -> None:
     ui.page_title("AIOS Dashboard")
     with ui.header().classes("bg-blue-900"):
@@ -493,6 +515,30 @@ def build() -> None:
                         sz = f.stat().st_size
                         ui.label(f"• {f.name} — {sz//1024} КБ").classes("text-xs text-gray-600")
     except Exception as e:
+        pass
+
+
+    # LLM-провайдеры и ключи
+    try:
+        llm = _llm_keys()
+        with ui.card().classes("w-full border-l-4 border-emerald-500"):
+            ui.label("🔑 LLM-провайдеры").classes("text-lg font-bold")
+            if llm.get("error"):
+                ui.label("⚠️ " + llm["error"]).classes("text-sm text-red-600")
+            if llm["providers"]:
+                with ui.row().classes("w-full gap-4 flex-wrap"):
+                    for name, info in sorted(llm["providers"].items()):
+                        with ui.card().classes("min-w-36 bg-slate-50"):
+                            ui.label(name).classes("text-xs text-gray-500")
+                            ui.label(f"{info['healthy']}/{info['total']}").classes("text-xl font-bold")
+                            ui.label("ключей здорово").classes("text-xs")
+            else:
+                ui.label("Нет зарегистрированных провайдеров").classes("text-sm")
+            bal = llm.get("captcha_balance")
+            if bal is not None:
+                color = "text-green-700" if bal >= 5 else "text-red-700"
+                ui.label(f"2captcha баланс: <b>${bal:.2f}</b>").classes("text-sm " + color)
+    except Exception:
         pass
 
     # Префикс /crm обеспечивает nginx (strip + auth); приложение работает без root_path,
