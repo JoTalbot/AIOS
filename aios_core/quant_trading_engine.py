@@ -1156,7 +1156,13 @@ class MultiExchangeQuantEngine:
         for _ex_name, (_ex_cls, _quote) in _ccxt_map.items():
             try:
                 _ex = _ex_cls({"enableRateLimit": True, "timeout": 8000})
-                _pairs = [f"{s}/{_quote}" for s in symbols]
+                try:
+                    _mkts = _ex.load_markets()
+                except Exception:
+                    _mkts = {}
+                _pairs = [f"{s}/{_quote}" for s in symbols if (not _mkts) or f"{s}/{_quote}" in _mkts]
+                if not _pairs:
+                    continue
                 tickers = _ex.fetch_tickers(_pairs)
                 for _sym, _t in (tickers or {}).items():
                     _base = _sym.split("/")[0]
