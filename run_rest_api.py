@@ -75,7 +75,7 @@ def _get_app():
         root = os.path.dirname(os.path.abspath(__file__))
         const_dir = os.environ.get("AIOS_CONSTITUTION_DIR", os.path.join(root, "docs/constitution"))
         pol_dir = os.environ.get("AIOS_POLICIES_DIR", os.path.join(root, "policies"))
-        db_path = os.environ.get("AIOS_DB_PATH", os.path.join(root, "aios.sqlite"))
+        db_path = os.environ.get("AIOS_MAIN_DB", os.environ.get("AIOS_DB_PATH", os.path.join(root, "aios.sqlite")))
         _app = create_app(
             db_path=db_path,
             constitution_dir=const_dir,
@@ -86,9 +86,9 @@ def _get_app():
     return _app
 
 
-# Exported app for gunicorn/uvicorn discovery
-app = _get_app()
-
-
 if __name__ == "__main__":
     main()
+else:
+    # Exported app for Gunicorn/Uvicorn discovery without double-initializing
+    # the database when this file is executed as the CLI entrypoint.
+    app = _get_app()
