@@ -38,6 +38,14 @@ def test_wal_safe_backup_key_escrow_and_restore_drill(tmp_path):
     cipher = QueueCipher(key)
     _queue_db(data / "telegram_outbox.sqlite3", "telegram_outbox", cipher)
     _queue_db(data / "telegram_generation.sqlite3", "telegram_generation", cipher)
+    # Historical terminal rows may belong to a retired key generation. Restore
+    # only needs to prove decryption of actionable rows.
+    retired = QueueCipher(tmp_path / "retired.key")
+    with sqlite3.connect(data / "telegram_outbox.sqlite3") as db:
+        db.execute(
+            "INSERT INTO telegram_outbox VALUES (2, ?, 1, 'sent')",
+            (retired.encrypt("historical terminal payload"),),
+        )
 
     # Keep a WAL connection active while sqlite3.Connection.backup() runs.
     writer_done = threading.Event()
@@ -67,6 +75,8 @@ def test_wal_safe_backup_key_escrow_and_restore_drill(tmp_path):
     result = verify_backup(backup, keys)
     assert result["databases"] == 2
     assert restore_drill(backup, keys)["databases"] == 2
+    assert not list(backup.glob("*-wal"))
+    assert not list(backup.glob("*-shm"))
     assert not any(backups.rglob("*.key"))
     assert next(keys.glob("*.key")).stat().st_mode & 0o777 == 0o600
 

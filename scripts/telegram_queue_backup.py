@@ -51,8 +51,15 @@ def _online_backup(source: Path, destination: Path) -> None:
     with sqlite3.connect(f"file:{source}?mode=ro", uri=True, timeout=20) as src:
         with sqlite3.connect(destination) as dst:
             src.backup(dst, pages=256, sleep=0.01)
+            dst.commit()
+            # A source in WAL mode can transfer that persistent pragma. Force a
+            # self-contained backup so restore never depends on sidecar files.
+            dst.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            dst.execute("PRAGMA journal_mode=DELETE").fetchone()
             if dst.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 raise RuntimeError(f"integrity check failed for {source.name}")
+    for suffix in ("-wal", "-shm"):
+        Path(str(destination) + suffix).unlink(missing_ok=True)
     os.chmod(destination, 0o600)
 
 
@@ -140,14 +147,22 @@ def verify_backup(backup_dir: Path, key_backup_root: Path) -> dict:
         with sqlite3.connect(path) as db:
             if db.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 raise RuntimeError(f"integrity check failed for {name}")
-            row = db.execute(
-                f"SELECT text, encrypted FROM {table} WHERE encrypted=1 LIMIT 1"
-            ).fetchone()
-            if row:
+            active_statuses = (
+                ("pending", "sending", "failed_unknown")
+                if table == "telegram_outbox"
+                else ("pending", "generating", "dead_letter")
+            )
+            placeholders = ",".join("?" for _ in active_statuses)
+            rows = db.execute(
+                f"SELECT text FROM {table} WHERE encrypted=1 "
+                f"AND status IN ({placeholders})",
+                active_statuses,
+            ).fetchall()
+            for row in rows:
                 try:
                     cipher.decrypt(str(row[0]).encode("ascii"))
                 except (InvalidToken, ValueError) as exc:
-                    raise RuntimeError(f"payload decrypt check failed for {name}") from exc
+                    raise RuntimeError(f"active payload decrypt check failed for {name}") from exc
             checked += 1
     return {"databases": checked, "timestamp": manifest["timestamp"]}
 
