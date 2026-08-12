@@ -24,6 +24,15 @@ else
     install -m 0644 "$UNIT_SRC/aios-tg.service" "$UNIT_DST/"
 fi
 
+# Keep the secondary Colab browser below its cgroup limit and prevent a crash
+# loop from restoring every historical tab at once.
+CHROME_DROPIN="$ROOT/deploy/systemd/aios-chrome-colab-secondary.service.d/40-memory-safe-startup.conf"
+if systemctl cat aios-chrome-colab-secondary.service >/dev/null 2>&1 && [ -f "$CHROME_DROPIN" ]; then
+    install -d -m 0755 "$UNIT_DST/aios-chrome-colab-secondary.service.d"
+    install -m 0644 "$CHROME_DROPIN" \
+        "$UNIT_DST/aios-chrome-colab-secondary.service.d/40-memory-safe-startup.conf"
+fi
+
 # Preserve host-specific Chrome/CDP drop-ins on existing Colab keepers.
 if systemctl cat aios-colab-keeper.service >/dev/null 2>&1; then
     install -d -m 0755 "$UNIT_DST/aios-colab-keeper.service.d"

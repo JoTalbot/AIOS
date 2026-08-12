@@ -44,3 +44,16 @@ def test_resilience_units_mount_credentials_and_enable_full_canary():
     assert "Environment=CANARY_SEND_TELEGRAM=1" in canary
     assert "LoadCredential=telegram_token:" in metrics
     assert "LoadCredential=telegram_queue_key:" in metrics
+
+
+def test_secondary_colab_chrome_starts_memory_safe():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    dropin = (
+        root
+        / "deploy/systemd/aios-chrome-colab-secondary.service.d/40-memory-safe-startup.conf"
+    ).read_text()
+    assert "--restore-last-session" not in dropin
+    assert "--renderer-process-limit=4" in dropin
+    assert "MemoryMax=1200M" in dropin
