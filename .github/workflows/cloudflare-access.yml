@@ -26,29 +26,48 @@ jobs:
           test -n "$CF_API_TOKEN" || { echo "Missing CLOUDFLARE_ACCESS_API_TOKEN"; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo "Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
 
-      - name: Create or update self-hosted Access application
+      - name: Configure protected application and public storefront bypasses
         shell: bash
         run: |
           set -euo pipefail
           base="https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/access/apps"
           headers=(-H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json")
-          apps=$(curl --fail-with-body -sS "${headers[@]}" "${base}?domain=${DOMAIN}")
-          app_id=$(jq -r '.result[0].id // empty' <<<"$apps")
-          app_payload=$(jq -nc --arg name "AIOS Dashboard" --arg domain "$DOMAIN" '{name:$name,domain:$domain,type:"self_hosted",session_duration:"24h",auto_redirect_to_identity:false,app_launcher_visible:false}')
-          if [[ -n "$app_id" ]]; then
-            curl --fail-with-body -sS -X PUT "${headers[@]}" --data "$app_payload" "${base}/${app_id}" >/dev/null
-          else
-            created=$(curl --fail-with-body -sS -X POST "${headers[@]}" --data "$app_payload" "$base")
-            app_id=$(jq -r '.result.id' <<<"$created")
-          fi
 
-          policy_base="${base}/${app_id}/policies"
-          policies=$(curl --fail-with-body -sS "${headers[@]}" "$policy_base")
-          policy_id=$(jq -r '.result[] | select(.name == "Allow dashboard owner") | .id' <<<"$policies" | head -1)
-          policy_payload=$(jq -nc --arg email "$ALLOWED_EMAIL" '{name:"Allow dashboard owner",decision:"allow",precedence:1,include:[{email:{email:$email}}],exclude:[],require:[]}')
-          if [[ -n "$policy_id" ]]; then
-            curl --fail-with-body -sS -X PUT "${headers[@]}" --data "$policy_payload" "${policy_base}/${policy_id}" >/dev/null
-          else
-            curl --fail-with-body -sS -X POST "${headers[@]}" --data "$policy_payload" "$policy_base" >/dev/null
-          fi
-          echo "Cloudflare Access configured for ${DOMAIN} and ${ALLOWED_EMAIL}"
+          upsert_app() {
+            local name=$1 domain=$2 apps app_id payload created
+            apps=$(curl --fail-with-body -sS -G "${headers[@]}" --data-urlencode "domain=${domain}" "$base")
+            app_id=$(jq -r --arg domain "$domain" '.result[] | select(.domain == $domain) | .id' <<<"$apps" | head -1)
+            payload=$(jq -nc --arg name "$name" --arg domain "$domain" '{name:$name,domain:$domain,type:"self_hosted",session_duration:"24h",auto_redirect_to_identity:false,app_launcher_visible:false}')
+            if [[ -n "$app_id" ]]; then
+              curl --fail-with-body -sS -X PUT "${headers[@]}" --data "$payload" "${base}/${app_id}" >/dev/null
+            else
+              created=$(curl --fail-with-body -sS -X POST "${headers[@]}" --data "$payload" "$base")
+              app_id=$(jq -er '.result.id' <<<"$created")
+            fi
+            printf '%s' "$app_id"
+          }
+
+          upsert_policy() {
+            local app_id=$1 name=$2 payload=$3 policy_base policies policy_id
+            policy_base="${base}/${app_id}/policies"
+            policies=$(curl --fail-with-body -sS "${headers[@]}" "$policy_base")
+            policy_id=$(jq -r --arg name "$name" '.result[] | select(.name == $name) | .id' <<<"$policies" | head -1)
+            if [[ -n "$policy_id" ]]; then
+              curl --fail-with-body -sS -X PUT "${headers[@]}" --data "$payload" "${policy_base}/${policy_id}" >/dev/null
+            else
+              curl --fail-with-body -sS -X POST "${headers[@]}" --data "$payload" "$policy_base" >/dev/null
+            fi
+          }
+
+          protected_app=$(upsert_app "AIOS Dashboard" "$DOMAIN")
+          owner_policy=$(jq -nc --arg email "$ALLOWED_EMAIL" '{name:"Allow dashboard owner",decision:"allow",precedence:1,include:[{email:{email:$email}}],exclude:[],require:[]}')
+          upsert_policy "$protected_app" "Allow dashboard owner" "$owner_policy"
+
+          bypass_policy=$(jq -nc '{name:"Bypass public storefront",decision:"bypass",precedence:1,include:[{everyone:{}}],exclude:[],require:[]}')
+          for path in parts photos; do
+            public_domain="${DOMAIN}/${path}/*"
+            public_app=$(upsert_app "AIOS Public ${path}" "$public_domain")
+            upsert_policy "$public_app" "Bypass public storefront" "$bypass_policy"
+          done
+
+          echo "Cloudflare Access protects ${DOMAIN}; /parts/* and /photos/* are public bypass applications."
