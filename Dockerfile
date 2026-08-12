@@ -1,5 +1,5 @@
-# Dockerfile для AIOS v22.0.0
-FROM python:3.11-slim
+# AIOS production image; application version is defined in VERSION
+FROM python:3.11.15-slim-bookworm@sha256:d29f48a31a8b408ed19272ca1e7b10ebae13b240a27e862d3d4217c528e2e0c3
 
 ENV PYTHONUNBUFFERED=1
 ENV PIP_DEFAULT_TIMEOUT=100
@@ -11,12 +11,11 @@ WORKDIR /app
 # Установка базовых утилит (curl, sqlite3) для работы healthcheck и БД
 RUN apt-get update && apt-get install -y --no-install-recommends curl sqlite3 && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY requirements.txt requirements.lock ./
 
-# Установка зависимостей с игнорированием жестких конфликтов
+# Install the exact validated production environment; fail closed on conflicts.
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu || \
-    pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu --no-deps
+    pip install -r requirements.lock --extra-index-url https://download.pytorch.org/whl/cpu
 
 COPY . .
 

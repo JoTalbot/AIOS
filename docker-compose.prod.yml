@@ -35,11 +35,15 @@ services:
       LOCAL_LLM: "1"
       LOCAL_LLM_BASE_URL: http://172.18.0.1:11434/v1/chat/completions
     volumes:
-      - .:/app
       - aios-data:/app/data
       - aios-logs:/app/logs
+      - aios-backups:/app/backups
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
       - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
+    init: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -66,13 +70,17 @@ services:
       AIOS_PROFILES_DB: /app/data/profiles.sqlite
       AIOS_DEVICES_DB: /app/data/devices.sqlite
       PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
     volumes:
-      - .:/app
       - aios-data:/app/data
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
     depends_on:
       aios-api: {condition: service_healthy}
+    init: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     deploy:
       resources:
@@ -96,10 +104,13 @@ services:
       AIOS_API_URL: http://aios-api:8000
       AIOS_PROFILES_DB: /app/data/profiles.sqlite
     volumes:
-      - .:/app
       - aios-data:/app/data
     depends_on:
       aios-api: {condition: service_healthy}
+    init: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     deploy:
       resources:
@@ -123,14 +134,18 @@ services:
       CREDENTIALS_DIRECTORY: /run/secrets
       OLX_CLIENT_ID: ${OLX_CLIENT_ID:-}
       PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
     volumes:
-      - .:/app
       - aios-data:/app/data
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
       - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
     depends_on:
       aios-api: {condition: service_healthy}
+    init: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     deploy:
       resources:
@@ -157,13 +172,17 @@ services:
       AIOS_PROFILES_DB: /app/data/profiles.sqlite
       AIOS_OLX_DB: /app/data/olx.sqlite
       PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
     volumes:
-      - .:/app
       - aios-data:/app/data
       - aios-logs:/app/logs
       - /root/AIOS/data/olx_http.sqlite:/app/hostdata/olx_http.sqlite:ro  # v22: live OLX price intel (host collector data)
       - /run/aios-docker-credentials/telegram_token:/run/secrets/telegram_token:ro
       - /etc/aios/credentials/telegram_queue_key:/run/secrets/telegram_queue_key:ro
+    init: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     deploy:
       resources:
@@ -295,6 +314,7 @@ services:
     networks: [aios-net]
 volumes:
   aios-data:
+  aios-backups:
   aios-logs:
   prometheus-data:
   grafana-data:

@@ -41,3 +41,7 @@ Dockerfile
 Dockerfile.android
 docker-compose*.yml
 .dockerignore
+
+Calls/
+chroma_db/
+catboost_info/
