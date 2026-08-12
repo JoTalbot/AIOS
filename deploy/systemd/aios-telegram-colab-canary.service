@@ -22,4 +22,5 @@ StandardOutput=append:/var/log/aios/telegram/telegram_colab_canary.log
 StandardError=append:/var/log/aios/telegram/telegram_colab_canary.log
 TimeoutStartSec=180
 UMask=0077
+CapabilityBoundingSet=
 Nice=10

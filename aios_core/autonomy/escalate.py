@@ -7,10 +7,10 @@ Pending-запросы сохраняются в ``data/autonomy_approvals.json`
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.request
 from pathlib import Path
-from typing import Any
 
 from . import _env
 
@@ -71,7 +71,10 @@ def notify_owner(proposal: dict, decision, journal=None) -> dict:
         f"Команды: «подтверди {rec['id']}» / «отклони {rec['id']}»"
     )
     sent = False
-    if token and chat_id:
+    # Network delivery is explicit. This keeps library/test invocations free of
+    # outbound side effects even if unrelated code populated Telegram secrets.
+    notify_enabled = os.environ.get("AIOS_AUTONOMY_NOTIFY", "").strip() == "1"
+    if notify_enabled and token and chat_id:
         try:
             payload = {"chat_id": int(chat_id), "text": text[:3800],
                        "parse_mode": "HTML", "disable_web_page_preview": True,

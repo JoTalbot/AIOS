@@ -57,28 +57,27 @@ def test_resilience_units_mount_credentials_and_enable_full_canary():
     assert "LoadCredential=telegram_queue_key:" in metrics
 
 
-def test_root_resilience_readers_keep_only_required_dac_capabilities():
+def test_resilience_services_run_unprivileged_without_dac_capabilities():
     from pathlib import Path
 
     units = Path(__file__).resolve().parents[1] / "deploy/systemd"
-    read_only = (
-        "aios-telegram-metrics-snapshot.service",
-        "aios-alertmanager-delivery-canary.service",
-    )
-    for name in read_only:
-        unit = (units / name).read_text(encoding="utf-8")
-        assert "CapabilityBoundingSet=CAP_DAC_READ_SEARCH" in unit
-        assert "CAP_DAC_OVERRIDE" not in unit
-
     for name in (
+        "aios-telegram-colab-canary.service",
+        "aios-telegram-metrics-report.service",
+        "aios-telegram-metrics-snapshot.service",
         "aios-telegram-queue-backup.service",
         "aios-telegram-offsite-backup.service",
     ):
         unit = (units / name).read_text(encoding="utf-8")
-        assert "CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH" in unit
+        assert "User=aios-telegram" in unit
+        assert "Group=aios-telegram" in unit
+        assert "CapabilityBoundingSet=\n" in unit
+        assert "CAP_DAC_" not in unit
+
     queue_backup = (units / "aios-telegram-queue-backup.service").read_text(
         encoding="utf-8"
     )
+    assert "LoadCredential=telegram_queue_key:" in queue_backup
     assert "ReadWritePaths=/var/lib/aios/telegram" in queue_backup
 
 
