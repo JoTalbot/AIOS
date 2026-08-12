@@ -1079,6 +1079,30 @@ class MultiExchangeQuantEngine:
         with open(self.portfolio_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
+    @staticmethod
+    def _is_current_liquid_ticker(
+        ticker: Dict[str, Any], now_ms: Optional[float] = None
+    ) -> bool:
+        """Отсекает stale/illiquid last trades до mark-to-market и arb scan."""
+        try:
+            timestamp = float(ticker.get("timestamp") or 0.0)
+            bid = float(ticker.get("bid") or 0.0)
+            ask = float(ticker.get("ask") or 0.0)
+            base_volume = float(ticker.get("baseVolume") or 0.0)
+            quote_volume = float(ticker.get("quoteVolume") or 0.0)
+            current_ms = now_ms if now_ms is not None else time.time() * 1000.0
+            age_ms = current_ms - timestamp
+            book_spread_pct = ((ask - bid) / bid * 100.0) if bid > 0 else math.inf
+            return (
+                0.0 <= age_ms <= 120_000.0
+                and bid > 0.0
+                and ask >= bid
+                and book_spread_pct <= 0.5
+                and (base_volume > 0.0 or quote_volume > 0.0)
+            )
+        except (TypeError, ValueError, OverflowError):
+            return False
+
     def fetch_all_exchange_prices(self) -> Dict[str, Dict[str, float]]:
         """Запрашивает котировки 24 активов со всех настроенных бирж."""
         symbols = [
@@ -1177,11 +1201,15 @@ class MultiExchangeQuantEngine:
                 for _sym, _t in (tickers or {}).items():
                     _base = _sym.split("/")[0]
                     _p = _t.get("last") if _t else None
-                    _ts = _t.get("timestamp") if _t else None
-                    # For accounting/scanning, an undated or stale last trade is
-                    # not a current executable quote.
-                    _fresh = bool(_ts) and (time.time() * 1000.0 - float(_ts) <= 120_000)
-                    if _p and _p > 0 and _fresh and _base in symbols:
+                    # A recently timestamped last trade can still be non-executable
+                    # (e.g. zero-volume ATOM/USD on Bitstamp with a huge book gap).
+                    # Require a current, non-empty, reasonably tight top of book.
+                    if (
+                        _p
+                        and _p > 0
+                        and self._is_current_liquid_ticker(_t)
+                        and _base in symbols
+                    ):
                         results[_ex_name][_base] = float(_p)
             except Exception:
                 pass

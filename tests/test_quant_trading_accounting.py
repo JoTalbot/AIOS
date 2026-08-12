@@ -167,3 +167,28 @@ def test_format_is_dynamic_and_discloses_non_accounting_signal():
     assert "не считаются прибылью" in text
     assert "исключена из PnL" in text
     assert "$5,000" not in text
+
+
+def test_ccxt_ticker_filter_rejects_recent_but_illiquid_last_trade():
+    now_ms = 1_000_000.0
+    stale_atom_shape = {
+        "timestamp": now_ms - 1_000.0,
+        "last": 1.3189,
+        "bid": 1.0788,
+        "ask": 3.4357,
+        "baseVolume": 0.0,
+        "quoteVolume": 0.0,
+    }
+    healthy = {
+        "timestamp": now_ms - 1_000.0,
+        "last": 100.0,
+        "bid": 99.9,
+        "ask": 100.1,
+        "baseVolume": 50.0,
+        "quoteVolume": 5_000.0,
+    }
+    old = dict(healthy, timestamp=now_ms - 120_001.0)
+
+    assert not MultiExchangeQuantEngine._is_current_liquid_ticker(stale_atom_shape, now_ms=now_ms)
+    assert not MultiExchangeQuantEngine._is_current_liquid_ticker(old, now_ms=now_ms)
+    assert MultiExchangeQuantEngine._is_current_liquid_ticker(healthy, now_ms=now_ms)
