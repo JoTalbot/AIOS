@@ -896,7 +896,7 @@ def get_unified_crypto_earnings_report(data_dir: str = "/root/AIOS/data") -> Dic
     simulated_daily_yield = cash_usd * daily_yield_pct
 
     total_pnl = kraken_rep.get("total_pnl_usd", 0.0)
-    equity = kraken_rep.get("total_equity_usd", 100.0)
+    equity = kraken_rep.get('total_equity_usd', 100.0)
     initial_bal = kraken_rep.get("initial_balance_usd", 100.0)
 
     profit_to_split = max(0.0, total_pnl)
@@ -1923,7 +1923,7 @@ def get_ai_portfolio_advice(data_dir: str = "/root/AIOS/data") -> Dict[str, Any]
     for ex_k, ex_d in exchanges.items():
         poss = ex_d.get("positions", [])
         for p in poss:
-            pos_summary.append(f"[{ex_k.upper()}] {p.get("pair", "")}: PnL ${p.get("unrealized_pnl_usd", 0.0):.2f}")
+            pos_summary.append(f"[{ex_k.upper()}] {p.get('pair', '')}: PnL ${p.get('unrealized_pnl_usd', 0.0):.2f}")
 
     from aios_core.llm_balancer import LLMBalancer
     balancer = LLMBalancer()
@@ -1955,9 +1955,9 @@ def format_portfolio_advice_report(data: Dict[str, Any]) -> str:
     lines = [
         "🧠 <b>ИИ-Советник по Оптимизации Портфеля AIOS ($5,000)</b>",
         "━━━━━━━━━━━━━━━━━━━━━",
-        f"📊 <b>Текущий капитал:</b> <b>${rep.get("total_equity_usd", 5000.0):,.2f} USD</b>",
-        f"💳 <b>Свободный кэш:</b> ${rep.get("total_cash_usd", 5000.0):,.2f} USD",
-        f"📈 <b>Результат (PnL):</b> <b>${rep.get("grand_total_pnl_usd", 0.0):.2f} USD</b>",
+        f"📊 <b>Текущий капитал:</b> <b>${rep.get('total_equity_usd', 5000.0):,.2f} USD</b>",
+        f"💳 <b>Свободный кэш:</b> ${rep.get('total_cash_usd', 5000.0):,.2f} USD",
+        f"📈 <b>Результат (PnL):</b> <b>${rep.get('grand_total_pnl_usd', 0.0):.2f} USD</b>",
         "",
         "💡 <b>Рекомендации ИИ-Управляющего:</b>",
         f"<i>{adv}</i>"
