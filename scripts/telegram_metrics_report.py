@@ -10,7 +10,6 @@ import tempfile
 import time
 from pathlib import Path
 
-from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -19,7 +18,6 @@ from tg_bot.metrics import summarize_telegram_metrics
 from tg_bot.paths import state_path
 
 STATE = state_path("telegram_metrics_alert_state.json")
-load_dotenv(ROOT / ".env")
 
 
 def _load_state() -> dict:

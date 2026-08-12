@@ -16,14 +16,12 @@ import tempfile
 import time
 from pathlib import Path
 
-from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tg_bot.paths import state_path
 
 STATE_FILE = state_path("telegram_colab_canary.json")
-load_dotenv(ROOT / ".env")
 
 
 def _atomic_state(payload: dict) -> None:
