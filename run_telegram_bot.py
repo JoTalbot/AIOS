@@ -503,7 +503,7 @@ def run_bot(token: str) -> None:
                 if "callback_query" in upd:
                     callback_chat = upd.get("callback_query", {}).get("message", {}).get("chat", {}).get("id")
                     if not _is_authorized_chat(callback_chat):
-                        print(f"  [SECURITY] ignored callback from unauthorized chat {callback_chat}")
+                        print("  [SECURITY] ignored callback from unauthorized chat")
                         continue
                     _handle_callback(api, upd)
                     continue
@@ -521,13 +521,11 @@ def run_bot(token: str) -> None:
                 if not chat_id:
                     continue
                 content_kind = "voice" if (msg.get("voice") or msg.get("audio")) else "text"
-                print(
-                    f"📩 [TG INCOMING] chat={chat_id} kind={content_kind} chars={len(text)}"
-                )
+                print(f"📩 [TG INCOMING] kind={content_kind} chars={len(text)}")
                 if not _is_authorized_chat(chat_id):
-                    print(f"  [SECURITY] ignored message from unauthorized chat {chat_id}")
+                    print("  [SECURITY] ignored message from unauthorized chat")
                     try:
-                        api.send_message(chat_id, f"⛔ Доступ к AIOS боту ограничен.\nВаш chat_id: `{chat_id}`.\nДобавьте этот ID в `.env` (`TELEGRAM_CHAT_ID={chat_id}`).", parse_mode="Markdown")
+                        api.send_message(chat_id, "⛔ Доступ к AIOS боту ограничен.", parse_mode="Markdown")
                     except Exception:
                         pass
                     continue
@@ -731,7 +729,7 @@ def run_bot(token: str) -> None:
                         reply = cmd_code_fix(text)
                     if reply:
                         api.send_message(chat_id, reply)
-                        print(f"  → action {action} (chat {chat_id})")
+                        print(f"  → action {action}")
                     continue
 
                 cmd, args = parse_command(text)
@@ -754,17 +752,17 @@ def run_bot(token: str) -> None:
                     if btn_action:
                         # Handle button press same as callback
                         _handle_button(api, chat_id, btn_action)
-                        print(f"  -> button {btn_action} (chat {chat_id})")
+                        print(f"  -> button {btn_action}")
                         continue
 
                     # Natural language control of Google / Instagram accounts
                     try:
                         from tg_bot.calls import _handle_calls_intent
                         if _handle_calls_intent(api, chat_id, text):
-                            print(f"  -> calls-intent handled (chat {chat_id})")
+                            print("  -> calls-intent handled")
                             continue
                         if _handle_account_intent(api, chat_id, text):
-                            print(f"  -> account-intent handled (chat {chat_id})")
+                            print("  -> account-intent handled")
                             continue
                     except Exception as acct_err:
                         import traceback as _tb2
@@ -1191,7 +1189,7 @@ def run_bot(token: str) -> None:
                         api.send_message(chat_id, reply, reply_markup=keyboard)
                     else:
                         api.send_message(chat_id, reply)
-                    print(f"  → ответил на {cmd} (chat {chat_id})")
+                    print(f"  → ответил на {cmd}")
 
         except KeyboardInterrupt:
             shutdown_requested.set()
