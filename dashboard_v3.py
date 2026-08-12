@@ -585,6 +585,15 @@ def build() -> None:
             if bal is not None:
                 color = "text-green-700" if bal >= 5 else "text-red-700"
                 ui.label(f"2captcha баланс: <b>${bal:.2f}</b>").classes("text-sm " + color)
+            # Лимиты groq (снапшот автопилота)
+            try:
+                lim = json.loads((ROOT / "data" / "llm" / "groq_limits.json").read_text(encoding="utf-8"))
+                if lim.get("avg_remaining") is not None:
+                    ui.label(f"Groq лимиты: в среднем <b>{lim['avg_remaining']:.0f}</b> RPM осталось "
+                             f"({len(lim.get('keys', []))} ключей, проверено "
+                             f"{datetime.fromtimestamp(lim['checked_at']).strftime('%H:%M')})").classes("text-sm")
+            except Exception:
+                pass
     except Exception:
         pass
 
