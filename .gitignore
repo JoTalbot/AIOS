@@ -31,6 +31,10 @@ venv/
 aios.log
 build/
 
+# Source category named "build" (not generated output)
+!/skills/stitch/build/
+!/skills/stitch/build/**
+
 # Documentation build output
 site/
 docs/source/_build/
@@ -79,12 +83,21 @@ apk/**
 *.bak
 *.bak_*
 
+# Mutable/generated JSON and sensitive backup snapshots
+/coverage.json
+/catboost_info/
+/docs/warehouse_pricelist.json
+/backups/android_config/
+/backups/coder_backlog_*.json
+/backups/inventory_before_clear_*.json
+/backups/key_cleanup_*/
+/backups/olx_published_archived_*.json
+
 # AIOS Secrets
 .dashboard_token
 *.token
 .env
 .env.local
-*.json
 
 # backup/temp (never commit)
 *.bak
