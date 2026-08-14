@@ -20,10 +20,10 @@ claim: "none (операторская runtime-команда без измен�
 
 - `systemctl stop aios-freelance-brain.service`.
 - Состояние: `inactive`.
-- Unit остаётся `enabled`; после reboot может запуститься автоматически.
+- По выбранному владельцем режиму выполнено `systemctl disable --now`; unit теперь `disabled` и после reboot автоматически не запустится.
 - Процессы `run_freelance_brain.py`: 0.
 - Failed AIOS services после остановки: 0.
 
 ## Ограничение
 
-Не запускать и не перезапускать freelance service без нового решения владельца. Для постоянной остановки нужен отдельный выбор `disable` или `mask`.
+Не запускать, не enable и не перезапускать freelance service без нового решения владельца. Код и данные сохранены; mask не применялся.
