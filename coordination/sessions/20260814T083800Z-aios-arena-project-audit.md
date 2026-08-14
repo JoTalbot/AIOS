@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T08:38:00Z"
-updated_utc: "2026-08-14T08:45:00Z"
+updated_utc: "2026-08-14T08:49:00Z"
 branch: "main"
 base_commit: "356bd628"
 claim: "none (audit was read-only until documentation write)"
@@ -66,8 +66,10 @@ claim: "none (audit was read-only until documentation write)"
 
 ## Git
 
-- Коммит: отдельный documentation/coordination commit; точный SHA доступен в Git-истории этого файла.
-- Публикация remote: не выполнялась без отдельного разрешения.
+- Основной коммит: `c81454acafea6178ed8ace5f2b7947eb2076ad5a`.
+- Публикация: после отдельного подтверждения владельца commit отправлен в `origin/main` 2026-08-14T08:47Z.
+- GitHub зарегистрировал 14 workflow runs; при проверке Build & Auto-Deploy, Secret scanning и Supply Chain Gate завершились успешно, остальные ещё выполнялись или были пропущены по условиям.
+- После auto-deploy подтверждено: 0 failed AIOS units, 36 active AIOS services, 13 running containers.
 - Чужие изменения не индексировались и не менялись.
 
 ## Handoff
