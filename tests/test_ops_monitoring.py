@@ -1,17 +1,12 @@
 """Тесты новых операционных фич: usage-трекинг, мониторы, автопилот."""
 import json
-from pathlib import Path
-
-import pytest
-
 
 # ---------- 1. LLM usage hook ----------
 
 def test_usage_log_written_on_chat(monkeypatch, tmp_path):
-    """После успешного chat() в usage.jsonl появляется запись."""
+    """Cloud chat usage пишется только во временный тестовый log."""
     import aios_core.llm_balancer as lb
 
-    # фейковый ответ
     class FakeResp:
         def raise_for_status(self):
             pass
@@ -22,37 +17,39 @@ def test_usage_log_written_on_chat(monkeypatch, tmp_path):
                 "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
             }
 
-    class FakeReq:
-        @staticmethod
-        def post(*a, **kw):
-            return FakeResp()
-
     import requests
-    monkeypatch.setattr(requests, "post", FakeReq.post)
 
-    # реальный лог проекта; запомним размер до
-    log = Path("/root/AIOS/data/llm/usage.jsonl")
-    before = log.stat().st_size if log.exists() else 0
+    monkeypatch.setattr(requests, "post", lambda *a, **kw: FakeResp())
+    monkeypatch.setattr(lb, "__file__", str(tmp_path / "aios_core" / "llm_balancer.py"))
+    monkeypatch.setenv("LLM_CACHE", "0")
 
-    b = lb.LLMBalancer()
-    ans = b.chat(messages=[{"role": "user", "content": "hi"}],
-                 model="llama-3.1-8b-instant", max_tokens=10)
-    assert ans == "ok"
+    balancer = lb.LLMBalancer()
+    key = lb.APIKey(key="test-groq-key", provider="groq")
+    provider = lb.Provider(
+        name="groq",
+        base_url="https://example.invalid/chat",
+        keys=[key],
+        models=["llama-3.1-8b-instant"],
+    )
+    balancer.providers = {"groq": provider}
+    for task_type in balancer.task_priority:
+        balancer.task_priority[task_type] = ["groq"]
 
+    answer = balancer.chat(
+        messages=[{"role": "user", "content": "hi"}],
+        model="llama-3.1-8b-instant",
+        max_tokens=10,
+    )
+    assert answer == "ok"
+
+    log = tmp_path / "data" / "llm" / "usage.jsonl"
     assert log.exists()
-    assert log.stat().st_size > before, "usage.jsonl не дописан"
-    rec = json.loads(log.read_text(encoding="utf-8").splitlines()[-1])
-    assert rec["provider"] == "groq"
-    assert rec["total_tokens"] == 15
-    assert rec["key_tail"]  # хвост ключа
-
-    # откатываем дописанную строку (не загрязняем прод-лог)
-    lines = log.read_text(encoding="utf-8").splitlines()
-    if before == 0:
-        log.unlink()
-    else:
-        with log.open("w", encoding="utf-8") as f:
-            f.write("\n".join(lines[:-1]) + ("\n" if len(lines) > 1 else ""))
+    records = log.read_text(encoding="utf-8").splitlines()
+    assert len(records) == 1
+    record = json.loads(records[0])
+    assert record["provider"] == "groq"
+    assert record["total_tokens"] == 15
+    assert record["key_tail"] == "oq-key"
 
 
 # ---------- 2. 2captcha monitor ----------

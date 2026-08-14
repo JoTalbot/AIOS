@@ -20,6 +20,12 @@ def _patch_run(monkeypatch, fake):
     monkeypatch.setattr(tbi, "_run_account_control", fake)
 
 
+def _patch_project_root(monkeypatch, root: Path) -> None:
+    """Изолировать mutable data handlers от production worktree."""
+    root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(m, "PROJECT_ROOT", root)
+    monkeypatch.setattr(acc, "PROJECT_ROOT", root)
+    monkeypatch.setattr(tbc, "PROJECT_ROOT", root)
 
 
 class FakeAPI:
@@ -175,8 +181,10 @@ def test_calendar_add_flow(monkeypatch):
         return {"status": "error", "error": "?"}
 
     _patch_run(monkeypatch, fake_run)
-    monkeypatch.setattr(m, "_llm_extract_calendar",
-                        lambda t: {"title": "Встреча", "date": "2026-08-03", "time": "14:00", "desc": ""})
+    def fake_extract(_text):
+        return {"title": "Встреча", "date": "2026-08-03", "time": "14:00", "desc": ""}
+    monkeypatch.setattr(m, "_llm_extract_calendar", fake_extract)
+    monkeypatch.setattr(acc, "_llm_extract_calendar", fake_extract)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "добавь событие Встреча завтра в 14:00") is True
     assert any("Подтвердите создание" in x for x in api.messages)
@@ -550,6 +558,7 @@ def test_auto_ttn_detect(monkeypatch):
 
 
 def test_analytics_intent(monkeypatch, tmp_path):
+    _patch_project_root(monkeypatch, tmp_path)
     # подменяем analytics_state
     hist = {"2026-08-01": {"date": "2026-08-01", "instagram_followers": 50, "olx_ads": 1},
             "2026-08-02": {"date": "2026-08-02", "instagram_followers": 54, "olx_ads": 1}}
@@ -622,7 +631,8 @@ def test_voice_reply_toggle(monkeypatch):
     vfile.unlink(missing_ok=True)
 
 
-def test_olx_price_subscribe(monkeypatch):
+def test_olx_price_subscribe(monkeypatch, tmp_path):
+    _patch_project_root(monkeypatch, tmp_path)
     import subprocess
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: type("R", (), {"stdout": "5000", "stderr": "", "returncode": 0})())
     sfile = m.PROJECT_ROOT / "data" / "olx_price_subs.json"
@@ -642,11 +652,10 @@ def test_export_intent(monkeypatch):
         stdout = '{"status": "ok", "file": "/tmp/test.xlsx", "rows": 5}'
         stderr = ""
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: R())
-    import os
     Path("/tmp/test.xlsx").write_bytes(b"x" * 100)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "экспортируй почту в excel") is True
-    assert api.documents or True  # документ может не отправиться, но интент обработан
+    assert api.documents
     Path("/tmp/test.xlsx").unlink(missing_ok=True)
 
 
@@ -679,7 +688,8 @@ def test_olx_ad_gen_intent(monkeypatch):
     assert "Фара BMW" in joined
 
 
-def test_olx_autoreply_toggle(monkeypatch):
+def test_olx_autoreply_toggle(monkeypatch, tmp_path):
+    _patch_project_root(monkeypatch, tmp_path)
     cfg_file = m.PROJECT_ROOT / "data" / "olx_autoreply.json"
     if cfg_file.exists():
         cfg_file.unlink()
@@ -710,7 +720,10 @@ def test_inventory_add_intent(monkeypatch):
     def fake_run(*a, **k):
         return type("R", (), {"stdout": '{"status": "ok", "item": {"name": "Фара BMW", "qty": 2, "price": 2000}, "msg": "новая деталь"}', "stderr": "", "returncode": 0})
     monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr(tbi, "_llm_chat_direct", lambda p: '{"category": "оптика", "price": 2000}')
+    def fake_llm(_prompt):
+        return '{"category": "оптика", "price": 2000}'
+    monkeypatch.setattr(tbi, "_llm_chat_direct", fake_llm)
+    monkeypatch.setattr(acc, "_llm_chat_direct", fake_llm)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "добавь деталь фара BMW, 2 шт по 2000") is True
     assert any("фара BMW" in x for x in api.messages)
@@ -719,7 +732,6 @@ def test_inventory_add_intent(monkeypatch):
 def test_inventory_sale_intent(monkeypatch):
     import subprocess
     def fake_run(*a, **k):
-        cmd = a[0][-1] if len(a) > 0 else ""
         script = a[0][1] if len(a) > 0 else ""
         if "inventory" in str(script):
             return type("R", (), {"stdout": '{"status": "ok", "item": {"name": "Фара BMW", "qty": 1}, "msg": "списано 1 шт"}', "stderr": "", "returncode": 0})
@@ -866,8 +878,10 @@ def test_docs_intent(monkeypatch):
         return {"status": "error", "error": "?"}
 
     _patch_run(monkeypatch, fake_run)
-    monkeypatch.setattr(m, "_llm_extract_gmail",
-                        lambda t: {"subject": "Тест", "body": "Текст документа"})
+    def fake_extract(_text):
+        return {"subject": "Тест", "body": "Текст документа"}
+    monkeypatch.setattr(m, "_llm_extract_gmail", fake_extract)
+    monkeypatch.setattr(acc, "_llm_extract_gmail", fake_extract)
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "создай документ") is True
     assert any("Документ создан" in x for x in api.messages)
