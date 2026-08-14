@@ -249,6 +249,21 @@ def build() -> str:
     except Exception:
         pass
 
+    # Quant Signal Monitor (read-only WATCH-сигналы)
+    try:
+        qs = _read(ROOT / "data" / "reports" / "quant_signal_product.json", {})
+        watch = [s for s in qs.get("signals", []) if s.get("label") in ("WATCH_UP", "WATCH_DOWN")]
+        if watch:
+            lines.append("🔔 Quant WATCH:")
+            for s in watch[:5]:
+                icon = "🟢" if s["label"] == "WATCH_UP" else "🔴"
+                lines.append(
+                    f"{icon} {s['symbol']}: {s['label'].replace('WATCH_', '').lower()} "
+                    f"(ML {s.get('ml_prob_up', 0):.2f}, {s.get('regime', '')})"
+                )
+    except Exception:
+        pass
+
     # напоминания на сегодня
     rem = _read(ROOT / "data" / "reminders.json", [])
     today = now.strftime("%Y-%m-%d")
