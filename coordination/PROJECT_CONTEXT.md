@@ -49,7 +49,7 @@ AIOS — production-монорепозиторий, объединяющий:
 
 ## Runtime operator decisions
 
-- :  намеренно остановлен владельцем; состояние , процессов 0, unit остаётся . Не запускать без нового решения. Журнал: .
+- `2026-08-14T11:23:03Z`: `aios-freelance-brain.service` намеренно остановлен владельцем; состояние `inactive`, процессов 0, unit остаётся `enabled`. Не запускать без нового решения. Журнал: `coordination/sessions/20260814-aios-arena-freelance-stop.md`.
 
 ## Главные риски
 

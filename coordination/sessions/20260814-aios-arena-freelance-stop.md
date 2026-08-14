@@ -1,7 +1,7 @@
 # Сессия: остановка freelance runtime
 
 ---
-session_id: "20260814-aios-arena-freelance-stop"
+session_id: "20260814T112303Z-aios-arena-freelance-stop"
 status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
@@ -18,12 +18,12 @@ claim: "none (операторская runtime-команда без измен�
 
 ## Выполнено
 
-- .
-- Состояние: .
-- Unit остаётся ; после reboot может запуститься автоматически.
-- Процессы : 0.
+- `systemctl stop aios-freelance-brain.service`.
+- Состояние: `inactive`.
+- Unit остаётся `enabled`; после reboot может запуститься автоматически.
+- Процессы `run_freelance_brain.py`: 0.
 - Failed AIOS services после остановки: 0.
 
 ## Ограничение
 
-Не запускать и не перезапускать freelance service без нового решения владельца. Для постоянной остановки нужен отдельный выбор  или .
+Не запускать и не перезапускать freelance service без нового решения владельца. Для постоянной остановки нужен отдельный выбор `disable` или `mask`.
