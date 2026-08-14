@@ -158,11 +158,17 @@ class QuantMLPredictor:
         """Прогноз по всем активам, для которых есть данные."""
         if not self.available:
             return [{"ok": False, "error": "Модель не обучена. Запустите Colab-ноутбук Quant ML Training."}]
+        # Мёртвые/переименованные тикеры (MATIC->POL, RNDR->RENDER): старые
+        # папки данных остаются, но в сигналы не включаются.
+        dead = {"MATIC", "RNDR"}
         if symbols is None:
             symbols = sorted(d.name for d in QUANT_DIR.iterdir()
-                             if d.is_dir() and not d.name.startswith("_") and d.name not in ("export", "models", "uniswap_v3"))
+                             if d.is_dir() and not d.name.startswith("_")
+                             and d.name not in ("export", "models", "uniswap_v3", *dead))
         out = []
         for s in symbols:
+            if s in dead:
+                continue
             r = self.predict_symbol(s)
             if r.get("ok"):
                 out.append(r)

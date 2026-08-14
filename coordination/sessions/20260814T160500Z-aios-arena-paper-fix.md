@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T16:05:00Z"
-updated_utc: "2026-08-14T16:25:00Z"
+updated_utc: "2026-08-14T16:35:00Z"
 branch: "agent/20260814-paper-fix"
 base_commit: "9d5dbd7b"
 claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
@@ -57,6 +57,45 @@ claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
 - ml_signals.json перегенерирован моделью v2 (16:13:49Z): prob_up различаются (0.38-0.60), 1 актив >=0.60.
 - Trading-демон цикл 16:13Z чистый: blocks={'exchange_not_allowed': 96, 'ml_not_confirmed': 9} (было 17 — сигналы больше не константа; до 0.65 сегодня не дотянул ни один актив — это нормальная селективность гейта).
 - Ветка agent/20260814-paper-fix опубликована в origin (GitHub JoTalbot/AIOS); origin/main синхронизирован (9d5dbd7b).
+
+
+## Этап 2: RL-мост и мёртвые тикеры (пункты 1-2 из handoff)
+
+### RL-мост (aios_core/quant/rl_signal_bridge.py) — 3 бага исправлено
+
+Сверка с обучающей средой data/kg_v8/aios-rl-v8.ipynb (MultiAssetEnv, obs_dim=46):
+
+1. **onehot-баг**: обучение — onehot[индекс] в sorted(32 активов); мост всегда ставил onehot[0]=BTC для всех активов → все сигналы одинаковые. Фикс: константа ASSET_ORDER (32 актива из ноутбука, алфавитный порядок), onehot по индексу запрошенного актива; актив вне универсума → честный None (нет сигнала), а не чужой индекс.
+2. **Признак vol_chg вместо vol_ratio**: обучение использует [rets(10), mom5, mom12, vol_ratio, vol_norm]; мост подавал vol_chg на 3-й статической позиции. Фикс: vol_ratio = volume/rolling(10)-mean.
+3. **Отсутствие clamp**: в обучении act.clamp(-1,1) до конвертации в дискрету {0,1,2}; в мосте mean=-2.77 давал pos=-0.5 (вне [0,1]). Фикс: clamp(-1,1) перед конвертацией.
+
+Результат: 9 сигналов (POL честно отброшен — нет в обучающем универсуме), pos ∈ {0, 0.5, 1.0}, активы различаются. Модель PPO v8 на текущем рынке даёт FLAT по всем 9 мажорам (mean < -1 → действие «выход») — честный вердикт модели, консервативный veto сохраняется. Переобучение PPO в Colab — отдельная задача.
+
+### Мёртвые тикеры MATIC/RNDR
+
+- `aios_core/quant/ml_predictor.py::predict_all`: фильтр dead = {MATIC, RNDR} — старые папки данных остаются, в сигналы не попадают. ML 35 → 33 символа.
+- `rl_signal_bridge.py::run_all`: MATIC → POL в дефолтном словаре (DEFAULT_SYMBOLS уже использует POL/RENDER).
+- `scripts/gen_quant_notebooks.py`: MATIC/USDT → POL/USDT в шаблоне кластеризации.
+- Сигнальный продукт перегенерирован: 33 символа, MATIC/RNDR отсутствуют. Остаются 11 NO_DATA «illiquid» — это малоисторичные активы (~500 строк), не мёртвые тикеры (отдельный вопрос дособора истории).
+
+### Runtime
+
+- aios-quant-trading.service перезапущен (единичный рестарт для подхвата исправленного моста), цикл чистый.
+- rl_signals.json пересохранён (9 сигналов), ml_signals.json перегенерирован (33, без мёртвых тикеров).
+
+## Проверки (этап 2)
+
+- [PASS] py_compile всех 3 изменённых файлов
+- [PASS] pytest: 61 passed (quant-набор + test_ml + test_price_prediction_ml)
+- [PASS] RLSignalBridge.run_all: 9 сигналов, pos ∈ {0.0,0.5,1.0}, активы различаются, POL → None (не в универсуме)
+- [PASS] ml_signals.json: 33 символа, MATIC/RNDR отсутствуют
+- [PASS] quant_signal_product: 33 символа, без мёртвых тикеров
+
+## Изменённые файлы (этап 2)
+
+- `aios_core/quant/rl_signal_bridge.py` — onehot, vol_ratio, clamp, POL вместо MATIC
+- `aios_core/quant/ml_predictor.py` — фильтр мёртвых тикеров
+- `scripts/gen_quant_notebooks.py` — POL вместо MATIC в шаблоне
 
 ## Handoff
 

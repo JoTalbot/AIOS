@@ -271,7 +271,7 @@ def nb_clustering() -> dict:
              "cl = ccxt.binance()\n"
              "cl.load_markets()\n"
              "symbols = ['BTC/USDT','ETH/USDT','BNB/USDT','SOL/USDT','XRP/USDT','ADA/USDT','DOGE/USDT','AVAX/USDT',\n"
-             "           'LINK/USDT','DOT/USDT','MATIC/USDT','LTC/USDT','TRX/USDT','ATOM/USDT','UNI/USDT','ETC/USDT',\n"
+             "           'LINK/USDT','DOT/USDT','POL/USDT','LTC/USDT','TRX/USDT','ATOM/USDT','UNI/USDT','ETC/USDT',\n"
              "           'FIL/USDT','APT/USDT','NEAR/USDT','ARB/USDT','OP/USDT','SUI/USDT','TIA/USDT','SEI/USDT']\n"
              "data = {}\n"
              "for s in symbols:\n"
