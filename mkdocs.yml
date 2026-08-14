@@ -101,6 +101,7 @@ nav:
     - Текущий inventory: PROJECT_INVENTORY.md
     - Политика версий: RELEASE_VERSION_POLICY.md
     - Политика зависимостей: DEPENDENCY_POLICY.md
+    - LLM Proxy и Kilo: LLM_PROXY_KILO.md
     - Политика tracking/ignore: TRACKING_POLICY.md
     - План декомпозиции модулей: MODULE_DECOMPOSITION_PLAN.md
 

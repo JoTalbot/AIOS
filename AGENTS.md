@@ -71,6 +71,7 @@ octopus_core/api_v2_batch.py
 - `aios_core/` — ядро: LLM-балансер, автокодер, оркестратор, RAG, самозащита.
 - `octopus_core/` — мультиагентная логика (Octopus), API v2.
 - `scripts/` — сервисные скрипты (selfguard, проверки ключей, деплой).
+- LLM proxy/Kilo routing и атомарная синхронизация models: `docs/LLM_PROXY_KILO.md`.
 - `run_*.py` — точки входа systemd-сервисов (оркестратор автокодера, боты, API).
 - `docker-compose.prod.yml` — прод-стек (aios-api, mcp, exporter, prometheus, grafana).
 - `tools/`, `utils/` — утилиты; `tests/` — тесты (pytest).
