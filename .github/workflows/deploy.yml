@@ -1,8 +1,16 @@
-name: Build & Auto-Deploy to VPS
+name: Deploy pinned production Compose to VPS
 
+# Manual only: production mutation requires an explicit operator action. The
+# canonical stack is the root docker-compose.prod.yml with its pinned image.
 on:
-  push:
-    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps-production-compose
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   check-secrets:
@@ -14,8 +22,6 @@ jobs:
       - name: Verify required secrets exist
         id: check
         env:
-          SEC_DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          SEC_DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           SEC_VPS_HOST: ${{ secrets.VPS_HOST }}
           SEC_VPS_PORT: ${{ secrets.VPS_PORT }}
           SEC_VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
@@ -24,8 +30,7 @@ jobs:
           SEC_ENV_FILE_CONTENTS: ${{ secrets.ENV_FILE_CONTENTS }}
         run: |
           missing=""
-          for var in SEC_DOCKERHUB_USERNAME SEC_DOCKERHUB_TOKEN SEC_VPS_HOST SEC_VPS_PORT \
-                     SEC_VPS_USERNAME SEC_VPS_SSH_KEY SEC_VPS_APP_DIR SEC_ENV_FILE_CONTENTS; do
+          for var in SEC_VPS_HOST SEC_VPS_PORT SEC_VPS_USERNAME SEC_VPS_SSH_KEY SEC_VPS_APP_DIR SEC_ENV_FILE_CONTENTS; do
             if [ -z "${!var}" ]; then missing="$missing $var"; fi
           done
           if [ -n "$missing" ]; then
@@ -35,54 +40,34 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
-  build-and-deploy:
-    name: Build Docker & Deploy
+  deploy:
+    name: Apply canonical production Compose
     needs: check-secrets
     if: needs.check-secrets.outputs.configured == 'true'
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 20
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-
-    - name: Log in to Docker Hub
-      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-    - name: Build and push Docker image
-      uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
-      with:
-        context: .
-        push: true
-        tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/aios:latest
-          ${{ secrets.DOCKERHUB_USERNAME }}/aios:${{ github.sha }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Deploy to VPS via SSH
-      uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
-      with:
-        host: ${{ secrets.VPS_HOST }}
-        port: ${{ secrets.VPS_PORT }}
-        username: ${{ secrets.VPS_USERNAME }}
-        key: ${{ secrets.VPS_SSH_KEY }}
-        script: |
-          cd ${{ secrets.VPS_APP_DIR }}
-          
-          # Создаем или обновляем .env из секрета
-          echo "${{ secrets.ENV_FILE_CONTENTS }}" > .env
-          
-          # Скачиваем последний образ и перезапускаем
-          docker compose pull
-          docker compose up -d
-          
-          # Очищаем старые неиспользуемые образы
-          docker image prune -f
-          
-          echo "✅ Деплой завершен успешно!"
+      - name: Fast-forward main and apply pinned stack
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        env:
+          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
+          ENV_FILE_CONTENTS: ${{ secrets.ENV_FILE_CONTENTS }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: VPS_APP_DIR,ENV_FILE_CONTENTS
+          script: |
+            set -eu
+            cd "$VPS_APP_DIR"
+            git fetch origin main
+            git merge --ff-only origin/main
+            printf '%s\n' "$ENV_FILE_CONTENTS" > .env
+            chmod 600 .env
+            docker compose -f docker-compose.prod.yml config -q
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml ps
+            docker image prune -f
+            echo "Canonical production Compose applied successfully."

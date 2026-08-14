@@ -2,9 +2,10 @@
 set -e
 
 # =========================================================
-# AIOS: 1-Click Deployment Script
+# AIOS: Local/Demo 1-Click Script — NOT PRODUCTION
 # =========================================================
-# This script initializes the whole environment:
+# LOCAL/DEMO ONLY. Production uses docker-compose.prod.yml; see
+# deploy/DEPLOYMENT_SOURCES.md. This script initializes a developer stack:
 # 1. Start the core backend and dashboard
 # 2. Build and run the Android Emulator container for Mobile RPA
 # =========================================================
@@ -16,8 +17,8 @@ if [ ! -f ".env" ]; then
     cp .env.example .env
 fi
 
-echo "📦 1. Запуск базовой инфраструктуры (API, MCP, Dashboard)..."
-docker-compose up -d --build
+echo "📦 1. Запуск локальной инфраструктуры (Traefik, core, Postgres, Redis)..."
+docker compose -f docker-compose.yml up -d --build
 
 echo "📱 2. Сборка и запуск контейнера с Android эмулятором (Мобильная RPA)..."
 docker build -f Dockerfile.android -t aios-android-env .

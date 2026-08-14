@@ -63,6 +63,17 @@ octopus_core/api_v2_batch.py
 
 География прод-окружения: см. `RUNBOOK_RU.md` (сервисы, таймеры, логи, инциденты).
 
+## Источник production deployment
+
+- Канонический production Compose: только корневой `docker-compose.prod.yml`.
+- В production всегда указывать `docker compose -f docker-compose.prod.yml ...`; голый
+  `docker compose up` запрещён, потому что выберет локальный `docker-compose.yml`.
+- `docker-compose.unified.yml` — experimental UI/Swarm; вложенный
+  `deploy/production/docker-compose.prod.yml` — legacy v9 reference, не запускать.
+- Systemd drift проверять только read-only командой
+  `python scripts/audit_deployment_sources.py --runtime`; массовое удаление units запрещено.
+- Карта entrypoints и безопасный reconciliation: `deploy/DEPLOYMENT_SOURCES.md`.
+
 ## Команды
 
 ```bash
