@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T16:05:00Z"
-updated_utc: "2026-08-14T18:40:00Z"
+updated_utc: "2026-08-14T19:10:00Z"
 branch: "agent/20260814-paper-fix"
 base_commit: "9d5dbd7b"
 claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
@@ -217,6 +217,23 @@ claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
 ## Git (этап 5)
 
 - Branch `agent/20260814-quant-backfill-ppo`, commit `a4b1c6f2`.
+
+
+### Диск и health-check (18:40-19:10Z)
+
+- Health-check (run_health_check.py): обновлены пути моделей — ppo_trader.pt/ppo_multi_24.pt/catboost_price_dir.cbm (устаревшие) → ppo_v9.pt/catboost_price_dir_v2.cbm. Ложные 🟠 устаревания устранены: OK 19/23 → 21/22.
+- Диск 85% → 81% (освобождено ~4.5G):
+  - /tmp: fastembed_cache 1.3G, временные aios-venv ~200M, старые .so ~220M;
+  - docker: dangling ghcr.io/jotalbot/aios 3.2G (второй используется активным контейнером — не тронут), gitleaks образ 72M;
+  - /var/log: syslog.1 99M, auth.log.1 20M;
+  - 14 завершённых worktrees (~770M) удалены через git worktree remove (все чистые, ветки/коммиты в git);
+  - apt clean.
+- НЕ тронуто: /opt/android-sdk 8.7G (нужен эмуляторам), Calls/!voice 1.2G (личные записи), backups (свежие, ротация 30 дней), /opt/aios-embed 1.3G (venv без ссылок в коде — требует решения владельца).
+- Осталось 81% (порог health-check 80%) — до полного зелёного не хватает ~0.7G; кандидат /opt/aios-embed.
+
+## Git (этап 6)
+
+- Branch `agent/20260814-quant-backfill-ppo`, commit `3be4cd27`.
 
 ## Handoff
 
