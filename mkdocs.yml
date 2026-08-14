@@ -106,6 +106,7 @@ nav:
     - Regime v3 result: TRADING_REGIME_V3_RESULT.md
     - Arbitrage OOS result: TRADING_ARBITRAGE_OOS_RESULT.md
     - Quant Signal Monitor: QUANT_SIGNAL_PRODUCT.md
+    - Trading Research Comparison: TRADING_RESEARCH_COMPARISON.md
     - Политика версий: RELEASE_VERSION_POLICY.md
     - Политика зависимостей: DEPENDENCY_POLICY.md
     - LLM Proxy и Kilo: LLM_PROXY_KILO.md
