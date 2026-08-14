@@ -10,9 +10,9 @@
 
 ## Где закончили
 
-Развёрнут выбранный владельцем Cost-aware Directional v2 в fail-closed paper режиме. Новый state отделён от legacy; entries/positions 0, modeled costs 0.50%, 166 потенциальных входов заблокированы `freeze`, runtime errors 0. Gate `ready=false`; live запрещён. Commits: `e7d24414`, `61f70b1b`. Журнал: `coordination/sessions/20260814T114000Z-aios-arena-trading-v2.md`.
+Завершён cost-aware walk-forward Directional v2: 35 активов, OOS average −0.354%, positive 34.3%, PF 0.374. Стратегия не проходит gate; freeze/live ban подтверждены данными. Commit: `276950cd`. Отчёт: `docs/TRADING_WALK_FORWARD_2026-08-14_RU.md`; журнал: `coordination/sessions/20260814T123000Z-aios-arena-quant-walkforward.md`.
 
-Исходный аудит: `docs/TRADING_PERFORMANCE_AUDIT_2026-08-14_RU.md`; runbook: `docs/TRADING_DIRECTIONAL_V2.md`.
+Runtime Directional v2 остаётся active/paper/freeze, entries 0. Базовая реализация: `e7d24414`, `61f70b1b`.
 
 Предыдущие этапы: test hermeticity `201df1eb`, tracking policy `b75c7c14`, dependency contract `7bd3e1e7`, deployment source `2be18e3a`, version consistency `c4a788cc`.
 
@@ -63,12 +63,12 @@ AIOS — production-монорепозиторий, объединяющий:
 7. **✅ Негерметичный test baseline — mitigated:** live LLM/runtime paths заменены mocks/tmp fixtures; полный suite 5 160 = 5 153 passed, 7 skipped, 0 failed.
 8. **✅ Runtime/generated artifacts — mitigated:** logs, CatBoost event и debug capture больше не tracked; физические production files сохранены и игнорируются точечно.
 9. **✅ LLM proxy/Kilo unfinished work — completed:** 36-model catalog, tool routing/SSE, Colab guards и atomic sync покрыты тестами и развернуты; runtime healthy.
-10. **🟡 Trading expectancy — controlled/frozen:** убыточный legacy baseline изолирован; Directional v2 учитывает costs/risk/accounting, но entries frozen до cost-aware walk-forward и 30d/200-close gates.
+10. **🟡 Trading expectancy — controlled/frozen:** честный OOS walk-forward отрицательный (average −0.354%, PF 0.374); entries/live запрещены, пока новая гипотеза не пройдёт fresh OOS и 30d/200-close gates.
 
 ## Следующий рекомендуемый шаг
 
-1. Реализовать cost-aware walk-forward backtest generator; до gate `ready=true` Directional v2 остаётся freeze.
-2. После нового backtest запустить paper entries только отдельным owner-approved изменением unit env; live всё ещё запрещён.
+1. Исследовать новую strategy hypothesis (regime filter/arbitrage-only/monitoring baseline) с новым untouched OOS window.
+2. Не включать paper entries и live: текущий Directional v2 gate отрицательный.
 3. Следующий architecture seam: `tg_bot/accounts.py` context/router + analytics handler.
 4. Любое применение versioned systemd units выполняется отдельно с operator approval; массовые restart/disable/remove запрещены.
 
