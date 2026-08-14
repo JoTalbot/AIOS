@@ -31,6 +31,14 @@ Access:
 - API Docs: http://localhost:8080/docs
 - Grafana: http://localhost:3000
 
+## Multi-machine and multi-agent coordination
+
+AIOS is maintained from multiple machines by people and different AI agents, sometimes in parallel.
+Before editing, read [AGENTS.md](AGENTS.md),
+[the coordination protocol](coordination/README.md), and
+[the current project context](coordination/PROJECT_CONTEXT.md). Every work session must leave a
+separate handoff journal so unfinished work and its next step survive machine or agent changes.
+
 ## Documentation
 - [Deployment Guide (RU)](DEPLOY_GUIDE_RU.md)
 - [SSH Deployment Guide (RU)](DEPLOY_SSH_RU.md)
