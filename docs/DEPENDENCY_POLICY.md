@@ -60,7 +60,7 @@ pytest tests/test_dependency_contract.py -q
 
 - `Dockerfile` устанавливает только `requirements.lock`.
 - CI может устанавливать `requirements.txt`, чтобы проверить свежую разрешимость direct input, но release image должен использовать lock.
-- Docker build и lock generation должны использовать совместимую Python minor version. Production Dockerfile сейчас основан на Python 3.11; хостовый venv использует 3.12 и не является источником lock.
+- Поддерживаемая matrix: Python 3.11/3.12/3.13; production Docker и lock generation используют 3.11, host venv — 3.12 и не является источником lock.
 - Любое изменение lock рассматривается как supply-chain изменение и требует diff/review.
 
 ## Отдельные профили

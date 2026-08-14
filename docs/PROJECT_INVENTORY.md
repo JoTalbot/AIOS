@@ -8,9 +8,9 @@
 | Метрика | Значение |
 |---|---:|
 | Package version | `19.9.0` |
-| Стабильных tracked-файлов | 6,073 |
-| Строк | 557,006 |
-| Размер | 22.43 MiB |
+| Стабильных tracked-файлов | 6,066 |
+| Строк | 553,812 |
+| Размер | 22.09 MiB |
 | Python-файлов | 3,357 |
 | Строк Python | 336,232 |
 | Классов / функций / async | 2,944 / 19,038 / 1,628 |
@@ -28,20 +28,20 @@
 | `skills` | 2,641 | 109,481 | 4.73 MiB |
 | `tests` | 487 | 65,668 | 2.26 MiB |
 | `docs` | 399 | 44,247 | 1.40 MiB |
-| `[root]` | 218 | 34,971 | 1.38 MiB |
-| `attic` | 34 | 31,789 | 1.84 MiB |
+| `[root]` | 217 | 34,973 | 1.38 MiB |
+| `attic` | 33 | 30,669 | 1.61 MiB |
 | `octopus_services` | 110 | 27,850 | 0.90 MiB |
 | `scripts` | 173 | 14,806 | 0.57 MiB |
 | `tg_bot` | 32 | 12,060 | 0.62 MiB |
 | `octopus_instructions` | 102 | 5,959 | 0.50 MiB |
 | `deploy` | 206 | 5,796 | 0.16 MiB |
 | `octopus_roadmap` | 13 | 4,741 | 0.22 MiB |
-| `octopus_core` | 15 | 4,616 | 0.20 MiB |
 | `tools` | 46 | 4,441 | 0.15 MiB |
 | `converge` | 11 | 4,414 | 0.17 MiB |
 | `octopus_projects` | 30 | 3,614 | 0.17 MiB |
 | `.github` | 42 | 3,402 | 0.12 MiB |
 | `aios_cli` | 15 | 3,389 | 0.13 MiB |
+| `octopus_core` | 11 | 2,842 | 0.10 MiB |
 | `dashboard` | 8 | 2,483 | 0.55 MiB |
 | `octopus_ops` | 23 | 2,223 | 0.06 MiB |
 

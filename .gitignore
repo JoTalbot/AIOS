@@ -83,7 +83,9 @@ apk/**
 *.bak
 *.bak_*
 
-# Mutable/generated JSON and sensitive backup snapshots
+# Mutable/generated logs, ML output, debug captures and JSON snapshots
+*.log
+/attic/phone_debug/
 /coverage.json
 /catboost_info/
 /docs/warehouse_pricelist.json
