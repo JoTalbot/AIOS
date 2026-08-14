@@ -9,11 +9,11 @@
 |---|---:|
 | Package version | `19.9.0` |
 | Стабильных tracked-файлов | 6,116 |
-| Строк | 557,959 |
+| Строк | 557,967 |
 | Размер | 22.25 MiB |
 | Python-файлов | 3,391 |
-| Строк Python | 339,730 |
-| Классов / функций / async | 2,961 / 19,203 / 1,631 |
+| Строк Python | 339,738 |
+| Классов / функций / async | 2,961 / 19,204 / 1,631 |
 | Python syntax errors | 0 |
 | Test Python files / test functions | 931 / 6,550 |
 | Markdown-файлов | 1,979 |
@@ -24,7 +24,7 @@
 
 | Область | Файлов | Строк | Размер |
 |---|---:|---:|---:|
-| `aios_core` | 970 | 157,989 | 5.91 MiB |
+| `aios_core` | 970 | 157,997 | 5.91 MiB |
 | `skills` | 2,641 | 109,481 | 4.73 MiB |
 | `tests` | 505 | 66,555 | 2.29 MiB |
 | `docs` | 410 | 44,797 | 1.42 MiB |
@@ -85,7 +85,7 @@
 | `aios_core/dashboard.py` | 3,494 |
 | `tg_bot/accounts.py` | 3,225 |
 | `run_account_control.py` | 2,374 |
-| `aios_core/quant_trading_engine.py` | 1,768 |
+| `aios_core/quant_trading_engine.py` | 1,776 |
 | `tests/test_v10_4_modules.py` | 1,676 |
 | `tests/test_auto_modules.py` | 1,650 |
 | `aios_core/api/mixins_core.py` | 1,593 |

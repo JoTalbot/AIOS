@@ -105,6 +105,27 @@ def get_ai_signal_summary() -> dict:
 
 logger = logging.getLogger("AIOS.QuantTrading")
 
+_ADVISORY_CACHE = {"loaded_at": 0.0, "ml": {}, "rl": {}}
+
+def _advisory_signal_maps(ttl_seconds: int = 300):
+    """Load ML/RL signal maps once per process/TTL, not once per symbol."""
+    now = time.time()
+    if now - float(_ADVISORY_CACHE["loaded_at"]) < ttl_seconds:
+        return _ADVISORY_CACHE["ml"], _ADVISORY_CACHE["rl"]
+    ml_map, rl_map = {}, {}
+    try:
+        from aios_core.quant.ml_signal_bridge import MLSignalBridge
+        ml_map = {item["symbol"]: item for item in MLSignalBridge().all_signals()}
+    except Exception:
+        pass
+    try:
+        from aios_core.quant.rl_signal_bridge import RLSignalBridge
+        rl_map = {item.get("asset"): item for item in RLSignalBridge().run_all().get("signals", []) if item.get("ok")}
+    except Exception:
+        pass
+    _ADVISORY_CACHE.update({"loaded_at": now, "ml": ml_map, "rl": rl_map})
+    return ml_map, rl_map
+
 
 class MarketDataFeed:
     """Модуль забора живых рыночных котировок криптовалют."""
@@ -312,42 +333,29 @@ class QuantSignalEngine:
             bearish_score += 1
             reasons.append(f"Long Squeeze риск (Funding {funding_rate:.4f}%)")
 
-        # ML/RL консультирующий фактор (новые модели)
+        # ML/RL консультирующий фактор (cached per process/TTL)
         ml_prob_up = None
         rl_position = None
-        try:
-            _sym = symbol.replace("KRAKEN_", "").split("/")[0].upper()
-            from aios_core.quant.ml_signal_bridge import MLSignalBridge
-            ml = MLSignalBridge()
-            _mls = {s["symbol"]: s for s in ml.all_signals()}
-            _ml_sig = _mls.get(_sym)
-            if _ml_sig:
-                _p_up = _ml_sig.get("prob_up", 0.5)
-                ml_prob_up = float(_p_up)
-                if _p_up >= 0.65:
-                    bullish_score += 1
-                    reasons.append(f"ML бычий (prob_up {_p_up:.2f})")
-                elif _p_up <= 0.35:
-                    bearish_score += 1
-                    reasons.append(f"ML медвежий (prob_up {_p_up:.2f})")
-        except Exception:
-            pass
-        try:
-            from aios_core.quant.rl_signal_bridge import RLSignalBridge
-            rl = RLSignalBridge()
-            _rls = {s.get("asset"): s for s in rl.run_all().get("signals", []) if s.get("ok")}
-            _rl_sig = _rls.get(_sym)
-            if _rl_sig:
-                _pos = _rl_sig.get("position", 0.5)
-                rl_position = float(_pos)
-                if _pos > 0.7:
-                    bullish_score += 1
-                    reasons.append(f"RL LONG (pos {_pos})")
-                elif _pos < 0.3:
-                    bearish_score += 1
-                    reasons.append(f"RL FLAT/шорт (pos {_pos})")
-        except Exception:
-            pass
+        _sym = symbol.replace("KRAKEN_", "").split("/")[0].upper()
+        _mls, _rls = _advisory_signal_maps()
+        _ml_sig = _mls.get(_sym)
+        if _ml_sig:
+            ml_prob_up = float(_ml_sig.get("prob_up", 0.5))
+            if ml_prob_up >= 0.65:
+                bullish_score += 1
+                reasons.append(f"ML бычий (prob_up {ml_prob_up:.2f})")
+            elif ml_prob_up <= 0.35:
+                bearish_score += 1
+                reasons.append(f"ML медвежий (prob_up {ml_prob_up:.2f})")
+        _rl_sig = _rls.get(_sym)
+        if _rl_sig:
+            rl_position = float(_rl_sig.get("position", 0.5))
+            if rl_position > 0.7:
+                bullish_score += 1
+                reasons.append(f"RL LONG (pos {rl_position})")
+            elif rl_position < 0.3:
+                bearish_score += 1
+                reasons.append(f"RL FLAT/шорт (pos {rl_position})")
 
         # Принятие решения
         signal = "HOLD"
