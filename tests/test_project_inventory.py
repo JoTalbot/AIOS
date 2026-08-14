@@ -16,6 +16,7 @@ def test_project_inventory_has_no_python_syntax_errors() -> None:
 
     assert data["version"] == (ROOT / "VERSION").read_text(encoding="utf-8").strip()
     assert data["python_syntax_errors"] == []
+    assert "coordination" not in data["areas"]
     assert data["python"]["files"] > 3_000
     assert data["test_functions"] > 5_000
     assert len(data["compose"]["docker-compose.prod.yml"]) >= 10

@@ -16,7 +16,7 @@ from typing import Any
 import yaml
 
 OUTPUT_PATH = Path("docs/PROJECT_INVENTORY.md")
-EXCLUDED_PREFIXES = ("coordination/sessions/", "coordination/claims/")
+EXCLUDED_PREFIXES = ("coordination/",)
 EXCLUDED_FILES = {str(OUTPUT_PATH)}
 
 
