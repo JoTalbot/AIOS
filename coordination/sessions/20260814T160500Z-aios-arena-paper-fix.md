@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T16:05:00Z"
-updated_utc: "2026-08-14T22:20:00Z"
+updated_utc: "2026-08-14T23:05:00Z"
 branch: "agent/20260814-paper-fix"
 base_commit: "9d5dbd7b"
 claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
@@ -357,6 +357,33 @@ max 1 поз/DD 0.25%; выходы TP+2%/SL-1%/trail/bearish; комиссии 
 
 Артефакты (gitignored): data/reports/monthly_backtest.md, .current_algorithm.json,
 monthly_backtest_no_ml.md, .no_ml_gate.json.
+
+
+### Этап 10: Поиск прибыльного алгоритма (22:20-23:05Z)
+
+Систематический research 16 стратегий на честном OOS (без lookahead, комиссии 0.25%/сторона,
+ML переобучена только на train, равный вес по 33 символам):
+
+**Победитель: дневной трендовый long/short по пересечению SMA50/SMA200.**
+- 70/30 сплит: +7.8%…+11.2% (40/160, 50/200, 60/240 — все параметры положительные);
+- 50/50 сплит: **+34.7%** (50/200) / +19.7% (60/240), обе половины OOS в плюсе;
+- Редкие сделки → низкие комиссии; классика trend-following.
+
+**Критическое условие — шорты:** long-only вариант той же стратегии −4.5%. На медвежьем рынке
+(BTC −46% за год) весь плюс от коротких позиций. Текущий Directional v2 шортов не имеет.
+
+**Прочие результаты:** XS mean-reversion нестабилен (bot3_p7 +9.6% → −12.9%), RSI daily MR слаб
+(+1.8…+5.6%), ML long/short и инверсный ML отрицательны на OOS, regime-LS 1h −137% (переторговка).
+
+**Честные оговорки:** funding/стоимость заимствования для шортов НЕ учтены; прибыль сконцентрирована
+в медвежьем режиме; выборка умеренная (33 актива × ~2-7 мес OOS); конституционно реальные шорты
+запрещены без REVIEW и решения владельца.
+
+**Рекомендация (в отчёте):** paper-контур MA-LS с честным funding → сравнение с Directional v2 →
+решение владельца по шортам.
+
+Артефакты: data/reports/strategy_research.json, strategy_research_robust.json,
+strategy_final_check.json, strategy_research_summary.md (gitignored). Коммит `7c88f3a5`.
 
 ## Handoff
 
