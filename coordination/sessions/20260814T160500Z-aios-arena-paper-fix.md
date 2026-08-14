@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T16:05:00Z"
-updated_utc: "2026-08-14T19:30:00Z"
+updated_utc: "2026-08-14T21:10:00Z"
 branch: "agent/20260814-paper-fix"
 base_commit: "9d5dbd7b"
 claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
@@ -242,6 +242,44 @@ claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
 - Результат (min 1000): fill_rate 41-73%, PnL отрицательный на всех парах (−$48k BTC, −$1.5k ETH, −$37 SOL).
 - **Финальный research-вывод (на полном датасете)**: спот-MM на топ-парах нежизнеспособен при комиссии maker 0.1% (10bps) и спредах 0.002-1.3bps. Для жизнеспособного MM нужны: (а) maker-rebate программы, (б) пары с широким спредом (длинный хвост), (в) perp-фьючерсы. Направление MM research закрыто с честным отрицательным результатом; данные orderbook остаются полезными для HFT-арбитражных окон (диспаритеты p95 2-2.6bps).
 - Отчёт: data/reports/market_making_simulation.json (обновлён), orderbook_analysis.json.
+
+
+## Этап 7: WATCH-верификация, ML-мониторинг, автообучение, feature-эксперимент
+
+### 1. Историческая верификация WATCH (scripts/quant_watch_backtest.py, новый)
+
+- Воспроизведение правил сигнального продукта (regime + ML prob) на OOS-хвосте (30%) всех 33 символов.
+- **WATCH_DOWN: precision 59.4%** (85 подтверждений из 143) — умеренное преимущество над 50% baseline.
+- **WATCH_UP: 0 сигналов** за OOS-период — правило (trend_up + prob>=0.60) не срабатывает в текущем медвежьем рынке. Зафиксировано, правила НЕ менялись (подгонка под окно запрещена).
+- Отчёт: data/reports/quant_watch_backtest.json.
+
+### 2. ML drift monitor (scripts/quant_ml_monitor.py, новый)
+
+- Статистика распределения prob_up (mean/median/min/max/spread), n>=0.60/0.65, свежесть ml_signals.json и CSV, дрейф mean vs предыдущий снапшот (>0.10 → WARN), деградация распределения (spread<0.05 → WARN).
+- История: data/reports/quant_ml_monitor_history.json (200 записей). Первый запуск: OK, 33 сигнала, spread 0.134.
+- Таймер aios-quant-ml-monitor.timer (hourly, RandomizedDelaySec 300) установлен и enabled.
+
+### 3. Автообучение ML (deploy/systemd/aios-quant-ml-retrain.{service,timer})
+
+- Еженедельно (Пн 04:00, Persistent, delay 600): python scripts/quant_ml_eval_train.py — переобучает CatBoost v2 и деплоит только при улучшении (guard в скрипте).
+- Файлы добавлены в deploy/systemd/ (канонический источник) и установлены в /etc/systemd/system, enable --now.
+- Существующие юниты не тронуты.
+
+### 4. Feature-эксперимент (scripts/quant_ml_feature_experiment.py, новый)
+
+- 13 базовых фич vs 21 расширенная (+ATR%, range_z, ret36/48/72, hour_sin/cos, vol_med_ratio) на том же OOS-окне:
+  - base_13: AUC 0.5355, hit@0.65 82.2%
+  - full_21: AUC 0.5326, hit@0.65 70.8% → **расширение НЕ улучшает**, базовый набор остаётся.
+- Отчёт: data/reports/quant_ml_feature_experiment.json.
+
+### Прочее
+
+- ETC в NO_DATA — корректно: последний закрытый бар низкообъёмный (vol_pct 0.01 < 0.05 → illiquid), данные свежие. Не баг.
+- Текущие сигналы (20:02Z): WATCH_DOWN = TRX (ML 0.374), top ML = UNI 0.569, INJ 0.558 — ниже порога входа 0.65.
+
+## Git (этап 7)
+
+- Branch `agent/20260814-quant-backfill-ppo`, commit `3171c6b4`.
 
 ## Handoff
 
