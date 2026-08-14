@@ -6,6 +6,7 @@
   POST /api/v2/mon/code-audit        — ИИ-аудит кода ($0.10, внутри менеджера)
   POST /api/v2/mon/summarize         — суммаризация текста ($0.05, внутри менеджера)
   GET  /api/v2/mon/balance           — баланс и счётчики клиента (free)
+  GET  /api/v2/mon/quant-signals     — read-only quant monitor pilot (free)
 
 Auth: заголовок X-API-Key (или ?api_key=). Списание — через APIMonetizationManager.
 OLX-база резолвится: $AIOS_OLX_LIVE_DB → /app/hostdata/olx_http.sqlite (docker)
@@ -46,6 +47,11 @@ PRODUCTS_CATALOG = {
         "cost_usd": 0.05,
         "method": "POST", "path": "/api/v2/mon/summarize",
         "desc": "Экспресс-суммаризация текста, извлечение тезисов. Body: {\"text\": \"...\"}",
+    },
+    "quant_signal_monitor": {
+        "cost_usd": 0.0,
+        "method": "GET", "path": "/api/v2/mon/quant-signals?label=WATCH_UP&limit=20",
+        "desc": "Read-only ML/RL/regime/freshness monitor. Не является торговой рекомендацией.",
     },
 }
 
@@ -209,6 +215,54 @@ async def mon_balance(request: Request) -> JSONResponse:
     })
 
 
+
+def _quant_report_path() -> Optional[str]:
+    for candidate in (
+        os.environ.get("AIOS_QUANT_SIGNAL_REPORT"),
+        "/app/data/reports/quant_signal_product.json",
+        "/root/AIOS/data/reports/quant_signal_product.json",
+    ):
+        if candidate and os.path.exists(candidate):
+            return candidate
+    return None
+
+
+def quant_signal_payload(label: str = "", limit: int = 20, now: float | None = None) -> Dict[str, Any]:
+    path = _quant_report_path()
+    if not path:
+        return {"status": "error", "error": "quant signal report unavailable"}
+    try:
+        report = json.loads(open(path, encoding="utf-8").read())
+    except (OSError, ValueError):
+        return {"status": "error", "error": "quant signal report invalid"}
+    age = max(0.0, (now or time.time()) - os.path.getmtime(path))
+    signals = list(report.get("signals") or [])
+    normalized = (label or "").strip().upper()
+    if normalized:
+        signals = [item for item in signals if item.get("label") == normalized]
+    safe_limit = min(100, max(1, int(limit)))
+    return {
+        "status": "ok",
+        "execution": "read_only",
+        "trading_entry_mode": "freeze",
+        "stale": age > 7200,
+        "age_seconds": round(age, 1),
+        "generated_at": report.get("generated_at"),
+        "counts": report.get("counts", {}),
+        "signals": signals[:safe_limit],
+        "disclaimer": "Monitoring only; not investment advice and not a trade command.",
+    }
+
+
+async def mon_quant_signals(request: Request) -> JSONResponse:
+    label = request.query_params.get("label", "")
+    try:
+        limit = int(request.query_params.get("limit", "20"))
+    except ValueError:
+        return JSONResponse({"status": "error", "error": "limit must be integer"}, status_code=400)
+    payload = quant_signal_payload(label, limit)
+    return JSONResponse(payload, status_code=200 if payload.get("status") == "ok" else 503)
+
 def get_monetization_routes() -> List[Route]:
     return [
         Route("/api/v2/mon/products", mon_products, methods=["GET"]),
@@ -216,4 +270,5 @@ def get_monetization_routes() -> List[Route]:
         Route("/api/v2/mon/code-audit", mon_code_audit, methods=["POST"]),
         Route("/api/v2/mon/summarize", mon_summarize, methods=["POST"]),
         Route("/api/v2/mon/balance", mon_balance, methods=["GET"]),
+        Route("/api/v2/mon/quant-signals", mon_quant_signals, methods=["GET"]),
     ]

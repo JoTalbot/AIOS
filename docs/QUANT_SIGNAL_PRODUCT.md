@@ -14,3 +14,7 @@ Artifacts:
 Hourly timer: `aios-quant-signal-product.timer`.
 
 Первый запуск: 35 активов, 0 WATCH_UP, 1 WATCH_DOWN, 28 neutral, 6 no-data. Trading остаётся freeze.
+
+## API pilot
+
+`GET /api/v2/mon/quant-signals?label=WATCH_UP&limit=20` возвращает только сохранённый artifact, freshness и disclaimer. Endpoint не запускает модели и не имеет execution actions.
