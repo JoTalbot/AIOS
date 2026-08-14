@@ -1,0 +1,12 @@
+[Unit]
+Description=AIOS Quant ML drift & freshness monitor
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+Environment=PYTHONPATH=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/quant_ml_monitor.py
+
+[Install]
+WantedBy=multi-user.target
