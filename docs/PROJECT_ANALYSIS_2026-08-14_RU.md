@@ -7,6 +7,8 @@
 **Версия в `VERSION` и `pyproject.toml`:** `19.9.0`
 **Тип аудита:** полный статический обход всех Git-tracked файлов + read-only проверка production runtime
 
+> Это исторический снимок на дату аудита. Текущие автоматически проверяемые repository metrics: [`PROJECT_INVENTORY.md`](PROJECT_INVENTORY.md).
+
 ## 1. Резюме
 
 AIOS — крупный production-монорепозиторий, в котором одновременно находятся:

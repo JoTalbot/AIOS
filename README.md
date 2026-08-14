@@ -40,6 +40,7 @@ Before editing, read [AGENTS.md](AGENTS.md),
 separate handoff journal so unfinished work and its next step survive machine or agent changes.
 
 ## Documentation
+- [Current generated project inventory](docs/PROJECT_INVENTORY.md)
 - [Deployment Guide (RU)](DEPLOY_GUIDE_RU.md)
 - [SSH Deployment Guide (RU)](DEPLOY_SSH_RU.md)
 - [Deployment Guide (EN)](docs/deployment_guide.md)

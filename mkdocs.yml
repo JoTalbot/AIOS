@@ -98,6 +98,7 @@ nav:
     - Безопасность: SECURITY.md
     - Аудит безопасности: SECURITY_AUDIT_REPORT.md
     - Статус: STATUS.md
+    - Текущий inventory: PROJECT_INVENTORY.md
     - Политика версий: RELEASE_VERSION_POLICY.md
     - Политика зависимостей: DEPENDENCY_POLICY.md
     - Политика tracking/ignore: TRACKING_POLICY.md

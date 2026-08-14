@@ -1,6 +1,6 @@
 # AIOS Documentation Status — исторический снимок
 
-> Этот отчёт фиксирует состояние документации на 23 июля 2026 и не является текущим inventory. Текущая версия берётся из корневого [`VERSION`](https://github.com/JoTalbot/AIOS/blob/main/VERSION), актуальный репозиторный аудит — [`PROJECT_ANALYSIS_2026-08-14_RU.md`](PROJECT_ANALYSIS_2026-08-14_RU.md).
+> Этот отчёт фиксирует состояние документации на 23 июля 2026 и не является текущим inventory. Текущая версия берётся из корневого [`VERSION`](https://github.com/JoTalbot/AIOS/blob/main/VERSION), актуальные автоматически проверяемые метрики — [`PROJECT_INVENTORY.md`](PROJECT_INVENTORY.md), полный аудит — [`PROJECT_ANALYSIS_2026-08-14_RU.md`](PROJECT_ANALYSIS_2026-08-14_RU.md).
 
 **Версия на момент аудита:** 9.3.0 | **Дата аудита:** 23 июля 2026
 

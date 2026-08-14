@@ -76,6 +76,8 @@ octopus_core/api_v2_batch.py
 - `tools/`, `utils/` — утилиты; `tests/` — тесты (pytest).
 
 География прод-окружения: см. `RUNBOOK_RU.md` (сервисы, таймеры, логи, инциденты).
+Текущие repository metrics: `docs/PROJECT_INVENTORY.md`; не копировать его цифры вручную,
+обновлять командой `python scripts/generate_project_inventory.py --write`.
 
 ## Источник production deployment
 
