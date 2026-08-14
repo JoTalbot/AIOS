@@ -1,6 +1,6 @@
 # Оперативный контекст проекта AIOS
 
-**Последняя верификация:** 2026-08-14T10:30:00Z
+**Последняя верификация:** 2026-08-14T11:15:00Z
 **Машина:** `aios`
 **Рабочий каталог:** `/root/AIOS`
 **Базовый commit аудита:** `356bd628` (`main`, на старте совпадал с `origin/main`)
@@ -10,7 +10,9 @@
 
 ## Где закончили
 
-Завершён шестой этап устранения рисков: `docs/PROJECT_INVENTORY.md` генерируется из stage-0 Git index, не зависит от чужих unstaged worktree changes, полный Python AST проверяется автоматически, CI блокирует stale snapshot. Commits: `d493d795`, index-stability fix `42ba5e15`. Журналы: `coordination/sessions/20260814T102000Z-aios-arena-project-inventory.md`, `coordination/sessions/20260814T103500Z-aios-arena-inventory-index-fix.md`.
+Завершён седьмой этап устранения рисков: 159 installed `aios-*` systemd names, 9 drop-ins, 3 masks и 2 host overrides представлены в Git; strict Hetzner runtime drift = 0 без restart/reload/apply. Implementation commit: `127c09ea`. Журнал: `coordination/sessions/20260814T110000Z-aios-arena-systemd-reconcile.md`.
+
+Предыдущий inventory этап: `d493d795`, index-stability `42ba5e15`.
 
 Предыдущие этапы: test hermeticity `201df1eb`, tracking policy `b75c7c14`, dependency contract `7bd3e1e7`, deployment source `2be18e3a`, version consistency `c4a788cc`.
 
@@ -56,7 +58,7 @@ AIOS — production-монорепозиторий, объединяющий:
 ## Главные риски
 
 1. **✅ Дрейф текущей версии — mitigated:** `VERSION` каноничен, API/docs publication используют его цепочку, статические зеркала проверяются тестом, исторические v9/v16 документы помечены snapshot.
-2. **🟡 Deployment source — repository mitigated, runtime drift remains:** root `docker-compose.prod.yml` каноничен и проверяется автоматически; 116 установленных `aios-*` units ещё не отслеживаются и требуют поштучного review.
+2. **✅ Deployment/systemd drift — mitigated:** canonical Compose закреплён; 159 installed unit names, drop-ins, masks и host overrides представлены; strict runtime drift 0, применение units остаётся отдельной operator-approved операцией.
 3. **Крупные модули:** `aios_core/dashboard.py`, `tg_bot/accounts.py`, `run_account_control.py`, `aios_core/quant_trading_engine.py` требуют осторожной постепенной декомпозиции.
 4. **✅ Dependency drift — mitigated:** роли minimal 12 / full direct 47 / exact lock 198 формализованы и проверяются; конфликт WebSockets/Web3 устранён, production lock воспроизводим на Python 3.11.
 5. **✅ Tracking/ignore risk — mitigated:** глобальный `*.json` удалён, source build-каталог возвращён в Git, runtime/sensitive paths игнорируются точечно и проверяются тестом.
@@ -66,9 +68,9 @@ AIOS — production-монорепозиторий, объединяющий:
 ## Следующий рекомендуемый шаг
 
 1. Владелец незавершённой работы LLM proxy создаёт собственный журнал/claim и завершает только свои три файла.
-2. Следующая remediation-сессия выполняет systemd drift reconciliation первым безопасным batch без массового restart/remove.
-3. Systemd reconciliation выполняется отдельными малыми batches, начиная с активных критичных units; массовое удаление запрещено.
-4. Крупные модули декомпозируются только по одному seam с regression tests, без массового rewrite.
+2. Следующая remediation-сессия декомпозирует один крупный модуль по безопасному seam с regression tests.
+3. Любое применение versioned systemd units выполняется отдельно с operator approval; массовые restart/disable/remove запрещены.
+4. После первого seam повторно измерить largest modules через generated inventory.
 
 ## Правило обновления этого файла
 
