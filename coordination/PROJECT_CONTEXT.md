@@ -1,6 +1,6 @@
 # Оперативный контекст проекта AIOS
 
-**Последняя верификация:** 2026-08-14T09:14:00Z
+**Последняя верификация:** 2026-08-14T09:24:00Z
 **Машина:** `aios`
 **Рабочий каталог:** `/root/AIOS`
 **Базовый commit аудита:** `356bd628` (`main`, на старте совпадал с `origin/main`)
@@ -10,9 +10,9 @@
 
 ## Где закончили
 
-Завершён второй этап устранения рисков: канонический production Compose закреплён как корневой `docker-compose.prod.yml`, stale auto-deploy переведён в manual-only canonical apply, local/experimental/legacy stacks явно разделены, добавлен read-only repository/runtime drift audit. Implementation commit: `2be18e3a`. Журнал: `coordination/sessions/20260814T091000Z-aios-arena-deployment-source.md`.
+Завершён третий этап устранения рисков: формализован minimal/direct/lock dependency contract, устранён реальный конфликт WebSockets/Web3, Python 3.11 pip-compile воспроизвёл все 198 pins без изменений, добавлен автоматический checker. Implementation commit: `7bd3e1e7`. Журнал: `coordination/sessions/20260814T092000Z-aios-arena-dependency-contract.md`.
 
-Первый этап (version consistency): `c4a788cc`. Исходный полный аудит: `docs/PROJECT_ANALYSIS_2026-08-14_RU.md`.
+Предыдущие этапы: deployment source `2be18e3a`, version consistency `c4a788cc`. Исходный аудит: `docs/PROJECT_ANALYSIS_2026-08-14_RU.md`.
 
 ## Текущий архитектурный срез
 
@@ -58,7 +58,7 @@ AIOS — production-монорепозиторий, объединяющий:
 1. **✅ Дрейф текущей версии — mitigated:** `VERSION` каноничен, API/docs publication используют его цепочку, статические зеркала проверяются тестом, исторические v9/v16 документы помечены snapshot.
 2. **🟡 Deployment source — repository mitigated, runtime drift remains:** root `docker-compose.prod.yml` каноничен и проверяется автоматически; 116 установленных `aios-*` units ещё не отслеживаются и требуют поштучного review.
 3. **Крупные модули:** `aios_core/dashboard.py`, `tg_bot/accounts.py`, `run_account_control.py`, `aios_core/quant_trading_engine.py` требуют осторожной постепенной декомпозиции.
-4. **Dependency drift:** `pyproject.toml` содержит 12 runtime-зависимостей, `requirements.txt` — 45, lock — 198.
+4. **✅ Dependency drift — mitigated:** роли minimal 12 / full direct 47 / exact lock 198 формализованы и проверяются; конфликт WebSockets/Web3 устранён, production lock воспроизводим на Python 3.11.
 5. **Широкий `.gitignore` для `*.json`:** новые важные JSON-конфиги легко останутся непубликуемыми без явного `!`-исключения.
 6. **Устаревшие метрики:** документация содержит тестовые и архитектурные числа, не совпадающие с фактической инвентаризацией.
 7. **Негерметичный test baseline:** полный изолированный прогон собрал 5 152 теста; 5 139 passed, 7 skipped, 6 failed из-за live LLM, ignored runtime data, абсолютного `/root/AIOS` и fintech assertion.
@@ -66,9 +66,9 @@ AIOS — production-монорепозиторий, объединяющий:
 ## Следующий рекомендуемый шаг
 
 1. Владелец незавершённой работы LLM proxy создаёт собственный журнал/claim и завершает только свои три файла.
-2. Следующая remediation-сессия консолидирует dependency declaration (`pyproject.toml` / requirements / lock).
+2. Следующая remediation-сессия исправляет глобальный `.gitignore` для `*.json` после инвентаризации ignored файлов либо герметичность 6 failing tests.
 3. Systemd reconciliation выполняется отдельными малыми batches, начиная с активных критичных units; массовое удаление запрещено.
-4. Отдельно исправляется герметичность 6 failing tests: запрет live LLM, временные data paths и отсутствие абсолютного `/root/AIOS`.
+4. Крупные модули декомпозируются только по одному seam с regression tests, без массового rewrite.
 
 ## Правило обновления этого файла
 
