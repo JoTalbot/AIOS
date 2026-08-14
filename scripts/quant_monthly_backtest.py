@@ -216,6 +216,7 @@ def load_symbols() -> dict[str, pd.DataFrame]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("data/reports/monthly_backtest.md"))
+    parser.add_argument("--months", type=int, default=1, help="backtest window in calendar months")
     parser.add_argument("--no-ml-gate", action="store_true",
                         help="control scenario: disable the ML>=0.65 entry filter")
     args = parser.parse_args()
@@ -226,9 +227,9 @@ def main() -> int:
     print(f"loaded {len(symbols)} symbols")
     last_ts = max(int(df["timestamp_ms"].iloc[-1]) for df in symbols.values())
     if relativedelta is not None:
-        start_dt = datetime.fromtimestamp(last_ts / 1000, tz=timezone.utc) - relativedelta(months=1)
+        start_dt = datetime.fromtimestamp(last_ts / 1000, tz=timezone.utc) - relativedelta(months=args.months)
     else:  # pragma: no cover
-        start_dt = datetime.fromtimestamp(last_ts / 1000, tz=timezone.utc) - pd.Timedelta(days=30)
+        start_dt = datetime.fromtimestamp(last_ts / 1000, tz=timezone.utc) - pd.Timedelta(days=30 * args.months)
     start_ms = int(start_dt.timestamp() * 1000)
 
     from catboost import CatBoostClassifier
@@ -450,9 +451,9 @@ def main() -> int:
 
     title = "текущему алгоритму (с ML gate)" if ml_gate else "алгоритму БЕЗ ML gate (контроль)"
     md = [
-        f"# Тестовый замер: месяц торговли по {title} (Directional v2)",
+        f"# Тестовый замер: {args.months} мес. торговли по {title} (Directional v2)",
         "",
-        f"**Период:** {start_dt_str} → {end_dt_str} (ровно 1 календарный месяц, {len(all_ts)} баров 1h)",
+        f"**Период:** {start_dt_str} → {end_dt_str} ({args.months} календарн. мес., {len(all_ts)} баров 1h)",
         f"**Стартовый капитал:** ${initial:,.2f}",
         "",
         "## Результат алгоритма",
