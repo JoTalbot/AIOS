@@ -10,7 +10,7 @@
 
 ## Где закончили
 
-Завершён шестой этап устранения рисков: `docs/PROJECT_INVENTORY.md` генерируется из Git, полный Python AST проверяется автоматически, CI блокирует stale snapshot. Implementation commit: `d493d795`. Журнал: `coordination/sessions/20260814T102000Z-aios-arena-project-inventory.md`.
+Завершён шестой этап устранения рисков: `docs/PROJECT_INVENTORY.md` генерируется из stage-0 Git index, не зависит от чужих unstaged worktree changes, полный Python AST проверяется автоматически, CI блокирует stale snapshot. Commits: `d493d795`, index-stability fix `42ba5e15`. Журналы: `coordination/sessions/20260814T102000Z-aios-arena-project-inventory.md`, `coordination/sessions/20260814T103500Z-aios-arena-inventory-index-fix.md`.
 
 Предыдущие этапы: test hermeticity `201df1eb`, tracking policy `b75c7c14`, dependency contract `7bd3e1e7`, deployment source `2be18e3a`, version consistency `c4a788cc`.
 
