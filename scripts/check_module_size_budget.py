@@ -15,6 +15,8 @@ MODULE_LINE_BUDGETS = {
     "run_account_control.py": 2_374,
     "aios_core/quant_trading_engine.py": 1_900,
     "aios_core/quant_report_formatters.py": 320,
+    "aios_core/quant_directional_v2.py": 400,
+    "aios_core/quant_directional_policy.py": 170,
 }
 TOP_LEVEL_SPAN_BUDGETS = {
     ("aios_core/dashboard.py", "AIOSDashboard"): 3_351,

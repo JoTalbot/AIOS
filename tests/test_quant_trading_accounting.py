@@ -192,3 +192,39 @@ def test_ccxt_ticker_filter_rejects_recent_but_illiquid_last_trade():
     assert not MultiExchangeQuantEngine._is_current_liquid_ticker(stale_atom_shape, now_ms=now_ms)
     assert not MultiExchangeQuantEngine._is_current_liquid_ticker(old, now_ms=now_ms)
     assert MultiExchangeQuantEngine._is_current_liquid_ticker(healthy, now_ms=now_ms)
+
+
+def test_report_prefers_v2_state_and_uses_closed_trade_win_rate(monkeypatch, tmp_path):
+    old = _state()
+    _write_state(tmp_path, old)
+    v2 = _state()
+    v2["kraken"].update(
+        {
+            "entry_count": 10,
+            "total_trades": 10,
+            "closed_trades": 8,
+            "winning_trades": 4,
+            "gross_pnl_usd": 5.0,
+            "fees_paid_usd": 2.0,
+            "execution_costs_usd": 1.0,
+            "net_profit_usd": 24.0,
+            "net_loss_usd": 20.0,
+        }
+    )
+    (tmp_path / "multi_exchange_portfolios_v2.json").write_text(json.dumps(v2), encoding="utf-8")
+    monkeypatch.setattr(MultiExchangeQuantEngine, "fetch_all_exchange_prices", lambda self: {})
+    monkeypatch.setattr("aios_core.quant_trading_engine._load_ai_signals", dict)
+
+    report = get_multi_exchange_demo_report(str(tmp_path))
+
+    assert report["portfolio_file"] == "multi_exchange_portfolios_v2.json"
+    assert report["entry_count"] == 10
+    assert report["closed_trades"] == 8
+    assert report["winning_trades"] == 4
+    assert report["win_rate_pct"] == pytest.approx(50.0)
+    assert report["gross_pnl_usd"] == pytest.approx(5.0)
+    assert report["fees_paid_usd"] == pytest.approx(2.0)
+    assert report["execution_costs_usd"] == pytest.approx(1.0)
+    assert report["net_profit_usd"] == pytest.approx(24.0)
+    assert report["net_loss_usd"] == pytest.approx(20.0)
+    assert report["profit_factor"] == pytest.approx(1.2)

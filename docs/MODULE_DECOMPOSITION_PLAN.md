@@ -60,6 +60,8 @@
 - `run_account_control.py`: 2 374;
 - `aios_core/quant_trading_engine.py`: 1 900;
 - `aios_core/quant_report_formatters.py`: 320.
+- `aios_core/quant_directional_v2.py`: 400.
+- `aios_core/quant_directional_policy.py`: 170.
 
 Новая функциональность не добавляется внутрь монолита, если её можно направить в submodule. Budget повышается только отдельным architecture review с объяснением.
 

@@ -9,7 +9,7 @@ AIOS Quant ML Engine - Сбор рыночных данных с 5 бирж (Э�
 Хранение: data/quant/<SYMBOL>/<EXCHANGE>/*.csv
 Выгрузка для Colab: data/quant/export/latest.tar.gz
 
-Поддерживает 24 крипто-актива (по 4 на ликвидность на всех биржах).
+Поддерживает расширенный набор ликвидных крипто-активов (по 4 на ликвидность на всех биржах).
 
 Использование:
     from aios_core.quant.data_collector import MarketDataCollector
@@ -41,9 +41,9 @@ EXPORT_DIR = QUANT_DIR / "export"
 # используем USD/USDC пары где это доступно (обрабатывается в _pair_per_exchange).
 DEFAULT_SYMBOLS = [
     "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX",
-    "LINK", "DOT", "MATIC", "LTC", "TRX", "ATOM", "UNI", "ETC",
+    "LINK", "DOT", "POL", "LTC", "TRX", "ATOM", "UNI", "ETC",
     "FIL", "APT", "NEAR", "ARB", "OP", "SUI", "TIA", "SEI",
-    "TON", "INJ", "KAS", "RNDR", "FET", "WIF", "BONK", "PEPE", "SHIB",
+    "TON", "INJ", "KAS", "RENDER", "FET", "WIF", "BONK", "PEPE", "SHIB",
 ]
 
 # Какие биржи обрабатываем и за каким "exchange id" ccxt.

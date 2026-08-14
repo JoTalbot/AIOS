@@ -1,56 +1,90 @@
 #!/usr/bin/env python3
-"""
-AIOS Quantitative Trading & Signal Radar Service Entrypoint
-Запускает непрерывный количественный анализ рынков криптовалют, расчет индикаторов и симулятор бумажной торговли.
-"""
+"""AIOS paper-only quantitative trading service runner."""
 
-import sys
-import os
-import time
+from __future__ import annotations
+
 import argparse
-import logging
 import json
+import logging
+import os
+import sys
+import time
+from pathlib import Path
 
-sys.path.insert(0, "/root/AIOS")
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-from aios_core.quant_trading_engine import QuantMasterOrchestrator, MultiExchangeQuantEngine
+from aios_core.quant_trading_engine import MultiExchangeQuantEngine, QuantMasterOrchestrator
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("AIOS.RunQuantTrading")
 
 
-def run_daemon(interval_seconds: int = 900):
-    logger.info(f"📈 [RunQuantTrading] Запуск фонового количественного трейдинг-радара (интервал: {interval_seconds} сек)...")
-    quant = QuantMasterOrchestrator()
-    multi_engine = MultiExchangeQuantEngine()
+def _env_enabled(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def build_engines():
+    """Build isolated paper engines; legacy duplicate execution is opt-in."""
+
+    legacy = QuantMasterOrchestrator() if _env_enabled("AIOS_QUANT_LEGACY_EXECUTION") else None
+    filename = os.environ.get("AIOS_QUANT_PORTFOLIO_FILE", "multi_exchange_portfolios_v2.json")
+    return legacy, MultiExchangeQuantEngine(portfolio_filename=filename)
+
+
+def run_cycle(legacy, multi_engine) -> dict:
+    """Run one cycle and return signals/trades/risk without real orders."""
+
+    legacy_result = legacy.run_quant_cycle() if legacy is not None else {"signals": [], "legacy_execution": False}
+    multi_result = multi_engine.run_multi_exchange_cycle()
+    risk = multi_result.get("risk", {})
+    logger.info(
+        "🏛️ [DirectionalV2] trades=%s entry_mode=%s drawdown=%.3f%% daily=%.3f%% blocks=%s",
+        len(multi_result.get("cycle_trades", [])),
+        risk.get("entry_mode", "unknown"),
+        float(risk.get("drawdown_pct", 0.0) or 0.0),
+        float(risk.get("daily_loss_pct", 0.0) or 0.0),
+        risk.get("block_reasons", {}),
+    )
+    for signal in legacy_result.get("signals", []):
+        if signal.get("signal") != "HOLD":
+            logger.info(
+                "🚨 [QUANT SIGNAL] %s: %s confidence=%.1f%%",
+                signal.get("symbol"),
+                signal.get("signal"),
+                float(signal.get("confidence", 0.0)) * 100.0,
+            )
+    return {"legacy": legacy_result, "multi": multi_result}
+
+
+def run_daemon(interval_seconds: int = 900) -> None:
+    logger.info("📈 Directional v2 paper daemon: interval=%ss (real orders disabled)", interval_seconds)
+    legacy, multi_engine = build_engines()
     while True:
         try:
-            res = quant.run_quant_cycle()
-            multi_res = multi_engine.run_multi_exchange_cycle()
-            logger.info(f"🏛️ [MultiExchange] Цикл завершен. Выполнено сделок: {len(multi_res.get('cycle_trades', []))}")
-            for sig in res.get("signals", []):
-                if sig.get("signal") != "HOLD":
-                    logger.info(f"🚨 [QUANT SIGNAL!] {sig['symbol']}: {sig['signal']} (Confidence: {sig['confidence'] * 100}%) | {sig['reason']}")
-        except Exception as e:
-            logger.error(f"❌ Ошибка в цикле Quant Engine: {e}")
+            run_cycle(legacy, multi_engine)
+        except Exception:
+            logger.exception("❌ Ошибка в цикле Directional v2")
         time.sleep(interval_seconds)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="AIOS Quant Trading & Signal Radar Service")
-    parser.add_argument("--daemon", action="store_true", help="Запустить в режиме фонового демона")
-    parser.add_argument("--interval", type=int, default=900, help="Интервал демона в секундах (по умолчанию 900с = 15 мин)")
+def main() -> int:
+    parser = argparse.ArgumentParser(description="AIOS cost-aware paper trading runner")
+    parser.add_argument("--daemon", action="store_true", help="run continuously")
+    parser.add_argument("--interval", type=int, default=900, help="daemon interval in seconds")
     args = parser.parse_args()
 
     if args.daemon:
         run_daemon(interval_seconds=args.interval)
-    else:
-        quant = QuantMasterOrchestrator()
-        multi_engine = MultiExchangeQuantEngine()
-        res = quant.run_quant_cycle()
-        multi_res = multi_engine.run_multi_exchange_cycle()
-        print("\n=== AIOS QUANT TRADING ENGINE RESULTS ===")
-        print(json.dumps(res, indent=2, ensure_ascii=False))
+        return 0
+    legacy, multi_engine = build_engines()
+    print(json.dumps(run_cycle(legacy, multi_engine), indent=2, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

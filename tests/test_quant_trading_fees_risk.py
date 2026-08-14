@@ -92,7 +92,10 @@ def test_multi_exchange_engine_has_risk_attributes():
     assert MultiExchangeQuantEngine.MIN_NET_ARBITRAGE_SPREAD_PCT == pytest.approx(0.60)
 
 
-def test_multi_exchange_buy_deducts_fee(tmp_path):
+def test_multi_exchange_buy_deducts_fee(monkeypatch, tmp_path):
+    monkeypatch.setenv("AIOS_QUANT_ENTRY_MODE", "enabled")
+    monkeypatch.setenv("AIOS_QUANT_HALF_SPREAD_RATE", "0")
+    monkeypatch.setenv("AIOS_QUANT_SLIPPAGE_RATE", "0")
     eng = MultiExchangeQuantEngine(data_dir=str(tmp_path))
     data = eng.load_portfolios()
     data["kraken"]["cash_usd"] = 1000.0
@@ -108,7 +111,12 @@ def test_multi_exchange_buy_deducts_fee(tmp_path):
             pass
 
         def record_and_analyze(self, symbol, price):
-            return {"signal": "BUY_LONG"}
+            return {
+                "signal": "BUY_LONG",
+                "confidence": 0.90,
+                "ml_prob_up": 0.70,
+                "rl_position": 0.60,
+            }
 
     eng.signal_engine = FakeSE()
     eng.fetch_all_exchange_prices = lambda: {"kraken": {"BTC": 100.0}}

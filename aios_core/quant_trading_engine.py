@@ -71,6 +71,7 @@ from typing import Dict, Any, List, Optional
 from pathlib import Path
 
 from aios_core.crypto_wallet import AIOSWalletManager, PUBLIC_RPC_NODES
+from aios_core.quant_directional_policy import DirectionalV2Config
 from aios_core.quant_report_formatters import (
     format_backtest_report,
     format_kraken_demo_report,
@@ -312,6 +313,8 @@ class QuantSignalEngine:
             reasons.append(f"Long Squeeze риск (Funding {funding_rate:.4f}%)")
 
         # ML/RL консультирующий фактор (новые модели)
+        ml_prob_up = None
+        rl_position = None
         try:
             _sym = symbol.replace("KRAKEN_", "").split("/")[0].upper()
             from aios_core.quant.ml_signal_bridge import MLSignalBridge
@@ -320,6 +323,7 @@ class QuantSignalEngine:
             _ml_sig = _mls.get(_sym)
             if _ml_sig:
                 _p_up = _ml_sig.get("prob_up", 0.5)
+                ml_prob_up = float(_p_up)
                 if _p_up >= 0.65:
                     bullish_score += 1
                     reasons.append(f"ML бычий (prob_up {_p_up:.2f})")
@@ -335,6 +339,7 @@ class QuantSignalEngine:
             _rl_sig = _rls.get(_sym)
             if _rl_sig:
                 _pos = _rl_sig.get("position", 0.5)
+                rl_position = float(_pos)
                 if _pos > 0.7:
                     bullish_score += 1
                     reasons.append(f"RL LONG (pos {_pos})")
@@ -369,7 +374,9 @@ class QuantSignalEngine:
             "orderbook_status": orderbook_status,
             "signal": signal,
             "confidence": round(confidence, 2),
-            "reason": reason_text
+            "ml_prob_up": ml_prob_up,
+            "rl_position": rl_position,
+            "reason": reason_text,
         }
 
 
@@ -907,13 +914,20 @@ class MultiExchangeQuantEngine:
     EXCHANGES = ["kraken", "binance", "bybit", "okx", "uniswap_v3", "coinbase", "kucoin", "bitfinex", "bitstamp", "mexc"]
     INITIAL_PER_EXCHANGE = 1000.0
 
-    def __init__(self, data_dir: str = "/root/AIOS/data"):
+    def __init__(self, data_dir: str = "/root/AIOS/data", portfolio_filename: str | None = None):
         is_docker = os.path.exists("/.dockerenv") or (os.path.exists("/proc/self/cgroup") and "docker" in open("/proc/self/cgroup").read())
         if is_docker and os.path.exists("/app/data"):
             data_dir = "/app/data"
 
         self.data_dir = Path(data_dir)
-        self.portfolio_file = self.data_dir / "multi_exchange_portfolios.json"
+        configured = portfolio_filename or os.environ.get("AIOS_QUANT_PORTFOLIO_FILE")
+        if configured:
+            filename = configured
+        elif (self.data_dir / "multi_exchange_portfolios_v2.json").exists():
+            filename = "multi_exchange_portfolios_v2.json"
+        else:
+            filename = "multi_exchange_portfolios.json"
+        self.portfolio_file = self.data_dir / filename
         self.signal_engine = QuantSignalEngine(data_dir)
         self._ensure_file()
 
@@ -1107,198 +1121,10 @@ class MultiExchangeQuantEngine:
         return results
 
     def run_multi_exchange_cycle(self) -> Dict[str, Any]:
-        """Прогоняет paper-trading и фиксирует неисполненные арбитражные сигналы."""
-        all_prices = self.fetch_all_exchange_prices()
-        data = self.load_portfolios()
+        """Delegate paper execution to the isolated directional-v2 policy."""
+        from aios_core.quant_directional_v2 import run_multi_exchange_cycle
 
-        cycle_trades = []
-
-        # Сеяние истории для новых бирж (coinbase/kucoin/bitfinex/bitstamp/mexc):
-        # чтобы индикаторы SMA/RSI сразу работали, копируем ряд цен из binance
-        _new_ex = {"coinbase", "kucoin", "bitfinex", "bitstamp", "mexc"}
-        try:
-            _hist = self.signal_engine.load_history()
-            _bin_prices = all_prices.get("binance", {})
-            for _ex in _new_ex:
-                _ex_p = all_prices.get(_ex, {})
-                for _sym in _ex_p:
-                    _key = f"{_ex.upper()}_{_sym}"
-                    if _key not in _hist or len(_hist.get(_key, [])) < 20:
-                        # используем binance-ряд (тот же актив) как базовую историю
-                        _bin_key = f"BINANCE_{_sym}"
-                        _seed = list(_hist.get(_bin_key, []))[-30:] if _bin_key in _hist else []
-                        # дополняем текущими ценами новой биржи
-                        _cur = _ex_p.get(_sym, 0)
-                        if _cur > 0:
-                            _seed = _seed[-29:] + [_cur]
-                        _hist[_key] = _seed
-            self.signal_engine.save_history(_hist)
-        except Exception:
-            pass
-
-        # 1. Одиночные paper-сделки на каждой настроенной бирже
-        for ex in self.EXCHANGES:
-            ex_port = data[ex]
-            ex_prices = all_prices.get(ex, {})
-
-            for sym, price in ex_prices.items():
-                if price <= 0:
-                    continue
-                analysis = self.signal_engine.record_and_analyze(f"{ex.upper()}_{sym}", price)
-                sig = analysis["signal"]
-                pos_key = f"{sym}USD"
-
-                positions = ex_port.get("positions", {})
-                pos = positions.get(pos_key)
-
-                # Покупка
-                if sig == "BUY_LONG" and not pos:
-                    cash_reserve = (
-                        ex_port.get("initial_balance_usd", self.INITIAL_PER_EXCHANGE) * self.MIN_CASH_RESERVE_PCT
-                    )
-                    if (
-                        len(positions) >= self.MAX_OPEN_POSITIONS_PER_EXCHANGE
-                        or ex_port.get("cash_usd", 0.0) <= cash_reserve
-                    ):
-                        continue
-                    max_invest = min(ex_port["cash_usd"] * 0.20, 200.0)
-                    if max_invest >= 10.0:
-                        entry_fee = max_invest * self.FEE_RATE
-                        qty = (max_invest - entry_fee) / price
-                        ex_port["cash_usd"] -= max_invest
-                        positions[pos_key] = {
-                            "side": "LONG",
-                            "entry_price": price,
-                            "qty": qty,
-                            "invested_usd": max_invest,
-                            "entry_fee_usd": round(entry_fee, 8),
-                            "opened_at": time.time()
-                        }
-                        ex_port["positions"] = positions
-                        ex_port["total_trades"] += 1
-                        cycle_trades.append({"exchange": ex, "action": "BUY_LONG", "symbol": sym, "price": price})
-
-                # Закрытие
-                elif pos:
-                    entry_p = pos["entry_price"]
-                    qty = pos["qty"]
-                    invested = pos["invested_usd"]
-                    curr_val = qty * price
-                    exit_fee = curr_val * self.FEE_RATE
-                    net_curr_val = curr_val - exit_fee
-                    pnl_usd = net_curr_val - invested
-                    pnl_pct = (pnl_usd / invested * 100.0) if invested > 0 else 0.0
-
-                    if pnl_pct >= 2.0 or pnl_pct <= -1.0 or sig == "SELL_SHORT":
-                        ex_port["cash_usd"] += net_curr_val
-                        ex_port["realized_pnl_usd"] += pnl_usd
-                        del positions[pos_key]
-                        ex_port["positions"] = positions
-                        if pnl_usd > 0:
-                            ex_port["winning_trades"] += 1
-                        cycle_trades.append({"exchange": ex, "action": "CLOSE", "symbol": sym, "pnl_usd": pnl_usd})
-
-        # 2. Cross-exchange scan. Это только наблюдение котировок: ордера не
-        # выставляются, капитал не резервируется, поэтому найденный spread/PnL
-        # нельзя учитывать как заработанную прибыль портфеля.
-        cross_arb = data.get("cross_arbitrage", {})
-        legacy_pnl = float(
-            cross_arb.get(
-                "legacy_simulated_pnl_usd",
-                cross_arb.get("arbitrage_pnl_usd", 0.0),
-            )
-            or 0.0
-        )
-        legacy_trades = int(
-            cross_arb.get(
-                "legacy_simulated_trades",
-                cross_arb.get("total_arbitrage_trades", 0),
-            )
-            or 0
-        )
-        cross_arb.update(
-            {
-                "accounting_version": 2,
-                "legacy_simulated_pnl_usd": legacy_pnl,
-                "legacy_simulated_trades": legacy_trades,
-                "settled_pnl_usd": float(cross_arb.get("settled_pnl_usd", 0.0) or 0.0),
-                "settled_trades": int(cross_arb.get("settled_trades", 0) or 0),
-                # Legacy keys now mean settled values for backward compatibility.
-                "arbitrage_pnl_usd": float(cross_arb.get("settled_pnl_usd", 0.0) or 0.0),
-                "total_arbitrage_trades": int(cross_arb.get("settled_trades", 0) or 0),
-                "history": list(cross_arb.get("history", [])),
-            }
-        )
-        scan_opportunities = 0
-        scan_theoretical_pnl = 0.0
-        quote_currency = {
-            "kraken": "USD",
-            "coinbase": "USD",
-            "bitfinex": "USD",
-            "bitstamp": "USD",
-            "binance": "USDT",
-            "bybit": "USDT",
-            "okx": "USDT",
-            "kucoin": "USDT",
-            "mexc": "USDT",
-        }
-        symbols = [
-            "BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "DOGE", "AVAX", "DOT", "LINK",
-            "POL", "NEAR", "LTC", "UNI", "SHIB", "SUI", "APT", "ARB", "OP", "PEPE",
-            "FET", "INJ", "ATOM", "XLM"
-        ]
-
-        for sym in symbols:
-            sym_prices = {}
-            for ex in self.EXCHANGES:
-                p = all_prices.get(ex, {}).get(sym, 0.0)
-                if p > 0:
-                    sym_prices[ex] = p
-
-            # Never compare USD with USDT as if they were the same asset.
-            for quote in ("USD", "USDT"):
-                comparable = {
-                    ex: price
-                    for ex, price in sym_prices.items()
-                    if quote_currency.get(ex) == quote
-                }
-                if len(comparable) < 2:
-                    continue
-                min_ex = min(comparable, key=comparable.get)
-                max_ex = max(comparable, key=comparable.get)
-                p_low = comparable[min_ex]
-                p_high = comparable[max_ex]
-                spread_pct = ((p_high - p_low) / p_low) * 100.0
-
-                if spread_pct >= (self.MIN_NET_ARBITRAGE_SPREAD_PCT + 2 * self.FEE_RATE * 100):
-                    arb_trade_usd = 100.0
-                    net_spread_pct = spread_pct - (2 * self.FEE_RATE * 100) - 0.20
-                    arb_pnl = (arb_trade_usd * net_spread_pct) / 100.0
-
-                    scan_opportunities += 1
-                    scan_theoretical_pnl += arb_pnl
-                    hist = cross_arb.get("history", [])
-                    hist.append({
-                        "timestamp": time.time(),
-                        "kind": "theoretical_opportunity",
-                        "executed": False,
-                        "quote_currency": quote,
-                        "symbol": sym,
-                        "buy_ex": min_ex,
-                        "buy_price": p_low,
-                        "sell_ex": max_ex,
-                        "sell_price": p_high,
-                        "spread_pct": round(spread_pct, 3),
-                        "theoretical_pnl_usd": round(arb_pnl, 2),
-                    })
-                    cross_arb["history"] = hist[-30:]
-
-        cross_arb["last_scan_at"] = time.time()
-        cross_arb["last_scan_opportunities"] = scan_opportunities
-        cross_arb["last_scan_theoretical_pnl_usd"] = round(scan_theoretical_pnl, 8)
-        data["cross_arbitrage"] = cross_arb
-        self.save_portfolios(data)
-        return {"cycle_trades": cycle_trades, "portfolios": data, "prices": all_prices}
+        return run_multi_exchange_cycle(self)
 
 
 def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[str, Any]:
@@ -1313,8 +1139,14 @@ def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[st
     total_equity = 0.0
     total_realized_pnl = 0.0
     total_unrealized_pnl = 0.0
-    total_trades = 0
+    total_entries = 0
+    total_closed = 0
     total_wins = 0
+    total_gross_pnl = 0.0
+    total_fees = 0.0
+    total_execution_costs = 0.0
+    total_net_profit = 0.0
+    total_net_loss = 0.0
     total_unpriced_positions = 0
 
     ex_names = {
@@ -1330,9 +1162,16 @@ def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[st
         init_bal = p_data.get("initial_balance_usd", 1000.0)
         cash = p_data.get("cash_usd", 1000.0)
         realized = p_data.get("realized_pnl_usd", 0.0)
-        trades = p_data.get("total_trades", 0)
-        wins = p_data.get("winning_trades", 0)
-        win_rate = (wins / trades * 100.0) if trades > 0 else 0.0
+        entries = int(p_data.get("entry_count", p_data.get("total_trades", 0)) or 0)
+        closed = int(p_data.get("closed_trades", max(0, entries - len(p_data.get("positions", {})))) or 0)
+        wins = int(p_data.get("winning_trades", 0) or 0)
+        win_rate = (wins / closed * 100.0) if closed > 0 else 0.0
+        gross_pnl = float(p_data.get("gross_pnl_usd", 0.0) or 0.0)
+        fees_paid = float(p_data.get("fees_paid_usd", 0.0) or 0.0)
+        execution_costs = float(p_data.get("execution_costs_usd", 0.0) or 0.0)
+        net_profit = float(p_data.get("net_profit_usd", 0.0) or 0.0)
+        net_loss = float(p_data.get("net_loss_usd", 0.0) or 0.0)
+        profit_factor = (net_profit / net_loss) if net_loss > 0 else (float("inf") if net_profit > 0 else 0.0)
 
         ex_prices = all_prices.get(ex, {})
         pos_details = []
@@ -1350,7 +1189,8 @@ def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[st
             entry_p = pos_data.get("entry_price", 0.0)
             qty = pos_data.get("qty", 0.0)
             inv = pos_data.get("invested_usd", 0.0)
-            curr_v = qty * live_p
+            liquidation_price = DirectionalV2Config.from_env().exit_execution_price(live_p)
+            curr_v = qty * liquidation_price * (1.0 - MultiExchangeQuantEngine.FEE_RATE)
             un_pnl = curr_v - inv
             un_pct = (un_pnl / inv * 100.0) if inv > 0 else 0.0
 
@@ -1381,8 +1221,14 @@ def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[st
         total_equity += equity
         total_realized_pnl += realized
         total_unrealized_pnl += unrealized
-        total_trades += trades
+        total_entries += entries
+        total_closed += closed
         total_wins += wins
+        total_gross_pnl += gross_pnl
+        total_fees += fees_paid
+        total_execution_costs += execution_costs
+        total_net_profit += net_profit
+        total_net_loss += net_loss
 
         ex_reports[ex] = {
             "name": ex_names.get(ex, ex.upper()),
@@ -1392,9 +1238,17 @@ def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[st
             "pnl_usd": pnl,
             "realized_pnl_usd": realized,
             "unrealized_pnl_usd": unrealized,
-            "total_trades": trades,
+            "total_trades": entries,
+            "entry_count": entries,
+            "closed_trades": closed,
             "winning_trades": wins,
             "win_rate_pct": win_rate,
+            "gross_pnl_usd": gross_pnl,
+            "fees_paid_usd": fees_paid,
+            "execution_costs_usd": execution_costs,
+            "net_profit_usd": net_profit,
+            "net_loss_usd": net_loss,
+            "profit_factor": profit_factor,
             "unpriced_positions": unpriced_positions,
             "positions": pos_details
         }
@@ -1437,6 +1291,22 @@ def get_multi_exchange_demo_report(data_dir: str = "/root/AIOS/data") -> Dict[st
         "unpriced_positions": total_unpriced_positions,
         "grand_total_pnl_usd": grand_total_pnl,
         "grand_return_pct": grand_return_pct,
+        "portfolio_file": engine.portfolio_file.name,
+        "risk": portfolios.get("_risk_state", {}),
+        "entry_count": total_entries,
+        "closed_trades": total_closed,
+        "winning_trades": total_wins,
+        "win_rate_pct": (total_wins / total_closed * 100.0) if total_closed > 0 else 0.0,
+        "gross_pnl_usd": total_gross_pnl,
+        "fees_paid_usd": total_fees,
+        "execution_costs_usd": total_execution_costs,
+        "net_profit_usd": total_net_profit,
+        "net_loss_usd": total_net_loss,
+        "profit_factor": (
+            total_net_profit / total_net_loss
+            if total_net_loss > 0
+            else (float("inf") if total_net_profit > 0 else 0.0)
+        ),
         "exchanges": ex_reports,
         "cross_arbitrage": {
             "accounting": "settled_only",

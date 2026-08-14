@@ -8,15 +8,15 @@
 | Метрика | Значение |
 |---|---:|
 | Package version | `19.9.0` |
-| Стабильных tracked-файлов | 6,070 |
-| Строк | 554,742 |
-| Размер | 22.13 MiB |
-| Python-файлов | 3,359 |
-| Строк Python | 336,919 |
-| Классов / функций / async | 2,950 / 19,069 / 1,630 |
+| Стабильных tracked-файлов | 6,078 |
+| Строк | 555,743 |
+| Размер | 22.17 MiB |
+| Python-файлов | 3,366 |
+| Строк Python | 337,787 |
+| Классов / функций / async | 2,954 / 19,111 / 1,630 |
 | Python syntax errors | 0 |
-| Test Python files / test functions | 914 / 6,517 |
-| Markdown-файлов | 1,970 |
+| Test Python files / test functions | 918 / 6,532 |
+| Markdown-файлов | 1,971 |
 | Root `run_*.py` | 113 |
 | Уникальных tracked service/timer names | 164 |
 
@@ -24,17 +24,17 @@
 
 | Область | Файлов | Строк | Размер |
 |---|---:|---:|---:|
-| `aios_core` | 967 | 157,378 | 5.89 MiB |
+| `aios_core` | 969 | 157,749 | 5.90 MiB |
 | `skills` | 2,641 | 109,481 | 4.73 MiB |
-| `tests` | 488 | 65,926 | 2.27 MiB |
-| `docs` | 401 | 44,487 | 1.41 MiB |
-| `[root]` | 217 | 34,976 | 1.38 MiB |
+| `tests` | 492 | 66,299 | 2.28 MiB |
+| `docs` | 402 | 44,595 | 1.41 MiB |
+| `[root]` | 217 | 35,019 | 1.38 MiB |
 | `attic` | 33 | 30,669 | 1.61 MiB |
 | `octopus_services` | 110 | 27,850 | 0.90 MiB |
-| `scripts` | 174 | 15,235 | 0.58 MiB |
+| `scripts` | 175 | 15,325 | 0.58 MiB |
 | `tg_bot` | 32 | 12,060 | 0.62 MiB |
 | `octopus_instructions` | 102 | 5,959 | 0.50 MiB |
-| `deploy` | 206 | 5,796 | 0.16 MiB |
+| `deploy` | 206 | 5,812 | 0.17 MiB |
 | `octopus_roadmap` | 13 | 4,741 | 0.22 MiB |
 | `tools` | 46 | 4,441 | 0.15 MiB |
 | `converge` | 11 | 4,414 | 0.17 MiB |
@@ -49,8 +49,8 @@
 
 | Расширение | Файлов |
 |---|---:|
-| `.py` | 3,359 |
-| `.md` | 1,970 |
+| `.py` | 3,366 |
+| `.md` | 1,971 |
 | `.json` | 137 |
 | `.service` | 110 |
 | `.sh` | 67 |
@@ -85,7 +85,7 @@
 | `aios_core/dashboard.py` | 3,494 |
 | `tg_bot/accounts.py` | 3,225 |
 | `run_account_control.py` | 2,374 |
-| `aios_core/quant_trading_engine.py` | 1,898 |
+| `aios_core/quant_trading_engine.py` | 1,768 |
 | `tests/test_v10_4_modules.py` | 1,676 |
 | `tests/test_auto_modules.py` | 1,650 |
 | `aios_core/api/mixins_core.py` | 1,593 |

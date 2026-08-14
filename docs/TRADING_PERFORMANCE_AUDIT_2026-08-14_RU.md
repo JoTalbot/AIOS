@@ -167,6 +167,10 @@ Daemon параллельно ведёт ещё два независимых с
 
 Даже после gates прибыль не гарантируется. Начальный micro-live лимит должен быть минимальным и отделённым от основных средств.
 
+## Выбранное направление
+
+Владелец выбрал вариант **Cost-aware Directional v2**. Реализация и безопасный freeze-profile описаны в [`TRADING_DIRECTIONAL_V2.md`](TRADING_DIRECTIONAL_V2.md). Старые paper states сохраняются как исторический baseline; новый v2 account начинается отдельно.
+
 ## Рекомендуемый порядок
 
 1. Немедленно: freeze новых entries или остановка quant executor; market-data оставить.

@@ -141,6 +141,14 @@ tail -f logs/coder_v3.log logs/selfguard.log
 - Не использовать `pip freeze` для production lock и не делать массовый `--upgrade` заодно.
 - Политика и воспроизводимая команда: `docs/DEPENDENCY_POLICY.md`.
 
+## Безопасность Trading
+
+- Quant/Directional v2 — только paper trading; реальные ордера запрещены без отдельного решения владельца.
+- Default entry mode обязан оставаться `freeze`; смена на `enabled` только после `scripts/check_quant_v2_gate.py` с `ready=true`.
+- Не смешивать legacy и v2 portfolio state; не сбрасывать paper JSON без backup.
+- Любое изменение costs/risk/gates требует целевых accounting tests и полного pytest.
+- Runbook: `docs/TRADING_DIRECTIONAL_V2.md`; исходный аудит: `docs/TRADING_PERFORMANCE_AUDIT_2026-08-14_RU.md`.
+
 ## Тестирование
 
 - Минимум: `py_compile` каждого изменённого файла (встроено в pipeline).
