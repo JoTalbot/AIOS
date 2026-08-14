@@ -102,6 +102,7 @@ nav:
     - Политика версий: RELEASE_VERSION_POLICY.md
     - Политика зависимостей: DEPENDENCY_POLICY.md
     - Политика tracking/ignore: TRACKING_POLICY.md
+    - План декомпозиции модулей: MODULE_DECOMPOSITION_PLAN.md
 
   - Архитектура:
     - Обзор: architecture.md

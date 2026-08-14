@@ -8,15 +8,15 @@
 | Метрика | Значение |
 |---|---:|
 | Package version | `19.9.0` |
-| Стабильных tracked-файлов | 6,068 |
-| Строк | 556,721 |
-| Размер | 22.42 MiB |
-| Python-файлов | 3,353 |
-| Строк Python | 336,027 |
-| Классов / функций / async | 2,944 / 19,030 / 1,628 |
+| Стабильных tracked-файлов | 6,073 |
+| Строк | 557,006 |
+| Размер | 22.43 MiB |
+| Python-файлов | 3,357 |
+| Строк Python | 336,232 |
+| Классов / функций / async | 2,944 / 19,038 / 1,628 |
 | Python syntax errors | 0 |
-| Test Python files / test functions | 911 / 6,502 |
-| Markdown-файлов | 1,967 |
+| Test Python files / test functions | 913 / 6,507 |
+| Markdown-файлов | 1,968 |
 | Root `run_*.py` | 113 |
 | Уникальных tracked service/timer names | 164 |
 
@@ -24,14 +24,14 @@
 
 | Область | Файлов | Строк | Размер |
 |---|---:|---:|---:|
-| `aios_core` | 966 | 157,335 | 5.89 MiB |
+| `aios_core` | 967 | 157,378 | 5.89 MiB |
 | `skills` | 2,641 | 109,481 | 4.73 MiB |
-| `tests` | 485 | 65,594 | 2.26 MiB |
-| `docs` | 398 | 44,175 | 1.39 MiB |
-| `[root]` | 218 | 34,963 | 1.38 MiB |
+| `tests` | 487 | 65,668 | 2.26 MiB |
+| `docs` | 399 | 44,247 | 1.40 MiB |
+| `[root]` | 218 | 34,971 | 1.38 MiB |
 | `attic` | 34 | 31,789 | 1.84 MiB |
 | `octopus_services` | 110 | 27,850 | 0.90 MiB |
-| `scripts` | 172 | 14,718 | 0.56 MiB |
+| `scripts` | 173 | 14,806 | 0.57 MiB |
 | `tg_bot` | 32 | 12,060 | 0.62 MiB |
 | `octopus_instructions` | 102 | 5,959 | 0.50 MiB |
 | `deploy` | 206 | 5,796 | 0.16 MiB |
@@ -49,8 +49,8 @@
 
 | Расширение | Файлов |
 |---|---:|
-| `.py` | 3,353 |
-| `.md` | 1,967 |
+| `.py` | 3,357 |
+| `.md` | 1,968 |
 | `.json` | 137 |
 | `.service` | 110 |
 | `.sh` | 67 |
@@ -85,7 +85,7 @@
 | `aios_core/dashboard.py` | 3,494 |
 | `tg_bot/accounts.py` | 3,225 |
 | `run_account_control.py` | 2,374 |
-| `aios_core/quant_trading_engine.py` | 2,156 |
+| `aios_core/quant_trading_engine.py` | 1,898 |
 | `tests/test_v10_4_modules.py` | 1,676 |
 | `tests/test_auto_modules.py` | 1,650 |
 | `aios_core/api/mixins_core.py` | 1,593 |

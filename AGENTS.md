@@ -146,6 +146,13 @@ tail -f logs/coder_v3.log logs/selfguard.log
 - Логические правки → добавляй/обновляй тест в `tests/` и прогоняй `pytest tests/ -q`.
 - Деградация (укорочение модуля, потеря функций/классов) эквивалентна провалу тестов.
 
+## Бюджет крупных модулей
+
+- Не увеличивать известные монолиты; запускать `python scripts/check_module_size_budget.py --strict`.
+- Новую функциональность направлять в submodule, старый import/API сохранять через re-export/delegation.
+- Один commit извлекает один seam с regression tests; массовый rewrite запрещён.
+- План и текущие budgets: `docs/MODULE_DECOMPOSITION_PLAN.md`.
+
 ## Границы для автокодера
 
 - Цель цикла — малое улучшение: docstringи, типы, читаемость, микро-тесты, мелкий рефакторинг.
