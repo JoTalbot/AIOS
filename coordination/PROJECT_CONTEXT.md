@@ -1,6 +1,6 @@
 # Оперативный контекст проекта AIOS
 
-**Последняя верификация:** 2026-08-14T12:10:00Z
+**Последняя верификация:** 2026-08-14T11:16:09Z
 **Машина:** `aios`
 **Рабочий каталог:** `/root/AIOS`
 **Базовый commit аудита:** `356bd628` (`main`, на старте совпадал с `origin/main`)
@@ -10,9 +10,9 @@
 
 ## Где закончили
 
-Завершён девятый этап устранения рисков: 7 runtime/debug artifacts исключены из Git index, физические production logs/debug files сохранены; Python matrix уточнена. Implementation commit: `a08eb6a8`. Журнал: `coordination/sessions/20260814T120000Z-aios-arena-runtime-hygiene.md`.
+Завершена оставшаяся LLM proxy/Kilo работа: catalog/routing/tool calls/SSE/Colab guards и atomic model sync протестированы и развернуты; proxy healthy, 36 моделей, полный suite 5 174 passed / 7 skipped / 0 failed. Implementation commit: `39bec522`. Журнал: `coordination/sessions/20260814T110305Z-aios-arena-llm-proxy-takeover.md`.
 
-Предыдущий quant seam: `c2a0bb55`; systemd reconciliation: `127c09ea`; inventory stability: `42ba5e15`, `f6ada673`.
+Предыдущие этапы: runtime hygiene `a08eb6a8`, quant seam `c2a0bb55`, systemd reconciliation `127c09ea`, inventory stability `42ba5e15`/`f6ada673`.
 
 Предыдущие этапы: test hermeticity `201df1eb`, tracking policy `b75c7c14`, dependency contract `7bd3e1e7`, deployment source `2be18e3a`, version consistency `c4a788cc`.
 
@@ -43,17 +43,9 @@ AIOS — production-монорепозиторий, объединяющий:
 
 Фактические названия активных systemd-сервисов содержат v20/v21, но теперь явно считаются версиями отдельных rollout-контуров. Они не повышают package version автоматически. Канонический источник версии основного продукта — `VERSION`; обязательные зеркала и release checklist описаны в `docs/RELEASE_VERSION_POLICY.md`.
 
-## Снимок существующей параллельной работы
+## Текущая параллельная работа
 
-До внедрения протокола, на старте аудита, в общем worktree уже были чужие незакоммиченные изменения:
-
-```text
- M scripts/llm_balancer_openai_proxy.py
-?? scripts/sync_kilo_llm_models.py
-?? tests/test_llm_proxy_models.py
-```
-
-Аудит **не изменял и не добавлял в индекс** эти файлы. Их владелец неизвестен. До выяснения они считаются активной чужой работой. Нельзя выполнять reset/clean/restore/stash или включать их в посторонний коммит.
+На момент верификации активных claims и незакоммиченных файлов нет. Последняя историческая dirty LLM proxy работа завершена в `39bec522`. Перед новой задачей всё равно проверять `coordination/claims/` и `git status`.
 
 ## Главные риски
 
@@ -65,13 +57,13 @@ AIOS — production-монорепозиторий, объединяющий:
 6. **✅ Устаревающие repository metrics — mitigated:** текущие цифры генерируются в `docs/PROJECT_INVENTORY.md`, CI проверяет exact snapshot; старые audit-документы помечены historical.
 7. **✅ Негерметичный test baseline — mitigated:** live LLM/runtime paths заменены mocks/tmp fixtures; полный suite 5 160 = 5 153 passed, 7 skipped, 0 failed.
 8. **✅ Runtime/generated artifacts — mitigated:** logs, CatBoost event и debug capture больше не tracked; физические production files сохранены и игнорируются точечно.
+9. **✅ LLM proxy/Kilo unfinished work — completed:** 36-model catalog, tool routing/SSE, Colab guards и atomic sync покрыты тестами и развернуты; runtime healthy.
 
 ## Следующий рекомендуемый шаг
 
-1. Владелец незавершённой работы LLM proxy создаёт собственный журнал/claim и завершает только свои три файла.
-2. Следующий architecture seam: `tg_bot/accounts.py` context/router + analytics handler с сохранением порядка matching.
-3. Затем Gmail/Google adapter seam в `run_account_control.py` и pure render seam в dashboard.
-4. Любое применение versioned systemd units выполняется отдельно с operator approval; массовые restart/disable/remove запрещены.
+1. Следующий architecture seam: `tg_bot/accounts.py` context/router + analytics handler с сохранением порядка matching.
+2. Затем Gmail/Google adapter seam в `run_account_control.py` и pure render seam в dashboard.
+3. Любое применение versioned systemd units выполняется отдельно с operator approval; массовые restart/disable/remove запрещены.
 
 ## Правило обновления этого файла
 
