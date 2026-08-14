@@ -1,0 +1,13 @@
+[Unit]
+Description=AIOS Quant Signal Monitor (read-only)
+After=aios-market-data.service aios-quant-ml-inference.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+Environment=PYTHONPATH=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/generate_quant_signal_product.py
+
+[Install]
+WantedBy=multi-user.target
