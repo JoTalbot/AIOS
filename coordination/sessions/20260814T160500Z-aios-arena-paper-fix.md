@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T16:05:00Z"
-updated_utc: "2026-08-14T19:10:00Z"
+updated_utc: "2026-08-14T19:30:00Z"
 branch: "agent/20260814-paper-fix"
 base_commit: "9d5dbd7b"
 claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
@@ -234,6 +234,14 @@ claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
 ## Git (этап 6)
 
 - Branch `agent/20260814-quant-backfill-ppo`, commit `3be4cd27`.
+
+
+### Полный MM-прогон завершён (19:25Z)
+
+- Watcher набрал 1000+ снапшотов/пара → запустил симулятор: **14,460 снапшотов, 6 пар** (binance/mexc × BTC/ETH/SOL).
+- Результат (min 1000): fill_rate 41-73%, PnL отрицательный на всех парах (−$48k BTC, −$1.5k ETH, −$37 SOL).
+- **Финальный research-вывод (на полном датасете)**: спот-MM на топ-парах нежизнеспособен при комиссии maker 0.1% (10bps) и спредах 0.002-1.3bps. Для жизнеспособного MM нужны: (а) maker-rebate программы, (б) пары с широким спредом (длинный хвост), (в) perp-фьючерсы. Направление MM research закрыто с честным отрицательным результатом; данные orderbook остаются полезными для HFT-арбитражных окон (диспаритеты p95 2-2.6bps).
+- Отчёт: data/reports/market_making_simulation.json (обновлён), orderbook_analysis.json.
 
 ## Handoff
 
