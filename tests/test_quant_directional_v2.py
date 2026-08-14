@@ -52,6 +52,7 @@ def test_default_freeze_blocks_new_entries(monkeypatch, tmp_path):
     assert portfolio["positions"] == {}
     assert result["risk"]["entry_mode"] == "freeze"
     assert result["risk"]["block_reasons"]["entry_mode_freeze"] == 1
+    assert engine.signal_engine.calls == 0
 
 
 def test_enabled_entry_models_fee_spread_slippage_and_accounting(monkeypatch, tmp_path):

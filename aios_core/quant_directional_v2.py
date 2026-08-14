@@ -87,10 +87,26 @@ def run_multi_exchange_cycle(engine) -> dict[str, Any]:
             for symbol, mid_price in prices.items():
                 if mid_price <= 0:
                     continue
-                analysis = engine.signal_engine.record_and_analyze(f"{exchange.upper()}_{symbol}", mid_price)
-                signal = analysis.get("signal", "HOLD")
                 position_key = f"{symbol}USD"
                 position = positions.get(position_key)
+                if not position:
+                    static_reason = entry_block_reason(
+                        config,
+                        {"confidence": 1.0, "ml_prob_up": 1.0, "rl_position": 1.0},
+                        exchange=exchange,
+                        global_positions=global_positions,
+                        exchange_positions=len(positions),
+                        drawdown_pct=drawdown_pct,
+                        daily_loss_pct=daily_loss_pct,
+                        unpriced_positions=unpriced,
+                        candle_is_new=True,
+                    )
+                    if static_reason:
+                        block_reasons[static_reason] += 1
+                        continue
+
+                analysis = engine.signal_engine.record_and_analyze(f"{exchange.upper()}_{symbol}", mid_price)
+                signal = analysis.get("signal", "HOLD")
 
                 if signal == "BUY_LONG" and not position:
                     reason = entry_block_reason(
