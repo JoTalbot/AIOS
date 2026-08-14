@@ -1,6 +1,6 @@
 # Оперативный контекст проекта AIOS
 
-**Последняя верификация:** 2026-08-14T09:55:00Z
+**Последняя верификация:** 2026-08-14T10:15:00Z
 **Машина:** `aios`
 **Рабочий каталог:** `/root/AIOS`
 **Базовый commit аудита:** `356bd628` (`main`, на старте совпадал с `origin/main`)
@@ -10,9 +10,9 @@
 
 ## Где закончили
 
-Завершён четвёртый этап устранения рисков: глобальный `*.json` удалён, runtime/business JSON классифицированы точечно, 41 исходный Stitch build-файл и 6 безопасных manifests возвращены в Git, добавлен tracking checker. В `AGENTS.md` сохранён краткий формат общения без сырых логов. Implementation commit: `b75c7c14`. Журнал: `coordination/sessions/20260814T093000Z-aios-arena-tracking-policy.md`.
+Завершён пятый этап устранения рисков: account/ops/fintech tests изолированы от live LLM, credentials, production logs и `/root/AIOS/data`; полный suite теперь 5 153 passed, 7 skipped, 0 failed. Implementation commit: `201df1eb`. Журнал: `coordination/sessions/20260814T100000Z-aios-arena-test-hermeticity.md`.
 
-Предыдущие этапы: dependency contract `7bd3e1e7`, deployment source `2be18e3a`, version consistency `c4a788cc`.
+Предыдущие этапы: tracking policy `b75c7c14`, dependency contract `7bd3e1e7`, deployment source `2be18e3a`, version consistency `c4a788cc`.
 
 ## Текущий архитектурный срез
 
@@ -61,12 +61,12 @@ AIOS — production-монорепозиторий, объединяющий:
 4. **✅ Dependency drift — mitigated:** роли minimal 12 / full direct 47 / exact lock 198 формализованы и проверяются; конфликт WebSockets/Web3 устранён, production lock воспроизводим на Python 3.11.
 5. **✅ Tracking/ignore risk — mitigated:** глобальный `*.json` удалён, source build-каталог возвращён в Git, runtime/sensitive paths игнорируются точечно и проверяются тестом.
 6. **Устаревшие метрики:** документация содержит тестовые и архитектурные числа, не совпадающие с фактической инвентаризацией.
-7. **Негерметичный test baseline:** полный изолированный прогон собрал 5 152 теста; 5 139 passed, 7 skipped, 6 failed из-за live LLM, ignored runtime data, абсолютного `/root/AIOS` и fintech assertion.
+7. **✅ Негерметичный test baseline — mitigated:** live LLM/runtime paths заменены mocks/tmp fixtures; полный suite 5 160 = 5 153 passed, 7 skipped, 0 failed.
 
 ## Следующий рекомендуемый шаг
 
 1. Владелец незавершённой работы LLM proxy создаёт собственный журнал/claim и завершает только свои три файла.
-2. Следующая remediation-сессия исправляет герметичность 6 failing tests: live LLM, ignored data paths, абсолютный `/root/AIOS` и fintech split fixture.
+2. Следующая remediation-сессия создаёт генерируемый актуальный inventory/metrics вместо ручных чисел в документации.
 3. Systemd reconciliation выполняется отдельными малыми batches, начиная с активных критичных units; массовое удаление запрещено.
 4. Крупные модули декомпозируются только по одному seam с regression tests, без массового rewrite.
 
