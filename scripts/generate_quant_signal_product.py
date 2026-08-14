@@ -26,26 +26,53 @@ def _json(path: Path, default):
         return default
 
 
-def _latest_rows(data_root: Path, symbol: str, limit: int = 150):
+def _latest_rows(data_root: Path, symbol: str, limit: int = 150, *, now_ms: float | None = None):
+    # Pick the most complete FRESH series among preferred exchanges: a long but
+    # stale series (e.g. delisted pair on one venue) must not shadow a shorter
+    # live one. Tie-break by preference order (strict > keeps it).
+    if now_ms is None:
+        from datetime import datetime, timezone
+
+        now_ms = datetime.now(timezone.utc).timestamp() * 1000.0
+    staleness_ms = 2 * 3_600_000.0  # 2h
+    best_len = -1
+    best_exchange = ""
+    best_rows: list[dict] = []
     for exchange in PREFERRED:
         path = data_root / symbol / exchange / f"{symbol}_1h.csv"
         if not path.exists():
             continue
-        with path.open(newline="", encoding="utf-8") as stream:
-            rows = list(csv.DictReader(stream))[-limit:]
-        if rows:
-            return exchange, [
-                {
-                    "timestamp": float(row["timestamp_ms"]),
-                    "open": float(row["open"]),
-                    "high": float(row["high"]),
-                    "low": float(row["low"]),
-                    "close": float(row["close"]),
-                    "volume": float(row["volume"]),
-                }
-                for row in rows
-            ]
-    return "", []
+        try:
+            with path.open(newline="", encoding="utf-8") as stream:
+                rows = list(csv.DictReader(stream))
+        except OSError:
+            continue
+        if not rows:
+            continue
+        try:
+            last_ts = float(rows[-1]["timestamp_ms"])
+        except (KeyError, ValueError):
+            continue
+        if now_ms - last_ts > staleness_ms:
+            continue  # stale series — skip
+        if len(rows) > best_len:
+            best_len = len(rows)
+            best_exchange = exchange
+            best_rows = rows
+    if not best_rows:
+        return "", []
+    best_rows = best_rows[-limit:]
+    return best_exchange, [
+        {
+            "timestamp": float(row["timestamp_ms"]),
+            "open": float(row["open"]),
+            "high": float(row["high"]),
+            "low": float(row["low"]),
+            "close": float(row["close"]),
+            "volume": float(row["volume"]),
+        }
+        for row in best_rows
+    ]
 
 
 def build_report(data_root: Path, ml_path: Path, rl_path: Path, *, now_ms: float) -> dict:
@@ -56,10 +83,12 @@ def build_report(data_root: Path, ml_path: Path, rl_path: Path, *, now_ms: float
     signals = []
     symbols = sorted(set(ml_by) | set(rl_by))
     for symbol in symbols:
-        exchange, rows = _latest_rows(data_root, symbol)
+        exchange, rows = _latest_rows(data_root, symbol, now_ms=now_ms)
         if not rows:
             continue
-        feature = compute_regime_features(rows)[-1]
+        # Последний бар может быть ещё не закрыт (частичный объём -> ложный
+        # "illiquid"); regime считаем по последнему закрытому бару.
+        feature = compute_regime_features(rows)[-2] if len(rows) >= 2 else compute_regime_features(rows)[-1]
         age_hours = max(0.0, (now_ms - rows[-1]["timestamp"]) / 3_600_000.0)
         prob = float(ml_by.get(symbol, {}).get("prob_up", 0.5) or 0.5)
         position = float(rl_by.get(symbol, {}).get("position", 0.5) or 0.5)

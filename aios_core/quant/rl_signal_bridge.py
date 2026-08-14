@@ -20,16 +20,19 @@ from datetime import datetime, timezone
 from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MODEL_FILE = REPO_ROOT / "data" / "quant" / "models" / "ppo_v8.pt"  # лучшая LSTM-PPO (300 эп, +75.23%)
+MODEL_FILE = REPO_ROOT / "data" / "quant" / "models" / "ppo_v9.pt"  # LSTM-PPO v9 (300 эп, sum_rl +96% vs BH −114%)
 OUT_FILE = REPO_ROOT / "data" / "quant" / "rl_signals.json"
 
 LOG_TAG = "[RLSignalBridge]"
 
-# 32 актива среды обучения (data/kg_v8/aios-rl-v8.ipynb, MultiAssetEnv):
+# 32 актива среды обучения (quant_train_ppo.py, MultiAssetEnv):
 # self.names = sorted(assets.keys()) — onehot-индекс актива в этом порядке.
-ASSET_ORDER = sorted([
+# Используется как fallback; предпочтительно читать assets из чекпоинта
+# модели (ppo_v9.pt сохраняет {"policy", "assets"}), т.к. v8 обучалась с
+# MATIC, а v9 — с POL (разные индексы в onehot).
+ASSET_ORDER_DEFAULT = sorted([
     "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX", "LINK", "DOT",
-    "MATIC", "LTC", "TRX", "ATOM", "UNI", "ETC", "FIL", "APT", "NEAR", "ARB",
+    "POL", "LTC", "TRX", "ATOM", "UNI", "ETC", "FIL", "APT", "NEAR", "ARB",
     "OP", "SUI", "TIA", "SEI", "TON", "INJ", "KAS", "FET", "WIF", "BONK",
     "PEPE", "SHIB",
 ])
@@ -42,6 +45,7 @@ class RLSignalBridge:
         self.model_file = Path(model_file or MODEL_FILE)
         self._policy = None
         self._model_available = self.model_file.exists()
+        self.asset_names = ASSET_ORDER_DEFAULT
 
     # ---- модель ----
     def _load_policy(self):
@@ -92,6 +96,7 @@ class RLSignalBridge:
 
             ckpt = torch.load(self.model_file, map_location="cpu")
             sd = ckpt.get("policy", ckpt)
+            self.asset_names = sorted(ckpt.get("assets") or ASSET_ORDER_DEFAULT)
             # определяем архитектуру по наличию lstm-слоя
             if "lstm.weight_ih_l0" in sd:
                 w = sd["fc_pre.weight"]
@@ -174,12 +179,13 @@ class RLSignalBridge:
         # мультиактив-модель: base (window+4) + onehot (n_assets)
         if exp > base.shape[0]:
             n_assets = exp - base.shape[0]
-            if asset_name is None or asset_name not in ASSET_ORDER:
+            asset_names = getattr(self, "asset_names", ASSET_ORDER_DEFAULT)
+            if asset_name is None or asset_name not in asset_names:
                 # Актив не из обучающего универсума — честно сообщаем «нет сигнала»
                 # вместо того, чтобы подставлять чужой onehot-индекс.
                 return None
             onehot = np.zeros(n_assets, dtype=np.float32)
-            onehot[ASSET_ORDER.index(asset_name)] = 1.0
+            onehot[asset_names.index(asset_name)] = 1.0
             obs = np.concatenate([base, onehot]).astype(np.float32)
             if obs.shape[0] == exp:
                 return obs

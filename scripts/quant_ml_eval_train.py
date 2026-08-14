@@ -152,14 +152,19 @@ def _simulate_engine_trades(
     slippage: float = 0.0005,
     take_profit_pct: float = 0.02,
     stop_loss_pct: float = -0.01,
+    trail_ratio: float = 0.988,
     max_bars: int = 72,
 ) -> dict:
     """Simulate the Directional v2 paper exit rules on threshold entries.
 
-    Entry at bar close (execution price = mid * (1 + half_spread + slippage)),
-    exit when close >= entry * (1 + tp) / (1 + costs) or <= entry * (1 + sl),
-    trailing stop -1.2% from max seen, max hold `max_bars` bars.
-    Costs: entry+exit fees + spread + slippage ~ round-trip.
+    Entry at bar close (execution price = mid * (1 + half_spread + slippage)).
+    Exits execute AT THE TRIGGER LEVEL (conservative standard), not at the bar
+    close that happened to pierce it:
+      - take profit:  exit at entry_mid * (1 + tp) * (1 - half_spread - slippage)
+      - stop loss:    exit at entry_mid * (1 + sl) * (1 - half_spread - slippage)
+      - trailing:     exit at max_seen * trail_ratio * (1 - half_spread - slippage)
+      - timeout:      exit at the last close.
+    Costs: entry+exit fees + spread + slippage.
     """
     trades = []
     df = df_test.reset_index(drop=True)
@@ -172,18 +177,19 @@ def _simulate_engine_trades(
         entry_px = entry_mid * (1.0 + half_spread + slippage)
         max_seen = entry_mid
         exit_px = None
+        reason = None
         for j in range(i + 1, min(i + 1 + max_bars, len(df))):
             px = float(closes[j])
-            if px <= entry_mid * (1.0 + stop_loss_pct):
-                exit_px = px * (1.0 - half_spread - slippage)
-                reason = "sl"
-                break
             if px >= entry_mid * (1.0 + take_profit_pct):
-                exit_px = px * (1.0 - half_spread - slippage)
+                exit_px = entry_mid * (1.0 + take_profit_pct) * (1.0 - half_spread - slippage)
                 reason = "tp"
                 break
-            if max_seen > entry_mid * 1.01 and px <= max_seen * 0.988:
-                exit_px = px * (1.0 - half_spread - slippage)
+            if px <= entry_mid * (1.0 + stop_loss_pct):
+                exit_px = entry_mid * (1.0 + stop_loss_pct) * (1.0 - half_spread - slippage)
+                reason = "sl"
+                break
+            if max_seen > entry_mid * 1.01 and px <= max_seen * trail_ratio:
+                exit_px = max_seen * trail_ratio * (1.0 - half_spread - slippage)
                 reason = "trail"
                 break
             max_seen = max(max_seen, px)
