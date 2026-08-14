@@ -10,9 +10,9 @@
 
 ## Где закончили
 
-Завершена оставшаяся LLM proxy/Kilo работа: catalog/routing/tool calls/SSE/Colab guards и atomic model sync протестированы и развернуты; proxy healthy, 36 моделей, полный suite 5 174 passed / 7 skipped / 0 failed. Implementation commit: `39bec522`. Журнал: `coordination/sessions/20260814T110305Z-aios-arena-llm-proxy-takeover.md`.
+Завершён read-only аудит trading runtime. Все контуры работают в paper mode, но совокупный результат около −$89 на $11 100 (−0.80%); multi-exchange −$75.57, settled arbitrage 0, ML/RL не подтверждают long-edge. Код и сервисы не менялись. Отчёт: `docs/TRADING_PERFORMANCE_AUDIT_2026-08-14_RU.md`.
 
-Предыдущие этапы: runtime hygiene `a08eb6a8`, quant seam `c2a0bb55`, systemd reconciliation `127c09ea`, inventory stability `42ba5e15`/`f6ada673`.
+Предыдущие этапы: LLM proxy `39bec522`, runtime hygiene `a08eb6a8`, quant seam `c2a0bb55`, systemd reconciliation `127c09ea`.
 
 Предыдущие этапы: test hermeticity `201df1eb`, tracking policy `b75c7c14`, dependency contract `7bd3e1e7`, deployment source `2be18e3a`, version consistency `c4a788cc`.
 
@@ -65,9 +65,10 @@ AIOS — production-монорепозиторий, объединяющий:
 
 ## Следующий рекомендуемый шаг
 
-1. Следующий architecture seam: `tg_bot/accounts.py` context/router + analytics handler с сохранением порядка matching.
-2. Затем Gmail/Google adapter seam в `run_account_control.py` и pure render seam в dashboard.
-3. Любое применение versioned systemd units выполняется отдельно с operator approval; массовые restart/disable/remove запрещены.
+1. Владелец выбирает trading-режим: entry freeze + directional v2, arbitrage-only paper, monitoring-only или ограниченный candidate portfolio.
+2. Следующий architecture seam: `tg_bot/accounts.py` context/router + analytics handler с сохранением порядка matching.
+3. Затем Gmail/Google adapter seam в `run_account_control.py` и pure render seam в dashboard.
+4. Любое применение versioned systemd units выполняется отдельно с operator approval; массовые restart/disable/remove запрещены.
 
 ## Правило обновления этого файла
 
