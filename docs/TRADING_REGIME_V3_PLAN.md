@@ -40,3 +40,7 @@ Directional edge оценивается только внутри рыночно
 - не включать entries ради накопления sample до прохождения historical v3 gate;
 - не использовать theoretical arbitrage как прибыль;
 - не переходить в live автоматически.
+
+## Результат первого запуска
+
+Gate не пройден: median OOS −0.754%, positive folds 8.9%, stress median −1.158%. См. `TRADING_REGIME_V3_RESULT.md`. Эти folds повторно для подбора не используются.
