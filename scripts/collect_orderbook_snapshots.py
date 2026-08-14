@@ -11,7 +11,17 @@ from pathlib import Path
 
 import ccxt
 
-EXCHANGE_CLASSES = {"binance": ccxt.binance, "kucoin": ccxt.kucoin, "mexc": ccxt.mexc}
+EXCHANGE_CLASSES = {
+    "binance": ccxt.binance,
+    "kucoin": ccxt.kucoin,
+    "mexc": ccxt.mexc,
+    "okx": ccxt.okx,
+    "bitstamp": ccxt.bitstamp,
+    "coinbase": ccxt.coinbase,
+}
+
+# Some exchanges only accept specific depth limits (kucoin: 20 or 100).
+MIN_DEPTH = {"kucoin": 20}
 
 
 class OrderbookStore:
@@ -93,7 +103,8 @@ def collect_once(clients, symbols, store: OrderbookStore, depth=10):
             pair = f"{base}/USDT"
             started = time.monotonic()
             try:
-                book = client.fetch_order_book(pair, limit=depth)
+                fetch_depth = max(depth, MIN_DEPTH.get(exchange, depth))
+                book = client.fetch_order_book(pair, limit=fetch_depth)
                 row = normalize(exchange, base, book, (time.monotonic() - started) * 1000, depth)
                 if row:
                     store.add(row)
