@@ -50,7 +50,7 @@ AIOS — production-монорепозиторий, объединяющий:
 ## Runtime operator decisions
 
 - `2026-08-14T11:23:03Z`: `aios-freelance-brain.service` намеренно остановлен и отключён владельцем; состояние `inactive`, `disabled`, процессов 0. Не запускать/enable без нового решения. Журнал: `coordination/sessions/20260814-aios-arena-freelance-stop.md`.
-- `2026-08-14T12:20:00Z`: `aios-quant-trading.service` остановлен и disabled по выбору владельца (monitoring-only). Market-data, ML, Signal Monitor и public orderbook research остаются active; entries и реальные ордера отсутствуют.
+- `2026-08-14T12:20:00Z`: `aios-quant-trading.service` active/enabled в owner-approved constrained paper profile: отдельный state, max 1 позиция, ML≥0.65, confidence≥0.88, DD/day kill 0.25%. Первый цикл entries=0; live запрещён. Orderbook, Signal Monitor и DeFi risk timers active.
 
 ## Главные риски
 
