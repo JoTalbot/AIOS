@@ -2,14 +2,14 @@
 
 ---
 session_id: "20260814T091000Z-aios-arena-deployment-source"
-status: "ACTIVE"
+status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T09:10:00Z"
-updated_utc: "2026-08-14T09:10:00Z"
+updated_utc: "2026-08-14T09:14:00Z"
 branch: "agent/20260814-deployment-source"
 base_commit: "65c66a8b"
-claim: "coordination/claims/deployment-source--20260814T091000Z-aios-arena-deployment-source.md"
+claim: "none (claim closed and removed after implementation)"
 ---
 
 ## Цель
@@ -18,33 +18,64 @@ claim: "coordination/claims/deployment-source--20260814T091000Z-aios-arena-deplo
 
 ## Scope
 
-- Разрешено: deploy documentation, workflows, deployment helper scripts, новый read-only audit tool и тесты.
-- Вне scope: содержимое protected compose YAML, удаление/перезапуск systemd units, credentials, service restart.
-- Работа выполняется в отдельном worktree.
+- Изменено: deploy documentation, manual workflow, helper scripts, read-only audit tool и тесты.
+- Не изменено: protected Compose YAML, systemd units, credentials, работающие сервисы/контейнеры.
+- Работа выполнена в отдельном worktree.
 
 ## Исходное состояние
 
-- Docker labels работающих контейнеров подтверждают `/root/AIOS/docker-compose.prod.yml` как фактически используемый production Compose.
-- `docker-compose.prod.yml` имеет 68 ссылок и используется SSH/full-CI deployment.
-- `.github/workflows/deploy.yml` вызывает `docker compose` без `-f`, что при настроенных secrets выбрало бы неканонический `docker-compose.yml`.
-- `deploy/production/docker-compose.prod.yml` — отличающийся старый v9.1 stack.
-- В Git 50 уникальных active-intent unit names, на хосте установлено 159 AIOS unit files; 116 установленных имён не отслеживаются.
-- Нельзя автоматически удалять untracked units: сначала ownership и secret review.
+- Docker labels работающих контейнеров подтверждали `/root/AIOS/docker-compose.prod.yml` как фактически используемый production Compose.
+- `.github/workflows/deploy.yml` вызывал `docker compose` без `-f`, поэтому при настроенных secrets мог выбрать локальный `docker-compose.yml`.
+- Тот же workflow собирал Docker Hub image, тогда как production Compose использует pinned GHCR digest.
+- Workflow отображался как success, хотя deployment job был skipped из-за отсутствующих secrets.
+- `deploy/production/docker-compose.prod.yml` — отличающийся legacy v9.1 stack.
+- В Git 48 уникальных `aios-*` unit names (50 вместе с Octopus), на хосте установлено 159 AIOS unit files; 116 установленных имён не отслеживались.
 
-## План
+## Решения
 
-1. Закрепить роли всех Compose-файлов в документации и автоматической проверке.
-2. Исправить deploy workflow на явный canonical `-f docker-compose.prod.yml`.
-3. Пометить local/all-in-one и experimental swarm scripts, исключив случайный production use.
-4. Добавить read-only audit tool для tracked/runtime drift и тесты.
-5. Не изменять runtime; записать безопасный план reconciliation.
+1. Единственный production Compose — корневой `docker-compose.prod.yml`.
+2. Все production-команды обязаны использовать явный `-f docker-compose.prod.yml`.
+3. `.github/workflows/deploy.yml` переведён в manual-only и теперь применяет pinned canonical stack после `git merge --ff-only`; несогласованный Docker Hub build удалён.
+4. `docker-compose.yml` зафиксирован как local integration, `docker-compose.unified.yml` — experimental, вложенный production Compose — legacy reference.
+5. Experimental Swarm требует `AIOS_ALLOW_EXPERIMENTAL_SWARM=1`; all-in-one script явно local/demo.
+6. Runtime systemd drift только инвентаризируется. Массовое disable/remove запрещено до поштучного ownership/secret review.
+
+## Изменённые файлы
+
+- `.github/workflows/deploy.yml` — manual canonical deployment без stale Docker Hub build.
+- `deploy/DEPLOYMENT_SOURCES.md` — карта источников, entrypoints и reconciliation plan.
+- `scripts/audit_deployment_sources.py` — read-only repository/runtime audit.
+- `tests/test_deployment_sources.py` — contract tests.
+- `deploy-all-in-one.sh` — явный local/demo Compose.
+- `scripts/deploy_swarm.sh` — experimental opt-in guard.
+- `scripts/start_ui.sh` — пометка simulation/non-production.
+- `AGENTS.md` — обязательный production deployment contract.
+- `coordination/PROJECT_CONTEXT.md` — актуальный handoff.
 
 ## Проверки
 
-- `[NOT RUN]` — реализация ещё не начата.
+- `[PASS]` `python -m py_compile scripts/audit_deployment_sources.py tests/test_deployment_sources.py`.
+- `[PASS]` Ruff check/format для audit tool и теста.
+- `[PASS]` `pytest tests/test_deployment_sources.py tests/test_release_version.py tests/test_project_health.py -q` — 17 passed.
+- `[PASS]` `python scripts/audit_deployment_sources.py --strict` — repository errors 0.
+- `[PASS]` `docker compose -f docker-compose.prod.yml config -q` с CI-safe env.
+- `[PASS]` deploy workflow YAML parse.
+- `[PASS]` `bash -n` для трёх изменённых shell scripts.
+- `[NOT RUN]` shellcheck отсутствует на хосте.
+- `[EXPECTED NON-ZERO]` runtime strict drift: tracked 48, installed 159, installed-not-tracked 116, tracked-not-installed 5; все AIOS containers используют canonical Compose source.
+- `[PASS]` `git diff --check`.
+
+## Git
+
+- Claim commit: `cf23ae22`.
+- Implementation commit: `2be18e3a` (`fix(deploy): define canonical production source`).
+- Финальный coordination commit находится следующим в истории этого файла.
+- Protected Compose и чужие LLM-файлы не менялись.
 
 ## Handoff
 
-- Последняя завершённая точка: read-only inventory.
-- Следующий шаг: реализовать статический audit contract.
-- Блокеры: нет.
+- Последняя завершённая точка: repository deployment ambiguity устранена; runtime drift измерим и документирован.
+- Следующий конкретный шаг: консолидировать dependency declarations либо начать поштучный systemd reconciliation с наиболее критичных активных units.
+- Блокеры: 116 unmanaged installed units нельзя безопасно импортировать/удалить массово.
+- Риски: full CI/CD остаётся отдельным gated deployment path; его фактический запуск зависит от зелёных integration tests и configured secrets.
+- Нельзя делать: считать workflow-level success доказательством rollout без проверки jobs; запускать legacy Compose; массово удалять systemd units.
