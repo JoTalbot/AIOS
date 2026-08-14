@@ -32,7 +32,7 @@ from typing import Optional
 
 import ccxt
 
-REPO_ROOT = Path(__file__).resolve().parents[2]                 # /root/AIOS
+REPO_ROOT = Path(__file__).resolve().parents[2]  # /root/AIOS
 QUANT_DIR = REPO_ROOT / "data" / "quant"
 EXPORT_DIR = QUANT_DIR / "export"
 
@@ -40,10 +40,39 @@ EXPORT_DIR = QUANT_DIR / "export"
 # Выбираем самые ликвидные; на Kraken нет USDT-пар для всех, поэтому для него
 # используем USD/USDC пары где это доступно (обрабатывается в _pair_per_exchange).
 DEFAULT_SYMBOLS = [
-    "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX",
-    "LINK", "DOT", "POL", "LTC", "TRX", "ATOM", "UNI", "ETC",
-    "FIL", "APT", "NEAR", "ARB", "OP", "SUI", "TIA", "SEI",
-    "TON", "INJ", "KAS", "RENDER", "FET", "WIF", "BONK", "PEPE", "SHIB",
+    "BTC",
+    "ETH",
+    "BNB",
+    "SOL",
+    "XRP",
+    "ADA",
+    "DOGE",
+    "AVAX",
+    "LINK",
+    "DOT",
+    "POL",
+    "LTC",
+    "TRX",
+    "ATOM",
+    "UNI",
+    "ETC",
+    "FIL",
+    "APT",
+    "NEAR",
+    "ARB",
+    "OP",
+    "SUI",
+    "TIA",
+    "SEI",
+    "TON",
+    "INJ",
+    "KAS",
+    "RENDER",
+    "FET",
+    "WIF",
+    "BONK",
+    "PEPE",
+    "SHIB",
 ]
 
 # Какие биржи обрабатываем и за каким "exchange id" ccxt.
@@ -112,7 +141,7 @@ class MarketDataCollector:
         if pair in markets:
             return pair
         # попробуем альтернативные кавычки
-        for alt in (["USDC", "USD", "USDT"] if exchange != "kraken" else ["USDT", "USDC"]):
+        for alt in ["USDC", "USD", "USDT"] if exchange != "kraken" else ["USDT", "USDC"]:
             p = f"{base}/{alt}"
             if p in markets:
                 return p
@@ -157,11 +186,24 @@ class MarketDataCollector:
 
     # ------------------------------------------------------------ storage ----
     def _save_csv(self, path: Path, rows: list[list], header: list[str]) -> None:
+        """Merge OHLCV by timestamp so short daemon refreshes preserve backfill."""
         path.parent.mkdir(parents=True, exist_ok=True)
+        merged: dict[int, list] = {}
+        if path.exists():
+            try:
+                with path.open(newline="", encoding="utf-8") as stream:
+                    for row in csv.reader(stream):
+                        if row and row[0] != header[0]:
+                            merged[int(float(row[0]))] = row
+            except (OSError, ValueError):
+                merged = {}
+        for row in rows:
+            if row:
+                merged[int(float(row[0]))] = row
         with open(path, "w", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            w.writerow(header)
-            w.writerows(rows)
+            writer = csv.writer(f)
+            writer.writerow(header)
+            writer.writerows(merged[key] for key in sorted(merged))
 
     # ------------------------------------------------------------ collect ----
     def collect_ohlcv(
@@ -191,9 +233,7 @@ class MarketDataCollector:
                 self._save_csv(self.quant_dir / base / ex / fname, out_rows, header)
         return result
 
-    def collect_ohlcv_all(
-        self, timeframe: str = "1h", limit: int = 500, save: bool = True
-    ) -> dict:
+    def collect_ohlcv_all(self, timeframe: str = "1h", limit: int = 500, save: bool = True) -> dict:
         """Собрать OHLCV по всем активам."""
         summary = {}
         for base in self.symbols:
@@ -203,9 +243,7 @@ class MarketDataCollector:
         self._write_manifest(summary)
         return summary
 
-    def collect_orderbooks(
-        self, base: str, limit: int = 100, save: bool = True
-    ) -> dict:
+    def collect_orderbooks(self, base: str, limit: int = 100, save: bool = True) -> dict:
         """Собрать глубину стакана для актива по биржам."""
         result: dict[str, dict] = {}
         for ex in self.exchange_names:
@@ -276,7 +314,7 @@ if __name__ == "__main__":
         print(f"  {base}: {cnt}")
     if args.orderbooks:
         print(f"{LOG_TAG} Сбор стаканов...")
-        for base in (args.symbols or DEFAULT_SYMBOLS):
+        for base in args.symbols or DEFAULT_SYMBOLS:
             c.collect_orderbooks(base)
     if args.export:
         path = c.export_for_colab()

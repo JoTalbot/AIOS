@@ -9,13 +9,13 @@
 |---|---:|
 | Package version | `19.9.0` |
 | Стабильных tracked-файлов | 6,087 |
-| Строк | 556,542 |
+| Строк | 556,595 |
 | Размер | 22.20 MiB |
 | Python-файлов | 3,372 |
-| Строк Python | 338,460 |
-| Классов / функций / async | 2,957 / 19,143 / 1,630 |
+| Строк Python | 338,513 |
+| Классов / функций / async | 2,957 / 19,144 / 1,630 |
 | Python syntax errors | 0 |
-| Test Python files / test functions | 921 / 6,538 |
+| Test Python files / test functions | 921 / 6,539 |
 | Markdown-файлов | 1,974 |
 | Root `run_*.py` | 113 |
 | Уникальных tracked service/timer names | 164 |
@@ -24,9 +24,9 @@
 
 | Область | Файлов | Строк | Размер |
 |---|---:|---:|---:|
-| `aios_core` | 970 | 157,896 | 5.91 MiB |
+| `aios_core` | 970 | 157,934 | 5.91 MiB |
 | `skills` | 2,641 | 109,481 | 4.73 MiB |
-| `tests` | 495 | 66,393 | 2.29 MiB |
+| `tests` | 495 | 66,408 | 2.29 MiB |
 | `docs` | 405 | 44,717 | 1.42 MiB |
 | `[root]` | 217 | 35,023 | 1.38 MiB |
 | `attic` | 33 | 30,669 | 1.61 MiB |

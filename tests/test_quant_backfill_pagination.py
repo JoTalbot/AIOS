@@ -23,3 +23,18 @@ def test_paginated_fetch_deduplicates_and_excludes_open_candle(monkeypatch):
     assert len(result) == 2500
     assert len({row[0] for row in result}) == 2500
     assert max(row[0] for row in result) < now_ms
+
+
+def test_save_csv_merges_short_refresh_without_losing_history(tmp_path):
+    import csv
+
+    path = tmp_path / "BTC_1h.csv"
+    header = ["timestamp_ms", "open", "high", "low", "close", "volume", "collected_at"]
+    collector = MarketDataCollector.__new__(MarketDataCollector)
+    collector._save_csv(path, [[i, 1, 2, 0.5, 1.5, 10, "old"] for i in range(1000)], header)
+    collector._save_csv(path, [[i, 1, 2, 0.5, 2.0, 10, "new"] for i in range(900, 1100)], header)
+    with path.open() as stream:
+        rows = list(csv.DictReader(stream))
+    assert len(rows) == 1100
+    assert rows[-1]["timestamp_ms"] == "1099"
+    assert rows[900]["close"] == "2.0"
