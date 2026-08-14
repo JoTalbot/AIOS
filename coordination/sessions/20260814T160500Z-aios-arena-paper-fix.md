@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T16:05:00Z"
-updated_utc: "2026-08-14T16:35:00Z"
+updated_utc: "2026-08-14T17:15:00Z"
 branch: "agent/20260814-paper-fix"
 base_commit: "9d5dbd7b"
 claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
@@ -96,6 +96,57 @@ claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
 - `aios_core/quant/rl_signal_bridge.py` — onehot, vol_ratio, clamp, POL вместо MATIC
 - `aios_core/quant/ml_predictor.py` — фильтр мёртвых тикеров
 - `scripts/gen_quant_notebooks.py` — POL вместо MATIC в шаблоне
+
+
+## Этап 3: дособор истории, переобучение ML и PPO (по порядку)
+
+### 1. Дособор истории (scripts/quant_backfill_history.py, новый)
+
+- 17 малоисторичных активов (APT..WIF, ~500 строк) дособраны до ~5500 строк через пагинированный Binance klines; KAS — через Bybit fallback (KASUSDT отсутствует на Binance spot).
+- Скрипт сначала обновляет «хвост» (fetch последних баров) — исправляет устаревшие серии (TON: binance-серия оборвана 24.06 — делистинг TONUSDT на Binance/Bybit; свежие бары на bitstamp/kraken).
+- Дедупликация по timestamp_ms, сортировка, формат CSV сохранён.
+
+### 2. Сигнальный продукт: выбор источника (generate_quant_signal_product.py)
+
+- `_latest_rows`: выбор самой полной СВЕЖЕЙ серии (устаревшие >2h отбрасываются) — раньше для APT брался kraken (503 строки) вместо binance (5503), а для TON — устаревшая binance-серия вместо свежей bitstamp.
+- Regime считается по последнему ЗАКРЫТОМУ бару (незакрытый бар имеет частичный объём → ложный «illiquid»).
+- Результат: NO_DATA 16 → 0; 33 актива с живыми данными; WATCH_DOWN: OP, PEPE.
+
+### 3. Переобучение ML (quant_ml_eval_train.py на полных данных)
+
+- Оценка на полном датасете (172k строк, тест 52k): старая модель AUC 0.513 и 0 сделок >=0.60; кандидат v2: AUC 0.536, hit@0.65 = 82.4%, SIM thr=0.65: 34 сделки, win 79.4%, avg +0.93% net, итог +31.6%.
+- Исправлена симуляция в скрипте: исполнение по триггерным уровням (консервативно), а не по цене пробивающего бара (гэпы давали артефакты).
+- Модель catboost_price_dir_v2.cbm пересохранена (демон перечитывает её каждый цикл).
+
+### 4. Переобучение PPO (scripts/quant_train_ppo.py, новый)
+
+- LSTM-PPO v9, методология 1:1 с data/kg_v8/aios-rl-v8.ipynb (MultiAssetEnv, окно 10, комиссия 0.0005, risk_penalty 0.01, 300 эпизодов × rollout 800, GAE γ=0.99 λ=0.97, clip 0.2, lr 2e-4, seed 42, CPU ~15 мин).
+- Универсум: 32 актива, POL вместо делистнутого MATIC.
+- Валидация на 2-й половине (как в ноутбуке): **v9 sum_rl +96.0%** vs Buy&Hold −114.0%; v8: +51.4% vs −121.0%. v9 лучше v8 на 21/32 активах.
+- Обе модели — консервативные «FLAT-агенты» (0 long / 0 half) — veto-механизм; v9 эффективнее избегает убытков.
+- Мост: MODEL_FILE → ppo_v9.pt; имена активов читаются из чекпоинта (совместимо с v8/MATIC и v9/POL); rl_signals.json пересохранён: 10 активов (вкл. POL), все честно FLAT.
+
+## Проверки (этап 3)
+
+- [PASS] py_compile всех изменённых скриптов
+- [PASS] pytest: 61 passed (quant-набор + test_ml + test_price_prediction_ml)
+- [PASS] данные: 33 живых актива с ~5000-5500 строк, 0 дубликатов/несортировок (выборка)
+- [PASS] сигнальный продукт: NO_DATA 0, 33 сигнала
+- [PASS] валидация v9: sum_rl +96.03 > v8 +51.39 → ppo_v9.pt сохранён
+- [PASS] демон quant-trading перезапущен, цикл чистый
+
+## Изменённые файлы (этап 3)
+
+- `scripts/quant_backfill_history.py` — новый: дособор истории
+- `scripts/quant_train_ppo.py` — новый: обучение PPO v9
+- `scripts/quant_ml_eval_train.py` — триггерная симуляция
+- `scripts/generate_quant_signal_product.py` — выбор свежей полной серии, regime по закрытому бару
+- `aios_core/quant/rl_signal_bridge.py` — MODEL_FILE v9, assets из чекпоинта
+- runtime: data/quant/*/binance/*.csv, models/ppo_v9.pt, catboost_price_dir_v2.cbm (git-ignored)
+
+## Git (этап 3)
+
+- Branch `agent/20260814-quant-backfill-ppo`, commit `9501cf23`.
 
 ## Handoff
 
