@@ -6,6 +6,7 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - 'VERSION'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -28,12 +29,25 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Read canonical project version
+        id: project-version
+        shell: bash
+        run: |
+          VERSION_VALUE="$(tr -d '[:space:]' < VERSION)"
+          if [[ ! "$VERSION_VALUE" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid SemVer in VERSION: $VERSION_VALUE" >&2
+            exit 1
+          fi
+          echo "version=$VERSION_VALUE" >> "$GITHUB_OUTPUT"
+
       - name: Install MkDocs dependencies
         run: |
           pip install mkdocs mkdocs-material mkdocs-minify-plugin mike
 
       - name: Deploy to GitHub Pages
+        env:
+          DOCS_VERSION: ${{ steps.project-version.outputs.version }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          mike deploy --push --update-aliases 9.3.0 latest
+          mike deploy --push --update-aliases "$DOCS_VERSION" latest

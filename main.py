@@ -5,6 +5,7 @@ from nicegui import ui
 from starlette.middleware.cors import CORSMiddleware
 
 import aios_core.logging_setup  # noqa: F401  # side effect: sentry + logging init
+from aios_core import __version__ as AIOS_VERSION
 from aios_core.advisor.ai_advisor import AIAdvisor
 from aios_core.advisor.orchestrator import AdvisorOrchestrator
 from aios_core.advisor.telegram_bot import TelegramApprovalBot
@@ -27,7 +28,7 @@ platform_registry.register_adapter("viber")
 orchestrator = AdvisorOrchestrator(advisor, telegram_bot, platform_registry)
 
 # FastAPI приложение
-app = FastAPI(title="AIOS", version="16.0.0")
+app = FastAPI(title="AIOS", version=AIOS_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # Подключаем вебхуки

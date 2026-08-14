@@ -1,7 +1,9 @@
 # AIOS Architecture Documentation
 
 > **AIOS (AI Operating System)** — Self-Evolving Distributed Operating System for Application Intelligence
-> **Version:** 16.0.0 | **Runtime:** Octopus Runtime | **Constitution:** 67 Articles, 1,320 Rules
+> **Документ:** архитектурный baseline v16; числовые метрики ниже являются историческим снимком.
+> **Текущая package version:** канонически хранится в [`VERSION`](VERSION). Актуальный статус: [`coordination/PROJECT_CONTEXT.md`](coordination/PROJECT_CONTEXT.md).
+> **Runtime:** Octopus Runtime | **Constitution:** 67 Articles, 1,320 Rules
 
 ---
 

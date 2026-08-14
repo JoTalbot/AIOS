@@ -1,5 +1,7 @@
 # AIOS Executive Summary — v9.3.1
 
+> **Исторический снимок:** метрики относятся к sprint v9.3.1 от 2026-07-23, а не к текущему состоянию проекта. Текущая версия определяется файлом [`VERSION`](VERSION), актуальный аудит — [`docs/PROJECT_ANALYSIS_2026-08-14_RU.md`](docs/PROJECT_ANALYSIS_2026-08-14_RU.md).
+
 ## Code Quality & Architecture Sprint — 120+ Commits (2026-07-23)
 
 ### Quality Gates — ALL GREEN ✅

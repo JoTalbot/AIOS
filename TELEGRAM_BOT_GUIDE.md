@@ -1,11 +1,13 @@
 # 🤖 Telegram Bot Guide — @AIOScontrol_bot
 
+> **Исторический снимок v9.3.2:** команды и runtime status ниже требуют проверки перед эксплуатацией. Текущую package version см. в [`VERSION`](VERSION), операции — в [`RUNBOOK_RU.md`](RUNBOOK_RU.md).
+
 ## Overview
 Telegram bot for AIOS system management and OLX monitoring.
 
 **Bot username:** @AIOScontrol_bot  
-**Version:** v9.3.2  
-**Status:** ✅ Running (Docker container)
+**Snapshot version:** v9.3.2
+**Snapshot status:** ✅ Running (Docker container at the time of this document)
 
 ## Commands
 

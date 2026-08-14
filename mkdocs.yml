@@ -98,6 +98,7 @@ nav:
     - Безопасность: SECURITY.md
     - Аудит безопасности: SECURITY_AUDIT_REPORT.md
     - Статус: STATUS.md
+    - Политика версий: RELEASE_VERSION_POLICY.md
 
   - Архитектура:
     - Обзор: architecture.md

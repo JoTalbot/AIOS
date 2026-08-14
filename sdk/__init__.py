@@ -1,4 +1,4 @@
-"""AIOS Python SDK v4.2.0 — Official async/sync client library.
+"""AIOS Python SDK v16.0.0 — Official async/sync client library.
 
 Install::
 

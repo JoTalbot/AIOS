@@ -91,6 +91,16 @@ tail -f logs/coder_v3.log logs/selfguard.log
 - Коммиты: осмысленное сообщение; для автокодера — `auto(v3): [file] desc`.
 - Новые зависимости — только через requirements и обоснование в коммите.
 
+## Версии и релизы
+
+- Каноническая версия основного продукта хранится только в корневом `VERSION`.
+- `pyproject.toml::project.version` и `aios_core.__version__` — обязательные зеркала,
+  проверяемые `tests/test_release_version.py`; нельзя менять только одно из них.
+- FastAPI и публикация документации обязаны получать версию из канонической цепочки,
+  без собственных строковых литералов.
+- Версии SDK, API-протоколов и отдельных service rollout могут иметь отдельный lifecycle.
+- Полная политика и release checklist: `docs/RELEASE_VERSION_POLICY.md`.
+
 ## Тестирование
 
 - Минимум: `py_compile` каждого изменённого файла (встроено в pipeline).
