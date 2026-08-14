@@ -1,6 +1,6 @@
 # Оперативный контекст проекта AIOS
 
-**Последняя верификация:** 2026-08-14T11:15:00Z
+**Последняя верификация:** 2026-08-14T11:50:00Z
 **Машина:** `aios`
 **Рабочий каталог:** `/root/AIOS`
 **Базовый commit аудита:** `356bd628` (`main`, на старте совпадал с `origin/main`)
@@ -10,9 +10,9 @@
 
 ## Где закончили
 
-Завершён седьмой этап устранения рисков: 159 installed `aios-*` systemd names, 9 drop-ins, 3 masks и 2 host overrides представлены в Git; strict Hetzner runtime drift = 0 без restart/reload/apply. Implementation commit: `127c09ea`. Журнал: `coordination/sessions/20260814T110000Z-aios-arena-systemd-reconcile.md`.
+Завершён восьмой этап устранения рисков: шесть pure quant report formatters вынесены с backward-compatible re-export; `quant_trading_engine.py` уменьшен 2 156 → 1 898 строк, добавлен line/span budget guard и план следующих seams. Implementation commit: `c2a0bb55`. Журнал: `coordination/sessions/20260814T113000Z-aios-arena-quant-formatters.md`.
 
-Предыдущий inventory этап: `d493d795`, index-stability `42ba5e15`.
+Предыдущий systemd reconciliation: `127c09ea`; inventory stability: `42ba5e15`, `f6ada673`.
 
 Предыдущие этапы: test hermeticity `201df1eb`, tracking policy `b75c7c14`, dependency contract `7bd3e1e7`, deployment source `2be18e3a`, version consistency `c4a788cc`.
 
@@ -59,7 +59,7 @@ AIOS — production-монорепозиторий, объединяющий:
 
 1. **✅ Дрейф текущей версии — mitigated:** `VERSION` каноничен, API/docs publication используют его цепочку, статические зеркала проверяются тестом, исторические v9/v16 документы помечены snapshot.
 2. **✅ Deployment/systemd drift — mitigated:** canonical Compose закреплён; 159 installed unit names, drop-ins, masks и host overrides представлены; strict runtime drift 0, применение units остаётся отдельной operator-approved операцией.
-3. **Крупные модули:** `aios_core/dashboard.py`, `tg_bot/accounts.py`, `run_account_control.py`, `aios_core/quant_trading_engine.py` требуют осторожной постепенной декомпозиции.
+3. **🟡 Крупные модули — controlled:** quant engine уменьшен до 1 898 строк; budgets блокируют рост dashboard/accounts/account-control/quant, следующий seam описан в `docs/MODULE_DECOMPOSITION_PLAN.md`. Остальные монолиты декомпозируются только по одному seam.
 4. **✅ Dependency drift — mitigated:** роли minimal 12 / full direct 47 / exact lock 198 формализованы и проверяются; конфликт WebSockets/Web3 устранён, production lock воспроизводим на Python 3.11.
 5. **✅ Tracking/ignore risk — mitigated:** глобальный `*.json` удалён, source build-каталог возвращён в Git, runtime/sensitive paths игнорируются точечно и проверяются тестом.
 6. **✅ Устаревающие repository metrics — mitigated:** текущие цифры генерируются в `docs/PROJECT_INVENTORY.md`, CI проверяет exact snapshot; старые audit-документы помечены historical.
@@ -68,9 +68,9 @@ AIOS — production-монорепозиторий, объединяющий:
 ## Следующий рекомендуемый шаг
 
 1. Владелец незавершённой работы LLM proxy создаёт собственный журнал/claim и завершает только свои три файла.
-2. Следующая remediation-сессия декомпозирует один крупный модуль по безопасному seam с regression tests.
-3. Любое применение versioned systemd units выполняется отдельно с operator approval; массовые restart/disable/remove запрещены.
-4. После первого seam повторно измерить largest modules через generated inventory.
+2. Следующий architecture seam: `tg_bot/accounts.py` context/router + analytics handler с сохранением порядка matching.
+3. Затем Gmail/Google adapter seam в `run_account_control.py` и pure render seam в dashboard.
+4. Любое применение versioned systemd units выполняется отдельно с operator approval; массовые restart/disable/remove запрещены.
 
 ## Правило обновления этого файла
 
