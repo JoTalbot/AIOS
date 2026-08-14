@@ -102,6 +102,7 @@ nav:
     - Аудит Trading 2026-08-14: TRADING_PERFORMANCE_AUDIT_2026-08-14_RU.md
     - Cost-aware Directional v2: TRADING_DIRECTIONAL_V2.md
     - Walk-forward Trading v2: TRADING_WALK_FORWARD_2026-08-14_RU.md
+    - Regime-filter Directional v3: TRADING_REGIME_V3_PLAN.md
     - Политика версий: RELEASE_VERSION_POLICY.md
     - Политика зависимостей: DEPENDENCY_POLICY.md
     - LLM Proxy и Kilo: LLM_PROXY_KILO.md

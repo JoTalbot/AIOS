@@ -67,7 +67,7 @@ AIOS — production-монорепозиторий, объединяющий:
 
 ## Следующий рекомендуемый шаг
 
-1. Исследовать новую strategy hypothesis (regime filter/arbitrage-only/monitoring baseline) с новым untouched OOS window.
+1. Выбран Regime-filter Directional v3; research contract: `docs/TRADING_REGIME_V3_PLAN.md`. Собрать более длинную 1h историю и реализовать rolling multi-fold без повторного использования v2 OOS.
 2. Не включать paper entries и live: текущий Directional v2 gate отрицательный.
 3. Следующий architecture seam: `tg_bot/accounts.py` context/router + analytics handler.
 4. Любое применение versioned systemd units выполняется отдельно с operator approval; массовые restart/disable/remove запрещены.
