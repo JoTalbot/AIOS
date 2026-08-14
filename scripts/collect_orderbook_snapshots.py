@@ -23,6 +23,9 @@ EXCHANGE_CLASSES = {
 # Some exchanges only accept specific depth limits (kucoin: 20 or 100).
 MIN_DEPTH = {"kucoin": 20}
 
+# Exchanges that do not list all universe pairs (bitstamp: BTC/ETH only).
+EXCHANGE_SYMBOLS = {"bitstamp": {"BTC", "ETH"}}
+
 
 class OrderbookStore:
     def __init__(self, path: Path):
@@ -99,7 +102,10 @@ def build_clients(names):
 def collect_once(clients, symbols, store: OrderbookStore, depth=10):
     saved = errors = 0
     for exchange, client in clients.items():
+        allowed = EXCHANGE_SYMBOLS.get(exchange)
         for base in symbols:
+            if allowed is not None and base not in allowed:
+                continue
             pair = f"{base}/USDT"
             started = time.monotonic()
             try:
