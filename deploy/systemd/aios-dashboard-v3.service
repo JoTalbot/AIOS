@@ -1,0 +1,16 @@
+[Unit]
+Description=AIOS Dashboard v3 (accounts summary)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/dashboard_v3.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=append:/root/AIOS/logs/dashboard_v3.log
+StandardError=append:/root/AIOS/logs/dashboard_v3.log
+
+[Install]
+WantedBy=multi-user.target

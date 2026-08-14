@@ -1,0 +1,9 @@
+[Unit]
+Description=AIOS Health Check (hourly)
+
+[Timer]
+OnCalendar=*:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

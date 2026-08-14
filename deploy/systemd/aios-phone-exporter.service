@@ -1,0 +1,14 @@
+[Unit]
+Description=AIOS phone metrics exporter (Prometheus, :9102)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/phone_exporter.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

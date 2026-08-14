@@ -1,0 +1,16 @@
+[Unit]
+Description=AIOS Freelance Brain - автономный мозг самообеспечения и фриланс-задач
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+Environment=PYTHONPATH=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_freelance_brain.py --daemon --interval 3600
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

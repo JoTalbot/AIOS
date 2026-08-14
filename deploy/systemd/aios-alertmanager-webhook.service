@@ -1,0 +1,12 @@
+[Unit]
+Description=AIOS Telegram webhook for Alertmanager
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/aios/.venv/bin/python3.11 /root/AIOS/deploy/alertmanager/tg_webhook.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

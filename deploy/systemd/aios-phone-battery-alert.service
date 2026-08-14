@@ -1,0 +1,11 @@
+[Unit]
+Description=AIOS phone battery alert (G1)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_phone_battery_alert.py
+StandardOutput=append:/root/AIOS/logs/battery_alert.log
+StandardError=append:/root/AIOS/logs/battery_alert.log

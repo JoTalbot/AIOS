@@ -1,0 +1,9 @@
+[Unit]
+Description=AIOS Evening Report (daily 18:00 UTC = 21:00 Kyiv)
+
+[Timer]
+OnCalendar=*-*-* 18:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

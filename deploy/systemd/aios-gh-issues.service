@@ -1,0 +1,11 @@
+[Unit]
+Description=AIOS: GitHub issues -> backlog автокодера (п.5)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/AIOS
+EnvironmentFile=-/etc/aios/aios-auto-coder.env
+EnvironmentFile=-/root/AIOS/.env
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/sync_gh_issues.py
+Nice=19

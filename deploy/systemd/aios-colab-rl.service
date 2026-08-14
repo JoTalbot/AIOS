@@ -1,0 +1,18 @@
+[Unit]
+Description=AIOS Colab RL Training (Stable-Baselines3) & Keeper
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+Environment=DISPLAY=:1
+Environment=PYTHONPATH=/root/AIOS
+Environment=COLAB_SERVICE_KIND=rl
+Environment=COLAB_SERVICE_NAME=colab-rl
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/colab_automation_runner.py
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

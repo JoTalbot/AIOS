@@ -1,0 +1,11 @@
+[Unit]
+Description=AIOS Autonomy Daily Summary
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_autonomy_daily.py
+StandardOutput=append:/root/AIOS/logs/autonomy_daily.log
+StandardError=append:/root/AIOS/logs/autonomy_daily.log

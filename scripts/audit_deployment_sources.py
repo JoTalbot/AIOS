@@ -31,6 +31,13 @@ REQUIRED_PRODUCTION_SERVICES = {
     "grafana",
     "alertmanager",
 }
+OPTIONAL_NOT_INSTALLED_UNITS = {
+    "aios-api.service",
+    "aios-dash.service",
+    "aios-mcp.service",
+    "aios-tg.service",
+    "aios-tunnel.service",
+}
 
 
 def _run(args: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -130,15 +137,54 @@ def repository_audit(root: Path) -> dict[str, Any]:
     }
 
 
-def _tracked_unit_names(root: Path) -> set[str]:
-    result = _run(["git", "ls-files", "*.service", "*.timer"], cwd=root)
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or "git ls-files failed")
+def _manifest_names(path: Path) -> set[str]:
+    if not path.is_file():
+        return set()
     return {
-        Path(line).name
-        for line in result.stdout.splitlines()
-        if line and "/disabled/" not in line and Path(line).name.startswith("aios-")
+        line.strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.startswith("#")
     }
+
+
+def repository_unit_inventory(root: Path) -> dict[str, Any]:
+    """Return represented unit names, candidate files and tracked drop-ins."""
+
+    result = _run(["git", "ls-files", "deploy"], cwd=root)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or "git ls-files deploy failed")
+    tracked_paths = sorted(
+        line
+        for line in result.stdout.splitlines()
+        if line
+        and (
+            line.startswith("deploy/systemd/")
+            or (len(Path(line).parts) == 2 and Path(line).suffix in {".service", ".timer"})
+        )
+    )
+    candidates: dict[str, list[str]] = {}
+    dropins: dict[str, str] = {}
+    represented_names: set[str] = set()
+    for relative in tracked_paths:
+        path = Path(relative)
+        if path.name.startswith("aios-") and path.suffix in {".service", ".timer"}:
+            represented_names.add(path.name)
+            candidates.setdefault(path.name, []).append(relative)
+        if ".d" in path.parent.name and path.suffix == ".conf":
+            dropins[f"{path.parent.name}/{path.name}"] = relative
+    masks = _manifest_names(root / "deploy/systemd/HETZNER_MASKED_UNITS.txt")
+    represented_names.update(masks)
+    return {
+        "represented_names": represented_names,
+        "candidates": candidates,
+        "dropins": dropins,
+        "masks": masks,
+        "tracked_paths": tracked_paths,
+    }
+
+
+def _tracked_unit_names(root: Path) -> set[str]:
+    return set(repository_unit_inventory(root)["represented_names"])
 
 
 def _installed_unit_names(root: Path) -> set[str]:
@@ -179,8 +225,34 @@ def _container_compose_sources(root: Path) -> dict[str, str]:
 def runtime_audit(root: Path) -> dict[str, Any]:
     """Read systemd and Docker metadata without mutating the host."""
 
-    tracked = _tracked_unit_names(root)
+    repository = repository_unit_inventory(root)
+    represented = set(repository["represented_names"])
     installed = _installed_unit_names(root)
+    missing_all = represented - installed
+    optional_missing = missing_all & OPTIONAL_NOT_INSTALLED_UNITS
+    unexpected_missing = missing_all - OPTIONAL_NOT_INSTALLED_UNITS
+
+    content_drift: list[str] = []
+    for name in sorted(installed & represented):
+        fragment_result = _run(["systemctl", "show", "-p", "FragmentPath", "--value", name], cwd=root)
+        fragment = Path(fragment_result.stdout.strip())
+        if fragment.is_symlink() and fragment.resolve() == Path("/dev/null"):
+            continue
+        candidate_paths = [root / path for path in repository["candidates"].get(name, [])]
+        if not fragment.is_file() or not candidate_paths:
+            continue
+        current_hash = _sha256(fragment)
+        if not any(path.is_file() and _sha256(path) == current_hash for path in candidate_paths):
+            content_drift.append(name)
+
+    installed_dropins = {
+        f"{path.parent.name}/{path.name}": path for path in Path("/etc/systemd/system").glob("aios-*.d/*.conf")
+    }
+    dropin_drift = sorted(set(installed_dropins) ^ set(repository["dropins"]))
+    for key in sorted(set(installed_dropins) & set(repository["dropins"])):
+        if _sha256(installed_dropins[key]) != _sha256(root / repository["dropins"][key]):
+            dropin_drift.append(key)
+
     container_sources = _container_compose_sources(root)
     unexpected_sources = {
         name: source
@@ -188,10 +260,13 @@ def runtime_audit(root: Path) -> dict[str, Any]:
         if Path(source.split(",", 1)[0]).name != CANONICAL_COMPOSE or "/deploy/production/" in source.replace("\\", "/")
     }
     return {
-        "tracked_aios_units": sorted(tracked),
+        "tracked_aios_units": sorted(represented),
         "installed_aios_units": sorted(installed),
-        "installed_not_tracked": sorted(installed - tracked),
-        "tracked_not_installed": sorted(tracked - installed),
+        "installed_not_tracked": sorted(installed - represented),
+        "tracked_not_installed": sorted(unexpected_missing),
+        "optional_not_installed": sorted(optional_missing),
+        "unit_content_drift": sorted(content_drift),
+        "dropin_drift": sorted(set(dropin_drift)),
         "container_compose_sources": container_sources,
         "containers_using_unexpected_source": unexpected_sources,
     }
@@ -216,8 +291,11 @@ def _render_markdown(report: dict[str, Any]) -> str:
                 "## Runtime drift (read-only)",
                 f"- Tracked AIOS unit names: {len(runtime['tracked_aios_units'])}",
                 f"- Installed AIOS unit names: {len(runtime['installed_aios_units'])}",
-                f"- Installed but not tracked: {len(runtime['installed_not_tracked'])}",
-                f"- Tracked but not installed: {len(runtime['tracked_not_installed'])}",
+                f"- Installed but not represented: {len(runtime['installed_not_tracked'])}",
+                f"- Unexpected tracked but not installed: {len(runtime['tracked_not_installed'])}",
+                f"- Optional profile units not installed: {len(runtime['optional_not_installed'])}",
+                f"- Base unit content drift: {len(runtime['unit_content_drift'])}",
+                f"- Drop-in drift: {len(runtime['dropin_drift'])}",
                 f"- Containers using unexpected Compose source: {len(runtime['containers_using_unexpected_source'])}",
             ]
         )
@@ -259,6 +337,8 @@ def main() -> int:
             or bool(
                 runtime["installed_not_tracked"]
                 or runtime["tracked_not_installed"]
+                or runtime["unit_content_drift"]
+                or runtime["dropin_drift"]
                 or runtime["containers_using_unexpected_source"]
             )
         )

@@ -1,0 +1,15 @@
+[Unit]
+Description=AIOS Quant ML Engine - Market Data Collector (5 бирж)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+Environment=PYTHONPATH=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_market_data_collector.py daemon --interval 900 --timeframe 1h --limit 500 --orderbooks
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

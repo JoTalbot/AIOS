@@ -44,22 +44,18 @@ Workflow с названием `Build & Auto-Deploy to VPS` до этого ау
 
 ## Systemd desired state и drift
 
-На 2026-08-14:
+Snapshot 2026-08-14 reconciled:
 
-- в Git: 48 уникальных `aios-*` unit names (50 вместе с двумя Octopus units);
-- установлено на хосте: 159 AIOS unit files;
-- установлено, но не отслеживается: 116 имён;
-- tracked, но не установлено: 7 имён.
+- 159 установленных `aios-*` unit names представлены в Git;
+- 114 ранее отсутствовавших regular base units импортированы без применения к runtime;
+- 3 masked units сохранены в `HETZNER_MASKED_UNITS.txt`;
+- 9 drop-ins отслеживаются;
+- 2 отличающихся base units сохранены как exact Hetzner host overrides без ухудшения canonical definitions;
+- 5 host-native units считаются optional-not-installed на Docker profile.
 
-Это означает, что systemd desired state пока **не полностью воспроизводим из Git**. Нельзя автоматически удалять 116 units: среди них активные revenue, phone, LLM и monitoring процессы, а unit-файлы могут требовать secret review.
+Структура и правила применения: `deploy/systemd/README.md`. Strict runtime audit сравнивает names, base hashes, drop-ins, masks, optional profile и Compose labels. Import был read-only: `daemon-reload`, enable/disable/restart не выполнялись.
 
-Безопасный reconciliation:
-
-1. Снять read-only inventory.
-2. Для каждого untracked unit определить owner, runner, секреты, активность и replacement.
-3. Redact и перенести нужный unit в `deploy/systemd/` отдельным малым коммитом.
-4. Для ненужного unit сначала disable/observe в согласованное окно, затем удалить отдельной операцией.
-5. Никогда не выполнять массовый `systemctl disable --now` по результату одного diff.
+Любое будущее применение unit-файлов — отдельная operator-approved операция с `systemd-analyze verify`, backup, rollout и rollback. Массовые `systemctl disable --now`, restart или remove запрещены.
 
 ## Read-only аудит
 
@@ -77,4 +73,4 @@ python scripts/audit_deployment_sources.py --runtime
 python scripts/audit_deployment_sources.py --runtime --strict --fail-on-runtime-drift
 ```
 
-Сейчас последний режим ожидаемо завершится non-zero, пока 116 unmanaged units не будут разобраны по одному.
+После reconciliation этот режим должен завершаться zero на текущем Hetzner profile.

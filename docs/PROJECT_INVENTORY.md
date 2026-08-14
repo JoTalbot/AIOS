@@ -8,17 +8,17 @@
 | Метрика | Значение |
 |---|---:|
 | Package version | `19.9.0` |
-| Стабильных tracked-файлов | 5,942 |
-| Строк | 555,228 |
-| Размер | 22.39 MiB |
-| Python-файлов | 3,352 |
-| Строк Python | 335,902 |
-| Классов / функций / async | 2,944 / 19,024 / 1,628 |
+| Стабильных tracked-файлов | 6,071 |
+| Строк | 557,020 |
+| Размер | 22.44 MiB |
+| Python-файлов | 3,353 |
+| Строк Python | 336,026 |
+| Классов / функций / async | 2,944 / 19,030 / 1,628 |
 | Python syntax errors | 0 |
-| Test Python files / test functions | 910 / 6,499 |
-| Markdown-файлов | 1,968 |
+| Test Python files / test functions | 911 / 6,502 |
+| Markdown-файлов | 1,970 |
 | Root `run_*.py` | 113 |
-| Уникальных tracked service/timer names | 50 |
+| Уникальных tracked service/timer names | 164 |
 
 ## Крупнейшие области
 
@@ -26,19 +26,19 @@
 |---|---:|---:|---:|
 | `aios_core` | 966 | 157,335 | 5.89 MiB |
 | `skills` | 2,641 | 109,481 | 4.73 MiB |
-| `tests` | 484 | 65,549 | 2.26 MiB |
+| `tests` | 485 | 65,593 | 2.26 MiB |
 | `docs` | 398 | 44,175 | 1.39 MiB |
-| `[root]` | 218 | 34,961 | 1.38 MiB |
+| `[root]` | 218 | 34,963 | 1.38 MiB |
 | `attic` | 34 | 31,789 | 1.84 MiB |
 | `octopus_services` | 110 | 27,850 | 0.90 MiB |
-| `scripts` | 172 | 14,638 | 0.56 MiB |
+| `scripts` | 172 | 14,718 | 0.56 MiB |
 | `tg_bot` | 32 | 12,060 | 0.62 MiB |
 | `octopus_instructions` | 102 | 5,959 | 0.50 MiB |
+| `deploy` | 206 | 5,796 | 0.16 MiB |
 | `octopus_roadmap` | 13 | 4,741 | 0.22 MiB |
 | `octopus_core` | 15 | 4,616 | 0.20 MiB |
 | `tools` | 46 | 4,441 | 0.15 MiB |
 | `converge` | 11 | 4,414 | 0.17 MiB |
-| `deploy` | 78 | 4,130 | 0.12 MiB |
 | `octopus_projects` | 30 | 3,614 | 0.17 MiB |
 | `.github` | 42 | 3,402 | 0.12 MiB |
 | `aios_cli` | 15 | 3,389 | 0.13 MiB |
@@ -49,26 +49,26 @@
 
 | Расширение | Файлов |
 |---|---:|
-| `.py` | 3,352 |
-| `.md` | 1,968 |
+| `.py` | 3,353 |
+| `.md` | 1,970 |
 | `.json` | 137 |
+| `.service` | 110 |
 | `.sh` | 67 |
 | `.tsx` | 65 |
+| `.timer` | 60 |
 | `.yaml` | 59 |
 | `.yml` | 58 |
-| `.service` | 36 |
 | `.ts` | 31 |
 | `[no-ext]` | 29 |
-| `.timer` | 18 |
 | `.html` | 12 |
 | `.js` | 10 |
+| `.conf` | 10 |
 | `.ipynb` | 10 |
-| `.txt` | 7 |
+| `.txt` | 9 |
 | `.toml` | 6 |
 | `.rst` | 6 |
 | `.tf` | 6 |
 | `.java` | 5 |
-| `.log` | 5 |
 
 ## Compose-роли
 

@@ -1,0 +1,12 @@
+[Unit]
+Description=AIOS Important Mail Alerts
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_mail_alerts.py
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/etc/aios/aios-telegram-bot.env
+StandardOutput=append:/root/AIOS/logs/mail_alerts.log
+StandardError=append:/root/AIOS/logs/mail_alerts.log

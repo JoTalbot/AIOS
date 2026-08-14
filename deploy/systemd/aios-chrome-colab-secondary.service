@@ -1,0 +1,21 @@
+[Unit]
+Description=AIOS Chrome for secondary Google Colab profile (CDP 9223)
+After=network-online.target aios-chrome-vnc.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Environment=DISPLAY=:1
+Environment=XAUTHORITY=/root/.Xauthority
+Environment=HOME=/root
+ExecStart=/opt/google/chrome/google-chrome --no-sandbox --disable-dev-shm-usage --ozone-platform=x11 --user-data-dir=/root/AIOS/data/chrome_twin/google_secondary --remote-debugging-address=127.0.0.1 --remote-debugging-port=9223 --no-first-run --no-default-browser-check --start-maximized --restore-last-session
+Restart=always
+RestartSec=10
+KillMode=control-group
+TimeoutStopSec=20
+MemoryMax=1G
+OOMScoreAdjust=300
+
+[Install]
+WantedBy=multi-user.target

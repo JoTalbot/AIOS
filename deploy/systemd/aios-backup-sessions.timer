@@ -1,0 +1,9 @@
+[Unit]
+Description=AIOS Sessions Backup (daily 03:00 UTC)
+
+[Timer]
+OnCalendar=*-*-* 03:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

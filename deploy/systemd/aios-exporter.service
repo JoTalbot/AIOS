@@ -1,0 +1,14 @@
+[Unit]
+Description=AIOS service health exporter (Prometheus textfile/HTTP)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/root/AIOS/scripts/aios_exporter.sh --serve 9101
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/root/AIOS/logs/exporter.log
+StandardError=append:/root/AIOS/logs/exporter.log
+
+[Install]
+WantedBy=multi-user.target

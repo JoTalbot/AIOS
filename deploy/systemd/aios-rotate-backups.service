@@ -1,0 +1,8 @@
+[Unit]
+Description=AIOS Rotate Daily Backups (keep 7 sets)
+After=aios-local-backup.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /root/AIOS/tools/rotate_daily_backups.py
+Environment=AIOS_BACKUP_KEEP_SETS=7

@@ -1,0 +1,11 @@
+[Unit]
+Description=Запуск harvester каждую минуту (автоподгрузка 50+ сообщений)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=60s
+Persistent=true
+Unit=aios-converge-harvester.service
+
+[Install]
+WantedBy=timers.target

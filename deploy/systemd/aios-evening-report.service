@@ -1,0 +1,12 @@
+[Unit]
+Description=AIOS Evening Report (21:00 Kyiv)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_evening_report.py
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/etc/aios/aios-telegram-bot.env
+StandardOutput=append:/root/AIOS/logs/evening_report.log
+StandardError=append:/root/AIOS/logs/evening_report.log

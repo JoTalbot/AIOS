@@ -1,0 +1,8 @@
+[Unit]
+Description=AIOS: дедуп бэклога автокодера (ежедневный)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/backlog_dedup.py
+Nice=19

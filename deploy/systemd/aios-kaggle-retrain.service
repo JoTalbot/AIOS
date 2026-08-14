@@ -1,0 +1,13 @@
+[Unit]
+Description=AIOS Kaggle Auto-Retrain (RL multi-asset)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/auto_retrain.py
+Environment=KAGGLE_CONFIG_DIR=/root/.kaggle
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

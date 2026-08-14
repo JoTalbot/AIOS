@@ -1,0 +1,9 @@
+[Unit]
+Description=AIOS weekly digest Sunday 16:00 UTC
+
+[Timer]
+OnCalendar=Sun *-*-* 16:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

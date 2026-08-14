@@ -1,0 +1,8 @@
+[Unit]
+Description=AIOS: memory->skills майнер (п.9)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/scripts/memory_to_skills.py
+Nice=19

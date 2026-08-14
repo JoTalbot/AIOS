@@ -1,0 +1,10 @@
+[Unit]
+Description=LLM usage monitor every 6h
+
+[Timer]
+OnBootSec=20min
+OnCalendar=*-*-* 00,06,12,18:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

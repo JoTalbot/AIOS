@@ -1,0 +1,9 @@
+[Unit]
+Description=AIOS Morning Brief daily 04:30 UTC (07:30 Kyiv)
+
+[Timer]
+OnCalendar=*-*-* 04:30:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

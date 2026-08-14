@@ -1,0 +1,9 @@
+[Unit]
+Description=AIOS Autonomy Prometheus metrics
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_autonomy_metrics.py
+StandardOutput=append:/root/AIOS/logs/autonomy_metrics.log
+StandardError=append:/root/AIOS/logs/autonomy_metrics.log

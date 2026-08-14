@@ -1,0 +1,11 @@
+[Unit]
+Description=AIOS OLX market snapshot (VAZ/GAZel niches)
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_market_digest.py
+StandardOutput=append:/root/AIOS/logs/market_digest.log
+StandardError=append:/root/AIOS/logs/market_digest.log

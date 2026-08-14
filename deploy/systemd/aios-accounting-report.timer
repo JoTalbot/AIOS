@@ -1,0 +1,9 @@
+[Unit]
+Description=AIOS Accounting Report Timer (daily 18:15)
+
+[Timer]
+OnCalendar=*-*-* 18:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

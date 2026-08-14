@@ -1,0 +1,14 @@
+[Unit]
+Description=AIOS Health Check
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_health_check.py --silent
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/etc/aios/aios-telegram-bot.env
+StandardOutput=append:/root/AIOS/logs/health_check.log
+StandardError=append:/root/AIOS/logs/health_check.log
+# код 2 = найдены проблемы (диск/сервисы) — это ожидаемый исход, а не сбой
+SuccessExitStatus=2

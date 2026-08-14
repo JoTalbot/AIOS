@@ -1,0 +1,17 @@
+[Unit]
+Description=AIOS OLX Pipeline v21 - inventory/sales/TTN cycle sync (no auto-publish)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+Environment=PYTHONPATH=/root/AIOS
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_olx_pipeline.py daemon --interval 900
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

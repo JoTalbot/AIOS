@@ -1,0 +1,9 @@
+[Unit]
+Description=AIOS Daily Digest timer (08:00)
+
+[Timer]
+OnCalendar=*-*-* 05:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

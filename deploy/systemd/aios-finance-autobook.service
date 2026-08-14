@@ -1,0 +1,11 @@
+[Unit]
+Description=AIOS finance auto-book drafts from bank SMS
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_finance_autobook.py
+StandardOutput=append:/root/AIOS/logs/finance_autobook.log
+StandardError=append:/root/AIOS/logs/finance_autobook.log

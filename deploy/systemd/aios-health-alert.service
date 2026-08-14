@@ -1,0 +1,8 @@
+[Unit]
+Description=AIOS health and TLS alert check
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /root/AIOS/tools/aios_health_alert.py
