@@ -67,7 +67,7 @@ AIOS — production-монорепозиторий, объединяющий:
 
 ## Следующий рекомендуемый шаг
 
-1. Regime v3 проверен и отклонён: 90 OOS folds, median −0.754%, positive 8.9%, stress −1.158%. Freeze сохраняется; следующие исследования — новый untouched window или market-neutral/arbitrage-only.
+1. Regime v3 и arbitrage-only OOS отклонены. Arbitrage: 90 folds, 1 trade, net −$0.506, positive 0%. Freeze сохраняется; следующий рациональный путь — monitoring/signal product или отдельные high-frequency orderbook данные.
 2. Не включать paper entries и live: текущий Directional v2 gate отрицательный.
 3. Следующий architecture seam: `tg_bot/accounts.py` context/router + analytics handler.
 4. Любое применение versioned systemd units выполняется отдельно с operator approval; массовые restart/disable/remove запрещены.

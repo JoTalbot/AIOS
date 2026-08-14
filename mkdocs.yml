@@ -104,6 +104,7 @@ nav:
     - Walk-forward Trading v2: TRADING_WALK_FORWARD_2026-08-14_RU.md
     - Regime-filter Directional v3: TRADING_REGIME_V3_PLAN.md
     - Regime v3 result: TRADING_REGIME_V3_RESULT.md
+    - Arbitrage OOS result: TRADING_ARBITRAGE_OOS_RESULT.md
     - Политика версий: RELEASE_VERSION_POLICY.md
     - Политика зависимостей: DEPENDENCY_POLICY.md
     - LLM Proxy и Kilo: LLM_PROXY_KILO.md
