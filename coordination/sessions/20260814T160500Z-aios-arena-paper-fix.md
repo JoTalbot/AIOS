@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T16:05:00Z"
-updated_utc: "2026-08-14T21:30:00Z"
+updated_utc: "2026-08-14T21:55:00Z"
 branch: "agent/20260814-paper-fix"
 base_commit: "9d5dbd7b"
 claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
@@ -316,6 +316,14 @@ claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
 ## Git (этап 8)
 
 - Branch `agent/20260814-quant-backfill-ppo`, commits `174c3951`, `db27bdb4`.
+
+
+### Дособор истории до ~10 500 баров + переобучение ML (21:30-21:55Z)
+
+- Backfill до target 10000: все символы ~10000-10507 баров (~14 мес), целостность OK (0 дублей, 0 несортировок). MATIC/RNDR пропущены.
+- Переобучение ML на расширенной истории (train 235k, test 101k): **AUC 0.5296 < 0.5355** (текущая на 7.5 мес), hit@0.65 = 1.0 при cov 0.006% (6 сделок). Кандидат НЕ задеплоен (критерий auc>deployed не выполнен).
+- **Вывод**: старые данные (2024-2025) не улучшают предсказание недавнего рынка — крипторежимы дрейфуют; окно 7.5 мес оптимально для модели v2. Данные 10k остаются полезны для regime-анализа и длинных бэктестов.
+- Развёрнутая модель не изменена (catboost_price_dir_v2.cbm, обучена на 5500 баров). Демон инференса продолжает использовать её.
 
 ## Handoff
 
