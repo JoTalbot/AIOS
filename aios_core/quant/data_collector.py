@@ -120,9 +120,29 @@ class MarketDataCollector:
 
     # ------------------------------------------------------------ single ----
     def _fetch_ohlcv(self, exchange: str, pair: str, timeframe: str, limit: int = 500) -> list[list]:
+        """Fetch closed candles; paginate requests larger than exchange page limits."""
         try:
             client = self._clients[exchange]
-            return client.fetch_ohlcv(pair, timeframe=timeframe, limit=limit)
+            if limit <= 1000:
+                return client.fetch_ohlcv(pair, timeframe=timeframe, limit=limit)
+            timeframe_ms = int(client.parse_timeframe(timeframe) * 1000)
+            closed_before = int(time.time() * 1000 // timeframe_ms) * timeframe_ms
+            since = closed_before - limit * timeframe_ms
+            candles: dict[int, list] = {}
+            while len(candles) < limit and since < closed_before:
+                page_limit = min(1000, limit - len(candles))
+                page = client.fetch_ohlcv(pair, timeframe=timeframe, since=since, limit=page_limit) or []
+                if not page:
+                    break
+                previous_since = since
+                for row in page:
+                    timestamp = int(row[0])
+                    if timestamp < closed_before:
+                        candles[timestamp] = row
+                since = max(int(row[0]) for row in page) + timeframe_ms
+                if since <= previous_since:
+                    break
+            return [candles[key] for key in sorted(candles)][-limit:]
         except Exception as e:
             print(f"{LOG_TAG} [WARN] {exchange}/{pair}/{timeframe}: {e}")
             return []
