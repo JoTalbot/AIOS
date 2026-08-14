@@ -27,7 +27,7 @@ claim: "none (claim closed and removed after correction)"
 ## Git
 
 - Claim commit: `a7119005`.
-- Implementation commit: `42ba5e15` (`fix(repo): derive inventory from Git index`).
+- Implementation commits: `42ba5e15` (Git index blobs), `f6ada673` (exclude all coordination metrics).
 
 ## Handoff
 
