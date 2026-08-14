@@ -8,8 +8,8 @@
 | Метрика | Значение |
 |---|---:|
 | Package version | `19.9.0` |
-| Стабильных tracked-файлов | 6,114 |
-| Строк | 557,935 |
+| Стабильных tracked-файлов | 6,116 |
+| Строк | 557,959 |
 | Размер | 22.25 MiB |
 | Python-файлов | 3,391 |
 | Строк Python | 339,730 |
@@ -18,7 +18,7 @@
 | Test Python files / test functions | 931 / 6,550 |
 | Markdown-файлов | 1,979 |
 | Root `run_*.py` | 113 |
-| Уникальных tracked service/timer names | 167 |
+| Уникальных tracked service/timer names | 169 |
 
 ## Крупнейшие области
 
@@ -34,7 +34,7 @@
 | `scripts` | 186 | 16,772 | 0.64 MiB |
 | `tg_bot` | 32 | 12,060 | 0.62 MiB |
 | `octopus_instructions` | 102 | 5,959 | 0.50 MiB |
-| `deploy` | 209 | 5,852 | 0.17 MiB |
+| `deploy` | 211 | 5,876 | 0.17 MiB |
 | `octopus_roadmap` | 13 | 4,741 | 0.22 MiB |
 | `tools` | 46 | 4,441 | 0.15 MiB |
 | `converge` | 11 | 4,414 | 0.17 MiB |
@@ -52,10 +52,10 @@
 | `.py` | 3,391 |
 | `.md` | 1,979 |
 | `.json` | 137 |
-| `.service` | 112 |
+| `.service` | 113 |
 | `.sh` | 67 |
 | `.tsx` | 65 |
-| `.timer` | 61 |
+| `.timer` | 62 |
 | `.yaml` | 59 |
 | `.yml` | 58 |
 | `.ts` | 31 |
