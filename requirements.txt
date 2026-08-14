@@ -1,15 +1,18 @@
+# AIOS full production direct dependencies.
+# Docker installs requirements.lock; roles/update procedure: docs/DEPENDENCY_POLICY.md
 nicegui
-# AIOS Core Dependencies Production
-python-dateutil
-PyYAML
-psutil
-starlette
-uvicorn
-httpx
-websockets
-grpcio
-graphql-core
-PyJWT
+python-dateutil>=2.9.0.post0
+PyYAML>=6.0.3
+psutil>=7.2.2
+starlette>=1.3.1
+uvicorn>=0.32.0
+httpx>=0.28.1
+websockets>=15.0,<16.0
+grpcio>=1.83.0
+graphql-core>=3.2.11
+PyJWT>=2.13.0
+requests>=2.32.0
+python-dotenv>=1.0.1
 cryptography>=50,<51
 opencv-python-headless
 aiosqlite

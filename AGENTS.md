@@ -112,6 +112,16 @@ tail -f logs/coder_v3.log logs/selfguard.log
 - Версии SDK, API-протоколов и отдельных service rollout могут иметь отдельный lifecycle.
 - Полная политика и release checklist: `docs/RELEASE_VERSION_POLICY.md`.
 
+## Контракт зависимостей
+
+- `pyproject.toml` — minimal install metadata; `requirements.txt` — full production direct input;
+  `requirements.lock` — единственный exact production lock для Docker.
+- Инвариант: minimal ⊆ direct ⊆ lock, constraints обязаны удовлетворяться locked versions.
+- Перед коммитом dependency changes запускать
+  `python scripts/check_dependency_contract.py --strict`.
+- Не использовать `pip freeze` для production lock и не делать массовый `--upgrade` заодно.
+- Политика и воспроизводимая команда: `docs/DEPENDENCY_POLICY.md`.
+
 ## Тестирование
 
 - Минимум: `py_compile` каждого изменённого файла (встроено в pipeline).
