@@ -10,9 +10,9 @@
 
 ## Где закончили
 
-Завершён read-only аудит trading runtime. Все контуры работают в paper mode, но совокупный результат около −$89 на $11 100 (−0.80%); multi-exchange −$75.57, settled arbitrage 0, ML/RL не подтверждают long-edge. Код и сервисы не менялись. Отчёт: `docs/TRADING_PERFORMANCE_AUDIT_2026-08-14_RU.md`.
+Развёрнут выбранный владельцем Cost-aware Directional v2 в fail-closed paper режиме. Новый state отделён от legacy; entries/positions 0, modeled costs 0.50%, 166 потенциальных входов заблокированы `freeze`, runtime errors 0. Gate `ready=false`; live запрещён. Commits: `e7d24414`, `61f70b1b`. Журнал: `coordination/sessions/20260814T114000Z-aios-arena-trading-v2.md`.
 
-Предыдущие этапы: LLM proxy `39bec522`, runtime hygiene `a08eb6a8`, quant seam `c2a0bb55`, systemd reconciliation `127c09ea`.
+Исходный аудит: `docs/TRADING_PERFORMANCE_AUDIT_2026-08-14_RU.md`; runbook: `docs/TRADING_DIRECTIONAL_V2.md`.
 
 Предыдущие этапы: test hermeticity `201df1eb`, tracking policy `b75c7c14`, dependency contract `7bd3e1e7`, deployment source `2be18e3a`, version consistency `c4a788cc`.
 
@@ -50,6 +50,7 @@ AIOS — production-монорепозиторий, объединяющий:
 ## Runtime operator decisions
 
 - `2026-08-14T11:23:03Z`: `aios-freelance-brain.service` намеренно остановлен и отключён владельцем; состояние `inactive`, `disabled`, процессов 0. Не запускать/enable без нового решения. Журнал: `coordination/sessions/20260814-aios-arena-freelance-stop.md`.
+- `2026-08-14T12:20:00Z`: `aios-quant-trading.service` запущен только в Directional v2 paper/freeze; новые entries запрещены до `check_quant_v2_gate.py ready=true`. Реальные ордера запрещены.
 
 ## Главные риски
 
@@ -62,12 +63,13 @@ AIOS — production-монорепозиторий, объединяющий:
 7. **✅ Негерметичный test baseline — mitigated:** live LLM/runtime paths заменены mocks/tmp fixtures; полный suite 5 160 = 5 153 passed, 7 skipped, 0 failed.
 8. **✅ Runtime/generated artifacts — mitigated:** logs, CatBoost event и debug capture больше не tracked; физические production files сохранены и игнорируются точечно.
 9. **✅ LLM proxy/Kilo unfinished work — completed:** 36-model catalog, tool routing/SSE, Colab guards и atomic sync покрыты тестами и развернуты; runtime healthy.
+10. **🟡 Trading expectancy — controlled/frozen:** убыточный legacy baseline изолирован; Directional v2 учитывает costs/risk/accounting, но entries frozen до cost-aware walk-forward и 30d/200-close gates.
 
 ## Следующий рекомендуемый шаг
 
-1. Владелец выбирает trading-режим: entry freeze + directional v2, arbitrage-only paper, monitoring-only или ограниченный candidate portfolio.
-2. Следующий architecture seam: `tg_bot/accounts.py` context/router + analytics handler с сохранением порядка matching.
-3. Затем Gmail/Google adapter seam в `run_account_control.py` и pure render seam в dashboard.
+1. Реализовать cost-aware walk-forward backtest generator; до gate `ready=true` Directional v2 остаётся freeze.
+2. После нового backtest запустить paper entries только отдельным owner-approved изменением unit env; live всё ещё запрещён.
+3. Следующий architecture seam: `tg_bot/accounts.py` context/router + analytics handler.
 4. Любое применение versioned systemd units выполняется отдельно с operator approval; массовые restart/disable/remove запрещены.
 
 ## Правило обновления этого файла
