@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import io
 import os
 import subprocess
 import warnings
@@ -19,12 +20,47 @@ EXCLUDED_PREFIXES = ("coordination/sessions/", "coordination/claims/")
 EXCLUDED_FILES = {str(OUTPUT_PATH)}
 
 
-def _tracked_paths(root: Path) -> list[Path]:
-    raw = subprocess.check_output(["git", "ls-files", "-z"], cwd=root).split(b"\0")
-    paths = [Path(os.fsdecode(item)) for item in raw if item]
-    return sorted(
-        path for path in paths if str(path) not in EXCLUDED_FILES and not str(path).startswith(EXCLUDED_PREFIXES)
+def _tracked_blobs(root: Path) -> list[tuple[Path, bytes]]:
+    """Read stage-0 Git index blobs in one batch, ignoring mutable worktree files."""
+
+    raw = subprocess.check_output(["git", "ls-files", "-s", "-z"], cwd=root).split(b"\0")
+    entries: list[tuple[Path, bytes]] = []
+    for item in raw:
+        if not item:
+            continue
+        metadata, raw_path = item.split(b"\t", 1)
+        _mode, object_id, stage = metadata.split()
+        if stage != b"0":
+            raise RuntimeError(f"unmerged index entry: {os.fsdecode(raw_path)}")
+        path = Path(os.fsdecode(raw_path))
+        if str(path) in EXCLUDED_FILES or str(path).startswith(EXCLUDED_PREFIXES):
+            continue
+        entries.append((path, object_id))
+    entries.sort(key=lambda item: str(item[0]))
+
+    process = subprocess.Popen(
+        ["git", "cat-file", "--batch"],
+        cwd=root,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
+    stdout, stderr = process.communicate(b"".join(object_id + b"\n" for _, object_id in entries))
+    if process.returncode != 0:
+        raise RuntimeError(stderr.decode(errors="replace").strip() or "git cat-file failed")
+
+    stream = io.BytesIO(stdout)
+    blobs: list[tuple[Path, bytes]] = []
+    for path, expected_id in entries:
+        header = stream.readline().strip().split()
+        if len(header) != 3 or header[0] != expected_id or header[1] != b"blob":
+            raise RuntimeError(f"cannot read indexed blob for {path}: {header!r}")
+        size = int(header[2])
+        content = stream.read(size)
+        if stream.read(1) != b"\n":
+            raise RuntimeError(f"invalid git cat-file framing for {path}")
+        blobs.append((path, content))
+    return blobs
 
 
 def _extension(path: Path) -> str:
@@ -32,10 +68,12 @@ def _extension(path: Path) -> str:
 
 
 def project_inventory(root: Path) -> dict[str, Any]:
-    """Collect deterministic metrics from the current Git index/worktree."""
+    """Collect deterministic metrics from stage-0 Git index blobs."""
 
     root = root.resolve()
-    paths = _tracked_paths(root)
+    blobs = _tracked_blobs(root)
+    paths = [path for path, _content in blobs]
+    content_by_path = {str(path): content for path, content in blobs}
     extension_counts: Counter[str] = Counter()
     areas: dict[str, dict[str, int]] = defaultdict(lambda: {"files": 0, "lines": 0, "bytes": 0})
     total_lines = total_bytes = 0
@@ -44,11 +82,7 @@ def project_inventory(root: Path) -> dict[str, Any]:
     test_functions = 0
     largest_python: list[tuple[int, str]] = []
 
-    for relative in paths:
-        path = root / relative
-        if not path.is_file():
-            continue
-        content = path.read_bytes()
+    for relative, content in blobs:
         size = len(content)
         lines = content.count(b"\n") + (1 if content and not content.endswith(b"\n") else 0)
         total_bytes += size
@@ -87,7 +121,7 @@ def project_inventory(root: Path) -> dict[str, Any]:
 
     compose = {}
     for name in ("docker-compose.yml", "docker-compose.unified.yml", "docker-compose.prod.yml"):
-        document = yaml.safe_load((root / name).read_text(encoding="utf-8")) or {}
+        document = yaml.safe_load(content_by_path[name].decode("utf-8")) or {}
         compose[name] = sorted((document.get("services") or {}).keys())
 
     unit_names = {
@@ -95,7 +129,7 @@ def project_inventory(root: Path) -> dict[str, Any]:
     }
 
     return {
-        "version": (root / "VERSION").read_text(encoding="utf-8").strip(),
+        "version": content_by_path["VERSION"].decode("utf-8").strip(),
         "files": len(paths),
         "lines": total_lines,
         "bytes": total_bytes,

@@ -32,3 +32,18 @@ def test_generated_project_inventory_is_current() -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "current docs/PROJECT_INVENTORY.md" in result.stdout
+
+
+def test_inventory_ignores_unstaged_worktree_changes() -> None:
+    """Parallel agent diffs must not make the index-derived snapshot stale."""
+
+    readme = ROOT / "README.md"
+    original = readme.read_text(encoding="utf-8")
+    before = project_inventory(ROOT)
+    try:
+        readme.write_text(original + "\nunstaged inventory probe\n", encoding="utf-8")
+        after = project_inventory(ROOT)
+    finally:
+        readme.write_text(original, encoding="utf-8")
+    assert after["lines"] == before["lines"]
+    assert after["bytes"] == before["bytes"]
