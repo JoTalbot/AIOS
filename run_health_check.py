@@ -110,9 +110,8 @@ def check() -> dict:
     for name, path_ in {
         "ML-сигналы": "/root/AIOS/data/quant/ml_signals.json",
         "RL-сигналы": "/root/AIOS/data/quant/rl_signals.json",
-        "PPO-модель": "/root/AIOS/data/quant/models/ppo_trader.pt",
-        "PPO-мульти": "/root/AIOS/data/quant/models/ppo_multi_24.pt",
-        "CatBoost-модель": "/root/AIOS/data/quant/models/catboost_price_dir.cbm",
+        "PPO-модель": "/root/AIOS/data/quant/models/ppo_v9.pt",
+        "CatBoost-модель": "/root/AIOS/data/quant/models/catboost_price_dir_v2.cbm",
     }.items():
         try:
             _f = Path(path_)
