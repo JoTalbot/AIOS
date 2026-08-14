@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T16:05:00Z"
-updated_utc: "2026-08-14T21:10:00Z"
+updated_utc: "2026-08-14T21:30:00Z"
 branch: "agent/20260814-paper-fix"
 base_commit: "9d5dbd7b"
 claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
@@ -280,6 +280,42 @@ claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
 ## Git (этап 7)
 
 - Branch `agent/20260814-quant-backfill-ppo`, commit `3171c6b4`.
+
+
+## Этап 8: честная OOS-оценка PPO + ML горизонты (21:10-21:30Z)
+
+### КРИТИЧЕСКАЯ МЕТОДОЛОГИЧЕСКАЯ НАХОДКА: «скрытые шорты» в валидации PPO
+
+- Валидация v8/v9 (и в ноутбуке kg_v8, и в quant_train_ppo.py) НЕ применяла clamp действия, который есть в инференс-мосте (rl_signal_bridge.py). При act < -1.5 конвертация int((act+1)/2*2)/2 давала **отрицательную позицию -0.5** — скрытый SHORT, невозможный в развёрнутой дискретной политике {0, 0.5, 1}.
+- Исторические «прибыли» v8 (+51%), v9 (+96%), обучение ноутбука (+75%) — **артефакты скрытых шортов** на медвежьем окне.
+- Честная оценка (с clamp, как в мосте): **v9 OOS sum_rl = 0.0** (Buy&Hold -233%) — PPO-агент чистый FLAT; ценность = избегание убытков, НЕ заработок.
+- Исправлено: clamp добавлен в валидацию quant_train_ppo.py и quant_train_ppo_v10.py.
+
+### PPO v10 с честным сплитом (quant_train_ppo_v10.py, новый)
+
+- Среда обучается только на первых 70% истории каждого актива (гэп 48 баров), валидация на невидимых последних 30%.
+- 300 эпизодов × 800 шагов, те же гиперпараметры; ~15 мин CPU.
+- Результат: v10 с clamp = FLAT (0.0) на OOS — тот же veto. v10 НЕ развёрнута (нет OOS-заработка при развёрнутой дискретной политике). ppo_v9.pt остаётся veto-моделью.
+- Отчёт: data/reports/ppo_oos_honest.json, ppo_v10_oos_eval.json.
+
+### ML горизонты (quant_ml_horizon_experiment.py, новый)
+
+- Label close[t+h] > close[t] для h ∈ {1, 4, 8, 24}, те же 13 фич, тот же OOS:
+  - h1: AUC 0.5355, hit@0.65 82.2% (текущая — оптимальна)
+  - h4: AUC 0.5202, hit@0.65 33.3%
+  - h8: AUC 0.5137
+  - h24: AUC 0.5145, hit@0.65 63.2%
+- Вывод: next-bar горизонт оптимален; multi-horizon НЕ улучшает. Модель v2 остаётся.
+- Отчёт: data/reports/quant_ml_horizon_experiment.json.
+
+### Итог по RL
+
+- Развёрнутая ppo_v9 = консервативный veto (всегда FLAT на текущем рынке) — это РЕАЛЬНАЯ, а не артефактная ценность.
+- Чтобы RL зарабатывал: (а) явный SHORT-экшен (решение владельца + risk policy), (б) другой reward shaping. Зафиксировано в отчёте.
+
+## Git (этап 8)
+
+- Branch `agent/20260814-quant-backfill-ppo`, commits `174c3951`, `db27bdb4`.
 
 ## Handoff
 
