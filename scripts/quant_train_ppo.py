@@ -233,7 +233,11 @@ def val_on_asset(policy, assets, name, names):
         with torch.no_grad():
             mean, _, _ = policy(o_t)
             act = mean[0][0].item()
-        new_pos = int((act + 1) / 2 * 2) / 2.0
+            # Clamp exactly like the inference bridge (rl_signal_bridge.py):
+            # without it, act < -1.5 silently becomes a SHORT position (-0.5)
+            # that is impossible in the deployed discrete {0, 0.5, 1} policy.
+            act = max(-1.0, min(1.0, act))
+            new_pos = int((act + 1) / 2 * 2) / 2.0
         if new_pos > 0.5:
             n_long += 1
         elif new_pos < 0.1:
