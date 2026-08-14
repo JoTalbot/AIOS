@@ -14,6 +14,8 @@
 
 Runtime Directional v2 остаётся active/paper/freeze, entries 0. Базовая реализация: `e7d24414`, `61f70b1b`.
 
+**2026-08-14T16:15Z (paper-fix):** paper-вход структурно разблокирован без изменения owner-профиля. Деградированная ML-модель (prob_up=0.433 const, AUC 0.504, гейт 0.65 недостижим) заменена scale-free CatBoost v2 (AUC 0.533; hit@prob>=0.65 = 81-83% на двух независимых OOS-окнах; avg net +0.6-0.7%/сделка по правилам движка). Журнал: `coordination/sessions/20260814T160500Z-aios-arena-paper-fix.md`; ветка `agent/20260814-paper-fix`, commit `8d668f03`. Live запрещён. Открыто для владельца: RL-мост деградирован (onehot-баг → 10 мажоров FLAT → rl_veto), мёртвые тикеры MATIC/RNDR.
+
 Предыдущие этапы: test hermeticity `201df1eb`, tracking policy `b75c7c14`, dependency contract `7bd3e1e7`, deployment source `2be18e3a`, version consistency `c4a788cc`.
 
 ## Текущий архитектурный срез
