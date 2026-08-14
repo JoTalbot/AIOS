@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T16:05:00Z"
-updated_utc: "2026-08-14T16:15:00Z"
+updated_utc: "2026-08-14T16:25:00Z"
 branch: "agent/20260814-paper-fix"
 base_commit: "9d5dbd7b"
 claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
@@ -50,6 +50,13 @@ claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
 ## Git
 
 - Branch `agent/20260814-paper-fix`, commit `8d668f03` (2 файла, +336/-7). Не закоммичены: coordination/sessions, claims, PROJECT_CONTEXT (следующий коммит).
+
+## Деплой и верификация runtime (16:13-16:25Z)
+
+- Inference-демон перезапущен (единичный restart после смены кода; старый процесс держал в памяти старый модуль): `[QuantMLPredictor] Модель загружена: .../catboost_price_dir_v2.cbm`.
+- ml_signals.json перегенерирован моделью v2 (16:13:49Z): prob_up различаются (0.38-0.60), 1 актив >=0.60.
+- Trading-демон цикл 16:13Z чистый: blocks={'exchange_not_allowed': 96, 'ml_not_confirmed': 9} (было 17 — сигналы больше не константа; до 0.65 сегодня не дотянул ни один актив — это нормальная селективность гейта).
+- Ветка agent/20260814-paper-fix опубликована в origin (GitHub JoTalbot/AIOS); origin/main синхронизирован (9d5dbd7b).
 
 ## Handoff
 
