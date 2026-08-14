@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T16:05:00Z"
-updated_utc: "2026-08-14T18:20:00Z"
+updated_utc: "2026-08-14T18:40:00Z"
 branch: "agent/20260814-paper-fix"
 base_commit: "9d5dbd7b"
 claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
@@ -204,6 +204,19 @@ claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
 - Прогресс 18:20Z: binance/mexc ~460/1000, новые биржи ~220. Полный MM-прогон при >=1000.
 - `scripts/mm_watcher.py` (новый, запущен в фоне): при достижении 1000 снапшотов/пара автоматически запускает run_market_making_simulator.py --min-snapshots 1000 и пишет отчёт в data/reports/market_making_simulation.json; лог logs/mm_watcher.log.
 - Коммиты: `0e303a9d` (watcher), `e622845c` (bitstamp filter + interval 5s).
+
+
+### MM research v2 и интеграция WATCH в утренний бриф (18:20-18:40Z)
+
+- `scripts/run_market_making_simulator_v2.py` (новый): inventory-aware симулятор — заполнение только при благоприятном движении, правило одной позиции, без накопления. Прогон на 500+ снапшотах: по-прежнему отрицательный PnL.
+- **Research-вывод**: комиссия maker 0.1% (10bps) превышает медианные спреды (BTC 0.002bps, ETH 0.05bps, SOL 1.3bps) в 100-5000 раз. Спот-MM на топ-парах нежизнеспособен без maker-rebate программ; направление требует либо пар с широким спредом (длинный хвост альткоинов), либо perp-фьючерсов с rebate. Это фиксирует границу применимости текущего research-направления.
+- `run_morning_brief.py`: добавлена read-only секция "🔔 Quant WATCH" (WATCH_UP/WATCH_DOWN из quant_signal_product.json, до 5, с ML и regime). Проверено: `🔴 OP: down (ML 0.38, trend_down)`.
+- Находка: REST API с `/api/v2/mon/*` (monetization_routes) НЕ развёрнут как сервис (нет systemd-юнита, uvicorn на 8092 — это converge/app.py). API-монетизация остаётся groundwork'ом — развёртывание требует решения владельца.
+- Watcher: 571/1000 снапшотов (binance/mexc), полный MM-прогон запустится автоматически.
+
+## Git (этап 5)
+
+- Branch `agent/20260814-quant-backfill-ppo`, commit `a4b1c6f2`.
 
 ## Handoff
 
