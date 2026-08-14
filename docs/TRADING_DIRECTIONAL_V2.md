@@ -95,8 +95,12 @@ systemd-analyze verify deploy/systemd/aios-quant-trading.service
 6. Проверить: entry mode freeze, 0 entries/open positions, risk state заполнен.
 7. Проверить market-data warning RNDR/USDC после обновления collector.
 
-## Следующая разработка
+## Walk-forward status
 
-До включения paper entries нужен новый cost-aware walk-forward backtest generator. Старый `backtest_summary.json` не содержит подтверждённый v2 cost model и ожидаемо не проходит gate.
+Offline generator: `scripts/run_quant_walkforward_v2.py`. Artifact: `data/reports/backtest_directional_v2.json`.
+
+Первый cost-aware OOS run на 35 активах не прошёл gates: average −0.354%, positive 34.3%, PF 0.374. Подробности: [`TRADING_WALK_FORWARD_2026-08-14_RU.md`](TRADING_WALK_FORWARD_2026-08-14_RU.md). Entry mode остаётся `freeze`.
+
+Следующая версия стратегии должна получить новый untouched OOS window; подбирать параметры на текущем test-сегменте запрещено.
 
 Положительный результат не гарантирован даже после gates. Любой micro-live — отдельное решение владельца, минимальный изолированный капитал и ручное подтверждение.

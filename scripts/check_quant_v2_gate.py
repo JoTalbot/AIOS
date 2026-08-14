@@ -14,7 +14,7 @@ from typing import Any
 def evaluate_gate(backtest: dict[str, Any], portfolio: dict[str, Any], *, now: float | None = None) -> dict[str, Any]:
     now = time.time() if now is None else now
     rows = list(backtest.get("results") or [])
-    ml_returns = [float(row.get("ml_pct", 0.0) or 0.0) for row in rows]
+    ml_returns = [float(row.get("net_return_pct", row.get("ml_pct", 0.0)) or 0.0) for row in rows]
     positive_ratio = (sum(value > 0 for value in ml_returns) / len(ml_returns)) if ml_returns else 0.0
     average_return = statistics.mean(ml_returns) if ml_returns else 0.0
 
@@ -63,7 +63,7 @@ def evaluate_gate(backtest: dict[str, Any], portfolio: dict[str, Any], *, now: f
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--backtest", type=Path, default=Path("data/reports/backtest_summary.json"))
+    parser.add_argument("--backtest", type=Path, default=Path("data/reports/backtest_directional_v2.json"))
     parser.add_argument("--portfolio", type=Path, default=Path("data/multi_exchange_portfolios_v2.json"))
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()

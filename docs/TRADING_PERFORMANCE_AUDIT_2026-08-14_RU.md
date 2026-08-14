@@ -171,6 +171,8 @@ Daemon параллельно ведёт ещё два независимых с
 
 Владелец выбрал вариант **Cost-aware Directional v2**. Реализация и безопасный freeze-profile описаны в [`TRADING_DIRECTIONAL_V2.md`](TRADING_DIRECTIONAL_V2.md). Старые paper states сохраняются как исторический baseline; новый v2 account начинается отдельно.
 
+Первый честный cost-aware walk-forward также отрицательный (OOS average −0.354%, PF 0.374), поэтому freeze подтверждён данными.
+
 ## Рекомендуемый порядок
 
 1. Немедленно: freeze новых entries или остановка quant executor; market-data оставить.
