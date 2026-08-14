@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T16:05:00Z"
-updated_utc: "2026-08-14T17:45:00Z"
+updated_utc: "2026-08-14T18:20:00Z"
 branch: "agent/20260814-paper-fix"
 base_commit: "9d5dbd7b"
 claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
@@ -195,6 +195,15 @@ claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
 ## Git (этап 4)
 
 - Branch `agent/20260814-quant-backfill-ppo`, commit `bda4d3b7`.
+
+
+### Orderbook: ускорение и watcher (17:50-18:20Z)
+
+- Ошибка 1/цикл устранена: bitstamp не имеет SOL/USDT → per-exchange фильтр символов (EXCHANGE_SYMBOLS).
+- Интервал юнита 15s → 5s: цикл ~9с, 17 снапшотов/цикл, 0 errors.
+- Прогресс 18:20Z: binance/mexc ~460/1000, новые биржи ~220. Полный MM-прогон при >=1000.
+- `scripts/mm_watcher.py` (новый, запущен в фоне): при достижении 1000 снапшотов/пара автоматически запускает run_market_making_simulator.py --min-snapshots 1000 и пишет отчёт в data/reports/market_making_simulation.json; лог logs/mm_watcher.log.
+- Коммиты: `0e303a9d` (watcher), `e622845c` (bitstamp filter + interval 5s).
 
 ## Handoff
 
