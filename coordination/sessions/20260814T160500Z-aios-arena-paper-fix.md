@@ -6,7 +6,7 @@ status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "aios"
 started_utc: "2026-08-14T16:05:00Z"
-updated_utc: "2026-08-14T17:15:00Z"
+updated_utc: "2026-08-14T17:45:00Z"
 branch: "agent/20260814-paper-fix"
 base_commit: "9d5dbd7b"
 claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
@@ -147,6 +147,54 @@ claim: "coordination/claims/paper-fix--20260814T160500Z-aios-arena-paper-fix.md"
 ## Git (этап 3)
 
 - Branch `agent/20260814-quant-backfill-ppo`, commit `9501cf23`.
+
+
+## Этап 4: Orderbook research, DeFi gate, документация
+
+### Orderbook коллектор (scripts/collect_orderbook_snapshots.py + systemd unit)
+
+- Фикс kucoin: fetchOrderBook требует limit 20/100 (было 10 → 3 ошибки/цикл); MIN_DEPTH={"kucoin": 20}, обрезка до depth 10 в normalize.
+- Расширены биржи: binance, kucoin, mexc, okx, bitstamp, coinbase (okx/bitstamp/coinbase протестированы live).
+- Unit aios-orderbook-research.service: interval 30s → 15s. Скорость набора ~3x. Хост-юнит изменён (не versioned).
+- Прогресс: binance/mexc ~250 снапшотов/пара → растёт; kucoin/okx/bitstamp/coinbase — подключены.
+
+### Аналитика снапшотов (scripts/analyze_orderbook_data.py, новый, read-only)
+
+- Спреды: BTC binance/mexc ~0.002 bps, ETH ~0.05, SOL ~1.32; глубины $10k-$750k.
+- Cross-exchange mid disparity (60s бакеты): BTC p95 2.5bps (12 бакетов ≥2bps), ETH 2.0 (8), SOL 2.6 (9) — окна диспаритета существуют.
+- Отчёт: data/reports/orderbook_analysis.json.
+
+### Market-making симулятор (предварительный прогон, >=200 снапшотов)
+
+- fill_rate 63-96%, но PnL отрицательный на всех парах: наивный passive MM страдает от adverse selection (мид движется против заполненной лимитки). Вывод: нужен inventory-aware quoting (перекотировка, отложенные лимитки) — это следующий research-шаг.
+- Полный прогон (>=1000/пара) — когда binance/mexc наберут 1000 (~1.5-2ч при текущей скорости).
+
+### DeFi risk monitor
+
+- aios-defi-risk-monitor.timer активен (hourly), отчёт 17:01Z: ready=false — fail-closed корректно (нет баланса, bridge stub, топ-офферт mock). Ничего не делать — состояние валидное.
+
+### Документация
+
+- docs/QUANT_SIGNAL_PRODUCT.md: актуализирован (33 актива, backfill, выбор свежей серии, regime по закрытому бару, ML v2, PPO v9).
+- docs/PROJECT_INVENTORY.md: перегенерирован (python scripts/generate_project_inventory.py --write).
+
+## Проверки (этап 4)
+
+- [PASS] py_compile коллектора и аналитики
+- [PASS] live-тест бирж: okx/bitstamp/coinbase OK; kucoin после фикса OK (17/18 снапшотов/цикл, 1 ошибка — нестабильный эндпоинт одной из бирж)
+- [PASS] market-making симулятор: ready=true при min=200, 6 пар
+- [PASS] pytest после изменений не требуется (коллектор/аналитика вне тестов; quant-набор 61 passed ранее)
+
+## Изменённые файлы (этап 4)
+
+- `scripts/collect_orderbook_snapshots.py` — kucoin depth, +3 биржи
+- `scripts/analyze_orderbook_data.py` — новый
+- `docs/QUANT_SIGNAL_PRODUCT.md`, `docs/PROJECT_INVENTORY.md`
+- runtime: /etc/systemd/system/aios-orderbook-research.service (interval 15, 6 бирж)
+
+## Git (этап 4)
+
+- Branch `agent/20260814-quant-backfill-ppo`, commit `bda4d3b7`.
 
 ## Handoff
 
