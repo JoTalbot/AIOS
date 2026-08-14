@@ -1,6 +1,6 @@
 # Оперативный контекст проекта AIOS
 
-**Последняя верификация:** 2026-08-14T11:50:00Z
+**Последняя верификация:** 2026-08-14T12:10:00Z
 **Машина:** `aios`
 **Рабочий каталог:** `/root/AIOS`
 **Базовый commit аудита:** `356bd628` (`main`, на старте совпадал с `origin/main`)
@@ -10,9 +10,9 @@
 
 ## Где закончили
 
-Завершён восьмой этап устранения рисков: шесть pure quant report formatters вынесены с backward-compatible re-export; `quant_trading_engine.py` уменьшен 2 156 → 1 898 строк, добавлен line/span budget guard и план следующих seams. Implementation commit: `c2a0bb55`. Журнал: `coordination/sessions/20260814T113000Z-aios-arena-quant-formatters.md`.
+Завершён девятый этап устранения рисков: 7 runtime/debug artifacts исключены из Git index, физические production logs/debug files сохранены; Python matrix уточнена. Implementation commit: `a08eb6a8`. Журнал: `coordination/sessions/20260814T120000Z-aios-arena-runtime-hygiene.md`.
 
-Предыдущий systemd reconciliation: `127c09ea`; inventory stability: `42ba5e15`, `f6ada673`.
+Предыдущий quant seam: `c2a0bb55`; systemd reconciliation: `127c09ea`; inventory stability: `42ba5e15`, `f6ada673`.
 
 Предыдущие этапы: test hermeticity `201df1eb`, tracking policy `b75c7c14`, dependency contract `7bd3e1e7`, deployment source `2be18e3a`, version consistency `c4a788cc`.
 
@@ -64,6 +64,7 @@ AIOS — production-монорепозиторий, объединяющий:
 5. **✅ Tracking/ignore risk — mitigated:** глобальный `*.json` удалён, source build-каталог возвращён в Git, runtime/sensitive paths игнорируются точечно и проверяются тестом.
 6. **✅ Устаревающие repository metrics — mitigated:** текущие цифры генерируются в `docs/PROJECT_INVENTORY.md`, CI проверяет exact snapshot; старые audit-документы помечены historical.
 7. **✅ Негерметичный test baseline — mitigated:** live LLM/runtime paths заменены mocks/tmp fixtures; полный suite 5 160 = 5 153 passed, 7 skipped, 0 failed.
+8. **✅ Runtime/generated artifacts — mitigated:** logs, CatBoost event и debug capture больше не tracked; физические production files сохранены и игнорируются точечно.
 
 ## Следующий рекомендуемый шаг
 
