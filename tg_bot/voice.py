@@ -1,6 +1,7 @@
 """Голосовые ответы и транскрибация (выделено из run_telegram_bot.py)."""
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import subprocess
@@ -42,7 +43,11 @@ def _send_voice_reply(api, chat_id: int, text: str) -> bool:
         tts = gTTS(text=clean, lang="ru")
         path = f"/tmp/aios_voice_reply_{int(time.time() * 1000)}.mp3"
         tts.save(path)
-        api.send_voice(chat_id, path)
+        try:
+            api.send_voice(chat_id, path)
+        finally:
+            with contextlib.suppress(OSError):  # TTS-аудио не храним локально
+                os.unlink(path)
         return True
     except Exception as e:
         print(f"  [VOICE-REPLY] err: {e}")
@@ -50,6 +55,22 @@ def _send_voice_reply(api, chat_id: int, text: str) -> bool:
 
 
 def _transcribe_audio(path: str) -> str:
+    """Распознать голосовое/аудио; временный файл /tmp/aios_tg_* удаляется после распознавания."""
+    try:
+        return _transcribe_audio_keep(path)
+    finally:
+        # Скачанные от Telegram аудио не храним: скачали - распознали - удалили
+        try:
+            if (os.path.basename(path).startswith("aios_tg_")
+                    and os.path.dirname(os.path.abspath(path)) == "/tmp"
+                    and os.path.exists(path)):
+                os.unlink(path)
+                print(f"  [VOICE] temp audio removed: {path}")
+        except Exception:
+            pass
+
+
+def _transcribe_audio_keep(path: str) -> str:
     """Распознать голосовое или аудиозапись через AIOS Whisper & Neural Diarization Engine."""
     try:
         from aios_core.whisper_colab_transcriber import transcribe_audio_call, generate_call_summary
