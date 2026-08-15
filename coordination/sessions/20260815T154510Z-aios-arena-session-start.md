@@ -334,3 +334,14 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
   (ежедневно 17:30 UTC). Первый депозит выполнен.
 - Документы: docs/DCA_PORTFOLIO_PLAN_2026-08-15_RU.md, data/reports/dca_analysis.md (gitignored).
 - Конфиг трекера: data/dca_portfolio.json (runtime, gitignored).
+
+---
+
+## MM-пилот (2026-08-15T19:20Z) — этап 1 завершён
+
+- Прототип mm_proto_backtest.py: двусторонний квотинг + инвентарный контроль + FIFO spread.
+- Данные: 183k снапшотов / 28ч / 6 бирж / BTC-ETH-SOL (~7k снапшотов/час).
+- Результат: инвентарь контролируется (±0.018 BTC), но adverse selection доминирует —
+  naive passive MM убыточен на всех биржах (−37..−77$ за 1.6ч, spread PnL отрицательный).
+- Нужны: недели данных, сигнал направления (микроструктура), maker-rebate биржа.
+- Отчёт: docs/MM_PILOT_2026-08-15_RU.md. Этап 2 (сигнал направления) — по решению владельца.
