@@ -169,3 +169,44 @@ scripts/quant_oos_robustness.py (fold-0.70, ML>=0.65):
 Ветки запушены в origin (одобрение владельца):
 - agent/20260815-quant-oos-profit (research: OOS-эксперименты + robustness)
 - agent/20260815-quant-trail-config (код: exit params + тесты + unit)
+
+---
+
+## Пакет улучшений (2026-08-15T17:15Z) — по решению владельца ("+")
+
+### 1. Частичный тейк + бутстрэп (research, DONE)
+scripts/quant_oos_partial_tp_bootstrap.py (fold 0.70, allowlist, ML>=0.65):
+- PT2 (50%@+1.5%, остаток trail 1.0): +5.80$ / PF 12.59 / WR 75% — лучший (N1 +3.65$).
+- PT1 (+3.81$), PT3 (+2.80$).
+- Бутстрэп 2000 ресемплов по символам: N1 90% CI [-4.26, +11.55], pos_share 74.8%;
+  Δ(N1-BASE) CI [+0.00, +12.10], pos_share 88.3% — разница устойчиво положительна.
+- ВАЖНО: n=4 сделки на окне — выбор среди PT1/PT2/PT3 несёт selection bias;
+  PT2 в прод НЕ применялся, требуется подтверждение на большем окне.
+Отчёт: data/reports/oos_partial_tp_bootstrap.md.
+
+### 2. Allowlist + binance (runtime, APPLIED)
+- deploy/systemd/aios-quant-trading.service: ALLOWED_EXCHANGES += binance
+  (kucoin,bitstamp,mexc,binance). Binance уже в EXCHANGES движка; robustness-проверка
+  подтвердила тот же эффект N1 на binance-ценах (+3.57$ vs -1.27$).
+- Применено: unit скопирован, daemon-reload, restart. exchange_not_allowed упал 96→72
+  (6 неразрешённых бирж × 12 символов; binance теперь в allowlist).
+
+### 3. Контрольный портфель (A/B, APPLIED)
+- Новый deploy/systemd/aios-quant-trading-control.service: тот же allowlist,
+  AIOS_QUANT_TRAIL_RATIO=0.988 (legacy), отдельный портфель
+  multi_exchange_portfolios_owner_paper_control.json.
+- Установлен и запущен (enable --now). Первый цикл: trades=0, blocks={'exchange_not_allowed': 72,
+  'ml_not_confirmed': 12} — работает. Сравнение main (trail 1.0) vs control (trail 0.988)
+  через 2-4 недели — честный A/B на живых данных.
+
+### Проверки
+- [PASS] Оба сервиса active, env корректен (ALLOWED/TRAIL/PORTFOLIO).
+- [PASS] py_compile нового скрипта.
+- [NOT RUN] полный pytest (изменения только unit-файлы + новый research-скрипт,
+  прод-код не менялся в этом пакете).
+
+### Изменённые файлы (этот коммит)
+- scripts/quant_oos_partial_tp_bootstrap.py
+- deploy/systemd/aios-quant-trading.service (allowlist += binance)
+- deploy/systemd/aios-quant-trading-control.service (новый)
+- coordination/sessions/20260815T154510Z-aios-arena-session-start.md
