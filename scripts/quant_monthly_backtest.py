@@ -219,9 +219,14 @@ def main() -> int:
     parser.add_argument("--months", type=int, default=1, help="backtest window in calendar months")
     parser.add_argument("--no-ml-gate", action="store_true",
                         help="control scenario: disable the ML>=0.65 entry filter")
+    parser.add_argument("--free-profile", action="store_true",
+                        help="signals quality run: no position limit, no DD/daily-loss kill, fixed $200 stake")
     args = parser.parse_args()
     ml_gate = not args.no_ml_gate
-    tag = "current_algorithm" if ml_gate else "no_ml_gate"
+    if args.free_profile:
+        tag = "free_profile_ml" if ml_gate else "free_profile_no_ml"
+    else:
+        tag = "current_algorithm" if ml_gate else "no_ml_gate"
 
     symbols = load_symbols()
     print(f"loaded {len(symbols)} symbols")
@@ -269,6 +274,7 @@ def main() -> int:
 
     cash = 1000.0
     initial = cash
+    max_conc = 0
     positions: dict[str, dict] = {}
     trades: list[dict] = []
     block_counts: dict[str, int] = {}
@@ -292,6 +298,7 @@ def main() -> int:
             )
             day_start_equity = equity_now
 
+        max_conc = max(max_conc, len(positions))
         # --- exits for every symbol on this bar ---
         for symbol, s in series.items():
             k = s["by_ts"].get(ts)
@@ -347,7 +354,7 @@ def main() -> int:
                 del positions[symbol]
 
         # --- entries on this bar ---
-        if len(positions) >= PROFILE["max_global_positions"]:
+        if not args.free_profile and len(positions) >= PROFILE["max_global_positions"]:
             continue
         for symbol, s in series.items():
             if symbol in positions:
@@ -369,14 +376,20 @@ def main() -> int:
             )
             dd_pct = max(0.0, (initial - equity) / initial * 100.0)
             day_loss_pct = max(0.0, (day_start_equity - equity) / day_start_equity * 100.0) if day_start_equity > 0 else 0.0
-            reason = entry_block_reason(
-                analysis, global_positions=len(positions),
-                drawdown_pct=dd_pct, daily_loss_pct=day_loss_pct, ml_gate=ml_gate,
-            )
+            if args.free_profile:
+                reason = entry_block_reason(
+                    analysis, global_positions=0,
+                    drawdown_pct=0.0, daily_loss_pct=0.0, ml_gate=ml_gate,
+                )
+            else:
+                reason = entry_block_reason(
+                    analysis, global_positions=len(positions),
+                    drawdown_pct=dd_pct, daily_loss_pct=day_loss_pct, ml_gate=ml_gate,
+                )
             block_counts[reason or "OK"] = block_counts.get(reason or "OK", 0) + 1
             if reason is not None:
                 continue
-            investment = min(cash * 0.20, 200.0)
+            investment = 200.0 if args.free_profile else min(cash * 0.20, 200.0)
             if investment < 10.0:
                 block_counts["minimum_order"] = block_counts.get("minimum_order", 0) + 1
                 continue
@@ -393,7 +406,8 @@ def main() -> int:
                 "signal_confidence": analysis["confidence"],
                 "ml_prob_up": ml_prob,
             }
-            break  # one position at a time per bar (max 1 global)
+            if not args.free_profile:
+                break  # one position at a time per bar (max 1 global)
 
     # Close open positions at period end.
     for symbol, pos in list(positions.items()):
@@ -434,6 +448,7 @@ def main() -> int:
         "wins": len(win_trades),
         "win_rate_pct": round(len(win_trades) / len(trades) * 100, 2) if trades else 0.0,
         "total_fees_usd": round(total_fees, 2),
+        "max_concurrent_positions": max_conc,
         "avg_trade_pnl_pct": round(statistics.mean(t["net_pnl_pct"] for t in trades), 3) if trades else 0.0,
         "buy_hold": {
             "mean_pct": round(avg_bh, 3),
@@ -449,7 +464,11 @@ def main() -> int:
         ],
     }
 
-    title = "текущему алгоритму (с ML gate)" if ml_gate else "алгоритму БЕЗ ML gate (контроль)"
+    if args.free_profile:
+        title = ("сигналам без портфельных kill-switch (свободный профиль, с ML gate)" if ml_gate
+                 else "сигналам без портфельных kill-switch (свободный профиль, БЕЗ ML gate)")
+    else:
+        title = "текущему алгоритму (с ML gate)" if ml_gate else "алгоритму БЕЗ ML gate (контроль)"
     md = [
         f"# Тестовый замер: {args.months} мес. торговли по {title} (Directional v2)",
         "",
@@ -482,7 +501,27 @@ def main() -> int:
     md.append(f"- Алгоритм {port_pnl_pct:+.2f}% vs лучшая валюта ({bh_values[-1][0]} {bh_values[-1][1]:+.2f}%)")
     md.append(f"- Алгоритм {port_pnl_pct:+.2f}% vs худшая валюта ({bh_values[0][0]} {bh_values[0][1]:+.2f}%)")
     md.append("")
-    md.append("## Блокировки входов (как в продакшене)")
+    if args.free_profile and trades:
+        gross_win = sum(t["net_pnl_usd"] for t in trades if t["net_pnl_usd"] > 0)
+        gross_loss = -sum(t["net_pnl_usd"] for t in trades if t["net_pnl_usd"] < 0)
+        pf = gross_win / gross_loss if gross_loss > 0 else float("inf")
+        per_asset: dict[str, list[float]] = {}
+        for t in trades:
+            per_asset.setdefault(t["symbol"], []).append(float(t["net_pnl_usd"]))
+        md += [
+            "## Качество сигналов (per-asset)",
+            "",
+            f"- Profit factor: {pf:.2f} (gross +${gross_win:.2f} / -${gross_loss:.2f})",
+            f"- Максимум одновременных позиций: {max_conc}",
+            "",
+            "| Актив | Сделок | PnL $ |",
+            "|---|---:|---:|",
+        ]
+        for sym, pnls in sorted(per_asset.items(), key=lambda x: -sum(x[1])):
+            md.append(f"| {sym} | {len(pnls)} | {sum(pnls):+.2f} |")
+        md.append("")
+    md.append("## Блокировки входов (свободный профиль)" if args.free_profile
+              else "## Блокировки входов (как в продакшене)")
     md.append("")
     for k, v in report["block_counts"].items():
         md.append(f"- {k}: {v}")
@@ -503,7 +542,10 @@ def main() -> int:
     md.append("- ML-модель обучена на данных, включающих тестовый месяц (in-sample только для ML-части; индикаторная часть честная).")
     md.append("- Funding/orderbook нейтральны (0 / BALANCED).")
     md.append("- TP/SL исполняются по уровням при пересечении high/low бара; SL приоритетнее TP.")
-    md.append("- Все активы обрабатываются синхронно по барам; портфель единый ($1000), максимум 1 позиция (owner-профиль).")
+    if args.free_profile:
+        md.append("- Свободный профиль: без лимита позиций / DD-kill / daily-kill; каждый вход — фиксированные $200, лимит кэша не применяется (синтетический учёт).")
+    else:
+        md.append("- Все активы обрабатываются синхронно по барам; портфель единый ($1000), максимум 1 позиция (owner-профиль).")
     md.append("")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
