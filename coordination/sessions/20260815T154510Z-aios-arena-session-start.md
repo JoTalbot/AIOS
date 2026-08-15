@@ -542,3 +542,22 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
   scripts/aios_weekly_digest.py, tg_bot/quant_cmds.py,
   deploy/systemd/aios-market-context.{service,timer},
   docs/MARKET_CONTEXT_P1P2P3_2026-08-16_RU.md.
+
+---
+
+## Исторические новости: пайплайн (2026-08-16T02:40Z)
+
+- Сбор: Wayback RSS снапшоты CoinTelegraph (11 648 за год) -> 1545 заголовков
+  (2025-08..2026-07) с pubDate. fetch_historical_news.py.
+- Сентимент: score_historical_sentiment.py (Gemini 2.5 Flash, resume-safe).
+  КВОТА ИСЧЕРПАНА (429) — 1 рабочий ключ из 3; таймер aios-news-scoring.timer
+  (каждые 30 мин) догонит автоматически.
+- Тест связи: sentiment_price_historical.py (1h/24h/3d/7d корреляции).
+- Локальное тестирование ПЕРЕД деплоем (по требованию владельца): tests/test_news_pipeline.py
+  — 30 тестов, 30/30 PASS локально и на сервере против прод-скриптов.
+  Исправлены: валидация ключей (429 != мёртвый ключ), break при мёртвой квоте,
+  пауза 5->12с.
+- Файлы: scripts/fetch_historical_news.py, scripts/score_historical_sentiment.py,
+  scripts/sentiment_price_historical.py, deploy/systemd/aios-news-scoring.{service,timer},
+  tests/{test_news_pipeline.py, fake_quant_monthly_backtest.py, fixtures/},
+  docs/NEWS_HISTORICAL_PIPELINE_2026-08-16_RU.md.
