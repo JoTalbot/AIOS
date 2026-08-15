@@ -405,3 +405,15 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
 - Файлы: scripts/mm_proto_backtest.py (hold_snaps), deploy/systemd/aios-orderbook-ws.service (7 пар),
   scripts/dca_telegram_report.py, deploy/systemd/aios-dca-report.{service,timer},
   docs/DCA_TELEGRAM_REPORT_SETUP_2026-08-15_RU.md.
+
+---
+
+## Пакет V1+V2+V3+V6 (2026-08-15T21:15Z)
+
+- V1 live-монитор MM (OBI/microprice, верификация 60с): aios-mm-signal-monitor.timer (5 мин),
+  лог mm_signal_live.jsonl. Первый прогон: BTC FLAT, ETH UP, SOL UP (промах) — статистика копится.
+- V2 горизонты: ETH держит сигнал до 180с (AUC 0.97-1.0), SOL затухает (0.89→0.41),
+  BTC mid статичен (21 движение/30мин). Выборки малы — гипотеза «1-3 мин» предварительно.
+- V3 weekly-digest в TG (DCA+ws+A/B+сервисы): тест OK.
+- V6 daily funding/OI коллектор (33 символа, append jsonl): таймер 19:15Z, первый прогон OK.
+- 4 новых сервиса/таймера активны. Отчёт: docs/QUANT_DIGEST_V1V2V3V6_2026-08-15_RU.md.

@@ -1,0 +1,16 @@
+[Unit]
+Description=AIOS MM live signal monitor (OBI/microprice on ws data)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+Environment=PYTHONPATH=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/mm_signal_live_monitor.py --symbol BTC --verify
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/mm_signal_live_monitor.py --symbol ETH --verify
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/mm_signal_live_monitor.py --symbol SOL --verify
+
+[Install]
+WantedBy=multi-user.target
