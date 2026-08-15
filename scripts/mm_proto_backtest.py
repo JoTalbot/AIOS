@@ -102,8 +102,11 @@ def _fill_check(st: MMState, mid: float, fee: float):
 
 def run_mm(snaps: list[dict], *, mode: str = "naive", half_spread_bps: float = 2.0,
            max_size_usd: float = 2000.0, inv_cap_usd: float = 10000.0,
-           up_thr: float = 0.55, down_thr: float = 0.45, fee_rate: float = 0.0005) -> dict:
-    """Replay snapshots as a passive maker; per-snapshot requoting."""
+           up_thr: float = 0.55, down_thr: float = 0.45, fee_rate: float = 0.0005,
+           hold_snaps: int = 1) -> dict:
+    """Replay snapshots as a passive maker; requote per snapshot but HOLD the quote
+    for `hold_snaps` snapshots so mid has a chance to cross it (realistic for 1Hz
+    streams; for ~9s REST streams a 1-snapshot hold means a 9s quote lifetime)."""
     half = half_spread_bps / 1e4
     fee = fee_rate
     st = MMState()
@@ -111,6 +114,7 @@ def run_mm(snaps: list[dict], *, mode: str = "naive", half_spread_bps: float = 2
     n_gated = 0
     n_quoted = 0
     inv_band = 0.05 * inv_cap_usd
+    hold_left = 0
 
     prob = None
     if mode == "gated":
@@ -138,7 +142,13 @@ def run_mm(snaps: list[dict], *, mode: str = "naive", half_spread_bps: float = 2
         s = snaps[i]
         mid = s["mid"]
         _fill_check(st, mid, fee)
-        # requote every snapshot (cancel+replace)
+        if st.quote_side is not None:
+            if hold_left > 0:
+                hold_left -= 1
+                continue  # keep the quote standing
+            else:
+                st.quote_side = None  # quote expired
+        # requote
         st.n_refresh += 1
         base_size = max_size_usd / mid
         bid_px = mid * (1 - half)
@@ -150,20 +160,25 @@ def run_mm(snaps: list[dict], *, mode: str = "naive", half_spread_bps: float = 2
             else:
                 st.quote_side, st.quote_px, st.quote_size = "bid", bid_px, base_size
             n_quoted += 1
+            hold_left = hold_snaps
         else:  # gated
             p_up = float(prob[i])
             if inv_usd > inv_band:
                 st.quote_side, st.quote_px, st.quote_size = "ask", ask_px, base_size
                 n_quoted += 1
+                hold_left = hold_snaps
             elif inv_usd < -inv_band:
                 st.quote_side, st.quote_px, st.quote_size = "bid", bid_px, base_size
                 n_quoted += 1
+                hold_left = hold_snaps
             elif p_up > up_thr:
                 st.quote_side, st.quote_px, st.quote_size = "bid", bid_px, base_size
                 n_quoted += 1
+                hold_left = hold_snaps
             elif p_up < down_thr:
                 st.quote_side, st.quote_px, st.quote_size = "ask", ask_px, base_size
                 n_quoted += 1
+                hold_left = hold_snaps
             else:
                 st.quote_side = None
                 n_gated += 1
@@ -185,6 +200,7 @@ def main() -> int:
     ap.add_argument("--max-size-usd", type=float, default=2000.0)
     ap.add_argument("--inv-cap-usd", type=float, default=10000.0)
     ap.add_argument("--mode", default="naive", choices=["naive", "gated"])
+    ap.add_argument("--hold-snaps", type=int, default=1)
     args = ap.parse_args()
 
     snaps = load_snapshots(args.symbol, args.exchange)
@@ -193,7 +209,8 @@ def main() -> int:
         print("not enough data")
         return 1
     res = run_mm(snaps, mode=args.mode, half_spread_bps=args.half_spread_bps,
-                 max_size_usd=args.max_size_usd, inv_cap_usd=args.inv_cap_usd)
+                 max_size_usd=args.max_size_usd, inv_cap_usd=args.inv_cap_usd,
+                 hold_snaps=args.hold_snaps)
     print(json.dumps(res, indent=2), flush=True)
     return 0
 
