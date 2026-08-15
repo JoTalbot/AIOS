@@ -253,3 +253,89 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def run_mm_best(snaps: list[dict], *, symbol: str = "BTC", max_size_usd: float = 2000.0,
+                inv_cap_usd: float = 10000.0, up_thr: float = 0.55, down_thr: float = 0.45,
+                maker_fee: float = 0.0002, queue_model: bool = True,
+                hold_snaps: int = 5) -> dict:
+    """W1: MM quoting on the REAL best bid/ask (not mid +/- half).
+
+    Each snapshot: place a quote at the best bid (buy) or best ask (sell) - the
+    price a maker would actually rest at. The signal (trained CatBoost) gates
+    WHICH side to quote; inventory extremes force a reducing quote. Fill via
+    queue_model (partial fills by level share). Maker fee on fills.
+    """
+    from mm_microstructure_signal import features
+    from catboost import CatBoostClassifier
+
+    # train signal model on first 70%
+    F, Y = features(snaps)
+    feat_names = list(F[0].keys())
+    X = np.array([[F[i][k] for k in feat_names] for i in range(len(F))])
+    y = Y[:, 0]
+    mask = y >= 0
+    idxs = mask.nonzero()[0]
+    n = int(len(idxs) * 0.70)
+    cut = idxs[n]
+    model = CatBoostClassifier(iterations=300, depth=4, learning_rate=0.05,
+                               loss_function="Logloss", eval_metric="AUC",
+                               random_seed=42, verbose=0)
+    model.fit(X[idxs[:n]], y[idxs[:n]].astype(int))
+    prob = model.predict_proba(X)[:, 1]
+
+    fee = maker_fee
+    st = MMState()
+    st.cash = inv_cap_usd
+    inv_band = 0.05 * inv_cap_usd
+    hold_left = 0
+    n_gated = 0
+    n_quoted = 0
+
+    for i in range(max(1, cut), len(snaps)):
+        s = snaps[i]
+        mid = s["mid"]
+        _fill_check(st, mid, fee, snaps, i, queue_model)
+        if st.quote_side is not None:
+            if hold_left > 0:
+                hold_left -= 1
+                continue
+            st.quote_side = None
+        st.n_refresh += 1
+        # real best prices from THIS snapshot
+        best_bid = s["bid"]
+        best_ask = s["ask"]
+        if best_bid <= 0 or best_ask <= 0 or best_ask <= best_bid:
+            continue
+        inv_usd = st.inventory * mid
+        p_up = float(prob[i])
+        base_size = max_size_usd / mid
+        if inv_usd > inv_band:
+            st.quote_side, st.quote_px, st.quote_size = "ask", best_ask, base_size
+            n_quoted += 1
+            hold_left = hold_snaps
+        elif inv_usd < -inv_band:
+            st.quote_side, st.quote_px, st.quote_size = "bid", best_bid, base_size
+            n_quoted += 1
+            hold_left = hold_snaps
+        elif p_up > up_thr:
+            # expect rise -> quote bid (buy low, sell high later)
+            st.quote_side, st.quote_px, st.quote_size = "bid", best_bid, base_size
+            n_quoted += 1
+            hold_left = hold_snaps
+        elif p_up < down_thr:
+            # expect fall -> quote ask
+            st.quote_side, st.quote_px, st.quote_size = "ask", best_ask, base_size
+            n_quoted += 1
+            hold_left = hold_snaps
+        else:
+            st.quote_side = None
+            n_gated += 1
+
+    final_mid = snaps[-1]["mid"]
+    inv_val = st.inventory * final_mid
+    total_pnl = st.gross_pnl + (st.cash - inv_cap_usd) + inv_val
+    return {"symbol": symbol, "quotes": n_quoted, "fills": len(st.fills),
+            "gated": n_gated, "inventory": round(st.inventory, 6),
+            "gross_spread": round(st.gross_pnl, 2), "fees": round(st.fees, 2),
+            "net_pnl": round(total_pnl, 2), "hours": round(len(snaps) / 3600, 2)}

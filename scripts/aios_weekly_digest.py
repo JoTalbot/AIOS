@@ -49,13 +49,20 @@ def main():
         lines.append(f"⚖️ <b>A/B paper:</b> main (trail 1.0) {tm} сделок | control (0.988) {tc}")
     except Exception as e:
         lines.append(f"⚖️ A/B: ошибка ({e})")
-    # MM-сигналы: точность
+    # MM-сигналы: точность + экономика
     try:
         import subprocess as sp
         r = sp.run(["/opt/aios/.venv/bin/python", "scripts/mm_signal_score.py"],
                    capture_output=True, text=True, cwd="/root/AIOS")
         last = [l for l in r.stdout.strip().split("\n") if "ИТОГО" in l]
         lines.append(f"📡 <b>MM-сигналы:</b> {last[0] if last else 'нет данных'}")
+        # экономика: maker-вход (W4) - ключевая метрика
+        r2 = sp.run(["/opt/aios/.venv/bin/python", "scripts/signal_pnl_maker.py"],
+                    capture_output=True, text=True, timeout=120, cwd="/root/AIOS")
+        for l in r2.stdout.strip().split("\n"):
+            if "ИТОГО" in l:
+                lines.append(f"💰 <b>Экономика (maker-вход):</b> {l}")
+                break
     except Exception as e:
         lines.append(f"📡 MM: ошибка ({e})")
     # сервисы
