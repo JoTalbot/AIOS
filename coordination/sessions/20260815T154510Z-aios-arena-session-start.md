@@ -210,3 +210,44 @@ scripts/quant_oos_partial_tp_bootstrap.py (fold 0.70, allowlist, ML>=0.65):
 - deploy/systemd/aios-quant-trading.service (allowlist += binance)
 - deploy/systemd/aios-quant-trading-control.service (новый)
 - coordination/sessions/20260815T154510Z-aios-arena-session-start.md
+
+---
+
+## Диагностика "почему 0 сделок" + ML/SHORT эксперименты (2026-08-15T17:50Z)
+
+### Корневая проблема
+Развёрнутая модель даёт prob_up>=0.65 в 0.26% баров (728/281k; 30д: 0.2%) — live-гейт
+ML>=0.65 практически недостижим → trades=0 с момента запуска. Плюс exchange_not_allowed=72/цикл.
+
+### Сделано
+1. Allowlist расширен на ВСЕ биржи движка (kraken,binance,bybit,okx,uniswap_v3,coinbase,
+   kucoin,bitfinex,bitstamp,mexc) в обоих unit (main + control). Применено, сервисы active.
+2. quant_ml_cross_sectional.py: cross-sectional фичи (btc_ret6/24, btc_regime, rel_ret*,
+   mom_rank24/6, vol_rank). Результат: AUC 0.530 vs cand_base 0.529 — НЕТ улучшения.
+   Топ-фичи: btc_regime(31), btc_ret24(27) — модель учит рынок, но edge не появляется.
+   Потолок технического ML на h1 ≈ AUC 0.53 подтверждён.
+3. quant_oos_short_experiment.py: зеркальный SHORT (SELL_SHORT + ml<=0.40/0.35, те же
+   TP/SL/trail). Результат: ml<=0.40: 305 сделок, WR 44.6%, PF 0.88, -48.07$;
+   ml<=0.35: 115 сделок, PF 0.56, -82.87$. SHORT edge НЕТ.
+4. LONG+SHORT комбо: PF 0.89, -45$ — тоже нет.
+
+### Вывод
+Техническая направленная торговля 1h (LONG или SHORT) не имеет положительного
+матожидания после издержек — подтверждено с трёх сторон (OOS LONG, OOS SHORT,
+ML cross-sectional). Проблема в источнике сигнала, не в настройках.
+Дальнейшие варианты: (а) сигнальный продукт/мониторинг для человека, (б) инвентарный
+MM на orderbook-данных (копятся), (в) живой A/B main vs control для калибровки на
+реальной статистике (теперь с полным allowlist сделки возможны), (г) смена таймфрейма/
+универсума. Решение за владельцем.
+
+### Проверки
+- [PASS] оба сервиса active, allowlist = 10 бирж.
+- [PASS] py_compile новых скриптов.
+- [NOT RUN] полный pytest (прод-код не менялся; только research-скрипты + units).
+
+### Файлы этого коммита
+- scripts/quant_ml_cross_sectional.py
+- scripts/quant_oos_short_experiment.py
+- deploy/systemd/aios-quant-trading.service (allowlist=все биржи)
+- deploy/systemd/aios-quant-trading-control.service (allowlist=все биржи)
+- coordination/sessions/20260815T154510Z-aios-arena-session-start.md

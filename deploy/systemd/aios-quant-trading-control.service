@@ -11,7 +11,7 @@ Environment=PYTHONPATH=/root/AIOS
 Environment=AIOS_QUANT_LEGACY_EXECUTION=0
 Environment=AIOS_QUANT_PORTFOLIO_FILE=multi_exchange_portfolios_owner_paper_control.json
 Environment=AIOS_QUANT_ENTRY_MODE=enabled
-Environment=AIOS_QUANT_ALLOWED_EXCHANGES=kucoin,bitstamp,mexc,binance
+Environment=AIOS_QUANT_ALLOWED_EXCHANGES=kraken,binance,bybit,okx,uniswap_v3,coinbase,kucoin,bitfinex,bitstamp,mexc
 Environment=AIOS_QUANT_MAX_GLOBAL_POSITIONS=1
 Environment=AIOS_QUANT_MAX_PER_EXCHANGE=1
 Environment=AIOS_QUANT_MAX_DRAWDOWN_PCT=0.25
