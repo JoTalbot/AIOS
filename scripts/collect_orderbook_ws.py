@@ -39,6 +39,12 @@ class WSStore:
             bids_json TEXT NOT NULL, asks_json TEXT NOT NULL, latency_ms REAL NOT NULL
         )""")
         self.db.execute("CREATE INDEX IF NOT EXISTS idx_ws_sym_ts ON snapshots_ws(symbol, ts)")
+        self.db.execute("""CREATE TABLE IF NOT EXISTS trades_ws (
+            ts REAL NOT NULL, source TEXT NOT NULL, symbol TEXT NOT NULL,
+            buy_vol REAL NOT NULL, sell_vol REAL NOT NULL, total_vol REAL NOT NULL,
+            buy_frac REAL NOT NULL, n_trades INTEGER NOT NULL
+        )""")
+        self.db.execute("CREATE INDEX IF NOT EXISTS idx_trades_ws_sym_ts ON trades_ws(symbol, ts)")
 
     def add_batch(self, rows: list[tuple]):
         if not rows:
@@ -57,13 +63,35 @@ def level_depth_usd(levels, mid: float) -> float:
 
 
 async def consume_one(ws, pair: str, interval: float, store: WSStore,
-                     source: str = "binance_ws") -> None:
-    """One connection per pair: recv its own stream, flush freshest per interval."""
+                     source: str = "binance_ws", trade_interval: float = 5.0) -> None:
+    """One connection per pair: depth + aggTrade streams; flush freshest per interval."""
     latest: dict | None = None
     last_ts = 0.0
+    trades: dict[str, float] = {"buy": 0.0, "sell": 0.0, "n": 0.0}
+    last_trade_ts = 0.0
     while True:
         raw = await ws.recv()
         msg = json.loads(raw)
+        if msg.get("e") == "aggTrade":
+            # aggregate trade: m=True -> buyer is maker (sell aggressor)
+            qty = float(msg.get("q", 0.0))
+            if msg.get("m"):
+                trades["sell"] += qty
+            else:
+                trades["buy"] += qty
+            trades["n"] += 1
+            now = time.time()
+            if now - last_trade_ts >= trade_interval and trades["n"] > 0:
+                buy, sell, n = trades["buy"], trades["sell"], trades["n"]
+                total = buy + sell
+                store.db.execute(
+                    "INSERT INTO trades_ws VALUES (?,?,?,?,?,?,?,?)",
+                    (now, source, pair, buy, sell, total,
+                     buy / total if total > 0 else 0.5, int(n)))
+                store.db.commit()
+                trades = {"buy": 0.0, "sell": 0.0, "n": 0.0}
+                last_trade_ts = now
+            continue
         if msg.get("lastUpdateId") is None:
             continue
         bids, asks = msg.get("bids", []), msg.get("asks", [])
@@ -105,7 +133,7 @@ async def keepalive(ws, interval: float = 20.0) -> None:
 
 async def run_one(pair: str, interval: float, db_path: Path) -> None:
     store = WSStore(db_path)
-    url = f"{BASE_WS}/{pair.lower()}usdt@depth20@100ms"
+    url = f"{BASE_WS}/{pair.lower()}usdt@depth20@100ms/{pair.lower()}usdt@aggTrade"
     while True:
         try:
             async with websockets.connect(url, ping_interval=None) as ws:

@@ -142,6 +142,98 @@ def sim_dca(prices: dict[str, pd.DataFrame], weights: dict[str, float],
             "cagr": cagr, "max_dd": dd, "fees": fees, "curve": curve}
 
 
+def sim_va(prices: dict[str, pd.DataFrame], weights: dict[str, float],
+            base_weekly: float, start: pd.Timestamp, end: pd.Timestamp,
+            cap_mult: float = 2.0, rebalance_quarterly: bool = False) -> dict:
+    """Value-averaging: weekly contribution adjusts to keep portfolio ON the
+    planned value path (planned = base_weekly * weeks). If actual < planned ->
+    invest more (capped at cap_mult*base); if actual > planned -> invest less
+    (min 0). Same fee/rebalance model as sim_dca."""
+    dates = weekly_dates(start, end)
+    units = {s: 0.0 for s in weights}
+    cash = 0.0
+    invested = 0.0
+    fees = 0.0
+    curve = []
+    prev_reb = None
+
+    def mark(t):
+        val = cash
+        for s, u in units.items():
+            p = prices.get(s)
+            if p is None or u <= 0:
+                continue
+            row = p[p["date"] <= t]
+            if not row.empty:
+                val += u * float(row["close"].iloc[-1])
+        return val
+
+    for i, t in enumerate(dates):
+        planned = base_weekly * (i + 1)
+        actual = mark(t) + invested * 0.0 + 0.0  # value of holdings only
+        # compute current holdings value (excluding uninvested cash)
+        cur_val = 0.0
+        for s, u in units.items():
+            p = prices.get(s)
+            if p is None or u <= 0:
+                continue
+            row = p[p["date"] <= t]
+            if not row.empty:
+                cur_val += u * float(row["close"].iloc[-1])
+        diff = planned - (cur_val + invested * 0.0)
+        # contribution brings total invested value toward planned
+        contrib = diff
+        contrib = max(0.0, min(contrib, base_weekly * cap_mult))
+        if contrib > 0:
+            invested += contrib
+            for s, w in weights.items():
+                p = prices.get(s)
+                if p is None:
+                    continue
+                row = p[p["date"] == t]
+                if row.empty:
+                    continue
+                px = float(row["close"].iloc[0])
+                buy_net = contrib * w * (1.0 - FEE)
+                units[s] += buy_net / px
+                fees += contrib * w * FEE
+        if rebalance_quarterly and prev_reb is not None and (t - prev_reb).days >= 90:
+            val = mark(t)
+            for s in weights:
+                row = prices.get(s)
+                if row is None:
+                    continue
+                r = row[row["date"] == t]
+                if r.empty:
+                    continue
+                px = float(r["close"].iloc[0])
+                target_val = val * weights[s]
+                cur = units[s] * px
+                diff2 = target_val - cur
+                if diff2 > 0:
+                    buy_net = diff2 * (1.0 - FEE)
+                    units[s] += buy_net / px
+                    fees += diff2 * FEE
+                elif diff2 < 0:
+                    sell = min(units[s], -diff2 / px)
+                    units[s] -= sell
+                    cash += sell * px * (1.0 - FEE)
+                    fees += sell * px * FEE
+            prev_reb = t
+        elif prev_reb is None:
+            prev_reb = t
+        curve.append((t, mark(t)))
+
+    final = mark(dates[-1]) if dates else 0.0
+    eq = pd.Series([v for _, v in curve], index=[d for d, _ in curve])
+    dd = float(((eq / eq.cummax()) - 1.0).min() * 100.0) if len(eq) > 1 else 0.0
+    years = (end - start).days / 365.25
+    cagr = ((final / invested) ** (1 / years) - 1.0) * 100.0 if invested > 0 and years > 0 else 0.0
+    return {"final": final, "invested": invested, "pnl": final - invested,
+            "ret_pct": (final / invested - 1.0) * 100.0 if invested else 0.0,
+            "cagr": cagr, "max_dd": dd, "fees": fees, "curve": curve}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--output", type=Path, default=Path("data/reports/dca_analysis.md"))
@@ -218,6 +310,18 @@ def main() -> int:
            "ret_pct": (btc_final / budget - 1) * 100, "cagr": 0.0, "max_dd": 0.0, "fees": 0.0}
     variants.append(("BTC-only lump-sum (вся сумма в начале)", lbs))
     print(f"Lump-sum BTC: invested={budget:.0f}$ final={btc_final:.2f}$ ret={lbs['ret_pct']:+.2f}%", flush=True)
+
+    # VA variants
+    w10e = {s: 1 for s in TOP10 if s in prices}
+    tot = sum(w10e.values())
+    w10e = {s: v / tot for s, v in w10e.items()}
+    for name, kw in (("VA top-10 (кап 2x)", {"cap_mult": 2.0}),
+                     ("VA top-10 + ребаланс (кап 2x)", {"cap_mult": 2.0, "rebalance_quarterly": True}),
+                     ("VA top-10 (кап 3x)", {"cap_mult": 3.0})):
+        r = sim_va(prices, w10e, args.weekly, start, end, **kw)
+        variants.append((name, r))
+        print(f"{name}: invested={r['invested']:.0f}$ final={r['final']:.2f}$ "
+              f"ret={r['ret_pct']:+.2f}% CAGR={r['cagr']:+.2f}% maxDD={r['max_dd']:.2f}%", flush=True)
 
     md = ["# DCA-анализ долгосрочного портфеля (локальные данные, 12 мес)", "",
           f"Окно: {start.date()} .. {end.date()} | Комиссия: 0.1%/покупка (binance spot) | "

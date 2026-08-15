@@ -430,3 +430,16 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
 - Дальше: если live-точность >=65-70% за 2-4 недели — сигнальный продукт (подписка).
 - Файлы: scripts/mm_signal_emitter.py, deploy/systemd/aios-mm-signal-emitter.{service,timer},
   scripts/mm_signal_score.py, scripts/aios_weekly_digest.py (patch), docs/MM_SIGNAL_EMITTER_2026-08-15_RU.md.
+
+---
+
+## Пакет Q1+Q2+Q3+Q6 (2026-08-15T21:55Z)
+
+- Q1: aggTrade коллектор в ws-скрипт (trades_ws: buy/sell vol, buy_frac за 5с) — фича для сигнала.
+- Q2: /quant в TG-боте — tg_bot/quant_cmds.py (новый) + минимальная правка protected
+  run_telegram_bot.py (3 места, selfguard --force-snapshot выполнен, бот перезапущен active).
+  Проверен вывод: MM-точность 50% (3/6), ws 7.7k, DCA, A/B, сервисы.
+- Q3: VA-бэктест — VA top-10+ребаланс (кап 2x) −17.21% лучший (DCA+reb −18.87%);
+  VA кап 3x maxDD −11.47%. Рекомендация для реальных денег: VA+ребаланс.
+- Q6: ws-коллектор на 20 пар (все connected).
+- Отчёт: docs/QUANT_PACKAGE_Q1Q2Q3Q6_2026-08-15_RU.md.
