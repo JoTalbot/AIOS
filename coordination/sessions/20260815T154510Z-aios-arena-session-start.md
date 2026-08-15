@@ -322,3 +322,15 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
 - 8-й отрицательный результат подряд (LONG OOS, SHORT OOS, ML-CS, prod-3m,
   tf×universe, MTF, funding, horizon).
 - Отчёт: docs/TRADING_ML_HORIZON_EXPERIMENT_2026-08-15_RU.md.
+
+---
+
+## Вариант 2: долгосрочный портфель DCA (2026-08-15T18:45Z)
+
+- quant_dca_analysis.py: бэктест 12 мес (binance, комиссия 0.1%): DCA топ-10 + квартальный
+  ребаланс −18.9% — лучший; DCA > lump-sum на ~12-15 п.п.; все в минусе (год медвежий).
+- run_dca_paper.py + aios-dca-paper.{service,timer}: ежедневный mark-to-market paper-трекера,
+  еженедельный депозит $100, топ-10 равные веса, квартальный ребаланс. Деплой: timer active
+  (ежедневно 17:30 UTC). Первый депозит выполнен.
+- Документы: docs/DCA_PORTFOLIO_PLAN_2026-08-15_RU.md, data/reports/dca_analysis.md (gitignored).
+- Конфиг трекера: data/dca_portfolio.json (runtime, gitignored).
