@@ -49,6 +49,15 @@ def main():
         lines.append(f"⚖️ <b>A/B paper:</b> main (trail 1.0) {tm} сделок | control (0.988) {tc}")
     except Exception as e:
         lines.append(f"⚖️ A/B: ошибка ({e})")
+    # MM-сигналы: точность
+    try:
+        import subprocess as sp
+        r = sp.run(["/opt/aios/.venv/bin/python", "scripts/mm_signal_score.py"],
+                   capture_output=True, text=True, cwd="/root/AIOS")
+        last = [l for l in r.stdout.strip().split("\n") if "ИТОГО" in l]
+        lines.append(f"📡 <b>MM-сигналы:</b> {last[0] if last else 'нет данных'}")
+    except Exception as e:
+        lines.append(f"📡 MM: ошибка ({e})")
     # сервисы
     try:
         svc = subprocess.run(["systemctl", "is-active",

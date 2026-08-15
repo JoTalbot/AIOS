@@ -417,3 +417,16 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
 - V3 weekly-digest в TG (DCA+ws+A/B+сервисы): тест OK.
 - V6 daily funding/OI коллектор (33 символа, append jsonl): таймер 19:15Z, первый прогон OK.
 - 4 новых сервиса/таймера активны. Отчёт: docs/QUANT_DIGEST_V1V2V3V6_2026-08-15_RU.md.
+
+---
+
+## V4-прототип: эмиттер MM-сигналов (2026-08-15T21:30Z)
+
+- mm_signal_emitter.py + aios-mm-signal-emitter.timer (5 мин, ETH/BNB/SOL): обучение модели
+  на ws-данных, эмиссия UP/DOWN при prob>=0.60/<=0.40 в TG владельца, лог эмиссий.
+- Первые сигналы: BNB DOWN (0.003/0.044), SOL UP (0.958); BTC исключён (mid статичен).
+- mm_signal_score.py: сверка эмиссий с фактом (+60/180с); точность добавлена в weekly-digest.
+  Первые цифры: 50% (1/2) — выборка ничтожна, копим дни.
+- Дальше: если live-точность >=65-70% за 2-4 недели — сигнальный продукт (подписка).
+- Файлы: scripts/mm_signal_emitter.py, deploy/systemd/aios-mm-signal-emitter.{service,timer},
+  scripts/mm_signal_score.py, scripts/aios_weekly_digest.py (patch), docs/MM_SIGNAL_EMITTER_2026-08-15_RU.md.
