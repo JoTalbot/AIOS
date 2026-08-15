@@ -76,6 +76,18 @@ def main() -> int:
 
     state = load_state()
     log = load_value_log()
+    # контрольный портфель (plain DCA) для сравнения
+    try:
+        import json as _j
+        cstate = _j.loads((ROOT / "data" / "dca_paper_state_control.json").read_text())
+        cvlog = [_j.loads(l) for l in
+                 (ROOT / "data" / "dca_paper_value_control.jsonl").read_text().splitlines() if l]
+        cval = cvlog[-1]["value_usd"] if cvlog else 0.0
+        cdep = float(cstate.get("deposited_usd", 0))
+        cpnl = cval - cdep
+        lines.append(f"🔁 <b>Контроль (DCA):</b> ${cdep:.0f} → ${cval:.2f} ({cpnl:+.2f}$)")
+    except Exception:
+        pass
     deposited = float(state.get("deposited_usd", 0.0))
     fees = float(state.get("fees_usd", 0.0))
     holdings = state.get("holdings", {})

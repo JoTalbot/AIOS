@@ -28,9 +28,17 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 REPO = Path("/root/AIOS")
-CONFIG = REPO / "data" / "dca_portfolio.json"
-STATE = REPO / "data" / "dca_paper_state.json"
-VALUE_LOG = REPO / "data" / "dca_paper_value.jsonl"
+import os as _os
+_port = _os.environ.get("DCA_CONFIG", "dca_portfolio")
+CONFIG = REPO / "data" / f"{_port}.json"
+if _port == "dca_portfolio":
+    # keep legacy filenames for the original portfolio
+    STATE = REPO / "data" / "dca_paper_state.json"
+    VALUE_LOG = REPO / "data" / "dca_paper_value.jsonl"
+else:
+    suffix = _port.replace("dca_portfolio_", "").replace("dca_", "")
+    STATE = REPO / "data" / f"dca_paper_state_{suffix}.json"
+    VALUE_LOG = REPO / "data" / f"dca_paper_value_{suffix}.jsonl"
 
 DEFAULT_WEIGHTS = {
     "BTC": 0.10, "ETH": 0.10, "SOL": 0.10, "XRP": 0.10, "BNB": 0.10,

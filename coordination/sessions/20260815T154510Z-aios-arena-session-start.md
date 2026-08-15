@@ -500,3 +500,18 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
   полный maker-MM с микроструктурным фильтром — единственное живое (вердикт после
   2-4 недель корректных 1-Гц данных).
 - Документ: docs/SIGNAL_ECONOMICS_W1W4_2026-08-15_RU.md.
+
+---
+
+## D6+D5+D1 (2026-08-16T00:40Z)
+
+- D6: контрольный DCA-портфель (data/dca_portfolio_control.json, обычный DCA $100/нед,
+  те же веса) + aios-dca-paper-control.timer (17:35Z). run_dca_paper.py поддержал
+  DCA_CONFIG env (legacy-имена для main). A/B VA vs DCA на живых данных за 1-2 мес.
+- D5: dca_chart_report.py — PNG-график (VA main + DCA control + invested) через
+  sendPhoto; тест sent: True; подключён к еженедельному dca-report (пн 18:00Z).
+- D1: вклад main $100 → $300/нед.
+- Состояние: main $99.99 (VA, $100 вложено), control $99.90 (DCA, $100 вложено).
+- Файлы: scripts/run_dca_paper.py, scripts/dca_chart_report.py,
+  scripts/dca_telegram_report.py, deploy/systemd/aios-dca-paper-control.{service,timer},
+  deploy/systemd/aios-dca-report.service, data/dca_portfolio{,_control}.json (runtime).
