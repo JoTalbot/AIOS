@@ -267,3 +267,23 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
   сервисы перезапущены на консистентном коде (config.trail_ratio=1.0).
 - Файлы: scripts/quant_prod_3m_backtest.py, docs/TRADING_3M_BACKTEST_2026-08-15_RU.md,
   data/reports/prod_3m_backtest.{md,json} (gitignored), журнал.
+
+---
+
+## Эксперимент C: таймфрейм × универсум (2026-08-15T19:10Z)
+
+- scripts/quant_tf_universe_experiment.py: 1h/4h (ресемплинг закрытых баров) × все 33 /
+  топ-12 по USD-объёму × RL вкл/выкл; свежая CatBoost per tf, OOS ~6 мес (2026-02-18..08-15).
+- Результаты: 4h хуже 1h (PF 0.15-0.20), топ-12 пусто/хуже, RL-вето не влияет, TP3/SL1.5
+  на 4h убыточно (PF 0.60). BTC bh за окно −11.83%. Ни один вариант не дал edge.
+- ВАЖНО: обнаружен и исправлен баг первого 3-мес замера — kraken имеет историю ~724 баров
+  (API-кап), load_series брал его первым (приоритет unit) → старый замер покрывал ~1 мес.
+  Фикс: min_bars>=4000 → все серии binance (полные 12 мес). Переснятый 3-мес замер:
+  MAIN (trail 1.0) 23 сделки, WR 43.5%, PF 0.64, −13.71$; CTL (trail 0.988) −19.04$;
+  BTC bh −20.63%. Trail 1.0 > 0.988 на этом окне (согласуется с N1), но оба убыточны.
+  ml_not_confirmed=5400 — главный блокер подтверждён.
+- Итого 5 независимых подтверждений отсутствия edge: OOS LONG, OOS SHORT, ML-CS,
+  prod-3m (исправленный), tf×universe.
+- Файлы: scripts/quant_tf_universe_experiment.py, scripts/quant_prod_3m_backtest.py (фикс),
+  docs/TRADING_TF_UNIVERSE_EXPERIMENT_2026-08-15_RU.md, docs/TRADING_3M_BACKTEST_2026-08-15_RU.md
+  (оговорка), data/reports/tf_universe_experiment.md + prod_3m_backtest.md (gitignored).

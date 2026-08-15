@@ -72,8 +72,12 @@ def build_config(env: dict[str, str], trail_override: float | None = None):
     return cfg
 
 
-def load_series(env: dict[str, str]) -> tuple[dict[str, dict], dict[str, str]]:
-    """Load 1h OHLCV for every (symbol, allowed-exchange) pair with local data."""
+def load_series(env: dict[str, str], min_bars: int = 4000) -> tuple[dict[str, dict], dict[str, str]]:
+    """Load 1h OHLCV for every (symbol, allowed-exchange) pair with local data.
+
+    Picks the first allowed exchange with at least `min_bars` bars (kraken has only
+    ~724 bars - API cap - and would silently truncate the test window otherwise).
+    """
     allowed = [e.strip().lower() for e in env.get("AIOS_QUANT_ALLOWED_EXCHANGES", "").split(",")
                if e.strip()]
     out: dict[str, dict] = {}
@@ -86,6 +90,8 @@ def load_series(env: dict[str, str]) -> tuple[dict[str, dict], dict[str, str]]:
             df = qmb._load_series(sym, ex)
             if df is None:
                 continue
+            if len(df) < min_bars:
+                continue  # exchange history too short for the window
             feats = qmb._compute_features(df)
             out[f"{ex}:{sym}"] = {
                 "symbol": sym,
@@ -98,12 +104,13 @@ def load_series(env: dict[str, str]) -> tuple[dict[str, dict], dict[str, str]]:
                 "times": df["timestamp_ms"].values,
             }
             used.setdefault(sym, ex)
-            break  # first allowed exchange with data (unit order = priority)
+            break  # first allowed exchange with full history (unit order = priority)
     return out, used
 
 
 def run_backtest(series: dict[str, dict], cfg, probs: dict[str, np.ndarray],
-                 start_ms: int, *, trail_at_close: bool = False) -> dict:
+                 start_ms: int, *, trail_at_close: bool = False,
+                 rl_block: bool = True) -> dict:
     """Event-driven simulation mirroring quant_directional_v2.run_multi_exchange_cycle."""
     from aios_core.quant_directional_policy import (
         bearish_exit_confirmed,
@@ -187,7 +194,9 @@ def run_backtest(series: dict[str, dict], cfg, probs: dict[str, np.ndarray],
                 reason = "trailing_stop"
             else:
                 ml_prob = float(s["probs"][k]) if k < len(s["probs"]) and not np.isnan(s["probs"][k]) else None
-                an = qmb.record_and_analyze(history[key], ml_prob, 0.0 if s["symbol"] in RL_ASSETS else None)
+                an = qmb.record_and_analyze(
+                    history[key], ml_prob,
+                    (0.0 if s["symbol"] in RL_ASSETS else None) if rl_block else None)
                 if (an["signal"] == "SELL_SHORT"
                         and float(an["confidence"]) >= cfg.min_confidence
                         and ml_prob is not None and ml_prob <= cfg.bearish_ml_max
@@ -245,8 +254,9 @@ def run_backtest(series: dict[str, dict], cfg, probs: dict[str, np.ndarray],
                 if float(data[ex]["cash_usd"]) <= reserve:
                     block_counts["cash_reserve"] += 1
                     continue
-                an = qmb.record_and_analyze(history[key], ml_prob,
-                                            0.0 if sym in RL_ASSETS else None)
+                an = qmb.record_and_analyze(
+                    history[key], ml_prob,
+                    (0.0 if sym in RL_ASSETS else None) if rl_block else None)
                 if an["signal"] != "BUY_LONG" or float(an["confidence"]) < cfg.min_confidence:
                     continue
                 if ml_prob is None or ml_prob < cfg.ml_min_prob_up:
