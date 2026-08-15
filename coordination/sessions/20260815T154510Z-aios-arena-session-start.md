@@ -345,3 +345,16 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
   naive passive MM убыточен на всех биржах (−37..−77$ за 1.6ч, spread PnL отрицательный).
 - Нужны: недели данных, сигнал направления (микроструктура), maker-rebate биржа.
 - Отчёт: docs/MM_PILOT_2026-08-15_RU.md. Этап 2 (сигнал направления) — по решению владельца.
+
+---
+
+## MM этап 2: сигнал направления (2026-08-15T20:40Z) — ПОЛОЖИТЕЛЬНЫЙ
+
+- scripts/mm_microstructure_signal.py: OBI/microprice фичи, честный таргет (flat исключён).
+  AUC h1: BTC/binance 0.96, BTC/kucoin 0.94, ETH 0.89, SOL 0.85 — сильный сигнал.
+- scripts/mm_proto_backtest.py: naive vs gated MM (реквот каждый снапшот, модель-гейт).
+  Gated устраняет adverse selection: gross −30..−43$ → ~0/+1.4$ (BTC). При fee 0.01%
+  BTC/kucoin net −0.12$, BTC/binance −2.5$ (было −177$ naive).
+- Ограничения: 1.6ч данных на пару, симуляция оптимистична (без очереди), SOL/ETH слабее.
+- Этап 3: websocket-коллектор (1-5с), 2-4 недели данных, калибровка, paper MM.
+- Отчёт: docs/MM_STAGE2_SIGNAL_2026-08-15_RU.md.
