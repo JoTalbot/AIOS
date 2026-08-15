@@ -53,6 +53,8 @@ AIOS — production-монорепозиторий, объединяющий:
 
 ## Runtime operator decisions
 
+- `2026-08-15T12:50:40Z`: `aios-gitcoin-algora-solver.service` остановлен и disabled по решению владельца. Причина: сервис слал Telegram-алерты про бесконкурентные баунти (`aios_core/gitcoin_algora_bounty_solver.py`, radar-алерты, цикл 7200с). Юнит сохранён в `deploy/systemd/`, бэкап в `backups/systemd_20260815/`. Других источников таких алертов нет (таймеров нет; freelance-brain уже остановлен 2026-08-14). Журнал: `coordination/sessions/20260815T123500Z-aios-arena-operator-assist.md`.
+
 - `2026-08-15T11:35:00Z`: `aios-groq-key.service` остановлен, disabled и masked (`/dev/null`). Причина: `ExecStart` ссылался на `groq_key_retry.py`, которого нет ни в ФС, ни в git-истории; unit был в restart-loop (7832 рестарта, ~2833/сутки). Функцию выполняет живой преемник `aios-groq-autopilot.timer` (hourly, 8 ключей, status ok). Base unit сохранён в `backups/systemd_20260815/` и в `deploy/systemd/`. Снапшот masks обновлён. Журнал: `coordination/sessions/20260815T113500Z-aios-arena-ops-fixes.md`.
 
 - `2026-08-14T11:23:03Z`: `aios-freelance-brain.service` намеренно остановлен и отключён владельцем; состояние `inactive`, `disabled`, процессов 0. Не запускать/enable без нового решения. Журнал: `coordination/sessions/20260814-aios-arena-freelance-stop.md`.
