@@ -20,6 +20,12 @@ mkdir -p /root/AIOS/logs
   if [ -d /root/AIOS/data/chrome_twin ]; then
     find /root/AIOS/data/chrome_twin -type f \( -name '*.png' -o -name '*.jpg' \) -mtime +21 -print -delete 2>/dev/null || true
   fi
+  # regenerable build caches (safe: rebuilt on demand)
+  rm -rf /root/.cache/pip-tools /root/.cache/pip 2>/dev/null || true
+  # old crash dumps
+  find /var/crash -type f -mtime +7 -delete 2>/dev/null || true
+  # apt cache
+  apt-get clean >/dev/null 2>&1 || true
   # docker prune dangling (safe)
   docker image prune -f >/dev/null 2>&1 || true
   journalctl --vacuum-time=7d >/dev/null 2>&1 || true
