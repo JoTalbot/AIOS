@@ -515,3 +515,15 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
 - Файлы: scripts/run_dca_paper.py, scripts/dca_chart_report.py,
   scripts/dca_telegram_report.py, deploy/systemd/aios-dca-paper-control.{service,timer},
   deploy/systemd/aios-dca-report.service, data/dca_portfolio{,_control}.json (runtime).
+
+---
+
+## N1: новостной сентимент (2026-08-16T01:10Z)
+
+- collect_news_sentiment.py: RSS (CoinTelegraph/CoinDesk/CryptoSlate) + Gemini 2.5 Flash
+  сентимент заголовков → news_sentiment.jsonl. Первый сбор: 65 новостей (pos 19/neg 38/neu 8).
+- Отладка: GROQ 403 (регион), OpenRouter 402 (баланс), Gemini — ключ в URL без Bearer,
+  модель gemini-2.5-flash; удалён дубль score_batch.
+- Таймер aios-news-sentiment.timer (ежечасно :20). /quant + строка сентимента.
+- N2 (связь сентимента с ценой) — после 1-2 недель накопления.
+- Документ: docs/NEWS_SENTIMENT_COLLECTOR_2026-08-16_RU.md.
