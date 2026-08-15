@@ -33,6 +33,9 @@ class DirectionalV2Config:
     half_spread_rate: float = 0.0005
     slippage_rate: float = 0.0005
     candle_seconds: int = 3_600
+    take_profit_pct: float = 0.02
+    stop_loss_pct: float = -0.01
+    trail_ratio: float = 0.988
 
     @classmethod
     def from_env(cls) -> DirectionalV2Config:
@@ -57,6 +60,9 @@ class DirectionalV2Config:
             half_spread_rate=max(0.0, float(os.environ.get("AIOS_QUANT_HALF_SPREAD_RATE", "0.0005"))),
             slippage_rate=max(0.0, float(os.environ.get("AIOS_QUANT_SLIPPAGE_RATE", "0.0005"))),
             candle_seconds=max(60, int(os.environ.get("AIOS_QUANT_CANDLE_SECONDS", "3600"))),
+            take_profit_pct=max(0.0, float(os.environ.get("AIOS_QUANT_TAKE_PROFIT_PCT", "0.02"))),
+            stop_loss_pct=min(0.0, float(os.environ.get("AIOS_QUANT_STOP_LOSS_PCT", "-0.01"))),
+            trail_ratio=min(1.0, max(0.0, float(os.environ.get("AIOS_QUANT_TRAIL_RATIO", "0.988")))),
         )
 
     def entry_execution_price(self, mid_price: float) -> float:

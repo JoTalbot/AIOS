@@ -189,11 +189,11 @@ def run_multi_exchange_cycle(engine) -> dict[str, Any]:
                     held_seconds = max(0.0, now - float(position.get("opened_at", now)))
 
                     reason = ""
-                    if net_pnl_pct >= 2.0:
+                    if net_pnl_pct >= config.take_profit_pct * 100.0:
                         reason = "take_profit"
-                    elif net_pnl_pct <= -1.0:
+                    elif net_pnl_pct <= config.stop_loss_pct * 100.0:
                         reason = "stop_loss"
-                    elif max_seen > entry_mid * 1.01 and mid_price <= max_seen * 0.988:
+                    elif max_seen > entry_mid * 1.01 and mid_price <= max_seen * config.trail_ratio:
                         reason = "trailing_stop"
                     elif bearish_exit_confirmed(config, analysis, held_seconds=held_seconds):
                         reason = "confirmed_bearish_exit"
