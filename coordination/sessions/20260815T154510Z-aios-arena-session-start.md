@@ -358,3 +358,15 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
 - Ограничения: 1.6ч данных на пару, симуляция оптимистична (без очереди), SOL/ETH слабее.
 - Этап 3: websocket-коллектор (1-5с), 2-4 недели данных, калибровка, paper MM.
 - Отчёт: docs/MM_STAGE2_SIGNAL_2026-08-15_RU.md.
+
+---
+
+## MM этап 3: websocket-коллектор (2026-08-15T20:15Z) — ЗАПУЩЕН
+
+- scripts/collect_orderbook_ws.py: Binance depth20@100ms, по соединению на пару (BTC/ETH/SOL),
+  запись 1/сек в snapshots_ws. Отладка: combined /ws/ не оборачивает сообщения (нет поля s)
+  -> per-pair соединения; pkill -f матчил собственную ssh-команду (2 потери процесса).
+- Сервис aios-orderbook-ws.service: active, Restart=always, ~1.75 снапшота/с суммарно.
+- Цель: 2-4 недели данных (1 Гц) -> переобучение сигнала, модель очереди, вердикт по MM.
+- Файлы: scripts/collect_orderbook_ws.py, deploy/systemd/aios-orderbook-ws.service,
+  docs/MM_STAGE3_WS_COLLECTOR_2026-08-15_RU.md.
