@@ -1,0 +1,14 @@
+[Unit]
+Description=AIOS market context collector (Fear&Greed + macro)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+Environment=PYTHONPATH=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/collect_market_context.py
+
+[Install]
+WantedBy=multi-user.target

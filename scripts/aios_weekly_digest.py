@@ -65,6 +65,18 @@ def main():
                 break
     except Exception as e:
         lines.append(f"📡 MM: ошибка ({e})")
+    # новостной сентимент
+    try:
+        import json as _j
+        rows = [_j.loads(l) for l in
+                (ROOT / "data" / "quant" / "news_sentiment.jsonl").read_text().splitlines() if l]
+        if rows:
+            pos = sum(1 for r in rows if r["sentiment"] > 0.2)
+            neg = sum(1 for r in rows if r["sentiment"] < -0.2)
+            avg = sum(r["sentiment"] for r in rows[-50:]) / max(1, len(rows[-50:]))
+            lines.append(f"📰 <b>Сентимент:</b> {len(rows)} новостей (pos {pos}/neg {neg}), avg50 {avg:+.2f}")
+    except Exception:
+        pass
     # сервисы
     try:
         svc = subprocess.run(["systemctl", "is-active",

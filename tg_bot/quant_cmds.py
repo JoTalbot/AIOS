@@ -85,6 +85,15 @@ def cmd_quant() -> str:
                          f"avg(50) {avg:+.2f}, последняя {last['label']}")
     except Exception:
         pass
+    # Fear & Greed
+    try:
+        import json as _j
+        ctx = _j.loads((ROOT / "data" / "quant" / "market_context_latest.json").read_text())
+        fng = ctx.get("fng", {})
+        if fng.get("value") is not None:
+            lines.append(f"😨 <b>Fear&Greed:</b> {fng['value']} ({fng['class']})")
+    except Exception:
+        pass
     # funding/OI
     try:
         fdir = ROOT / "data/quant/funding_oi"

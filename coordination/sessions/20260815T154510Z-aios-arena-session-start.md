@@ -527,3 +527,18 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
 - Таймер aios-news-sentiment.timer (ежечасно :20). /quant + строка сентимента.
 - N2 (связь сентимента с ценой) — после 1-2 недель накопления.
 - Документ: docs/NEWS_SENTIMENT_COLLECTOR_2026-08-16_RU.md.
+
+---
+
+## P1+P2+P3 (2026-08-16T01:40Z)
+
+- P1: collect_market_context.py (F&G + макро-календарь), таймер ежедневно 06:00Z,
+  F&G в /quant. Текущий F&G: 34 (Fear). Макро API rate-limited (429) — graceful.
+- P2: sentiment_price_test.py (корреляция сентимент→доходность 30м/1ч). Выборка пуста:
+  новости 22:31-22:32, ws до 22:53 — горизонт за пределами. Инструмент готов; первые
+  цифры через 1-2 дня накопления.
+- P3: дайджест + строка сентимента (перед сервисами).
+- Файлы: scripts/collect_market_context.py, scripts/sentiment_price_test.py,
+  scripts/aios_weekly_digest.py, tg_bot/quant_cmds.py,
+  deploy/systemd/aios-market-context.{service,timer},
+  docs/MARKET_CONTEXT_P1P2P3_2026-08-16_RU.md.
