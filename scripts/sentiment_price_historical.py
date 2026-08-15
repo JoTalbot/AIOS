@@ -28,6 +28,8 @@ sys.path.insert(0, str(REPO / "scripts"))
 import quant_monthly_backtest as qmb
 
 NEWS = REPO / "data" / "quant" / "news_historical.jsonl"
+# prefer locally-scored file if it exists (local lexicon, no LLM quota)
+SCORED = REPO / "data" / "quant" / "news_historical_local_scored.jsonl"
 
 COIN_ALIASES = {
     "BTC": ["bitcoin", "btc"], "ETH": ["ethereum", "eth", "ether"],
@@ -59,10 +61,11 @@ def main() -> int:
     ap.add_argument("--min-n", type=int, default=30)
     args = ap.parse_args()
 
-    if not NEWS.exists():
+    src_file = SCORED if SCORED.exists() else NEWS
+    if not src_file.exists():
         print("нет исторических новостей")
         return 0
-    rows = [json.loads(l) for l in NEWS.read_text().splitlines() if l]
+    rows = [json.loads(l) for l in src_file.read_text().splitlines() if l]
     scored = [r for r in rows if "sentiment" in r]
     print(f"новостей: {len(rows)}, с сентиментом: {len(scored)}", flush=True)
     if len(scored) < args.min_n:

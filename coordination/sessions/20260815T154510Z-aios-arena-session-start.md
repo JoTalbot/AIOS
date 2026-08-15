@@ -561,3 +561,18 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
   scripts/sentiment_price_historical.py, deploy/systemd/aios-news-scoring.{service,timer},
   tests/{test_news_pipeline.py, fake_quant_monthly_backtest.py, fixtures/},
   docs/NEWS_HISTORICAL_PIPELINE_2026-08-16_RU.md.
+
+---
+
+## Локальный сентимент + тест связи с ценой (2026-08-16T03:30Z)
+
+- news_local_sentiment.py: лексиконный скорер (вместо Gemini — квота исчерпана).
+  Калибровка на 65 живых: corr +0.623 с Gemini, знаковое согласие 94-95%.
+  Тесты: tests/test_local_sentiment.py 21/21 PASS (локально + на сервере).
+- Прогнано: 1545 исторических заголовков за 0.03s (344 pos/248 neg/953 neu).
+- sentiment_price_historical.py: читает локально-скоредный файл (SCORED fallback).
+- РЕЗУЛЬТАТ теста связи (1781 совпадений): corr 1h +0.007, 24h -0.058, 3d -0.036,
+  7d -0.060 — СВЯЗИ НЕТ, на длинных горизонтах слабо отрицательная (sell the news).
+- 9-й отрицательный результат направленного предсказания. Сентимент-фичи в модель
+  не добавляем. Лексикон остаётся бесплатным монитором сентимента.
+- Документ: docs/SENTIMENT_PRICE_HISTORICAL_RESULT_2026-08-16_RU.md.
