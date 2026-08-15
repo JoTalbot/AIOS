@@ -10,6 +10,8 @@
 
 ## Где закончили
 
+**2026-08-15 (data estate):** 1h-история quant-универсума (33 актива) добрана до ~12 мес. (8760 баров) по биржам: binance 10005+, kucoin, mexc, bybit, okx (кроме SEI), bitstamp (кроме нелистингованных APT/ATOM/BNB/TON/TRX) — полный год; coinbase 24/31 серии >=7000 (лимит глубины API); bitfinex частично (rate-limit penalty IP — добивка `scripts/quant_backfill_exchanges.py --exchanges bitfinex --sleep 60 --retries 3`); kraken — жёсткий кап API 720 свечей (ограничение биржи). Инструмент: `scripts/quant_backfill_exchanges.py`.
+
 Завершён cost-aware walk-forward Directional v2: 35 активов, OOS average −0.354%, positive 34.3%, PF 0.374. Стратегия не проходит gate; freeze/live ban подтверждены данными. Commit: `276950cd`. Отчёт: `docs/TRADING_WALK_FORWARD_2026-08-14_RU.md`; журнал: `coordination/sessions/20260814T123000Z-aios-arena-quant-walkforward.md`.
 
 Runtime Directional v2: active/paper, `AIOS_QUANT_ENTRY_MODE=enabled` в owner-approved constrained profile (решение 2026-08-14T12:20Z), фактических entries 0. Live запрещён. Базовая реализация: `e7d24414`, `61f70b1b`.
