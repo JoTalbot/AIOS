@@ -251,3 +251,19 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
 - deploy/systemd/aios-quant-trading.service (allowlist=все биржи)
 - deploy/systemd/aios-quant-trading-control.service (allowlist=все биржи)
 - coordination/sessions/20260815T154510Z-aios-arena-session-start.md
+
+---
+
+## Тестовый замер 3 месяца (2026-08-15T18:30Z)
+
+- Скрипт scripts/quant_prod_3m_backtest.py: воспроизведение движка 1:1, конфиг из unit.
+- Результат (2026-05-15..08-15): 10 сделок, WR 40%, PF 0.66, PnL -6.02$ (equity 9993.98/10000).
+  BTC bh -2.29%. trailing_stop: 0 срабатываний -> trail 1.0 vs 0.988 идентичны.
+  ml_not_confirmed=1865 (главный блокер), global_position_limit=435.
+  Сделок в мае-июне 0 (ML<0.65), все 10 - июль-август. Все на kraken (приоритет unit).
+- Четвёртое подтверждение отсутствия edge LONG-only 1h (OOS LONG/SHORT/ML-CS/этот замер).
+- Попутно: обнаружен и устранён дрейф код/unit (ветка oos-profit без exit-параметров,
+  сервис работал с литералом 0.988). Merge trail-config -> oos-profit (d2085e2f),
+  сервисы перезапущены на консистентном коде (config.trail_ratio=1.0).
+- Файлы: scripts/quant_prod_3m_backtest.py, docs/TRADING_3M_BACKTEST_2026-08-15_RU.md,
+  data/reports/prod_3m_backtest.{md,json} (gitignored), журнал.
