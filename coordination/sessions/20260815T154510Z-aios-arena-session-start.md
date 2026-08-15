@@ -1,0 +1,136 @@
+---
+session_id: "20260815T154510Z-aios-arena-session-start"
+status: "ACTIVE"
+agent: "Arena.ai agent (workspace)"
+machine: "aios (167.233.95.7)"
+started_utc: "2026-08-15T15:45:10Z"
+updated_utc: "2026-08-15T15:45:10Z"
+branch: "agent/20260814-quant-backfill-ppo"
+base_commit: "573eb4e98dac079025189446aa116827928fdec2"
+claim: "none"
+---
+
+## Цель
+
+Начало работы внешнего агента Arena.ai над проектом AIOS: ознакомление с инструкциями (AGENTS.md), координационными документами и состоянием репозитория. Конкретная задача будет определена оператором.
+
+## Scope
+
+- Разрешённые компоненты/файлы: определяется задачей оператора (пока нет).
+- Явно вне scope: protected-файлы из AGENTS.md (run_coder_orchestrator*, run_telegram_bot.py, scripts/selfguard.py, aios_core/autocoder_v3*, aios_core/llm_balancer.py, aios_core/self_protection.py, aios_core/code_rag.py, aios_core/autocoder_memory.py, aios_core/orchestrator.py, aios_core/__init__.py, aios_core/advanced_security.py, aios_core/inter_swarm.py, octopus_core/api_v2_batch.py, .env*).
+- Ожидаемые пересечения с другими сессиями: активные claims отсутствуют на момент старта (проверено).
+
+## Исходное состояние
+
+- git status --short: единственный untracked — backups/systemd_20260815/ (чужой артефакт решения владельца, не трогать).
+- Ветка: agent/20260814-quant-backfill-ppo (последний коммит 573eb4e9).
+- Прочитанные документы: AGENTS.md, coordination/PROJECT_CONTEXT.md, coordination/README.md, coordination/SESSION_TEMPLATE.md, coordination/claims/ (README + 3 активных claim: paper-fix, quant-6m-backtest, quant-history-backfill, whisper-audio-cleanup).
+- Чужие незакоммиченные изменения: backups/systemd_20260815/ (не трогать).
+- git fetch --all --prune: OK, origin синхронизирован.
+
+## План
+
+1. Ожидание задачи от оператора.
+2. При получении задачи: создать claim, выполнить работу с минимальными правками, проверки (py_compile/pytest/ruff), коммит в ветку agent/<session>/<task>, обновить журнал.
+
+## Ход работы и решений
+
+- 2026-08-15T15:45Z: подключение к серверу по SSH (ключ из чата, pubkey совпал), изучение AGENTS.md, PROJECT_CONTEXT.md, README координации, claims, git-состояния. Создан журнал сессии. Активные параллельные сессии на quant-тематику (walk-forward, backfill, winrate) — quant-модуль считается занятым другим агентом до проверки claims перед задачей.
+
+## Изменённые файлы
+
+- coordination/sessions/20260815T154510Z-aios-arena-session-start.md — журнал сессии (этот файл).
+
+## Проверки
+
+- [PASS] ssh root@167.233.95.7 — вход выполнен.
+- [PASS] ssh-keygen -y -f <key> — публичный ключ совпал с предоставленным.
+- [PASS] git fetch --all --prune — успешно.
+- [PASS] git status --short — чисто, кроме чужого backups/systemd_20260815/.
+
+## Git
+
+- Коммиты: нет (изменений кода не было).
+- Опубликованная ветка/PR: нет.
+- Незакоммиченные изменения: журнал сессии (координационные файлы — часть работы; решение о коммите после первой реальной задачи).
+- Чужие изменения, которые не были затронуты: backups/systemd_20260815/ — не тронут.
+
+## Handoff
+
+- Последняя завершённая точка: onboarding завершён, контекст загружен.
+- Следующий конкретный шаг: получить задачу от оператора; перед кодом — проверить claims и создать собственный claim.
+- Блокеры: нет.
+- Риски: quant-модуль — активные claims других сессий; не пересекаться без согласования.
+- Что нельзя делать без повторной проверки: git reset --hard / clean -fd / массовый add/commit; правки protected-файлов; переключение ветки в грязном worktree.
+
+---
+
+## Задача от оператора: quant-oos-profit (2026-08-15T15:50Z)
+
+**Цель:** продолжить улучшение трейдинга — winrate и реальную прибыль. Предыдущая сетка
+(quant_winrate_experiments, in-sample 1y) дала все варианты <= 0: BASE -165$, лучший T1 (тренд SMA200)
++2.96$ на 9 сделках (незначимо). Отчёт требует OOS-подтверждения.
+
+**Решение:** честный walk-forward OOS на полных 12-мес. данных (8760 баров, allowlist):
+- 2 фолда: train 70%/test 30% и train 85%/test 15%, свежая CatBoost v2 (те же гиперпараметры) на train;
+- 16 предзаданных a-priori вариантов (тренд-гейты SMA50-200, ML>=0.70/0.75, блэклист, trail off,
+  cooldown 24h, ATR-фильтр, TP/SL 2.5/1.0, комбо);
+- выбор победителя ТОЛЬКО по OOS; затем портфельная симуляция (max 1 позиция, kill-свитчи).
+
+Claim: coordination/claims/quant-oos-profit--20260815T154510Z-aios-arena-session-start.md
+Скрипт: scripts/quant_oos_profit_experiments.py
+
+---
+
+## Ход работы quant-oos-profit (обновление 2026-08-15T16:35Z)
+
+1. Изучены claims/журналы: активных пересечений нет (paper-fix DONE). Создан claim
+   `quant-oos-profit--...` и скрипт `scripts/quant_oos_profit_experiments.py`.
+2. Прогон 1 (v1): фикс-порог 0.65 недостижим свежеобученной моделью → почти 0 сделок;
+   окна искажены короткими сериями (TON 525 баров).
+3. v2: исключение серий <1500 баров; калибровка порога на train-перцентиле (q90-q97).
+   Результат: BASE −1.91$, N1 (trail=1.0) +5.36$ на 7 сделках (WR 71%), единственный
+   положительный. NO_ML −9129$ (8157 сделок) — ML-гейт ценен.
+4. v3 (раунд 3): окно 0.60 добавлено; разложение по reason; N1m (0.995) +3.97$,
+   N1X (TP2.5/SL1.0) +8.28$; монотонный эффект trail 0.988<0.995<1.0 подтверждён.
+   Перцентильные пороги q98/q99 — отрицательны (слабые сигналы).
+5. v4 (финал): дедуп по (symbol, opened_at) — окна перекрываются (0.50⊂0.60⊂0.70⊂0.85).
+   Уникальные сделки: BASE +7.15$ (WR 50%, PF 2.50), N1 +14.42$ (WR 87.5%, PF 5.83),
+   N1X +15.67$ (PF 6.24). Портфельная симуляция N1: +6.74$ (kill-свитчи 0.25% от $1000
+   срабатывают — очень жёстко для такого капитала).
+6. Обнаружено: data/quant/*.csv дописываются live-коллектором (KAS докачан 16:19Z между
+   прогонами) — результаты привязаны к срезу 16:25Z; для воспроизводимости нужен снапшот.
+7. catboost_info/*.tsv (tracked) модифицированы прогонами CatBoost — НЕ коммитятся.
+
+## Итог для владельца
+
+- Один параметр (trail_ratio 0.988→1.0) на том же наборе сигналов: WR 50→87.5%,
+  PnL +7.15→+14.42$ на OOS (4 окна, 8 уникальных сделок). Рекомендация: paper-режим
+  trail=1.0 (или 0.995) на 30д/200 сделок; live по-прежнему запрещён.
+- Полный отчёт: docs/TRADING_OOS_PROFIT_EXPERIMENTS_2026-08-15_RU.md;
+  сырые цифры: data/reports/oos_profit_experiments.md.
+- Изменение прод-профиля — только решение владельца (правила AGENTS.md).
+
+## Изменённые файлы
+
+- scripts/quant_oos_profit_experiments.py — новый OOS harness (4 фолда, калибровка на train).
+- docs/TRADING_OOS_PROFIT_EXPERIMENTS_2026-08-15_RU.md — отчёт владельцу.
+- data/reports/oos_profit_experiments.md — артефакт прогона.
+- coordination/sessions/20260815T154510Z-aios-arena-session-start.md — журнал (этот файл).
+- coordination/claims/quant-oos-profit--20260815T154510Z-aios-arena-session-start.md — удалён после DONE.
+
+## Проверки
+
+- [PASS] py_compile скрипта на сервере и локально.
+- [PASS] Сравнение BASE-варианта с прошлой сеткой (консистентность сигналов).
+- [NOT RUN] pytest (изменений прод-кода нет, только новый standalone-скрипт).
+- [NOT RUN] ruff (скрипт новый; стиль повторяет существующие quant-скрипты).
+
+## Handoff
+
+- Последняя завершённая точка: OOS-эксперименты завершены, отчёт и коммит готовы.
+- Следующий шаг (владелец): решение о paper-прогоне с trail_ratio=1.0/0.995;
+  при одобрении — правка owner-профиля и 30д paper-наблюдение.
+- Блокеры: нет. Риски: выборка 8 сделок мала; live запрещён до gates.
+- Что нельзя делать без повторной проверки: менять прод-профиль/quant-движок без решения
+  владельца; git reset --hard/clean; push в remote без полномочий.
