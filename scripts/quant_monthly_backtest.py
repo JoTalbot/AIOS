@@ -199,18 +199,38 @@ def _py(v):
     return v
 
 
-def load_symbols() -> dict[str, pd.DataFrame]:
-    out = {}
-    for path in sorted(glob.glob(str(QUANT_DIR / "*" / "binance" / "*_1h.csv"))):
-        symbol = Path(path).stem.split("_")[0]
+ALLOWLIST_VENUES = ["kucoin", "bitstamp", "mexc"]
+
+
+def _load_series(symbol: str, exchange: str) -> pd.DataFrame | None:
+    paths = glob.glob(str(QUANT_DIR / symbol / exchange / f"{symbol}_1h.csv"))
+    if not paths:
+        return None
+    df = pd.read_csv(paths[0]).sort_values("timestamp_ms")
+    df = df.dropna(subset=["open", "high", "low", "close", "volume"])
+    if len(df) < 400:
+        return None
+    return df.reset_index(drop=True)
+
+
+def load_symbols(venue: str = "binance") -> tuple[dict[str, pd.DataFrame], dict[str, str]]:
+    out: dict[str, pd.DataFrame] = {}
+    used: dict[str, str] = {}
+    symbols = sorted(
+        Path(path).stem.split("_")[0]
+        for path in glob.glob(str(QUANT_DIR / "*" / "binance" / "*_1h.csv"))
+    )
+    for symbol in symbols:
         if symbol in ("MATIC", "RNDR"):
             continue
-        df = pd.read_csv(path).sort_values("timestamp_ms")
-        df = df.dropna(subset=["open", "high", "low", "close", "volume"])
-        if len(df) < 400:
-            continue
-        out[symbol] = df.reset_index(drop=True)
-    return out
+        candidates = ALLOWLIST_VENUES if venue == "allowlist" else [venue]
+        for exchange in candidates:
+            df = _load_series(symbol, exchange)
+            if df is not None:
+                out[symbol] = df
+                used[symbol] = exchange
+                break
+    return out, used
 
 
 def main() -> int:
@@ -221,6 +241,8 @@ def main() -> int:
                         help="control scenario: disable the ML>=0.65 entry filter")
     parser.add_argument("--free-profile", action="store_true",
                         help="signals quality run: no position limit, no DD/daily-loss kill, fixed $200 stake")
+    parser.add_argument("--price-source", default="binance",
+                        help="binance (default proxy) | allowlist (kucoin>bitstamp>mexc) | имя биржи")
     args = parser.parse_args()
     ml_gate = not args.no_ml_gate
     if args.free_profile:
@@ -228,8 +250,8 @@ def main() -> int:
     else:
         tag = "current_algorithm" if ml_gate else "no_ml_gate"
 
-    symbols = load_symbols()
-    print(f"loaded {len(symbols)} symbols")
+    symbols, venue_used = load_symbols(args.price_source)
+    print(f"loaded {len(symbols)} symbols (price source: {args.price_source})")
     last_ts = max(int(df["timestamp_ms"].iloc[-1]) for df in symbols.values())
     if relativedelta is not None:
         start_dt = datetime.fromtimestamp(last_ts / 1000, tz=timezone.utc) - relativedelta(months=args.months)
@@ -440,6 +462,7 @@ def main() -> int:
 
     report = {
         "scenario": tag,
+        "price_source": args.price_source,
         "period": {"start": start_dt_str, "end": end_dt_str, "bars": len(all_ts)},
         "initial_capital_usd": initial,
         "final_equity_usd": round(final_equity, 2),
@@ -538,7 +561,13 @@ def main() -> int:
         md.append("")
     md.append("## Допущения")
     md.append("")
-    md.append("- Цены: binance 1h как прокси разрешённых бирж (kucoin/bitstamp/mexc — нет месяца локальной истории).")
+    if args.price_source == "binance":
+        md.append("- Цены: binance 1h как прокси разрешённых бирж (kucoin/bitstamp/mexc — нет месяца локальной истории).")
+    else:
+        from collections import Counter
+        vc = Counter(venue_used.values())
+        vtxt = ", ".join(f"{k}: {v}" for k, v in sorted(vc.items(), key=lambda x: -x[1]))
+        md.append(f"- Цены: реальные 1h-серии бирж (price-source={args.price_source}; {vtxt}).")
     md.append("- ML-модель обучена на данных, включающих тестовый месяц (in-sample только для ML-части; индикаторная часть честная).")
     md.append("- Funding/orderbook нейтральны (0 / BALANCED).")
     md.append("- TP/SL исполняются по уровням при пересечении high/low бара; SL приоритетнее TP.")
