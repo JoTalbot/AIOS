@@ -52,9 +52,29 @@ def book_vol(levels, upto: int) -> float:
     return sum(q for _, q in levels[:upto])
 
 
-def build_features(snaps: list[dict]) -> tuple[np.ndarray, list[str]]:
+def load_trades(symbol: str, limit: int = 300) -> list[dict]:
+    """Recent trade-flow aggregates (buy_frac per 5s bucket)."""
+    con = sqlite3.connect(DB)
+    rows = con.execute(
+        "SELECT ts, buy_vol, sell_vol, buy_frac FROM trades_ws "
+        "WHERE symbol=? ORDER BY ts DESC LIMIT ?", (symbol, limit)).fetchall()
+    con.close()
+    return [{"ts": r[0], "buy": r[1], "sell": r[2], "frac": r[3]} for r in reversed(rows)]
+
+
+def build_features(snaps: list[dict], trades: list[dict] | None = None) -> tuple[np.ndarray, list[str]]:
     n = len(snaps)
     mids = np.array([s["mid"] for s in snaps])
+    # trade-flow: for each snapshot, the most recent buy_frac at ts<=snap.ts
+    flow = {}
+    if trades:
+        flow = {t["ts"]: t["frac"] for t in trades}
+    flow_ts = sorted(flow)
+    def buy_frac_at(ts):
+        import bisect
+        j = bisect.bisect_right(flow_ts, ts) - 1
+        return flow[flow_ts[j]] if j >= 0 else 0.5
+
     F = []
     for i in range(n):
         s = snaps[i]
@@ -70,9 +90,11 @@ def build_features(snaps: list[dict]) -> tuple[np.ndarray, list[str]]:
         micro = (s["ask"] * bd1 + s["bid"] * ad1) / (bd1 + ad1 + 1e-12)
         spread = (s["ask"] - s["bid"]) / mids[i] * 1e4 if mids[i] else 0.0
         ret1 = (mids[i] / mids[i - 1] - 1) * 1e4 if i > 0 and mids[i - 1] else 0.0
+        bf = buy_frac_at(s["ts"])
         F.append({"obi1": obi1, "obi5": obi5, "obi10": obi10,
                   "micro_off": (micro - mids[i]) / mids[i] * 1e4 if mids[i] else 0.0,
-                  "spread_bps": spread, "ret1": ret1})
+                  "spread_bps": spread, "ret1": ret1,
+                  "buy_frac": bf, "buy_frac_rev": 0.5 - bf})
     names = list(F[0].keys())
     X = np.array([[F[i][k] for k in names] for i in range(n)])
     return X, names
@@ -81,7 +103,9 @@ def build_features(snaps: list[dict]) -> tuple[np.ndarray, list[str]]:
 def train_model(snaps: list[dict]):
     from catboost import CatBoostClassifier
 
-    X, names = build_features(snaps)
+    sym = snaps[0].get("_sym", "ETH")
+    trades = load_trades(sym)
+    X, names = build_features(snaps, trades)
     mids = np.array([s["mid"] for s in snaps])
     times = np.array([s["ts"] for s in snaps])
     y = np.zeros(len(snaps))
@@ -129,6 +153,8 @@ def main() -> int:
     emitted = []
     for sym in args.symbols:
         snaps = load_ws(sym)
+        for s in snaps:
+            s["_sym"] = sym
         if len(snaps) < args.min_rows:
             print(f"{sym}: only {len(snaps)} rows, skip", flush=True)
             continue

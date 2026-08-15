@@ -58,6 +58,8 @@ def load_config() -> dict:
     else:
         cfg = {}
     cfg.setdefault("weekly_amount_usd", 1000.0)
+    cfg.setdefault("mode", "dca")  # "dca" | "va" (value-averaging)
+    cfg.setdefault("va_cap_mult", 2.0)  # max weekly contribution = weekly * cap
     cfg.setdefault("weights", DEFAULT_WEIGHTS)
     cfg.setdefault("fee_rate", 0.001)
     cfg.setdefault("rebalance_quarterly", True)
@@ -110,6 +112,13 @@ def main() -> int:
 
     if due:
         amount = cfg["weekly_amount_usd"]
+        if cfg.get("mode") == "va":
+            # value-averaging: bring portfolio value to the planned path
+            val_now = mark_value(state, prices)
+            weeks = max(1, (today - start).days // 7 + 1)
+            planned = cfg["weekly_amount_usd"] * weeks
+            gap = planned - val_now
+            amount = max(0.0, min(gap, cfg["weekly_amount_usd"] * cfg.get("va_cap_mult", 2.0)))
         state["cash_usd"] += amount
         state["deposited_usd"] += amount
         state["last_deposit"] = today.isoformat()

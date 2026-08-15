@@ -443,3 +443,16 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
   VA кап 3x maxDD −11.47%. Рекомендация для реальных денег: VA+ребаланс.
 - Q6: ws-коллектор на 20 пар (все connected).
 - Отчёт: docs/QUANT_PACKAGE_Q1Q2Q3Q6_2026-08-15_RU.md.
+
+---
+
+## Пакет: buy_frac в сигнал + VA в DCA-трекер (2026-08-15T22:20Z)
+
+1. mm_signal_emitter.py: добавлена trade-flow фича (buy_frac, buy_frac_rev из trades_ws,
+   ближайший к снапшоту агрегат). Эмиттер выдаёт уверенные сигналы: ETH UP 0.759,
+   BNB UP 0.992, SOL DOWN 0.066 — отправлены в TG.
+2. run_dca_paper.py: режим value-averaging (mode=va, va_cap_mult=2.0): вклад =
+   clamp(план − стоимость, 0, weekly*cap). Включён в конфиг data/dca_portfolio.json.
+   Идемпотентность сохранена (депозит не задвоился).
+3. Накопленная статистика сигналов: 58% точность на движениях (11/19), BNB 53%,
+   SOL 67%, ETH 100% (1 движ.); ws 21.8k снапшотов (1.2ч), trade-flow 2343 записей.
