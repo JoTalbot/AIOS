@@ -10,6 +10,20 @@
 
 ## Где закончили
 
+**2026-08-15 (Arena.ai сессия, quant/DCA/MM):** 8 честных экспериментов подтвердили
+отсутствие edge в направленной 1h/4h торговле (LONG OOS, SHORT OOS, ML-CS, prod-3m,
+tf×universe, MTF, funding, горизонты; PF<1 везде). Направленная торговля заморожена как
+исследовательская тема. Запущены: (а) exit-конфиг через env (TP/SL/trail, дефолты legacy),
+A/B paper main (trail=1.0) vs control (trail=0.988), allowlist = все 10 бирж;
+(б) долгосрочный DCA-портфель paper-трекер (top-10 равные веса, $100/нед, квартальный
+ребаланс, aios-dca-paper.timer ежедневно 17:30Z); (в) MM-направление: микроструктурный
+сигнал (OBI/microprice) AUC 0.85-0.96 на ликвидных биржах (29ч данных, 18 пар-бирж),
+устраняет adverse selection в naive MM; ws-коллектор глубины (aios-orderbook-ws, 1Гц,
+Binance BTC/ETH/SOL) копит данные для финального вердикта (2-4 недели).
+Ветка: agent/20260815-quant-oos-profit. Журнал: coordination/sessions/20260815T154510Z-aios-arena-session-start.md.
+
+## Где закончили
+
 **2026-08-15 (data estate):** 1h-история quant-универсума (33 актива) добрана до ~12 мес. (8760 баров) по биржам: binance 10005+, kucoin, mexc, bybit, okx (кроме SEI), bitstamp (кроме нелистингованных APT/ATOM/BNB/TON/TRX) — полный год; coinbase 24/31 серии >=7000 (лимит глубины API); bitfinex частично (rate-limit penalty IP — добивка `scripts/quant_backfill_exchanges.py --exchanges bitfinex --sleep 60 --retries 3`); kraken — жёсткий кап API 720 свечей (ограничение биржи). Инструмент: `scripts/quant_backfill_exchanges.py`.
 
 Завершён cost-aware walk-forward Directional v2: 35 активов, OOS average −0.354%, positive 34.3%, PF 0.374. Стратегия не проходит gate; freeze/live ban подтверждены данными. Commit: `276950cd`. Отчёт: `docs/TRADING_WALK_FORWARD_2026-08-14_RU.md`; журнал: `coordination/sessions/20260814T123000Z-aios-arena-quant-walkforward.md`.
@@ -76,6 +90,14 @@ AIOS — production-монорепозиторий, объединяющий:
 8. **✅ Runtime/generated artifacts — mitigated:** logs, CatBoost event и debug capture больше не tracked; физические production files сохранены и игнорируются точечно.
 9. **✅ LLM proxy/Kilo unfinished work — completed:** 36-model catalog, tool routing/SSE, Colab guards и atomic sync покрыты тестами и развернуты; runtime healthy.
 10. **🟡 Trading expectancy — controlled/frozen:** честный OOS walk-forward отрицательный (average −0.354%, PF 0.374); entries/live запрещены, пока новая гипотеза не пройдёт fresh OOS и 30d/200-close gates.
+
+## Следующий рекомендуемый шаг
+
+1. Через 2-4 недели: переобучить MM-сигнал на ws-данных (1Гц), модель очереди исполнения,
+   калибровка порогов; вердикт по MM.
+2. DCA-трекер: проверить депозиты/PnL, при желании владельца — реальные покупки.
+3. A/B paper main vs control: сравнить после накопления сделок (ML-гейт режет входы —
+   сделок пока 0 в обоих портфелях; контуры активны).
 
 ## Следующий рекомендуемый шаг
 

@@ -31,12 +31,18 @@ import numpy as np
 DB = Path("/root/AIOS/data/quant/orderbooks.sqlite")
 
 
-def load_snapshots(symbol: str, exchange: str) -> list[dict]:
+def load_snapshots(symbol: str, exchange: str = "binance", table: str = "snapshots") -> list[dict]:
     con = sqlite3.connect(DB)
-    cur = con.execute(
-        "SELECT ts, bid, ask, mid, spread_bps, bid_depth_usd, ask_depth_usd, "
-        "bids_json, asks_json, latency_ms FROM snapshots WHERE symbol=? AND exchange=? "
-        "ORDER BY ts", (symbol, exchange))
+    if table == "snapshots_ws":
+        cur = con.execute(
+            "SELECT ts, bid, ask, mid, spread_bps, bid_depth_usd, ask_depth_usd, "
+            "bids_json, asks_json, latency_ms FROM snapshots_ws WHERE symbol=? "
+            "ORDER BY ts", (symbol,))
+    else:
+        cur = con.execute(
+            "SELECT ts, bid, ask, mid, spread_bps, bid_depth_usd, ask_depth_usd, "
+            "bids_json, asks_json, latency_ms FROM snapshots WHERE symbol=? AND exchange=? "
+            "ORDER BY ts", (symbol, exchange))
     rows = cur.fetchall()
     con.close()
     out = []
@@ -112,12 +118,13 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--symbol", default="BTC")
     ap.add_argument("--exchange", default="binance")
+    ap.add_argument("--table", default="snapshots", choices=["snapshots", "snapshots_ws"])
     ap.add_argument("--min-snaps", type=int, default=500)
     ap.add_argument("--gate", action="store_true", help="run gated MM comparison")
     args = ap.parse_args()
 
-    snaps = load_snapshots(args.symbol, args.exchange)
-    print(f"snapshots: {len(snaps)} ({args.symbol}@{args.exchange})", flush=True)
+    snaps = load_snapshots(args.symbol, args.exchange, args.table)
+    print(f"snapshots: {len(snaps)} ({args.symbol}@{args.exchange} table={args.table})", flush=True)
     if len(snaps) < args.min_snaps:
         print("not enough data"); return 1
 
