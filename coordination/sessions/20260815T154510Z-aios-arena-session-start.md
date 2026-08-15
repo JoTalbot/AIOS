@@ -311,3 +311,14 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
 - Результат: AUC funding 0.5239 vs base 0.5296; funding-фичи без веса; PnL 1 сделка −2.99$.
 - Вывод: funding не несёт edge для 1h. OI история ~30 дней (мало), копим.
 - 7-й отрицательный результат. Отчёт: docs/TRADING_ML_FUNDING_EXPERIMENT_2026-08-15_RU.md.
+
+---
+
+## F-4: multi-horizon target (2026-08-15T21:45Z) — ОТРИЦАТЕЛЬНЫЙ
+
+- scripts/quant_ml_horizon_experiment.py: target h1/h4/h24, base 13 фич, честный OOS.
+- AUC: h1 0.5296 > h4 0.5226 > h24 0.5141; up_rate падает (mean-reverting рынок);
+  PnL h4 −26.67$, h24 −26.57$ vs deployed −5.86$. Гипотеза не подтверждена.
+- 8-й отрицательный результат подряд (LONG OOS, SHORT OOS, ML-CS, prod-3m,
+  tf×universe, MTF, funding, horizon).
+- Отчёт: docs/TRADING_ML_HORIZON_EXPERIMENT_2026-08-15_RU.md.

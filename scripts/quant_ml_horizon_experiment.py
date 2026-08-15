@@ -1,124 +1,139 @@
 #!/usr/bin/env python3
-"""Multi-horizon label experiment for the quant direction model.
+"""F-4: multi-horizon target experiment.
 
-The deployed model predicts next-1h direction, but Directional v2 exits hold
-positions up to 72 bars (TP+2%/SL-1%). This experiment trains the same 13
-scale-free features on horizons h = 1, 4, 8, 24 bars and compares OOS
-discrimination (AUC, hit@0.60/0.65). Read-only.
+Does predicting direction H hours ahead (H=4, 24) beat the 1h target?
+Hypothesis: longer horizons are less noisy, so a model trained on the h4/h24
+target may be more informative for entries (engine still exits via TP/SL).
+
+Honest per-symbol 70/30 gap 48 OOS, CatBoost v2 hyperparams, base 13 features.
+AUC/hit/cov + engine PnL (1:1 live config) for the best horizon.
 
 Usage:
-    python scripts/quant_ml_horizon_experiment.py
+    python scripts/quant_ml_horizon_experiment.py [--output data/reports/ml_horizon_experiment.md]
 """
 
 from __future__ import annotations
 
-import glob
-import json
+import argparse
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-QUANT_DIR = REPO_ROOT / "data" / "quant"
+sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-FEATURES = [
-    "ret1", "ret3", "ret6", "ret12", "ret24",
-    "rsi", "bb_pos", "macd_norm", "ema_gap",
-    "vol_ratio", "vol_z", "bar_range_pct", "hl_pos",
-]
-HORIZONS = (1, 4, 8, 24)
-TRAIN_FRAC = 0.70
-GAP_BARS = 48
+import quant_monthly_backtest as qmb
+from quant_ml_eval_train import GAP_BARS, _metrics
+from quant_prod_3m_backtest import build_config, load_unit_env, run_backtest, summarize
 
-
-def _compute(df: pd.DataFrame, horizon: int) -> pd.DataFrame:
-    g = df.copy()
-    g["ret1"] = g["close"].pct_change()
-    g["ret3"] = g["close"].pct_change(3)
-    g["ret6"] = g["close"].pct_change(6)
-    g["ret12"] = g["close"].pct_change(12)
-    g["ret24"] = g["close"].pct_change(24)
-    g["ema12"] = g["close"].ewm(span=12).mean()
-    g["ema26"] = g["close"].ewm(span=26).mean()
-    chg = g["close"].pct_change()
-    up = chg.clip(lower=0).rolling(14).mean()
-    down = (-chg.clip(upper=0)).rolling(14).mean()
-    g["rsi"] = 100.0 - 100.0 / (1.0 + up / down.replace(0, 1e-9))
-    bb_mid = g["close"].rolling(20).mean()
-    bb_std = g["close"].rolling(20).std()
-    g["bb_pos"] = ((g["close"] - bb_mid + 2 * bb_std) / (4 * bb_std).replace(0, np.nan)).clip(0, 1)
-    macd = g["ema12"] - g["ema26"]
-    g["macd_norm"] = macd / g["close"]
-    g["ema_gap"] = (g["ema12"] - g["ema26"]) / g["close"]
-    vol_mean = g["volume"].rolling(20).mean()
-    vol_std = g["volume"].rolling(20).std()
-    g["vol_ratio"] = g["volume"] / vol_mean.replace(0, np.nan)
-    g["vol_z"] = (g["volume"] - vol_mean) / vol_std.replace(0, np.nan)
-    g["bar_range_pct"] = (g["high"] - g["low"]) / g["close"]
-    g["hl_pos"] = (g["close"] - g["low"]) / (g["high"] - g["low"]).replace(0, np.nan)
-    # Horizon label: close[t+h] > close[t] (h bars ahead, no overlap with exit rule)
-    g["target"] = (g["close"].shift(-horizon) > g["close"]).astype(int)
-    return g
-
-
-def _split(g: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    clean = g.dropna(subset=FEATURES + ["target"]).reset_index(drop=True)
-    cut = int(len(clean) * TRAIN_FRAC)
-    return clean.iloc[: cut - GAP_BARS], clean.iloc[cut:]
+BASE_FEATURES = qmb.FEATURES
+HORIZONS = {"h1": 1, "h4": 4, "h24": 24}
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--output", type=Path, default=Path("data/reports/ml_horizon_experiment.md"))
+    args = ap.parse_args()
+
+    env = load_unit_env()
+    cfg = build_config(env)
+
+    symbols, _venue = qmb.load_symbols("allowlist")
+    frames = []
+    for sym, df in symbols.items():
+        g = qmb._compute_features(df).copy()
+        g["symbol"] = sym
+        frames.append(g)
+    panel = pd.concat(frames, ignore_index=True)
+    print(f"panel rows={len(panel)} symbols={panel['symbol'].nunique()}", flush=True)
+
     from catboost import CatBoostClassifier
-    from sklearn.metrics import roc_auc_score
 
-    report = {}
-    for horizon in HORIZONS:
-        frames = []
-        for path in sorted(glob.glob(str(QUANT_DIR / "*" / "binance" / "*_1h.csv"))):
-            df = pd.read_csv(path).sort_values("timestamp_ms")
-            df = df.dropna(subset=["open", "high", "low", "close", "volume"])
-            g = _compute(df, horizon)
-            if len(g.dropna(subset=FEATURES + ["target"])) < 150:
+    results = {}
+    for name, h in HORIZONS.items():
+        # target: close moves UP over the next h bars (h>=1)
+        panel[f"target_{name}"] = (
+            panel.groupby("symbol")["close"].shift(-h) > panel["close"]
+        ).astype(int)
+        rows = []
+        for sym, g in panel.groupby("symbol"):
+            g = g.dropna(subset=BASE_FEATURES + [f"target_{name}"]).reset_index(drop=True)
+            if len(g) < 1500:
                 continue
-            frames.append(g)
-        trains, tests = [], []
-        for g in frames:
-            tr, te = _split(g)
-            if len(tr) > 100 and len(te) > 50:
-                trains.append(tr)
-                tests.append(te)
-        df_tr = pd.concat(trains, ignore_index=True)
-        df_te = pd.concat(tests, ignore_index=True)
-        model = CatBoostClassifier(
-            iterations=400, depth=5, learning_rate=0.03, l2_leaf_reg=5.0,
-            loss_function="Logloss", eval_metric="AUC", random_seed=42,
-            verbose=0, thread_count=-1,
-        )
-        model.fit(df_tr[FEATURES].values.astype(np.float64), df_tr["target"].values.astype(int))
-        y = df_te["target"].values.astype(int)
-        p = model.predict_proba(df_te[FEATURES].values.astype(np.float64))[:, 1]
-        entry = {
-            "train_rows": int(len(df_tr)),
-            "test_rows": int(len(df_te)),
-            "up_rate": round(float(y.mean()), 4),
-            "auc": round(float(roc_auc_score(y, p)), 4) if len(np.unique(y)) > 1 else None,
-        }
-        for thr in (0.60, 0.65):
-            mask = p >= thr
-            entry[f"cov_{int(thr * 100):03d}"] = round(float(mask.mean()), 5)
-            if mask.sum() > 0:
-                entry[f"hit_{int(thr * 100):03d}"] = round(float(y[mask].mean()), 4)
-            else:
-                entry[f"hit_{int(thr * 100):03d}"] = None
-        report[f"h{horizon}"] = entry
-        print(f"h{horizon}: {json.dumps(entry, ensure_ascii=False)}", flush=True)
+            cut = int(len(g) * 0.70)
+            rows.append((sym, g.iloc[: cut - GAP_BARS], g.iloc[cut:]))
+        df_train = pd.concat([tr for _, tr, _ in rows], ignore_index=True)
+        df_test = pd.concat([te for _, _, te in rows], ignore_index=True)
 
-    out = REPO_ROOT / "data" / "reports" / "quant_ml_horizon_experiment.json"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(report, indent=2, ensure_ascii=False))
-    print("report ->", out)
+        m = CatBoostClassifier(iterations=400, depth=5, learning_rate=0.03,
+                               l2_leaf_reg=5.0, loss_function="Logloss",
+                               eval_metric="AUC", random_seed=42, verbose=0, thread_count=-1)
+        m.fit(df_train[BASE_FEATURES].values.astype(np.float64),
+              df_train[f"target_{name}"].values.astype(int))
+        p = m.predict_proba(df_test[BASE_FEATURES].values.astype(np.float64))[:, 1]
+        r = _metrics(df_test[f"target_{name}"].values.astype(int), np.asarray(p, dtype=np.float64))
+        for thr in (0.55, 0.60, 0.65):
+            mask = p >= thr
+            r[f"cov_{int(thr*100):03d}"] = float(mask.mean())
+            if mask.sum() > 0:
+                r[f"hit_{int(thr*100):03d}"] = float(df_test["target_{}".format(name)].values[mask].mean())
+        print(f"{name}: auc={r['auc']:.4f} up_rate={r['up_rate']:.3f} "
+              f"hit55={r.get('hit_055',0):.3f} cov55={r.get('cov_055',0):.4f}", flush=True)
+        results[name] = (r, m)
+
+    # engine PnL: deployed (h1 prod) vs h4 model vs h24 model on the same OOS window
+    from quant_tf_universe_experiment import build_series
+
+    s1h = build_series(env, None, "1h")
+    t0 = min(int(si["times"][int(len(si["times"]) * 0.70)]) for si in s1h.values())
+    dep = CatBoostClassifier()
+    dep.load_model(str(qmb.MODELS_DIR / "catboost_price_dir_v2.cbm"))
+    pnl_rows = []
+    for label, model in (("deployed_v2(h1)", dep), ("h4_model", results["h4"][1]),
+                         ("h24_model", results["h24"][1])):
+        probs = {}
+        for key, s in s1h.items():
+            X = s["feats"][BASE_FEATURES].values.astype(np.float64)
+            probs[key] = model.predict_proba(X)[:, 1]
+            s["probs"] = probs[key]
+        res = run_backtest(s1h, cfg, probs, t0)
+        m = summarize(res, cfg)
+        pf = m["pf"] if m["pf"] == float("inf") else round(m["pf"], 2)
+        print(f"PnL {label}: n={m['n']} wr={m['wr']:.1f}% pf={pf} pnl={m['pnl']:+.2f}$", flush=True)
+        pnl_rows.append((label, m))
+
+    d0 = datetime.fromtimestamp(t0 / 1000, tz=UTC).strftime("%Y-%m-%d")
+    d1 = datetime.fromtimestamp(max(int(si["times"][-1]) for si in s1h.values()) / 1000,
+                                tz=UTC).strftime("%Y-%m-%d")
+
+    def fnum(v, nd=3):
+        return "inf" if v == float("inf") else f"{v:.{nd}f}"
+
+    md = ["# F-4: multi-horizon target эксперимент (h1/h4/h24)", "",
+          f"OOS: {d0} .. {d1} | сплит 70/30 gap {GAP_BARS} | base 13 фич | CatBoost v2",
+          "",
+          "| Горизонт | AUC | up_rate | hit@0.55 | cov@0.55 | hit@0.60 |",
+          "|---|---:|---:|---:|---:|---:|"]
+    for name in HORIZONS:
+        r = results[name][0]
+        md.append(f"| {name} | {r['auc']:.4f} | {r['up_rate']:.3f} | "
+                  f"{fnum(r.get('hit_055',0))} | {fnum(r.get('cov_055',0),4)} | "
+                  f"{fnum(r.get('hit_060',0))} |")
+    md += ["", "| Модель (PnL движок) | Сделок | WR | PF | PnL $ |",
+           "|---|---:|---:|---:|---:|"]
+    for label, m in pnl_rows:
+        pf = fnum(m["pf"], 2)
+        md.append(f"| {label} | {m['n']} | {m['wr']:.1f}% | {pf} | {m['pnl']:+.2f} |")
+    md += ["", "## Вывод",
+           "",
+           "Правило: гипотеза жива, только если AUC(h4/h24) > AUC(h1)+0.005 И PnL > 0."]
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text("\n".join(md), encoding="utf-8")
+    print(f"report -> {args.output}", flush=True)
     return 0
 
 
