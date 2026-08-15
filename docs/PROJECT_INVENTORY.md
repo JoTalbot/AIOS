@@ -8,33 +8,33 @@
 | Метрика | Значение |
 |---|---:|
 | Package version | `19.9.0` |
-| Стабильных tracked-файлов | 6,119 |
-| Строк | 558,919 |
-| Размер | 22.29 MiB |
-| Python-файлов | 3,394 |
-| Строк Python | 340,690 |
-| Классов / функций / async | 2,963 / 19,231 / 1,631 |
+| Стабильных tracked-файлов | 6,153 |
+| Строк | 591,693 |
+| Размер | 24.10 MiB |
+| Python-файлов | 3,411 |
+| Строк Python | 344,674 |
+| Классов / функций / async | 2,965 / 19,326 / 1,631 |
 | Python syntax errors | 0 |
-| Test Python files / test functions | 931 / 6,550 |
-| Markdown-файлов | 1,979 |
+| Test Python files / test functions | 931 / 6,553 |
+| Markdown-файлов | 1,992 |
 | Root `run_*.py` | 113 |
-| Уникальных tracked service/timer names | 169 |
+| Уникальных tracked service/timer names | 173 |
 
 ## Крупнейшие области
 
 | Область | Файлов | Строк | Размер |
 |---|---:|---:|---:|
-| `aios_core` | 970 | 158,057 | 5.92 MiB |
+| `aios_core` | 970 | 158,063 | 5.92 MiB |
 | `skills` | 2,641 | 109,481 | 4.73 MiB |
-| `tests` | 505 | 66,555 | 2.29 MiB |
-| `docs` | 410 | 44,797 | 1.42 MiB |
-| `[root]` | 217 | 35,026 | 1.38 MiB |
+| `docs` | 423 | 73,531 | 3.09 MiB |
+| `tests` | 505 | 66,654 | 2.30 MiB |
+| `[root]` | 217 | 35,040 | 1.38 MiB |
 | `attic` | 33 | 30,669 | 1.61 MiB |
 | `octopus_services` | 110 | 27,850 | 0.90 MiB |
-| `scripts` | 189 | 17,664 | 0.67 MiB |
-| `tg_bot` | 32 | 12,060 | 0.62 MiB |
+| `scripts` | 206 | 21,514 | 0.82 MiB |
+| `tg_bot` | 32 | 12,081 | 0.62 MiB |
 | `octopus_instructions` | 102 | 5,959 | 0.50 MiB |
-| `deploy` | 211 | 5,876 | 0.17 MiB |
+| `deploy` | 215 | 5,926 | 0.17 MiB |
 | `octopus_roadmap` | 13 | 4,741 | 0.22 MiB |
 | `tools` | 46 | 4,441 | 0.15 MiB |
 | `converge` | 11 | 4,414 | 0.17 MiB |
@@ -49,13 +49,13 @@
 
 | Расширение | Файлов |
 |---|---:|
-| `.py` | 3,394 |
-| `.md` | 1,979 |
+| `.py` | 3,411 |
+| `.md` | 1,992 |
 | `.json` | 137 |
-| `.service` | 113 |
+| `.service` | 115 |
 | `.sh` | 67 |
 | `.tsx` | 65 |
-| `.timer` | 62 |
+| `.timer` | 64 |
 | `.yaml` | 59 |
 | `.yml` | 58 |
 | `.ts` | 31 |

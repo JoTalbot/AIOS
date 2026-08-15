@@ -134,3 +134,38 @@ Claim: coordination/claims/quant-oos-profit--20260815T154510Z-aios-arena-session
 - Блокеры: нет. Риски: выборка 8 сделок мала; live запрещён до gates.
 - Что нельзя делать без повторной проверки: менять прод-профиль/quant-движок без решения
   владельца; git reset --hard/clean; push в remote без полномочий.
+
+---
+
+## Пункты 1-3 (обновление 2026-08-15T17:05Z)
+
+### Пункт 2 — устойчивость N1 (DONE)
+scripts/quant_oos_robustness.py (fold-0.70, ML>=0.65):
+- Jackknife по 32 символам: N1 min +0.67$ / med +3.65$ / max +6.64$ (положителен при
+  удалении ЛЮБОГО символа); BASE min -4.18$ / med -1.20$.
+- Binance-цены (тот же период): N1 +3.57$ vs BASE -1.27$ — эффект воспроизводится на
+  другом источнике цен (33 binance-серии).
+- Вывод: N1-результат не зависит от одного символа или вендорских цен.
+Отчёт: data/reports/oos_robustness.md.
+
+### Пункт 1 — paper-профиль trail_ratio=1.0 (APPLIED)
+- aios_core/quant_directional_policy.py: DirectionalV2Config + take_profit_pct (0.02),
+  stop_loss_pct (-0.01), trail_ratio (0.988) из env AIOS_QUANT_* (дефолты = legacy).
+- aios_core/quant_directional_v2.py: exit-логика использует config вместо литералов.
+- tests/test_quant_directional_v2.py: +4 целевых теста (trail из env параметризованный,
+  TP/SL из env, дефолты preserve legacy). 22/22 passed в quant-наборе.
+- deploy/systemd/aios-quant-trading.service: +Environment=AIOS_QUANT_TRAIL_RATIO=1.0.
+- Применено к runtime с одобрения владельца: unit скопирован в /etc/systemd/system
+  (бэкап: backups/systemd_20260815/aios-quant-trading.service.pre-trail110),
+  daemon-reload + restart. Сервис active, env виден, первый цикл без ошибок
+  (trades=0, blocks={'same_candle': 1}). Paper-режим подтверждён ("real orders disabled").
+- Полный pytest: 2 FAILED, оба НЕ связаны с этой задачей:
+  1) test_project_inventory — обновлён инвентарём (generate_project_inventory.py --write);
+  2) test_v22_api::test_monetization_routes_registered — 6 маршрутов вместо 5, маршрут
+     /api/v2/mon/quant-signals добавлен чужим коммитом (v22.0-D) без обновления теста —
+     pre-existing, не трогал.
+
+### Пункт 3 — push
+Ветки запушены в origin (одобрение владельца):
+- agent/20260815-quant-oos-profit (research: OOS-эксперименты + robustness)
+- agent/20260815-quant-trail-config (код: exit params + тесты + unit)
