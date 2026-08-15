@@ -287,3 +287,17 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
 - Файлы: scripts/quant_tf_universe_experiment.py, scripts/quant_prod_3m_backtest.py (фикс),
   docs/TRADING_TF_UNIVERSE_EXPERIMENT_2026-08-15_RU.md, docs/TRADING_3M_BACKTEST_2026-08-15_RU.md
   (оговорка), data/reports/tf_universe_experiment.md + prod_3m_backtest.md (gitignored).
+
+---
+
+## ML гипотеза F, этап 1: MTF-фичи (2026-08-15T20:10Z)
+
+- scripts/quant_ml_mtf_experiment.py: base13 + 4h/1d фичи (по закрытым группам) + сезонность.
+- Первая версия дала AUC 0.76 — lookahead-утечка (close/high/low текущей группы).
+  Исправлено на closed-only (shift 1). Честные цифры: MTF AUC 0.5204 vs base 0.5285,
+  PnL −27.38$ vs −5.86$ (deployed 0.5461, −5.86$). MTF НЕ улучшает.
+- Топ-фичи MTF: hour_cos/sin/dow (сезонность) — не даёт edge.
+- Локальные OHLCV-данные исчерпаны: 6 экспериментов PF<1. Для F-2 нужны внешние данные
+  (funding/OI с Binance Futures — публичный API, бесплатно; новости/on-chain — ключи).
+- Файлы: scripts/quant_ml_mtf_experiment.py, docs/TRADING_ML_MTF_EXPERIMENT_2026-08-15_RU.md,
+  data/reports/ml_mtf_experiment.md (gitignored).
