@@ -301,3 +301,13 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
   (funding/OI с Binance Futures — публичный API, бесплатно; новости/on-chain — ключи).
 - Файлы: scripts/quant_ml_mtf_experiment.py, docs/TRADING_ML_MTF_EXPERIMENT_2026-08-15_RU.md,
   data/reports/ml_mtf_experiment.md (gitignored).
+
+---
+
+## F-2: funding-эксперимент (2026-08-15T21:10Z) — ОТРИЦАТЕЛЬНЫЙ
+
+- Собран funding rate с Binance Futures (30 активов, 166 дней, публичный API).
+- Скрипты: scripts/fetch_funding_oi.py, scripts/quant_ml_funding_experiment.py.
+- Результат: AUC funding 0.5239 vs base 0.5296; funding-фичи без веса; PnL 1 сделка −2.99$.
+- Вывод: funding не несёт edge для 1h. OI история ~30 дней (мало), копим.
+- 7-й отрицательный результат. Отчёт: docs/TRADING_ML_FUNDING_EXPERIMENT_2026-08-15_RU.md.
