@@ -2,7 +2,7 @@
 Description=MM signal emission every 5 minutes
 
 [Timer]
-OnCalendar=*:0/5
+OnCalendar=*:0/15
 Persistent=false
 
 [Install]

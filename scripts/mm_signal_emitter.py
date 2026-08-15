@@ -198,11 +198,15 @@ def main() -> int:
         with open(LOG, "a") as f:
             f.write(line + "\n")
         print(line, flush=True)
+        # R1 (2026-08-15): gross PnL of signal trades ≈ 0 after crossing spread;
+        # fees dominate. Broadcasting signals would sell false value -> DIAGNOSTIC
+        # mode: log signals, do NOT push to Telegram. Re-enable only if signal
+        # economics turn positive (e.g. maker execution).
         if sig != "FLAT" and token and chat:
             msgs.append(f"{sym}: <b>{sig}</b> (prob_up={p:.2f}, mid={snaps[-1]['mid']:.4f})")
-    if msgs and token and chat:
-        n = broadcast(token, chat, "📡 <b>MM-сигнал</b>\n" + "\n".join(msgs))
-        print(f"broadcast to {n} chats", flush=True)
+    if msgs:
+        print(f"[diagnostic] {len(msgs)} signal(s) logged, not broadcast "
+              f"(R1: gross PnL≈0, fees dominate)", flush=True)
     return 0
 
 
