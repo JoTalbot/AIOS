@@ -68,14 +68,37 @@ def book_vol(levels, upto: int) -> float:
     return sum(q for _, q in levels[:upto])
 
 
-def _fill_check(st: MMState, mid: float, fee: float):
-    """Process fill of the standing quote if mid crossed it. Returns True if filled."""
+def level_size_at(levels, px: float) -> float:
+    """Size (base units) of the level at price px in the book."""
+    for p, q in levels:
+        if abs(float(p) - px) / px < 1e-6:
+            return float(q)
+    return 0.0
+
+
+def _fill_check(st: MMState, mid: float, fee: float, snaps: list[dict] | None = None,
+                i: int | None = None, queue_model: bool = False):
+    """Process fill of the standing quote if mid crossed it. Returns True if filled.
+
+    With queue_model=True, the fill is PARTIAL: our order shares the level with
+    other resting orders, so the filled fraction is quote_size / (quote_size +
+    other level size). Remaining quantity stays quoted and can fill on later
+    snapshots as more volume passes through the level.
+    """
     if st.quote_side == "ask" and mid >= st.quote_px:
-        proceeds = st.quote_size * st.quote_px
+        fill_qty = st.quote_size
+        if queue_model and snaps is not None and i is not None:
+            other = level_size_at(snaps[i]["asks"], st.quote_px)
+            fill_qty = st.quote_size * min(1.0, st.quote_size / (st.quote_size + other + 1e-12))
+            fill_qty = max(fill_qty, 0.0)
+        if fill_qty <= 0:
+            st.quote_side = None
+            return False
+        proceeds = fill_qty * st.quote_px
         st.cash += proceeds * (1 - fee)
-        st.inventory -= st.quote_size
+        st.inventory -= fill_qty
         st.fees += proceeds * fee
-        remaining = st.quote_size
+        remaining = fill_qty
         while remaining > 1e-12 and st.buy_cost_basis:
             lot_qty, lot_px = st.buy_cost_basis[0]
             used = min(remaining, lot_qty)
@@ -85,17 +108,29 @@ def _fill_check(st: MMState, mid: float, fee: float):
                 st.buy_cost_basis.pop(0)
             else:
                 st.buy_cost_basis[0] = (lot_qty - used, lot_px)
-        st.fills.append({"side": "sell", "px": st.quote_px, "qty": st.quote_size})
-        st.quote_side = None
+        st.fills.append({"side": "sell", "px": st.quote_px, "qty": fill_qty})
+        st.quote_size -= fill_qty
+        if st.quote_size <= 1e-12:
+            st.quote_side = None
         return True
     if st.quote_side == "bid" and mid <= st.quote_px:
-        cost = st.quote_size * st.quote_px
+        fill_qty = st.quote_size
+        if queue_model and snaps is not None and i is not None:
+            other = level_size_at(snaps[i]["bids"], st.quote_px)
+            fill_qty = st.quote_size * min(1.0, st.quote_size / (st.quote_size + other + 1e-12))
+            fill_qty = max(fill_qty, 0.0)
+        if fill_qty <= 0:
+            st.quote_side = None
+            return False
+        cost = fill_qty * st.quote_px
         st.cash -= cost * (1 + fee)
-        st.inventory += st.quote_size
+        st.inventory += fill_qty
         st.fees += cost * fee
-        st.buy_cost_basis.append((st.quote_size, st.quote_px))
-        st.fills.append({"side": "buy", "px": st.quote_px, "qty": st.quote_size})
-        st.quote_side = None
+        st.buy_cost_basis.append((fill_qty, st.quote_px))
+        st.fills.append({"side": "buy", "px": st.quote_px, "qty": fill_qty})
+        st.quote_size -= fill_qty
+        if st.quote_size <= 1e-12:
+            st.quote_side = None
         return True
     return False
 
@@ -103,7 +138,7 @@ def _fill_check(st: MMState, mid: float, fee: float):
 def run_mm(snaps: list[dict], *, mode: str = "naive", half_spread_bps: float = 2.0,
            max_size_usd: float = 2000.0, inv_cap_usd: float = 10000.0,
            up_thr: float = 0.55, down_thr: float = 0.45, fee_rate: float = 0.0005,
-           hold_snaps: int = 1) -> dict:
+           hold_snaps: int = 1, queue_model: bool = False) -> dict:
     """Replay snapshots as a passive maker; requote per snapshot but HOLD the quote
     for `hold_snaps` snapshots so mid has a chance to cross it (realistic for 1Hz
     streams; for ~9s REST streams a 1-snapshot hold means a 9s quote lifetime)."""
@@ -141,7 +176,7 @@ def run_mm(snaps: list[dict], *, mode: str = "naive", half_spread_bps: float = 2
     for i in range(start_i, len(snaps)):
         s = snaps[i]
         mid = s["mid"]
-        _fill_check(st, mid, fee)
+        _fill_check(st, mid, fee, snaps, i, queue_model)
         if st.quote_side is not None:
             if hold_left > 0:
                 hold_left -= 1
@@ -201,6 +236,7 @@ def main() -> int:
     ap.add_argument("--inv-cap-usd", type=float, default=10000.0)
     ap.add_argument("--mode", default="naive", choices=["naive", "gated"])
     ap.add_argument("--hold-snaps", type=int, default=1)
+    ap.add_argument("--queue-model", action="store_true", help="partial fills by queue position")
     args = ap.parse_args()
 
     snaps = load_snapshots(args.symbol, args.exchange)
@@ -210,7 +246,7 @@ def main() -> int:
         return 1
     res = run_mm(snaps, mode=args.mode, half_spread_bps=args.half_spread_bps,
                  max_size_usd=args.max_size_usd, inv_cap_usd=args.inv_cap_usd,
-                 hold_snaps=args.hold_snaps)
+                 hold_snaps=args.hold_snaps, queue_model=args.queue_model)
     print(json.dumps(res, indent=2), flush=True)
     return 0
 

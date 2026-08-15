@@ -130,6 +130,33 @@ def cred(name: str) -> str | None:
     return p.read_text().strip() if p.exists() else None
 
 
+def load_subscribers() -> list[dict]:
+    """Active subscribers from data/quant_subscriptions.json."""
+    from datetime import datetime
+    p = Path("/root/AIOS/data/quant_subscriptions.json")
+    if not p.exists():
+        return []
+    try:
+        d = json.loads(p.read_text())
+        today = datetime.now().date().isoformat()
+        return [s for s in d.get("subscribers", [])
+                if s.get("active") and (not s.get("expires") or s["expires"] >= today)]
+    except Exception:
+        return []
+
+
+def broadcast(token: str, owner_chat: str, text: str) -> int:
+    """Send to owner + all active subscribers; returns count sent."""
+    sent = 0
+    targets = {owner_chat}
+    for s in load_subscribers():
+        targets.add(str(s.get("chat_id")))
+    for c in targets:
+        if send(token, c, text):
+            sent += 1
+    return sent
+
+
 def send(t: str, c: str, text: str) -> bool:
     data = urllib.parse.urlencode({"chat_id": c, "text": text}).encode()
     req = urllib.request.Request(f"https://api.telegram.org/bot{t}/sendMessage", data=data)
@@ -174,7 +201,8 @@ def main() -> int:
         if sig != "FLAT" and token and chat:
             msgs.append(f"{sym}: <b>{sig}</b> (prob_up={p:.2f}, mid={snaps[-1]['mid']:.4f})")
     if msgs and token and chat:
-        send(token, chat, "📡 <b>MM-сигнал</b>\n" + "\n".join(msgs))
+        n = broadcast(token, chat, "📡 <b>MM-сигнал</b>\n" + "\n".join(msgs))
+        print(f"broadcast to {n} chats", flush=True)
     return 0
 
 
