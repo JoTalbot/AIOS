@@ -94,6 +94,17 @@ def cmd_quant() -> str:
             lines.append(f"😨 <b>Fear&Greed:</b> {fng['value']} ({fng['class']})")
     except Exception:
         pass
+    # T2 momentum
+    try:
+        import json as _j
+        st = _j.loads((ROOT / "data" / "t2_paper_state.json").read_text())
+        eq = float(st.get("equity", 0))
+        bh = float(st.get("cash_equiv", 0))
+        pct = (eq / 10000 - 1) * 100 if eq else 0
+        lines.append(f"📈 <b>T2 (SMA50):</b> {st.get('position')} | equity ${eq:,.0f} "
+                     f"({pct:+.1f}%) | BH ${bh:,.0f} | сделок {len(st.get('trades', []))}")
+    except Exception:
+        pass
     # funding/OI
     try:
         fdir = ROOT / "data/quant/funding_oi"
