@@ -10,6 +10,21 @@
 
 ## Где закончили
 
+**2026-08-16 (Arena.ai сессия, доводка quant-исследований):** (а) news-sentiment
+пайплайн завершён: 1545 исторических новостей оценены (Gemini + локальный лексикон),
+event-study к 1h-ценам показал ОТСУТСТВИЕ edge (1781 совпадение; агрегат corr:
+1h +0.007 / 24h −0.058 / 3d −0.036 / 7d −0.060; diff pos−neg −0.36…−0.99%) —
+сигнал отклонён; герметичные тесты `tests/test_news_pipeline.py` 8/8 (фикс argv
+в `run_main`). (б) Гипероптимизация окон T2: все прогоны hyperopt убиты OOM
+(память хоста), кандидат 56/56 проверен на OOS — хуже базы на 4/5 пар → окна не
+меняются (50/40; BNB/NEAR 50/50). Инструменты: `scripts/freqtrade_t2_hyper.py`,
+`scripts/freqtrade_validation/{parse_hyperopt,parse_zips,validate_hyperopt}.py`.
+Открытый вопрос: черновики `scripts/test_t2_paper.py`, `test_backtest_2y.py`,
+`test_momentum.py` (без журнала) — решение владельца. Журнал:
+`coordination/sessions/20260816T072500Z-aios-arena-quant-finish.md`.
+
+## Где закончили
+
 **2026-08-15 (Arena.ai сессия, quant/DCA/MM):** 8 честных экспериментов подтвердили
 отсутствие edge в направленной 1h/4h торговле (LONG OOS, SHORT OOS, ML-CS, prod-3m,
 tf×universe, MTF, funding, горизонты; PF<1 везде). Направленная торговля заморожена как
