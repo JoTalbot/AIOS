@@ -109,17 +109,29 @@ def check_price_discrepancy(rows: list[dict], transport=None) -> str | None:
     return None
 
 
-def compute_signal(rows: list[dict]) -> dict:
-    """Signal based on the LAST CLOSED bar (no lookahead)."""
+def compute_signal(rows: list[dict], in_w: int = SMA_W, out_w: int | None = None) -> dict:
+    """Signal on the LAST CLOSED bar (no lookahead).
+
+    in_w/out_w implement hysteresis: enter LONG when close > SMA(in_w),
+    exit when close <= SMA(out_w). out_w=None -> single SMA (enter/exit same).
+    """
     closes = [r["close"] for r in rows]
     last = rows[-1]
-    s50 = sma(closes, SMA_W)
-    if s50 is None:
+    if out_w is None:
+        out_w = in_w
+    s_in = sma(closes, in_w)
+    s_out = sma(closes, out_w)
+    if s_in is None or s_out is None:
         return {"date": last["date"], "close": last["close"], "sma50": None,
                 "signal": "CASH", "reason": "not_enough_history"}
-    sig = "LONG" if last["close"] > s50 else "CASH"
-    return {"date": last["date"], "close": last["close"], "sma50": round(s50, 2),
-            "signal": sig, "reason": "close_gt_sma50" if sig == "LONG" else "close_le_sma50"}
+    # вход: close > SMA(in); выход: close <= SMA(out)
+    sig = "LONG" if last["close"] > s_in else "CASH"
+    # если уже в позиции (state передаётся снаружи) - выход по out_w;
+    # здесь возвращаем оба уровня, решение принимает run_daily
+    return {"date": last["date"], "close": last["close"],
+            "sma_in": round(s_in, 2), "sma_out": round(s_out, 2),
+            "signal": sig, "reason": "close_gt_sma_in" if sig == "LONG" else "close_le_sma_in",
+            "in_w": in_w, "out_w": out_w}
 
 
 class T2State:
@@ -139,12 +151,24 @@ class T2State:
         tmp.replace(self.path)
 
 
-def run_daily(state_path: Path, log_path: Path, rows: list[dict], notify=None) -> dict:
+def run_daily(state_path: Path, log_path: Path, rows: list[dict], notify=None,
+              variant: dict | None = None) -> dict:
+    variant = variant or {}
     """One daily step: compute signal, update state, log, notify on change."""
     st = T2State(state_path)
-    sig = compute_signal(rows)
+    in_w = variant.get("in_w", SMA_W)
+    out_w = variant.get("out_w")
+    sig = compute_signal(rows, in_w, out_w)
     last = rows[-1]
     prev = rows[-2] if len(rows) >= 2 else None
+    # гистерезис: выход по SMA(out), вход по SMA(in)
+    if st.data["position"] == "LONG":
+        # в позиции -> сигнал выхода по sma_out
+        sig["signal"] = "LONG" if last["close"] > sig["sma_out"] else "CASH"
+        sig["reason"] = "close_gt_sma_out" if sig["signal"] == "LONG" else "close_le_sma_out"
+    else:
+        sig["signal"] = "LONG" if last["close"] > sig["sma_in"] else "CASH"
+        sig["reason"] = "close_gt_sma_in" if sig["signal"] == "LONG" else "close_le_sma_in"
 
     # idempotency: already processed this bar?
     if st.data.get("last_signal_date") == sig["date"]:
@@ -171,7 +195,8 @@ def run_daily(state_path: Path, log_path: Path, rows: list[dict], notify=None) -
             st.data["entry_date"] = None
         st.data["position"] = sig["signal"]
         st.data["trades"].append({"date": sig["date"], "from": old, "to": sig["signal"],
-                                  "close": last["close"], "sma50": sig["sma50"],
+                                  "close": last["close"],
+                                  "sma50": sig.get("sma_in") or sig.get("sma50"),
                                   "equity": round(st.data["equity"], 2)})
         if notify:
             notify(sig, old)
@@ -180,7 +205,8 @@ def run_daily(state_path: Path, log_path: Path, rows: list[dict], notify=None) -
 
     # append to value log
     bh_equity = st.data.get("cash_equiv", 10000.0)
-    entry = {"date": sig["date"], "close": last["close"], "sma50": sig["sma50"],
+    entry = {"date": sig["date"], "close": last["close"],
+             "sma50": sig.get("sma_in") or sig.get("sma50"),
              "signal": sig["signal"], "position": st.data["position"],
              "equity": round(st.data["equity"], 2),
              "bh_equity": round(bh_equity, 2)}
@@ -188,7 +214,8 @@ def run_daily(state_path: Path, log_path: Path, rows: list[dict], notify=None) -
     with open(log_path, "a") as f:
         f.write(json.dumps(entry) + "\n")
     return {"status": "ok", "signal": sig["signal"], "position": st.data["position"],
-            "equity": st.data["equity"], "sma50": sig["sma50"], "close": last["close"]}
+            "equity": st.data["equity"],
+            "sma50": sig.get("sma_in") or sig.get("sma50"), "close": last["close"]}
 
 
 def tg_send(text: str) -> bool:
@@ -222,6 +249,8 @@ def daily_report(symbol: str, state_path: Path) -> str | None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--symbol", default="BTC-USD")
+    ap.add_argument("--in-w", type=int, default=SMA_W)
+    ap.add_argument("--out-w", type=int, default=None)
     ap.add_argument("--state", type=Path, default=None)
     ap.add_argument("--log", type=Path, default=None)
     ap.add_argument("--notify", action="store_true")
@@ -230,6 +259,7 @@ def main() -> int:
     ap.add_argument("--transport", default=None, help="injectable (tests)")
     args = ap.parse_args()
 
+    variant = {"in_w": args.in_w, "out_w": args.out_w}
     sym_tag = args.symbol.replace("-", "").lower()
     if args.state is None:
         args.state = Path(f"/root/AIOS/data/t2_paper_state_{sym_tag}.json")
@@ -237,19 +267,18 @@ def main() -> int:
         args.log = Path(f"/root/AIOS/data/t2_paper_equity_{sym_tag}.jsonl")
 
     rows = fetch_closes(args.transport, args.symbol)
-    warn = check_price_discrepancy(rows, args.transport)
-    if warn:
-        tg_send(warn)
     if args.daily_report:
         report = daily_report(args.symbol, args.state)
         if report:
             tg_send(report)
     def notify(sig, old):
         txt = (f"📈 T2-сигнал: {sig['date']}\n"
-               f"{old} -> {sig['signal']} | close {sig['close']:.0f} SMA50 {sig['sma50']}\n"
+               f"{old} -> {sig['signal']} | close {sig['close']:.0f} "
+               f"SMA{int(sig.get('in_w', 50))}/{int(sig.get('out_w', sig.get('in_w', 50)))} "
+               f"{sig.get('sma_in') or sig.get('sma50')}\n"
                f"причина: {sig['reason']}")
         tg_send(txt)
-    res = run_daily(args.state, args.log, rows, notify if args.notify else None)
+    res = run_daily(args.state, args.log, rows, notify if args.notify else None, variant=variant)
     print(json.dumps(res, ensure_ascii=False))
     return 0
 
