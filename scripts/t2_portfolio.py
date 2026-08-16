@@ -23,15 +23,18 @@ def main() -> int:
     import time
     btc = load_state("t2_paper_state.json")
     eth = load_state("t2_paper_state_ethusd.json")
+    sol = load_state("t2_paper_state_solusd.json")
     btc_eq = float(btc.get("equity", 10000.0))
     eth_eq = float(eth.get("equity", 10000.0))
+    sol_eq = float(sol.get("equity", 10000.0))
     btc_bh = float(btc.get("cash_equiv", 10000.0))
     eth_bh = float(eth.get("cash_equiv", 10000.0))
-    port = 0.5 * btc_eq + 0.5 * eth_eq
-    port_bh = 0.5 * btc_bh + 0.5 * eth_bh
+    sol_bh = float(sol.get("cash_equiv", 10000.0))
+    port = (btc_eq + eth_eq + sol_eq) / 3.0
+    port_bh = (btc_bh + eth_bh + sol_bh) / 3.0
     date = time.strftime("%Y-%m-%d")
     entry = {"date": date, "portfolio": round(port, 2), "bh": round(port_bh, 2),
-             "btc": round(btc_eq, 2), "eth": round(eth_eq, 2)}
+             "btc": round(btc_eq, 2), "eth": round(eth_eq, 2), "sol": round(sol_eq, 2)}
     with open(OUT, "a") as f:
         f.write(json.dumps(entry) + "\n")
     print(json.dumps(entry))

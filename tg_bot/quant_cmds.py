@@ -107,6 +107,19 @@ def cmd_quant() -> str:
                          f"({pct:+.1f}%) | BH ${bh:,.0f} | сделок {len(st.get('trades', []))}")
         except Exception:
             pass
+    # T2 portfolio
+    try:
+        import json as _j
+        lines_p = [_j.loads(l) for l in
+                   (ROOT / "data" / "t2_portfolio_equity.jsonl").read_text().splitlines() if l]
+        if lines_p:
+            last = lines_p[-1]
+            port = float(last["portfolio"]); bh = float(last["bh"])
+            pct = (port / 10000 - 1) * 100
+            bh_pct = (bh / 10000 - 1) * 100
+            lines.append(f"🧺 <b>T2-портфель (3 актива):</b> ${port:,.0f} ({pct:+.1f}%) | BH {bh_pct:+.1f}%")
+    except Exception:
+        pass
     # funding/OI
     try:
         fdir = ROOT / "data/quant/funding_oi"
