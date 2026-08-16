@@ -10,6 +10,19 @@
 
 ## Где закончили
 
+**2026-08-16 (Arena.ai, MM interim + guarded hyperopt):** промежуточная MM-проверка на
+~13ч ws-данных (19 символов): сигнал направления жив на 30с (BTC AUC 0.867 n=1247,
+ETH 0.795, NEAR 0.843, ADA 0.826; 15м — затухает), но maker-edge НЕТ: naive убыточен
+везде, gated урезает убыток 76-93% не переворачивая знак, консервативная симуляция v2
+отрицательна 16/17 пар-бирж. Финальный вердикт — после ≥2-4 недель 1Гц-данных
+(+модель очереди, переобучение сигнала). Отчёт: docs/MM_INTERIM_2026-08-16_RU.md.
+Запущен `scripts/freqtrade_validation/run_hyperopt_guarded.sh` (ждёт тихих окон по
+RAM/swap/load; 300 эпох × 5 пар) — лог `data/freqtrade/hyperopt_run_guarded.log`,
+затем `parse_hyperopt.py` → `validate_hyperopt.py` по методике 16.08. Журнал:
+`coordination/sessions/20260816T092500Z-aios-arena-mm-and-hyperopt.md`.
+
+## Где закончили
+
 **2026-08-16 (Arena.ai сессия, доводка quant-исследований):** (а) news-sentiment
 пайплайн завершён: 1545 исторических новостей оценены (Gemini + локальный лексикон),
 event-study к 1h-ценам показал ОТСУТСТВИЕ edge (1781 совпадение; агрегат corr:
