@@ -88,6 +88,27 @@ def sma(closes: list[float], w: int) -> float | None:
     return sum(closes[-w:]) / w
 
 
+def check_price_discrepancy(rows: list[dict], transport=None) -> str | None:
+    """Cross-check the last close from Yahoo vs Binance spot; warn if > 0.5% off."""
+    if not rows:
+        return None
+    t = transport or default_transport
+    sym = "BTCUSDT" if "BTC" in rows[-1].get("_sym", "BTC-USD") else "ETHUSDT"
+    try:
+        import urllib.parse
+        url = f"https://api.binance.com/api/v3/ticker/price?symbol={sym}"
+        raw = t(url)
+        binance_close = float(json.loads(raw.decode())["price"])
+        yahoo_close = rows[-1]["close"]
+        diff = abs(binance_close - yahoo_close) / yahoo_close * 100
+        if diff > 0.5:
+            return (f"⚠️ Расхождение цен {sym}: Yahoo {yahoo_close:.2f} vs "
+                    f"Binance {binance_close:.2f} ({diff:.2f}%)")
+    except Exception:
+        return None
+    return None
+
+
 def compute_signal(rows: list[dict]) -> dict:
     """Signal based on the LAST CLOSED bar (no lookahead)."""
     closes = [r["close"] for r in rows]
@@ -186,12 +207,26 @@ def tg_send(text: str) -> bool:
         return False
 
 
+def daily_report(symbol: str, state_path: Path) -> str | None:
+    """One-line daily report (position, equity, BH) - sent every day."""
+    st = T2State(state_path).data
+    eq = float(st.get("equity", 10000.0))
+    bh = float(st.get("cash_equiv", 10000.0))
+    pct = (eq / 10000 - 1) * 100
+    bh_pct = (bh / 10000 - 1) * 100
+    tag = symbol.replace("-", "")
+    return (f"📈 T2-{tag} {time.strftime('%Y-%m-%d')}: {st.get('position')} | "
+            f"equity ${eq:,.0f} ({pct:+.1f}%) | BH {bh_pct:+.1f}%")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--symbol", default="BTC-USD")
     ap.add_argument("--state", type=Path, default=None)
     ap.add_argument("--log", type=Path, default=None)
     ap.add_argument("--notify", action="store_true")
+    ap.add_argument("--daily-report", action="store_true",
+                    help="send a one-line report every run (not only on change)")
     ap.add_argument("--transport", default=None, help="injectable (tests)")
     args = ap.parse_args()
 
@@ -202,6 +237,10 @@ def main() -> int:
         args.log = Path(f"/root/AIOS/data/t2_paper_equity_{sym_tag}.jsonl")
 
     rows = fetch_closes(args.transport, args.symbol)
+    if args.daily_report:
+        report = daily_report(args.symbol, args.state)
+        if report:
+            tg_send(report)
     def notify(sig, old):
         txt = (f"📈 T2-сигнал: {sig['date']}\n"
                f"{old} -> {sig['signal']} | close {sig['close']:.0f} SMA50 {sig['sma50']}\n"

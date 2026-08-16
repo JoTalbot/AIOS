@@ -88,6 +88,27 @@ def sma(closes: list[float], w: int) -> float | None:
     return sum(closes[-w:]) / w
 
 
+def check_price_discrepancy(rows: list[dict], transport=None) -> str | None:
+    """Cross-check the last close from Yahoo vs Binance spot; warn if > 0.5% off."""
+    if not rows:
+        return None
+    t = transport or default_transport
+    sym = "BTCUSDT" if "BTC" in rows[-1].get("_sym", "BTC-USD") else "ETHUSDT"
+    try:
+        import urllib.parse
+        url = f"https://api.binance.com/api/v3/ticker/price?symbol={sym}"
+        raw = t(url)
+        binance_close = float(json.loads(raw.decode())["price"])
+        yahoo_close = rows[-1]["close"]
+        diff = abs(binance_close - yahoo_close) / yahoo_close * 100
+        if diff > 0.5:
+            return (f"⚠️ Расхождение цен {sym}: Yahoo {yahoo_close:.2f} vs "
+                    f"Binance {binance_close:.2f} ({diff:.2f}%)")
+    except Exception:
+        return None
+    return None
+
+
 def compute_signal(rows: list[dict]) -> dict:
     """Signal based on the LAST CLOSED bar (no lookahead)."""
     closes = [r["close"] for r in rows]
@@ -216,6 +237,9 @@ def main() -> int:
         args.log = Path(f"/root/AIOS/data/t2_paper_equity_{sym_tag}.jsonl")
 
     rows = fetch_closes(args.transport, args.symbol)
+    warn = check_price_discrepancy(rows, args.transport)
+    if warn:
+        tg_send(warn)
     if args.daily_report:
         report = daily_report(args.symbol, args.state)
         if report:
