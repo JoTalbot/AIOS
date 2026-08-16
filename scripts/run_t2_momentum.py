@@ -151,8 +151,11 @@ class T2State:
         tmp.replace(self.path)
 
 
+_CTX = {"symbol": "BTC-USD"}
+
+
 def run_daily(state_path: Path, log_path: Path, rows: list[dict], notify=None,
-              variant: dict | None = None) -> dict:
+              variant: dict | None = None, entry_filter=None) -> dict:
     variant = variant or {}
     """One daily step: compute signal, update state, log, notify on change."""
     st = T2State(state_path)
@@ -169,6 +172,10 @@ def run_daily(state_path: Path, log_path: Path, rows: list[dict], notify=None,
     else:
         sig["signal"] = "LONG" if last["close"] > sig["sma_in"] else "CASH"
         sig["reason"] = "close_gt_sma_in" if sig["signal"] == "LONG" else "close_le_sma_in"
+        if sig["signal"] == "LONG" and entry_filter is not None:
+            if not entry_filter(_CTX.get("symbol", "BTC-USD")):
+                sig["signal"] = "CASH"
+                sig["reason"] = "meta_filter_denied"
 
     # idempotency: already processed this bar?
     if st.data.get("last_signal_date") == sig["date"]:
@@ -246,6 +253,17 @@ def daily_report(symbol: str, state_path: Path) -> str | None:
             f"equity ${eq:,.0f} ({pct:+.1f}%) | BH {bh_pct:+.1f}%")
 
 
+def meta_allow(symbol: str) -> bool:
+    """Meta-labeling filter: allow T2 entry only if the trained model says yes."""
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from meta_labeling import predict
+    r = predict(symbol)
+    if r is None:
+        return True  # no model -> allow (fail-open)
+    return bool(r.get("allow", True))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--symbol", default="BTC-USD")
@@ -256,6 +274,8 @@ def main() -> int:
     ap.add_argument("--notify", action="store_true")
     ap.add_argument("--daily-report", action="store_true",
                     help="send a one-line report every run (not only on change)")
+    ap.add_argument("--meta-filter", action="store_true",
+                    help="apply meta-labeling filter before entering LONG")
     ap.add_argument("--transport", default=None, help="injectable (tests)")
     args = ap.parse_args()
 
@@ -267,6 +287,8 @@ def main() -> int:
         args.log = Path(f"/root/AIOS/data/t2_paper_equity_{sym_tag}.jsonl")
 
     rows = fetch_closes(args.transport, args.symbol)
+    global _CTX
+    _CTX = {"symbol": args.symbol}
     if args.daily_report:
         report = daily_report(args.symbol, args.state)
         if report:
@@ -278,7 +300,9 @@ def main() -> int:
                f"{sig.get('sma_in') or sig.get('sma50')}\n"
                f"причина: {sig['reason']}")
         tg_send(txt)
-    res = run_daily(args.state, args.log, rows, notify if args.notify else None, variant=variant)
+    res = run_daily(args.state, args.log, rows, notify if args.notify else None,
+                    variant=variant,
+                    entry_filter=(meta_allow if args.meta_filter else None))
     print(json.dumps(res, ensure_ascii=False))
     return 0
 

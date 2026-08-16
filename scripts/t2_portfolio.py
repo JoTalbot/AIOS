@@ -29,8 +29,11 @@ def main() -> int:
         st = load_state(fname)
         eqs[tag] = float(st.get("equity", 10000.0))
         bhs[tag] = float(st.get("cash_equiv", 10000.0))
-    port = sum(eqs.values()) / len(names)
-    port_bh = sum(bhs.values()) / len(names)
+    # Riskfolio-оптимизированные веса (Max Sharpe, обучены на 7-летних T2-кривых)
+    OPT_WEIGHTS = {"BTC": 0.403, "ETH": 0.058, "SOL": 0.282,
+                   "BNB": 0.134, "NEAR": 0.123}
+    port = sum(eqs[tag] * OPT_WEIGHTS.get(tag, 1/len(names)) for tag in eqs)
+    port_bh = sum(bhs[tag] * OPT_WEIGHTS.get(tag, 1/len(names)) for tag in bhs)
     date = time.strftime("%Y-%m-%d")
     entry = {"date": date, "portfolio": round(port, 2), "bh": round(port_bh, 2),
              **{tag.lower(): round(v, 2) for tag, v in eqs.items()}}

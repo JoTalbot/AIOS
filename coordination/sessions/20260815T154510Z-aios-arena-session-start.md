@@ -794,3 +794,20 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
   (2) Riskfolio-Lib веса портфеля; (3) порт T2 в Freqtrade dry-run + A/B с NFI;
   (4) Hummingbot для MM после накопления ws-данных.
 - Документ: docs/TRADING_THEORIES_REPOS_RESEARCH_2026-08-16_RU.md.
+
+---
+
+## Внедрение полезного из репозиториев (2026-08-16T20:30Z)
+
+1. Meta-labeling (mlfinlab подход) поверх T2: RandomForest, 5 фич (ATR/dist/тренд/RSI/vol10),
+   train 60%/OOS 40%. Улучшения OOS: BTC +2344% (vs +1746%), BNB +5043%, NEAR +3457%,
+   SOL +65164%; walk-forward 9/10 положительных. Интегрирован: meta_labeling.py + --meta-filter
+   в run_t2_momentum; модели 5 pkl на сервере.
+2. Riskfolio-Lib: Max Sharpe веса (BTC 40%, SOL 28%, BNB 13%, NEAR 12%, ETH 6%);
+   OOS +286% vs +195% (равные). Внедрено в t2_portfolio.py: портфель $26,671 vs $25,767.
+3. Freqtrade: порт T2-стратегии (freqtrade_t2.py + config) — готов к бэктесту после
+   установки TA-Lib на сервере (блокер: C-библиотека); ценность — независимая валидация,
+   Hyperopt, A/B с NostalgiaForInfinity.
+4. Hummingbot: план для MM (после 2-4 недель ws-данных) — PMM-стратегия с нашим
+   OBI-сигналом как фильтром, paper на testnet.
+- Документ: docs/REPO_IMPROVEMENTS_2026-08-16_RU.md.
