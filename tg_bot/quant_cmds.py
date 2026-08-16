@@ -94,8 +94,9 @@ def cmd_quant() -> str:
             lines.append(f"😨 <b>Fear&Greed:</b> {fng['value']} ({fng['class']})")
     except Exception:
         pass
-    # T2 momentum (BTC + ETH)
-    for tag, fname in (("BTC", "t2_paper_state.json"), ("ETH", "t2_paper_state_ethusd.json")):
+    # T2 momentum (BTC + ETH + SOL)
+    for tag, fname in (("BTC", "t2_paper_state.json"), ("ETH", "t2_paper_state_ethusd.json"),
+                       ("SOL", "t2_paper_state_solusd.json")):
         try:
             import json as _j
             st = _j.loads((ROOT / "data" / fname).read_text())

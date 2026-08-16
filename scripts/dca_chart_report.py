@@ -46,6 +46,7 @@ def cred(name: str) -> str | None:
 def build_chart() -> Path:
     va = load_log(ROOT / "data/dca_paper_value.jsonl")
     dca = load_log(ROOT / "data/dca_paper_value_control.jsonl")
+    t2 = load_log(ROOT / "data/t2_paper_equity.jsonl")
     fig, ax = plt.subplots(figsize=(9, 5))
     if va:
         x = [datetime.fromisoformat(r["date"]) for r in va]
@@ -60,7 +61,12 @@ def build_chart() -> Path:
                 color="#1565c0")
         ax.plot(x2, [r["deposited_usd"] for r in dca], ":", color="#9e9e9e",
                 label="invested DCA")
-    ax.set_title("DCA-портфели: VA (main) vs DCA (control)")
+    if t2:
+        x3 = [datetime.fromisoformat(r["date"]) for r in t2]
+        y3 = [r["equity"] for r in t2]
+        ax.plot(x3, y3, "-", label=f"T2-BTC (${y3[-1]:,.0f})", color="#c62828", linewidth=1.5)
+        ax.plot(x3, [r["bh_equity"] for r in t2], ":", color="#ef9a9a", label="T2 BH")
+    ax.set_title("Портфели: DCA vs T2-момент")
     ax.set_ylabel("$")
     ax.grid(alpha=0.3)
     ax.legend()

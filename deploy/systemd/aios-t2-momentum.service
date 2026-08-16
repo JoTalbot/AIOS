@@ -1,5 +1,5 @@
 [Unit]
-Description=AIOS T2 momentum paper loop (BTC & ETH close vs SMA50, daily signal + TG)
+Description=AIOS T2 momentum paper loops (BTC/ETH/SOL SMA50 + portfolio, daily TG)
 After=network-online.target
 Wants=network-online.target
 
@@ -8,8 +8,11 @@ Type=oneshot
 User=root
 WorkingDirectory=/root/AIOS
 Environment=PYTHONPATH=/root/AIOS
-ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/run_t2_momentum.py --symbol BTC-USD --notify
-ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/run_t2_momentum.py --symbol ETH-USD --notify
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/run_t2_momentum.py --symbol BTC-USD --notify --daily-report
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/run_t2_momentum.py --symbol ETH-USD --notify --daily-report
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/run_t2_momentum.py --symbol SOL-USD --notify --daily-report
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/t2_portfolio.py
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/dca_chart_report.py --send
 
 [Install]
 WantedBy=multi-user.target
