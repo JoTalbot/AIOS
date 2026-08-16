@@ -97,6 +97,17 @@ AIOS — production-монорепозиторий, объединяющий:
 
 ## Runtime operator decisions
 
+- `2026-08-16T10:46:00Z`: Снижение нагрузки по решению владельца (сценарий D).
+  Убиты 9 осиротевших loky-воркеров hyperopt'а (~1.65 ГБ); renice +10 фоновым
+  демонам; stop+disable: `aios-viber-desktop`, `aios-viber-autoreply`,
+  `aios-vnc-keepawake`, `aios-chrome-vnc`, `aios-signal-desktop` (Viber/Signal/
+  SMS-автоматика выключены); `docker stop` для `aios-commercial`, `aios-grafana`,
+  `aios-prometheus`, `aios-alertmanager` (commercial-контур и мониторинг-дашборды
+  выключены). Снапшоты юнитов: `backups/systemd_20260815/*.loadreduction.bak`.
+  Итог: load 75-105 → ~1, Mem available 39 МБ → 2.3 ГБ. Rollback-команды в журнале
+  `coordination/sessions/20260816T103000Z-aios-arena-load-reduction.md`.
+
+
 - `2026-08-15T13:14:35Z`: Дисковая чистка по решению владельца (75G: 81%→46%, свободно 40G; освобождено ~26G). Удалены: Ollama целиком (~16G; сервис stop/disable/remove, unit-бэкап в `backups/systemd_20260815/`; в `.env` ссылок не было, `llm_balancer` упоминает ollama-провайдера — локальный fallback недоступен до переустановки), android-sdk system-images android-35 (~7.3G; эмулятор не запущен, SDK/бинарники сохранены), прун `backups/` (2.9G→1.0G: sessions 2 свежих, daily 3 набора, messenger_profiles 2, manual 3), безопасное (~1G: apt clean, snap cache, /var/crash, старый /tmp). `data/chrome_twin` (1.9G) НЕ удалён: используется активным Chrome (PID-автоматика Google-аккаунта), удаление = потеря сессии авторизации. Журнал: `coordination/sessions/20260815T123500Z-aios-arena-operator-assist.md`.
 
 - `2026-08-15T12:50:40Z`: `aios-gitcoin-algora-solver.service` остановлен и disabled по решению владельца. Причина: сервис слал Telegram-алерты про бесконкурентные баунти (`aios_core/gitcoin_algora_bounty_solver.py`, radar-алерты, цикл 7200с). Юнит сохранён в `deploy/systemd/`, бэкап в `backups/systemd_20260815/`. Других источников таких алертов нет (таймеров нет; freelance-brain уже остановлен 2026-08-14). Журнал: `coordination/sessions/20260815T123500Z-aios-arena-operator-assist.md`.
