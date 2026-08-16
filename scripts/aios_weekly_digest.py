@@ -49,6 +49,18 @@ def main():
         lines.append(f"⚖️ <b>A/B paper:</b> main (trail 1.0) {tm} сделок | control (0.988) {tc}")
     except Exception as e:
         lines.append(f"⚖️ A/B: ошибка ({e})")
+    # T2 momentum (BTC/ETH)
+    try:
+        import json as _j
+        parts = []
+        for tag, fname in (("BTC", "t2_paper_state.json"), ("ETH", "t2_paper_state_ethusd.json")):
+            st = _j.loads((ROOT / "data" / fname).read_text())
+            eq = float(st.get("equity", 0))
+            pct = (eq / 10000 - 1) * 100 if eq else 0
+            parts.append(f"{tag}:{st.get('position')} ({pct:+.1f}%)")
+        lines.append(f"📈 <b>T2:</b> {' | '.join(parts)}")
+    except Exception:
+        pass
     # MM-сигналы: точность + экономика
     try:
         import subprocess as sp

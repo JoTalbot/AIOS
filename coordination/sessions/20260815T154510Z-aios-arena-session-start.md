@@ -628,3 +628,14 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
 - Бэкфилл 3 лет: equity $10k → $25,473 (+154.7%) vs BH +134.4%, 68 сделок, позиция CASH
   (close 63,004 < SMA50 63,510). Расхождение с бэктестом (+143.5%) — конвенция mark.
 - /quant + строка T2. Документ: docs/T2_PAPER_LOOP_2026-08-16_RU.md.
+
+---
+
+## T2 ETH + дайджест (2026-08-16T09:30Z)
+
+- run_t2_momentum.py: --symbol (BTC-USD/ETH-USD), per-symbol state/log, Binance
+  фолбэк ETHUSDT. Тесты 33/33 локально (symbol URL, per-symbol paths).
+- aios-t2-momentum.service: оба символа ежедневно 01:30Z.
+- ETH бэкфилл 3 года: $10k → $27,977 (+179.8%) vs BH +20.0%, LONG, 45 сделок.
+- /quant + weekly digest: T2-BTC и T2-ETH (позиция, PnL). Дайджест отправлен.
+- Документ: docs/T2_ETH_AND_DIGEST_2026-08-16_RU.md.

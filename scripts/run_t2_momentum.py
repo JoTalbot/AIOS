@@ -25,8 +25,12 @@ import time
 import urllib.request
 from pathlib import Path
 
-YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD?range=400d&interval=1d"
-BINANCE = "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=400"
+def _urls(symbol: str) -> tuple[str, str]:
+    """Yahoo and Binance URLs for a symbol like 'BTC-USD' / 'ETH-USD'."""
+    base = symbol.split("-")[0].upper()
+    binance_sym = base + "USDT"
+    return (f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=400d&interval=1d",
+            f"https://api.binance.com/api/v3/klines?symbol={binance_sym}&interval=1d&limit=400")
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
 SMA_W = 50
@@ -39,13 +43,14 @@ def default_transport(url: str, timeout: int = 25) -> bytes:
         return r.read()
 
 
-def fetch_closes(transport=None) -> list[dict]:
+def fetch_closes(transport=None, symbol: str = "BTC-USD") -> list[dict]:
     """List of {date, close} for closed daily bars (oldest first)."""
     t = transport or default_transport
+    yahoo_url, binance_url = _urls(symbol)
     errs = []
     # primary: Yahoo
     try:
-        raw = t(YAHOO)
+        raw = t(yahoo_url)
         data = json.loads(raw.decode())
         res = data["chart"]["result"][0]
         ts = res["timestamp"]
@@ -63,7 +68,7 @@ def fetch_closes(transport=None) -> list[dict]:
         errs.append(f"yahoo: {e}")
     # fallback: Binance spot
     try:
-        raw = t(BINANCE)
+        raw = t(binance_url)
         klines = json.loads(raw.decode())
         rows = []
         for k in klines:
@@ -183,13 +188,20 @@ def tg_send(text: str) -> bool:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--state", type=Path, default=Path("/root/AIOS/data/t2_paper_state.json"))
-    ap.add_argument("--log", type=Path, default=Path("/root/AIOS/data/t2_paper_equity.jsonl"))
+    ap.add_argument("--symbol", default="BTC-USD")
+    ap.add_argument("--state", type=Path, default=None)
+    ap.add_argument("--log", type=Path, default=None)
     ap.add_argument("--notify", action="store_true")
     ap.add_argument("--transport", default=None, help="injectable (tests)")
     args = ap.parse_args()
 
-    rows = fetch_closes(args.transport)
+    sym_tag = args.symbol.replace("-", "").lower()
+    if args.state is None:
+        args.state = Path(f"/root/AIOS/data/t2_paper_state_{sym_tag}.json")
+    if args.log is None:
+        args.log = Path(f"/root/AIOS/data/t2_paper_equity_{sym_tag}.jsonl")
+
+    rows = fetch_closes(args.transport, args.symbol)
     def notify(sig, old):
         txt = (f"📈 T2-сигнал: {sig['date']}\n"
                f"{old} -> {sig['signal']} | close {sig['close']:.0f} SMA50 {sig['sma50']}\n"
