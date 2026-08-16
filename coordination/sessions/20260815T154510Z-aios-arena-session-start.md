@@ -779,3 +779,18 @@ MM на orderbook-данных (копятся), (в) живой A/B main vs con
   lev 1.25 на BTC+ETH, DCA $200-500/мес.
 - Правила: горизонт 3+, готовность к DD 80%, дисциплина, lev ≤1.5, стоп портфеля.
 - Документ: docs/BIG_PROFIT_SCENARIOS_2026-08-16_RU.md.
+
+---
+
+## Исследование теорий, слухов, репозиториев и продуктов (2026-08-16T19:00Z)
+
+- SMC/ICT развенчаны (0/54 механических вариантов прибыльны; нет peer-reviewed);
+  наш микроструктурный сигнал — научная альтернатива.
+- T2 подтверждён академией (TS momentum 31.96%) и практикой (NostalgiaForInfinity —
+  та же философия, community +18-42%/6мес).
+- Репозитории: Freqtrade (инфраструктура, Hyperopt), Hummingbot (MM), mlfinlab
+  (meta-labeling), Riskfolio-Lib (веса), CCXT (уже есть), Jesse (дисциплина бэктестов).
+- Рекомендации: (1) meta-labeling поверх T2 — фильтр убыточных входов в боковике;
+  (2) Riskfolio-Lib веса портфеля; (3) порт T2 в Freqtrade dry-run + A/B с NFI;
+  (4) Hummingbot для MM после накопления ws-данных.
+- Документ: docs/TRADING_THEORIES_REPOS_RESEARCH_2026-08-16_RU.md.
