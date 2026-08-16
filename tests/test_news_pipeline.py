@@ -24,9 +24,6 @@ import pandas as pd
 T = Path(__file__).resolve().parent
 sys.path.insert(0, str(T))
 
-# scripts live in ../scripts on the server, next to the test locally
-SCRIPT_DIR = (T.parent / "scripts") if (T.parent / "scripts").exists() else T
-
 import fake_quant_monthly_backtest as fake_qmb  # noqa: E402
 
 # pre-register so `import quant_monthly_backtest as qmb` resolves to the fake
@@ -53,10 +50,20 @@ def load_module(name: str, path: Path):
     return mod
 
 
+def run_main(mod, prog):
+    """Run module main() with a clean argv (argparse must not see pytest args)."""
+    old_argv = sys.argv
+    sys.argv = [prog]
+    try:
+        return mod.main()
+    finally:
+        sys.argv = old_argv
+
+
 # ---------------------------------------------------------------- T1, T2
 def test_fetch_parsing():
     print("\n[T1] parse_rss")
-    fetch = load_module("fetch_historical_news", SCRIPT_DIR / "fetch_historical_news.py")
+    fetch = load_module("fetch_historical_news", T / "fetch_historical_news.py")
     raw = (T / "fixtures" / "rss_sample.xml").read_bytes()
     items = fetch.parse_rss(raw)
     check("2 элемента (пустой title пропущен)", len(items) == 2)
@@ -68,7 +75,7 @@ def test_fetch_parsing():
 
 def test_snapshot_selection():
     print("\n[T2] выбор снапшотов (step-hours + limit)")
-    fetch = load_module("fetch_historical_news", SCRIPT_DIR / "fetch_historical_news.py")
+    fetch = load_module("fetch_historical_news", T / "fetch_historical_news.py")
     from datetime import datetime, timedelta, timezone
     snaps = []
     d0 = datetime(2025, 8, 1, tzinfo=timezone.utc)
@@ -107,7 +114,7 @@ class FakeResp:
 
 def test_score_batch_parsing():
     print("\n[T3] score_batch: парсинг ответа Gemini (```json ... ```)")
-    score = load_module("score_historical_sentiment", SCRIPT_DIR / "score_historical_sentiment.py")
+    score = load_module("score_historical_sentiment", T / "score_historical_sentiment.py")
     gemini_answer = '```json\n[\n  {"sentiment": 0.6},\n  {"sentiment": -0.7},\n  {"sentiment": 0.0}\n]\n```'
     import urllib.request
     orig = urllib.request.urlopen
@@ -129,7 +136,7 @@ def test_score_batch_parsing():
 # ---------------------------------------------------------------- T4
 def test_scoring_main():
     print("\n[T4] main(): merge + resume + relabel (мок Gemini)")
-    score = load_module("score_historical_sentiment", SCRIPT_DIR / "score_historical_sentiment.py")
+    score = load_module("score_historical_sentiment", T / "score_historical_sentiment.py")
 
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / "news_historical.jsonl"
@@ -161,7 +168,7 @@ def test_scoring_main():
         score.score_batch = fake_score_batch
         score.time.sleep = lambda s: None
         try:
-            rc = score.main()
+            rc = run_main(score, "score_historical_sentiment.py")
         finally:
             score.time.sleep = orig_sleep
         rows = [json.loads(l) for l in out.read_text().splitlines()]
@@ -193,7 +200,7 @@ def test_scoring_main():
         score.score_batch = fake_score_batch
         score.time.sleep = lambda s: None
         try:
-            score.main()
+            run_main(score, "score_historical_sentiment.py")
         finally:
             score.time.sleep = orig_sleep
         check("resume: ничего не пересчитывается", calls["n"] == 0)
@@ -202,7 +209,7 @@ def test_scoring_main():
 # ---------------------------------------------------------------- T5
 def test_detect_coins():
     print("\n[T5] detect_coins")
-    sph = load_module("sentiment_price_historical", SCRIPT_DIR / "sentiment_price_historical.py")
+    sph = load_module("sentiment_price_historical", T / "sentiment_price_historical.py")
     check("Bitcoin -> BTC", sph.detect_coins("Bitcoin to $1M by 2030") == ["BTC"])
     check("Ethereum -> ETH", sph.detect_coins("Ethereum gas fees hit yearly low") == ["ETH"])
     check("Solana -> SOL", sph.detect_coins("Solana treasury earns $2.5M") == ["SOL"])
@@ -215,7 +222,7 @@ def test_detect_coins():
 # ---------------------------------------------------------------- T6
 def test_end_to_end():
     print("\n[T6] end-to-end: новости -> цены -> корреляция")
-    sph = load_module("sentiment_price_historical", SCRIPT_DIR / "sentiment_price_historical.py")
+    sph = load_module("sentiment_price_historical", T / "sentiment_price_historical.py")
 
     news = [json.loads(l) for l in
             (T / "fixtures" / "news_historical_sample.jsonl").read_text().splitlines()]
@@ -246,13 +253,16 @@ def test_end_to_end():
             for r in news:
                 f.write(json.dumps(r) + "\n")
         orig_newspath = sph.NEWS
+        orig_scored = sph.SCORED
         sph.NEWS = nf
+        sph.SCORED = Path(tmp) / "nonexistent_scored.jsonl"
         orig_argv = sys.argv
         sys.argv = ["sph", "--min-n", "5"]
         try:
             rc = sph.main()
         finally:
             sph.NEWS = orig_newspath
+            sph.SCORED = orig_scored
             sys.argv = orig_argv
         check("exit 0", rc == 0)
     # прямой расчёт корреляции на синтетике
@@ -282,7 +292,7 @@ def _direct_corr(news, bumps, start_ts, sph_mod):
 # ---------------------------------------------------------------- T7
 def test_fetch_main_flow():
     print("\n[T7] fetch main(): полный цикл с моком (дедуп + запись)")
-    fetch = load_module("fetch_historical_news", SCRIPT_DIR / "fetch_historical_news.py")
+    fetch = load_module("fetch_historical_news", T / "fetch_historical_news.py")
 
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "news_historical.jsonl"
@@ -294,7 +304,7 @@ def test_fetch_main_flow():
         orig_sleep = fetch.time.sleep
         fetch.time.sleep = lambda s: None
         try:
-            rc = fetch.main()
+            rc = run_main(fetch, "fetch_historical_news.py")
         finally:
             fetch.time.sleep = orig_sleep
         rows = [json.loads(l) for l in out.read_text().splitlines()] if out.exists() else []
@@ -305,7 +315,7 @@ def test_fetch_main_flow():
         fetch.list_snapshots = lambda: ["20251101000000"]
         fetch.time.sleep = lambda s: None
         try:
-            fetch.main()
+            run_main(fetch, "fetch_historical_news.py")
         finally:
             fetch.time.sleep = orig_sleep
         rows2 = [json.loads(l) for l in out.read_text().splitlines()]
@@ -316,7 +326,7 @@ def test_fetch_main_flow():
 # ---------------------------------------------------------------- T8
 def test_key_validation():
     print("\n[T8] gemini_keys: лояльная валидация (429/timeout не отбрасывают)")
-    score = load_module("score_historical_sentiment", SCRIPT_DIR / "score_historical_sentiment.py")
+    score = load_module("score_historical_sentiment", T / "score_historical_sentiment.py")
     import urllib.request, urllib.error
 
     env_file = Path(tempfile.mkdtemp()) / ".env"
