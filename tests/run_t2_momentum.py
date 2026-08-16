@@ -26,11 +26,11 @@ import urllib.request
 from pathlib import Path
 
 def _urls(symbol: str) -> tuple[str, str]:
-    """Yahoo and Binance URLs for a symbol like 'BTC-USD' / 'ETH-USD'."""
+    """Binance (primary) and Yahoo (fallback) URLs for a symbol like 'BTC-USD'."""
     base = symbol.split("-")[0].upper()
     binance_sym = base + "USDT"
-    return (f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=400d&interval=1d",
-            f"https://api.binance.com/api/v3/klines?symbol={binance_sym}&interval=1d&limit=400")
+    return (f"https://api.binance.com/api/v3/klines?symbol={binance_sym}&interval=1d&limit=400",
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=400d&interval=1d")
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
 SMA_W = 50
@@ -46,9 +46,22 @@ def default_transport(url: str, timeout: int = 25) -> bytes:
 def fetch_closes(transport=None, symbol: str = "BTC-USD") -> list[dict]:
     """List of {date, close} for closed daily bars (oldest first)."""
     t = transport or default_transport
-    yahoo_url, binance_url = _urls(symbol)
+    binance_url, yahoo_url = _urls(symbol)
     errs = []
-    # primary: Yahoo
+    # primary: Binance spot (эталон ликвидности)
+    try:
+        raw = t(binance_url)
+        klines = json.loads(raw.decode())
+        rows = []
+        for k in klines:
+            rows.append({"date": time.strftime("%Y-%m-%d", time.gmtime(k[0] / 1000)),
+                         "close": float(k[4])})
+        if len(rows) >= 100:
+            return rows
+        errs.append(f"binance: only {len(rows)} rows")
+    except Exception as e:
+        errs.append(f"binance: {e}")
+    # fallback: Yahoo
     try:
         raw = t(yahoo_url)
         data = json.loads(raw.decode())
@@ -66,19 +79,6 @@ def fetch_closes(transport=None, symbol: str = "BTC-USD") -> list[dict]:
         errs.append(f"yahoo: only {len(rows)} rows")
     except Exception as e:
         errs.append(f"yahoo: {e}")
-    # fallback: Binance spot
-    try:
-        raw = t(binance_url)
-        klines = json.loads(raw.decode())
-        rows = []
-        for k in klines:
-            rows.append({"date": time.strftime("%Y-%m-%d", time.gmtime(k[0] / 1000)),
-                         "close": float(k[4])})
-        if len(rows) >= 100:
-            return rows
-        errs.append(f"binance: only {len(rows)} rows")
-    except Exception as e:
-        errs.append(f"binance: {e}")
     raise RuntimeError("; ".join(errs))
 
 
