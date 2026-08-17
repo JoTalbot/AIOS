@@ -22,15 +22,17 @@ from pathlib import Path
 import numpy as np
 
 
-def load_series(path: Path) -> dict[int, float]:
+def load_series(path: Path, gran: str = "day") -> dict[int, float]:
     out = {}
     if not path.exists():
         return out
+    bucket = 3600 if gran == "hour" else 86400
     for line in path.read_text().splitlines():
         try:
             r = json.loads(line)
-            # normalize to UTC midnight so series with different close hours align
-            out[(int(r["ts"]) // 86400) * 86400] = float(r["value"])
+            # normalize to the bucket start (UTC midnight for day, top of the
+            # hour for hour) so series with different close times align
+            out[(int(r["ts"]) // bucket) * bucket] = float(r["value"])
         except Exception:
             continue
     return out
@@ -67,7 +69,7 @@ def align(feature: dict[int, float], target: dict[int, float], lag_hours: int,
     return np.array(xs), np.array(ys)
 
 
-def test_feature(name: str, feat: dict[int, float], price: dict[int, float],
+def eval_feature(name: str, feat: dict[int, float], price: dict[int, float],
                  lag_h: int, step_h: int, min_n: int = 30):
     x, y = align(feat, price, lag_h, step_h)
     if len(x) < min_n:
@@ -107,7 +109,7 @@ def main() -> int:
         "tx_vol_usd": load_series(args.data_dir / "tx_vol_usd.jsonl"),
     }
     for name, f in daily_feats.items():
-        test_feature(name, f, price, lag_h=24, step_h=24)
+        eval_feature(name, f, price, lag_h=24, step_h=24)
 
     # --- hourly derivatives: lag 1h, step 1h / 4h / 24h ---
     print("\n=== Hourly (деривативы): фича (t-1) -> BTC ret ===")
@@ -124,7 +126,7 @@ def main() -> int:
             print(f"  {name}: нет часовых цен")
             continue
         for step in (1, 4, 24):
-            test_feature(name, f, hprice, lag_h=1, step_h=step, min_n=50)
+            eval_feature(name, f, hprice, lag_h=1, step_h=step, min_n=50)
 
     print("\n=== Интерпретация ===")
     print("corr |>0.10| — слабый сигнал; |>0.15| — заметный; diff>0.3% — квинтильный спред.")

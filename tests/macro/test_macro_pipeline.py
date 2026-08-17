@@ -14,7 +14,7 @@ sys.path.insert(0, str(T))
 
 from fetch_market_data import Collector
 from fetch_derivatives import parse_klines, parse_lsr, parse_oi, DerivCollector
-from analyze_predictive import align, test_feature
+from analyze_predictive import align, eval_feature
 
 PASS = 0
 FAIL = 0
@@ -151,8 +151,8 @@ def test_real_fixture_analysis():
         bt = ap.load_series(dd / "BTC_USD.jsonl")
         x, y = ap.align(dxy, bt, 24, 24)
         check("1 совпадение DXY->BTC", len(x) == 1)
-        res = ap.test_feature("DXY", dxy, bt, 24, 24, min_n=1)
-        check("test_feature вернул результат", res is not None and "corr" in res)
+        res = ap.eval_feature("DXY", dxy, bt, 24, 24, min_n=1)
+        check("eval_feature вернул результат", res is not None and "corr" in res)
 
 
 if __name__ == "__main__":
