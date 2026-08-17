@@ -68,3 +68,13 @@ claim: "coordination/claims/improve-all--20260817T163000Z-aios-arena.md (сня�
 - Проверки: pytest test_rl_signal_hygiene.py + test_quant_signal_product.py 4/4;
   прогон сигнал-продукта: rl_signals.json обновлён (10 сигналов, FLAT), лог
   «LSTM-PPO ppo_v9.pt загружена». Коммит ed7e50e8.
+## Дополнение (dependabot runtime завершён)
+
+- 5 runtime-веток dependabot оказались устаревшими (база до quant-работы, обратные
+  изменения, litellm-ветка удаляла 55K строк) — закрыты с комментариями, ветки удалены.
+- websockets>=17 отклонён: web3==7.16.0 требует <16 (политика DEPENDENCY_POLICY.md).
+- Целевой PR #183 (ветка agent/20260817-dependabot-runtime): starlette>=1.6.0,
+  uvicorn>=0.52.3, python-dotenv>=1.2.2, litellm>=1.96.2,<2; lock перегенерирован
+  pip-compile (py3.11 freqtrade-venv — системный py3.11 сломан: sre_constants);
+  контракт 0 ошибок; pip check в чистой 3.11-среде: No broken requirements.
+- 5 GHA-веток dependabot (мажорные бампы CI) оставлены — требуют отдельного решения.
