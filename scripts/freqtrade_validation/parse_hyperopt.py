@@ -12,7 +12,7 @@ import sys
 def parse(log_path: str) -> dict:
     text = open(log_path).read()
     # split into per-pair sections
-    sections = re.split(r"=== HYPEROPT (\w+) start", text)
+    sections = re.split(r"=== (?:GUARDED )?HYPEROPT (\w+) start", text)
     result = {}
     # sections: [pre, SYM1, body1, SYM2, body2, ...]
     for i in range(1, len(sections) - 1, 2):
