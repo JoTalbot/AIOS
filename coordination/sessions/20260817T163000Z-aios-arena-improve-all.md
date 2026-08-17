@@ -78,3 +78,11 @@ claim: "coordination/claims/improve-all--20260817T163000Z-aios-arena.md (сня�
   pip-compile (py3.11 freqtrade-venv — системный py3.11 сломан: sre_constants);
   контракт 0 ошибок; pip check в чистой 3.11-среде: No broken requirements.
 - 5 GHA-веток dependabot (мажорные бампы CI) оставлены — требуют отдельного решения.
+
+## Дополнение (PR #183 merged)
+
+- PR #183 смержен в main (c00e6aca): runtime-бампы + lock + cryptography в minimal.
+- CI: все гейты зелёные (AIOS Validation, Core Gate после фикса cryptography,
+  Supply Chain, Secret scanning, Android, Dashboard E2E).
+- Docker Build & Push на main: failure по Trivy CVE-2026-56862 — преэкзистинг.
+- Локальный репозиторий переведён на main; мёртвые агент-ветки удалены.
