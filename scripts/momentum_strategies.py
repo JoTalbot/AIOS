@@ -229,6 +229,8 @@ def main() -> int:
     ap.add_argument("--symbols", nargs="+", default=DEFAULT_SYMBOLS)
     ap.add_argument("--days", type=int, default=731)
     ap.add_argument("--out", type=Path, default=Path("data/reports/momentum_strategies.md"))
+    ap.add_argument("--eval-last-days", type=int, default=0,
+                    help="оценить PnL за последние N дней (как будто старт N дней назад); 0 = выкл")
     args = ap.parse_args()
 
     closes, ts = load_all(default_transport, args.symbols, args.days)
@@ -249,8 +251,18 @@ def main() -> int:
         dd_oos = float(((eq_oos / np.maximum.accumulate(eq_oos)) - 1.0).min())
         days_oos = len(eq_oos)
         cagr_oos = (eq_oos[-1] ** (365.25 / days_oos) - 1.0) * 100 if eq_oos[-1] > 0 else -100.0
+        # last-window metrics (as-if-started N days ago)
+        last_pnl = last_dd = None
+        if args.eval_last_days > 0 and len(r["equity"]) > args.eval_last_days:
+            eq_win = r["equity"][-args.eval_last_days:]
+            eq_win = eq_win / eq_win[0]
+            last_pnl = (eq_win[-1] - 1.0) * 100
+            last_dd = float(((eq_win / np.maximum.accumulate(eq_win)) - 1.0).min()) * 100
+            r["last_pnl_pct"] = last_pnl
+            r["last_dd_pct"] = last_dd
+        extra = f" | last{args.eval_last_days}d: {last_pnl:+.1f}% DD {last_dd:.1f}%" if last_pnl is not None else ""
         print(f"{name:<40} {r['total_pct']:>+7.1f}% {r['cagr']:>+6.1f}% {r['max_dd']:>6.1f}% "
-              f"{r['sharpe']:>6.2f} {r['n_trades']:>6} | OOS: {cagr_oos:+.1f}% DD {dd_oos*100:.1f}%", flush=True)
+              f"{r['sharpe']:>6.2f} {r['n_trades']:>6} | OOS: {cagr_oos:+.1f}% DD {dd_oos*100:.1f}%{extra}", flush=True)
 
     # BTC BH
     bh = (closes["BTC-USD"][-1] / closes["BTC-USD"][0] - 1.0) * 100
@@ -259,14 +271,24 @@ def main() -> int:
     md = ["# Факторные стратегии на дневных данных (2 года)", "",
           f"Данные: {len(args.symbols)} активов, {len(ts)} дней | издержки {COST*100:.2f}%/сторона",
           "Параметры зафиксированы ДО просмотра (a-priori); OOS = последние 30%.",
-          "", "| Вариант | PnL % | CAGR % | MaxDD % | Sharpe | Сделок | OOS CAGR % |",
-          "|---|---:|---:|---:|---:|---:|---:|"]
+          ""]
+    if args.eval_last_days > 0:
+        md += [f"| Вариант | PnL % | CAGR % | MaxDD % | Sharpe | Сделок | OOS CAGR % | last{args.eval_last_days}d PnL% | last{args.eval_last_days}d DD% |",
+               "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    else:
+        md += ["| Вариант | PnL % | CAGR % | MaxDD % | Sharpe | Сделок | OOS CAGR % |",
+               "|---|---:|---:|---:|---:|---:|---:|"]
     for r in results:
         eq_oos = r["equity"][oos_start:] / r["equity"][oos_start]
         dd_oos = float(((eq_oos / np.maximum.accumulate(eq_oos)) - 1.0).min())
         cagr_oos = (eq_oos[-1] ** (365.25 / len(eq_oos)) - 1.0) * 100
-        md.append(f"| {r['name']} | {r['total_pct']:+.1f} | {r['cagr']:+.1f} | {r['max_dd']:.1f} | "
-                  f"{r['sharpe']:.2f} | {r['n_trades']} | {cagr_oos:+.1f} |")
+        row = (f"| {r['name']} | {r['total_pct']:+.1f} | {r['cagr']:+.1f} | {r['max_dd']:.1f} | "
+               f"{r['sharpe']:.2f} | {r['n_trades']} | {cagr_oos:+.1f} |")
+        if args.eval_last_days > 0:
+            lp = r.get("last_pnl_pct")
+            ld = r.get("last_dd_pct")
+            row += f" {lp:+.1f} | {ld:.1f} |" if lp is not None else " — | — |"
+        md.append(row)
     md += ["", f"**BTC buy&hold: {bh:+.1f}%**",
            "",
            "**Критерий доходности:** OOS CAGR > 0 и MaxDD < 40% и Sharpe > 0.5."]

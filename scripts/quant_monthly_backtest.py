@@ -239,11 +239,17 @@ def main() -> int:
     parser.add_argument("--months", type=int, default=1, help="backtest window in calendar months")
     parser.add_argument("--no-ml-gate", action="store_true",
                         help="control scenario: disable the ML>=0.65 entry filter")
+    parser.add_argument("--ml-min-prob", type=float, default=0.65,
+                        help="ML entry threshold (deployed effective gate: 0.5061 calibrated)")
     parser.add_argument("--free-profile", action="store_true",
                         help="signals quality run: no position limit, no DD/daily-loss kill, fixed $200 stake")
     parser.add_argument("--price-source", default="binance",
                         help="binance (default proxy) | allowlist (kucoin>bitstamp>mexc) | имя биржи")
+    parser.add_argument("--trail-ratio", type=float, default=0.988,
+                        help="trailing exit ratio (main A/B arm: 1.0)")
     args = parser.parse_args()
+    PROFILE["ml_min_prob_up"] = args.ml_min_prob
+    PROFILE["trail_ratio"] = args.trail_ratio
     ml_gate = not args.no_ml_gate
     if args.free_profile:
         tag = "free_profile_ml" if ml_gate else "free_profile_no_ml"
