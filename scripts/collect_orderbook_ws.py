@@ -112,6 +112,7 @@ async def consume_one(ws, pair: str, interval: float, store: WSStore,
     trades: dict[str, float] = {"buy": 0.0, "sell": 0.0, "n": 0.0}
     last_trade_ts = 0.0
     last_latency_ms = 0.0
+    last_trade_seen_ts = 0.0
     while True:
         raw = await ws.recv()
         msg = json.loads(raw)
@@ -121,6 +122,7 @@ async def consume_one(ws, pair: str, interval: float, store: WSStore,
             evt = msg.get("E")
             if evt is not None:
                 last_latency_ms = max(0.0, time.time() * 1000.0 - float(evt))
+                last_trade_seen_ts = time.time()
             qty = float(msg.get("q", 0.0))
             if msg.get("m"):
                 trades["sell"] += qty
@@ -142,7 +144,9 @@ async def consume_one(ws, pair: str, interval: float, store: WSStore,
         if msg.get("lastUpdateId") is None:
             continue
         now = time.time()
-        snap = depth_msg_to_snapshot(msg, now * 1000.0, latency_ms=last_latency_ms)
+        # latency is only trustworthy while trades are flowing on this connection
+        snap_latency = last_latency_ms if (now - last_trade_seen_ts) <= 10.0 else 0.0
+        snap = depth_msg_to_snapshot(msg, now * 1000.0, latency_ms=snap_latency)
         if snap is None:
             continue
         if full:
