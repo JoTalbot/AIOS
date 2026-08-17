@@ -207,8 +207,9 @@ class FreelanceMarketRadar:
         # Try python-filtered first, then fallback to all
         api_pages = list(range(1, max_pages+1))
         use_python_filter = _os.getenv("AIOS_FH_PYTHON_FILTER", "1") == "1"
+        stop_pagination = False
         for page_num in api_pages:
-            if len(tasks) >= max_pages*10:
+            if stop_pagination or len(tasks) >= max_pages*10:
                 break
             if use_python_filter:
                 api_urls = [
@@ -264,6 +265,11 @@ class FreelanceMarketRadar:
                             logger.info(f"✅ Freelancehunt API page {page_num} found {len(tasks)} total")
                 except Exception as e:
                     logger.warning(f"⚠️ Freelancehunt API {url} ошибка: {e}")
+                    if getattr(e, "code", None) == 400:
+                        # API отдаёт 400 на страницах за пределами выдачи —
+                        # дальнейшие страницы не запрашиваем (меньше спама и задержек)
+                        stop_pagination = True
+                        break
                     continue
             import time as _t
             _t.sleep(0.5)

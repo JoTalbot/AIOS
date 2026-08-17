@@ -32,6 +32,59 @@ CONTROL = REPO_ROOT / "data" / "multi_exchange_portfolios_owner_paper_control.js
 OUT = REPO_ROOT / "data" / "reports" / "quant_ab_report.json"
 
 
+def load_trade_pnls(data: dict) -> list[float]:
+    """Per-trade net PnL from persisted trade_logs (across exchanges)."""
+
+    pnls: list[float] = []
+    for key, value in data.items():
+        if key.startswith("_") or key == "cross_arbitrage":
+            continue
+        for t in (value or {}).get("trade_log") or []:
+            raw = t.get("net_pnl_usd")
+            if raw is None:
+                continue  # отсутствующий PnL не считаем наблюдением
+            try:
+                pnls.append(float(raw))
+            except (TypeError, ValueError):
+                continue
+    return pnls
+
+
+def ab_verdict(main_pnls: list[float], control_pnls: list[float], *,
+               min_trades: int = 15, n_boot: int = 2000, seed: int = 42) -> dict | None:
+    """Bootstrap comparison of per-trade PnL; None until both arms have data.
+
+    Returns None when not enough trades; otherwise dict with means, observed
+    difference, 90% CI and a significance flag (CI excludes zero).
+    """
+
+    if len(main_pnls) < min_trades or len(control_pnls) < min_trades:
+        return None
+    import numpy as np
+
+    rng = np.random.default_rng(seed)
+    main = np.asarray(main_pnls, dtype=float)
+    control = np.asarray(control_pnls, dtype=float)
+    obs = float(main.mean() - control.mean())
+    boots = []
+    for _ in range(n_boot):
+        sm = rng.choice(main, size=len(main), replace=True)
+        sc = rng.choice(control, size=len(control), replace=True)
+        boots.append(float(sm.mean() - sc.mean()))
+    boots = np.asarray(boots)
+    lo, hi = float(np.quantile(boots, 0.05)), float(np.quantile(boots, 0.95))
+    return {
+        "n_main": len(main),
+        "n_control": len(control),
+        "main_mean": round(float(main.mean()), 4),
+        "control_mean": round(float(control.mean()), 4),
+        "diff_obs": round(obs, 4),
+        "ci90": [round(lo, 4), round(hi, 4)],
+        "significant": bool(lo > 0 or hi < 0),
+        "winner": "main" if obs > 0 else ("control" if obs < 0 else "tie"),
+    }
+
+
 def _portfolio_stats(data: dict) -> dict:
     """Aggregate paper metrics across exchange portfolios."""
 
@@ -130,9 +183,11 @@ def main() -> int:
         return 0
     main_data = json.loads(MAIN.read_text(encoding="utf-8"))
     control_data = json.loads(CONTROL.read_text(encoding="utf-8"))
+    verdict = ab_verdict(load_trade_pnls(main_data), load_trade_pnls(control_data))
     report = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "comparison": compare_portfolios(main_data, control_data),
+        "ab_verdict": verdict,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(report, indent=2, ensure_ascii=False))
@@ -141,9 +196,20 @@ def main() -> int:
     text = (
         "📊 <b>Directional v2 A/B paper</b> (main trail=1.0 vs control 0.988)\n"
         + _fmt_side("🅰️ main", c["main"]) + "\n"
-        + _fmt_side("🅱️ control", c["control"]) + "\n"
-        + "Полные данные: data/reports/quant_ab_report.json"
+        + _fmt_side("🅱️ control", c["control"])
     )
+    if verdict:
+        sig = "✅ значимо" if verdict["significant"] else "≈ незначимо"
+        text += (
+            f"\n🔬 <b>A/B вердикт готов</b> (n={verdict['n_main']}/{verdict['n_control']}):\n"
+            f"main {verdict['main_mean']:+.3f}$/сд. vs control {verdict['control_mean']:+.3f}$/сд.\n"
+            f"diff {verdict['diff_obs']:+.3f} | CI90 [{verdict['ci90'][0]:+.3f}, {verdict['ci90'][1]:+.3f}] | {sig}"
+        )
+    else:
+        text += (
+            "\n🔬 A/B вердикт ещё не готов (нужно ≥15 закрытых сделок в каждом контуре)"
+        )
+    text += "\nПолные данные: data/reports/quant_ab_report.json"
     print(text.replace("<b>", "").replace("</b>", ""))
     if args.notify:
         print("notified:", _tg(text))

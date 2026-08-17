@@ -19,7 +19,7 @@ def test_dependency_contract_is_consistent() -> None:
     report = dependency_contract(ROOT)
 
     assert report["errors"] == []
-    assert report["counts"] == {"minimal": 12, "direct": 47, "locked": 198}
+    assert report["counts"] == {"minimal": 13, "direct": 47, "locked": 198}
     assert report["transitive_locked_count"] == 151
 
 
