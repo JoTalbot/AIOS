@@ -23,6 +23,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from aios_core.quant.ml_gate_calibration import compute_quantiles, threshold_is_sane
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 QUANT_DIR = REPO_ROOT / "data" / "quant"
@@ -265,8 +266,9 @@ def main() -> int:
     result["candidate_v2"] = _eval_model(candidate, df_test, NEW_FEATURES)
     print("CANDIDATE v2 (scale-free):", json.dumps(result["candidate_v2"], ensure_ascii=False))
 
-    # 3. Persist candidate only when it beats the deployed AUC and reaches
-    #    a non-degenerate probability range on OOS.
+    # 3. Persist candidate only when it beats the deployed AUC, reaches a
+    #    non-degenerate probability range on OOS, AND a sane calibration
+    #    threshold can be computed from its own test-window distribution.
     dep, cand = result["deployed"], result["candidate_v2"]
     better = (
         cand is not None
@@ -274,23 +276,44 @@ def main() -> int:
         and (cand.get("hit_065") or 0.0) >= 0.65
         and (cand.get("cov_065") or 0.0) >= 0.0005
     )
-    if better:
-        MODELS_DIR.mkdir(parents=True, exist_ok=True)
-        candidate.save_model(str(MODELS_DIR / "catboost_price_dir_v2.cbm"))
-        import joblib
+    prob_up = None
+    if result.get("candidate_v2") is not None:
+        X_test = df_test[NEW_FEATURES].values.astype(np.float64)
+        prob_up = candidate.predict_proba(X_test)[:, 1]
+    deployed = False
+    if better and prob_up is not None and len(prob_up) > 0:
+        quantiles = compute_quantiles(prob_up)
+        q90 = quantiles["q90"]
+        if threshold_is_sane(q90):
+            from datetime import datetime, timezone
 
-        joblib.dump(candidate, MODELS_DIR / "catboost_price_dir_v2.pkl")
-        print("✅ saved candidate -> catboost_price_dir_v2.cbm/.pkl")
+            MODELS_DIR.mkdir(parents=True, exist_ok=True)
+            candidate.save_model(str(MODELS_DIR / "catboost_price_dir_v2.cbm"))
+            import joblib
+
+            joblib.dump(candidate, MODELS_DIR / "catboost_price_dir_v2.pkl")
+            cal_file = QUANT_DIR / "ml_prob_calibration.json"
+            cal_file.write_text(json.dumps({
+                "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "model": "catboost_price_dir_v2.cbm",
+                "n_series": len(frames),
+                "n_samples": int(len(prob_up)),
+                "window_days": None,  # test-window distribution of the candidate
+                "quantiles": quantiles,
+                "threshold_q90": q90,
+            }, indent=2) + "\n", encoding="utf-8")
+            deployed = True
+            print(f"✅ saved candidate + calibration (q90={q90}) -> catboost_price_dir_v2.cbm/.pkl")
+        else:
+            print(f"⚠️ candidate NOT deployed: calibration q90={q90} outside sane band")
+    elif better:
+        print("⚠️ candidate NOT deployed: could not compute calibration distribution")
     else:
         print("ℹ️ candidate not saved (does not satisfy improvement criteria)")
+    result["calibration_deployed"] = deployed
 
     # Engine-style paper trade simulation for the candidate (threshold 0.60/0.65).
-    if result.get("candidate_v2") is not None:
-        cand = CatBoostClassifier()
-        cand = candidate
-        X_test = df_test[NEW_FEATURES].values.astype(np.float64)
-        proba = cand.predict_proba(X_test)
-        prob_up = proba[:, 1]
+    if result.get("candidate_v2") is not None and prob_up is not None:
         for thr in (0.60, 0.65):
             sim = _simulate_engine_trades(df_test, prob_up, thr)
             print(f"SIM threshold={thr}:", json.dumps(sim, ensure_ascii=False))

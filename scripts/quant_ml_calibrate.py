@@ -34,6 +34,11 @@ QUANT_DIR = REPO_ROOT / "data" / "quant"
 MODELS_DIR = QUANT_DIR / "models"
 DEFAULT_OUT = QUANT_DIR / "ml_prob_calibration.json"
 
+from aios_core.quant.ml_gate_calibration import (  # noqa: E402
+    CALIBRATION_BAND,
+    compute_quantiles,
+    threshold_is_sane,
+)
 from aios_core.quant.ml_predictor import DEFAULT_FEATURES  # noqa: E402
 
 
@@ -127,26 +132,22 @@ def main() -> int:
     if n_series == 0 or not prob_up_all:
         raise SystemExit("no features computed; aborting (no calibration file written)")
 
-    arr = np.array(prob_up_all, dtype=float)
-    quantiles = {
-        "q50": round(float(np.quantile(arr, 0.50)), 4),
-        "q75": round(float(np.quantile(arr, 0.75)), 4),
-        "q90": round(float(np.quantile(arr, 0.90)), 4),
-        "q95": round(float(np.quantile(arr, 0.95)), 4),
-        "q99": round(float(np.quantile(arr, 0.99)), 4),
-    }
+    quantiles = compute_quantiles(prob_up_all)
     payload = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "model": model_path.name,
         "n_series": n_series,
-        "n_samples": int(arr.size),
+        "n_samples": len(prob_up_all),
         "window_days": args.window_days,
         "quantiles": quantiles,
         "threshold_q90": quantiles["q90"],
     }
+    if not threshold_is_sane(quantiles["q90"]):
+        print(f"⚠️ q90={quantiles['q90']} outside sane band {CALIBRATION_BAND}; file still written for diagnostics")
+        # still write, but the policy floor/cap keeps the gate fail-closed
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    print(f"wrote {args.out}: n_series={n_series} n_samples={arr.size} q90={quantiles['q90']} (q50={quantiles['q50']}, q95={quantiles['q95']})")
+    print(f"wrote {args.out}: n_series={n_series} n_samples={len(prob_up_all)} q90={quantiles['q90']} (q50={quantiles['q50']}, q95={quantiles['q95']})")
     return 0
 
 
