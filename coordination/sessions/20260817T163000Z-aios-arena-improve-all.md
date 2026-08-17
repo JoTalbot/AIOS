@@ -59,3 +59,12 @@ claim: "coordination/claims/improve-all--20260817T163000Z-aios-arena.md (сня�
   в main — CI зелёный.
 - Блокеры: нет.
 - Риски: dependabot runtime-бампы ждут перегенерации lock; GHA-бампы — проверки CI.
+## Дополнение (пункт 8 закрыт)
+
+- Владелец выбрал A+гигиену: veto сохранён; лог моста → динамическое имя модели;
+  удалены ppo_trader/v3/v4/v5/v8 (оставлены v9 + ppo_multi_24.pt — свежий внешний
+  артефакт 17.08 04:01, не создаётся кодом репо); rl_signals.json обновляется
+  ежечасно в generate_quant_signal_product.py (_refresh_rl_signals, guarded).
+- Проверки: pytest test_rl_signal_hygiene.py + test_quant_signal_product.py 4/4;
+  прогон сигнал-продукта: rl_signals.json обновлён (10 сигналов, FLAT), лог
+  «LSTM-PPO ppo_v9.pt загружена». Коммит ed7e50e8.
