@@ -10,6 +10,18 @@
 
 ## Где закончили
 
+**2026-08-17 (Arena.ai, финальные операции с добром владельца):** Docker Build
+& Push починен (PR #185: временные trivy-исключения для prom/prometheus v3.13.2,
+Go stdlib <1.26.6; убрать при релизе v3.14.0+) — прогон на main SUCCESS.
+GHA-бампы применены (PR #186: upload-artifact 7.0.1, download-artifact 8.0.1,
+codecov 7.0.0, login-action 4.6.0, action-gh-release 3, SHA-пины). Все 14
+dependabot-веток разобраны (4 dev смержены ранее, 10 закрыты как superseded
+или конфликтующие), открытых PR 0. Все CI main зелёные (плюс transient
+429/503 GitHub, перезапущены). Журнал:
+`coordination/sessions/20260817T183000Z-aios-arena-final-ops.md`.
+
+## Где закончили
+
 **2026-08-17 (Arena.ai, PR и зависимости):** PR #182 (trading hardening +
 quant research, 139 коммитов) СМЕРЖЕН в main (squash ed054ec8), CI 6/6 зелёный.
 Dependabot: 4 dev-бампа смержены ранее; 5 runtime-веток устарели — закрыты,
