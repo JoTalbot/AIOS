@@ -75,11 +75,32 @@ def _latest_rows(data_root: Path, symbol: str, limit: int = 150, *, now_ms: floa
     ]
 
 
+def watch_thresholds(data_root: Path) -> tuple[float, float]:
+    """Data-driven WATCH thresholds from the ML calibration file.
+
+    UP = clamp(q75, 0.55, 0.65); DOWN = clamp(q25, 0.35, 0.45).
+    Static fallback 0.60/0.40 when the calibration file is missing.
+    """
+
+    q75, q25 = 0.60, 0.40
+    try:
+        cal = json.loads((data_root / "ml_prob_calibration.json").read_text(encoding="utf-8"))
+        q = cal.get("quantiles") or {}
+        q75 = float(q.get("q75", q75))
+        q25 = float(q.get("q25", q25))
+    except (OSError, ValueError, TypeError):
+        pass
+    up = min(0.65, max(0.55, q75))
+    down = max(0.35, min(0.45, q25))
+    return round(up, 4), round(down, 4)
+
+
 def build_report(data_root: Path, ml_path: Path, rl_path: Path, *, now_ms: float) -> dict:
     ml = _json(ml_path, {}).get("signals", [])
     rl = _json(rl_path, {}).get("signals", [])
     ml_by = {str(item.get("symbol", "")).upper(): item for item in ml}
     rl_by = {str(item.get("asset", "")).upper(): item for item in rl}
+    up_thr, down_thr = watch_thresholds(data_root)
     signals = []
     symbols = sorted(set(ml_by) | set(rl_by))
     for symbol in symbols:
@@ -95,9 +116,12 @@ def build_report(data_root: Path, ml_path: Path, rl_path: Path, *, now_ms: float
         regime = str(feature["regime"])
         if age_hours > 2 or regime == "illiquid":
             label = "NO_DATA"
-        elif regime == "trend_up" and prob >= 0.60 and position > 0.30:
+        elif regime == "trend_up" and prob >= up_thr:
+            # RL-условие убрано (ревизия 2026-08-17): развёрнутая PPO v9 всегда
+            # FLAT (position=0), поэтому position>0.30 делало WATCH_UP
+            # недостижимым; пороги берутся из калибровки модели.
             label = "WATCH_UP"
-        elif regime == "trend_down" and prob <= 0.40:
+        elif regime == "trend_down" and prob <= down_thr:
             label = "WATCH_DOWN"
         else:
             label = "NEUTRAL"

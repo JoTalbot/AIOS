@@ -230,6 +230,15 @@ def run_multi_exchange_cycle(engine) -> dict[str, Any]:
                                 "net_pnl_usd": net_pnl,
                             }
                         )
+                        portfolio.setdefault("trade_log", []).append(
+                            {
+                                "ts": now,
+                                "exchange": exchange,
+                                "symbol": symbol,
+                                "reason": reason,
+                                "net_pnl_usd": net_pnl,
+                            }
+                        )
 
         risk_state["last_directional_candle"] = candle_id
     else:

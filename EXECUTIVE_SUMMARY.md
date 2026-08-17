@@ -1,5 +1,13 @@
 # AIOS Executive Summary — v9.3.1
 
+# AIOS Executive Summary — v9.3.1
+
+> **Актуально на 2026-08-17:** трейдинг-контур отхарднен и работает в автономном
+> режиме (A/B paper, еженедельные отчёты, scoreboard стратегий, MM-данные
+> набираются); полный pytest зелёный, CI/Docker Build success, 10 PR смержены.
+> Детали: `coordination/PROJECT_CONTEXT.md` (блоки «Где закончили» 2026-08-17)
+> и журналы `coordination/sessions/20260817*`.
+
 > **Исторический снимок:** метрики относятся к sprint v9.3.1 от 2026-07-23, а не к текущему состоянию проекта. Текущая версия определяется файлом [`VERSION`](VERSION), актуальный аудит — [`docs/PROJECT_ANALYSIS_2026-08-14_RU.md`](docs/PROJECT_ANALYSIS_2026-08-14_RU.md).
 
 ## Code Quality & Architecture Sprint — 120+ Commits (2026-07-23)

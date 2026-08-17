@@ -10,6 +10,17 @@
 
 ## Где закончили
 
+**2026-08-17 (Arena.ai, system-sweep 1-5):** health-sweep — 0 failed, OLX жив
+(legacy-файл протух by design), Freelancehunt пагинация починена (стоп на 400);
+Directional v2 пишет trade_log, weekly A/B-отчёт получил бустрап-вердикт
+(≥15 сделок/контур → diff, CI90, significant); WATCH-пороги сигнал-продукта
+data-driven (RL-условие убрано — было недостижимо); DeFi-срез здоров
+(fail-closed by design, router dry-run); ROADMAP/EXECUTIVE_SUMMARY обновлены.
+Коммит `10024d26`, ветка `agent/20260817-system-sweep`.
+Журнал: `coordination/sessions/20260817T210000Z-aios-arena-system-sweep.md`.
+
+## Где закончили
+
 **2026-08-17 (Arena.ai, scoreboard стратегий — решение «как лучше»):** M2 в
 paper НЕ поставлен (OOS −46%/2г не проходит честный гейт); вместо этого
 ежемесячный автоматический бэктест: scripts/quant_strategy_scoreboard.py +
