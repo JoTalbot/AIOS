@@ -10,6 +10,14 @@
 
 ## Где закончили
 
+**2026-08-17 (Arena.ai, тесты и claims):** полный pytest снова полностью
+зелёный (EXIT=0): починены 3 преэкзистинг-провала (tests/macro: gran + helper
+test_→eval_; tests/test_v22_api: route count 6), удалены 4 устаревших
+DONE-claim, PROJECT_INVENTORY перегенерирован. Коммиты `34ea53cf`, `762a134a`,
+`64973996`, `47e89ed9`, `05681cb9`; ветка `agent/20260817-trading-improvements`.
+
+## Где закончили
+
 **2026-08-17 (Arena.ai, ws-стрим-сплит):** depth и aggTrade разнесены по
 отдельным соединениям в orderbook-ws (всплески сделок больше не затапливают
 поток глубины); измеряемая latency очистилась: p90 3.1с → 0.13-0.16с,
@@ -192,7 +200,7 @@ AIOS — production-монорепозиторий, объединяющий:
 4. **✅ Dependency drift — mitigated:** роли minimal 12 / full direct 47 / exact lock 198 формализованы и проверяются; конфликт WebSockets/Web3 устранён, production lock воспроизводим на Python 3.11.
 5. **✅ Tracking/ignore risk — mitigated:** глобальный `*.json` удалён, source build-каталог возвращён в Git, runtime/sensitive paths игнорируются точечно и проверяются тестом.
 6. **✅ Устаревающие repository metrics — mitigated:** текущие цифры генерируются в `docs/PROJECT_INVENTORY.md`, CI проверяет exact snapshot; старые audit-документы помечены historical.
-7. **✅ Негерметичный test baseline — mitigated:** live LLM/runtime paths заменены mocks/tmp fixtures; полный suite 5 160 = 5 153 passed, 7 skipped, 0 failed.
+7. **✅ Негерметичный test baseline — mitigated:** live LLM/runtime paths заменены mocks/tmp fixtures; полный suite зелёный (0 failed; восстановлено 2026-08-17 после фиксов macro/v22).
 8. **✅ Runtime/generated artifacts — mitigated:** logs, CatBoost event и debug capture больше не tracked; физические production files сохранены и игнорируются точечно.
 9. **✅ LLM proxy/Kilo unfinished work — completed:** 36-model catalog, tool routing/SSE, Colab guards и atomic sync покрыты тестами и развернуты; runtime healthy.
 10. **🟡 Trading expectancy — controlled/frozen:** честный OOS walk-forward отрицательный (average −0.354%, PF 0.374); entries/live запрещены, пока новая гипотеза не пройдёт fresh OOS и 30d/200-close gates.
