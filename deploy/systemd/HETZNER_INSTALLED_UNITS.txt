@@ -1,4 +1,4 @@
-# Installed aios-* unit-file names, read-only snapshot 2026-08-14 UTC.
+# Installed aios-* unit-file names, read-only snapshot 2026-08-17 UTC (orderbook-ws-prune + freqtrade-t2-dry added).
 aios-2captcha-balance.service
 aios-2captcha-balance.timer
 aios-accounting-report.service
@@ -63,6 +63,7 @@ aios-finance-autobook.service
 aios-finance-autobook.timer
 aios-flash-arb.service
 aios-freelance-brain.service
+aios-freqtrade-t2-dry.service
 aios-gdrive-backup.service
 aios-gdrive-backup.timer
 aios-gdrive-sync.service
@@ -110,6 +111,8 @@ aios-olx-price.service
 aios-olx-price.timer
 aios-ops-health.service
 aios-ops-health.timer
+aios-orderbook-ws-prune.service
+aios-orderbook-ws-prune.timer
 aios-phone-battery-alert.service
 aios-phone-battery-alert.timer
 aios-phone-brain.service
