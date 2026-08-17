@@ -10,6 +10,29 @@
 
 ## Где закончили
 
+**2026-08-17 (Arena.ai, пакет улучшений трейдинга по решению владельца):**
+(1) orderbook-ws: реальная задержка (latency_ms из aggTrade E, avg ~205ms —
+partial-depth стрим не содержит E) и полный 100мс-стрим BTC/ETH
+(--full-pairs, ~8.6 сэмпл/с каждая) для микроструктурного анализа; остальные
+19 пар — 1Hz. (2) MemoryMax для трейдинг-демонов (market-data 2G,
+orderbook-ws/freqtrade 1.5G, quant main/control/ml-inference 1G) + swap 8G
+(swapfile2 4G в fstab) — защита от host-OOM. (3) Ретрайн ML теперь деплоит
+кандидата только вместе с sane-калибровкой (q90 из его test-window
+распределения, band 0.40-0.90); хелперы compute_quantiles/threshold_is_sane в
+aios_core/quant/ml_gate_calibration.py. (4) quant_ml_monitor проверяет свежесть
+калибровки (mtime модели vs калибровки) и застой A/B paper (>3дн, 0 входов при
+enabled); run_health_check подхватывает проблемы → TG. (5) Еженедельный
+A/B-отчёт scripts/quant_ab_report.py + aios-quant-ab-report.timer (Sun 16:30Z).
+ВАЖНО: после калибровки гейта (0.5061) Directional v2 paper дал ПЕРВЫЕ входы:
+1 сделка в каждом контуре (kraken, net −2.06 USD на $10k, fees+exec −1.0,
+max DD 0.021%) — A/B-эксперимент начал накапливать статистику.
+Полный pytest: 3 преэкзистинг-провала чужих областей (tests/macro gran,
+test_v22_api monetization routes, ERROR macro test_feature) — не от правок.
+Ветка `agent/20260817-trading-improvements` (5 коммитов, не опубликована).
+Журнал: `coordination/sessions/20260817T093000Z-aios-arena-trading-improvements.md`.
+
+## Где закончили
+
 **2026-08-17 (Arena.ai, трейдинг-харденинг по решениям владельца):** (а) Ops:
 aios-chrome-colab-secondary (crash-loop 7536 рестартов, X-сервер отсутствует)
 остановлен+disable; BrowserMetrics Chrome 29G удалён (диск 94% → 54%).
@@ -33,8 +56,9 @@ seam `aios_core/quant/ml_gate_calibration.py`, accounting-тесты; A/B main/c
 
 ## Следующий рекомендуемый шаг
 
-1. Наблюдать за входами Directional v2 (порог 0.5061; kill-switch DD/day 0.25%):
-   если входы появятся — сравнить A/B main vs control после ≥30 сделок.
+1. Directional v2 paper: входы пошли (1 сделка в каждом контуре на 17.08);
+   A/B-отчёт приходит еженедельно (вс 16:30Z), алерт застоя — в health check;
+   вердикт A/B — после ≥30 сделок.
 2. Через 2-4 недели: переобучить MM-сигнал на ws-данных (1Гц), модель очереди,
    калибровка порогов; вердикт по MM.
 3. DCA-трекер: проверить депозиты/PnL, при желании владельца — реальные покупки.
