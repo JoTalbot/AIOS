@@ -1,4 +1,4 @@
-# Installed aios-* unit-file names, read-only snapshot 2026-08-17 UTC (mm-queue-priority added).
+# Installed aios-* unit-file names, read-only snapshot 2026-08-17 UTC (strategy-scoreboard added).
 aios-2captcha-balance.service
 aios-2captcha-balance.timer
 aios-accounting-report.service
@@ -142,6 +142,8 @@ aios-signal-autoreply.service
 aios-signal-desktop.service
 aios-sms-alert.service
 aios-sms-alert.timer
+aios-strategy-scoreboard.service
+aios-strategy-scoreboard.timer
 aios-telegram-bot.service
 aios-telegram-colab-canary.service
 aios-telegram-colab-canary.timer
