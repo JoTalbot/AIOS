@@ -10,6 +10,20 @@
 
 ## Где закончили
 
+**2026-08-17 (Arena.ai, пакет улучшений 1-8):** 2 failed-сервиса починены
+(canary SKIP при выключенном мониторинге; restore-drill от aios-telegram);
+~2.8G мёртвых chrome-профилей удалены (диск 56%); PR #182 открыт в main
+(139 коммитов); 4 dev-dependabot PR смержены, 5 runtime оставлены до
+перегенерации lock; интроспекция сделок Directional v2 (ml_prob/confidence в
+ENTRY + trade-лог); A/B-строка в утренний брифинг; заготовка приоритета
+очереди (scripts/mm_queue_priority.py + weekly-таймер, первые цифры τ5с≈11-13%);
+RL-статус задокументирован (docs/RL_STATUS_2026-08-17_RU.md) — решение
+владельца ожидается. Ветка agent/20260817-trading-improvements (35 коммитов)
+синхронизирована с origin. Журнал:
+coordination/sessions/20260817T163000Z-aios-arena-improve-all.md.
+
+## Где закончили
+
 **2026-08-17 (Arena.ai, BNB maker-rebate проверка):** сетка комиссий на
 gated/naive MM: BNB gated требует ребейт ≥1.27bps/сторону для безубыточности
 (лучший в выборке; BTC 2.56bps); при 0% комиссии всё равно отрицателен
