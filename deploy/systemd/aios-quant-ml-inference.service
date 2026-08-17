@@ -10,6 +10,7 @@ Environment=PYTHONPATH=/root/AIOS
 ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_quant_ml_inference.py --daemon --interval 600
 Restart=always
 RestartSec=20
+MemoryMax=1024M
 
 [Install]
 WantedBy=multi-user.target

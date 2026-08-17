@@ -29,6 +29,7 @@ Environment=AIOS_QUANT_TRAIL_RATIO=1.0
 ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_quant_trading.py --daemon --interval 900
 Restart=always
 RestartSec=10
+MemoryMax=1024M
 
 [Install]
 WantedBy=multi-user.target

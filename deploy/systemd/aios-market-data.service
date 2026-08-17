@@ -10,6 +10,7 @@ Environment=PYTHONPATH=/root/AIOS
 ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_market_data_collector.py daemon --interval 900 --timeframe 1h --limit 500 --orderbooks
 Restart=always
 RestartSec=30
+MemoryMax=2048M
 
 [Install]
 WantedBy=multi-user.target

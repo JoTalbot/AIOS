@@ -8,9 +8,10 @@ Type=simple
 User=root
 WorkingDirectory=/root/AIOS
 Environment=PYTHONPATH=/root/AIOS
-ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/collect_orderbook_ws.py --pairs BTC ETH SOL XRP BNB DOGE ADA TRX TON LINK AVAX UNI NEAR LTC DOT SUI APT ARB OP INJ --interval 1.0 --db /root/AIOS/data/quant/orderbooks.sqlite
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/collect_orderbook_ws.py --pairs BTC ETH SOL XRP BNB DOGE ADA TRX TON LINK AVAX UNI NEAR LTC DOT SUI APT ARB OP INJ --interval 1.0 --db /root/AIOS/data/quant/orderbooks.sqlite --full-pairs BTC ETH
 Restart=always
 RestartSec=10
+MemoryMax=1536M
 
 [Install]
 WantedBy=multi-user.target
