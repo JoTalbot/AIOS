@@ -8,17 +8,17 @@
 | Метрика | Значение |
 |---|---:|
 | Package version | `19.9.0` |
-| Стабильных tracked-файлов | 6,339 |
-| Строк | 609,231 |
-| Размер | 24.85 MiB |
-| Python-файлов | 3,504 |
-| Строк Python | 359,321 |
-| Классов / функций / async | 2,987 / 19,862 / 1,636 |
+| Стабильных tracked-файлов | 6,345 |
+| Строк | 609,701 |
+| Размер | 24.87 MiB |
+| Python-файлов | 3,506 |
+| Строк Python | 359,671 |
+| Классов / функций / async | 2,987 / 19,878 / 1,636 |
 | Python syntax errors | 0 |
-| Test Python files / test functions | 959 / 6,666 |
-| Markdown-файлов | 2,041 |
+| Test Python files / test functions | 960 / 6,674 |
+| Markdown-файлов | 2,043 |
 | Root `run_*.py` | 113 |
-| Уникальных tracked service/timer names | 204 |
+| Уникальных tracked service/timer names | 206 |
 
 ## Крупнейшие области
 
@@ -26,14 +26,14 @@
 |---|---:|---:|---:|
 | `aios_core` | 971 | 158,129 | 5.92 MiB |
 | `skills` | 2,641 | 109,481 | 4.73 MiB |
-| `docs` | 472 | 75,780 | 3.25 MiB |
-| `tests` | 541 | 70,503 | 2.45 MiB |
+| `docs` | 474 | 75,879 | 3.26 MiB |
+| `tests` | 542 | 70,598 | 2.45 MiB |
 | `[root]` | 217 | 35,122 | 1.38 MiB |
-| `scripts` | 274 | 32,261 | 1.22 MiB |
+| `scripts` | 275 | 32,516 | 1.23 MiB |
 | `attic` | 33 | 30,669 | 1.61 MiB |
 | `octopus_services` | 110 | 27,850 | 0.90 MiB |
 | `tg_bot` | 33 | 12,229 | 0.62 MiB |
-| `deploy` | 246 | 6,323 | 0.18 MiB |
+| `deploy` | 248 | 6,344 | 0.18 MiB |
 | `octopus_instructions` | 102 | 5,959 | 0.50 MiB |
 | `octopus_roadmap` | 13 | 4,741 | 0.22 MiB |
 | `tools` | 46 | 4,441 | 0.15 MiB |
@@ -49,11 +49,11 @@
 
 | Расширение | Файлов |
 |---|---:|
-| `.py` | 3,504 |
-| `.md` | 2,041 |
+| `.py` | 3,506 |
+| `.md` | 2,043 |
 | `.json` | 147 |
-| `.service` | 132 |
-| `.timer` | 78 |
+| `.service` | 133 |
+| `.timer` | 79 |
 | `.sh` | 68 |
 | `.tsx` | 65 |
 | `.yaml` | 59 |

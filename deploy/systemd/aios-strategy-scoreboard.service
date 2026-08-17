@@ -1,0 +1,9 @@
+[Unit]
+Description=AIOS Monthly Strategy Scoreboard (automated month-window backtest verdict)
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+Environment=PYTHONPATH=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/quant_strategy_scoreboard.py
