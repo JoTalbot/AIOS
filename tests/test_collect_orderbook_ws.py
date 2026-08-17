@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.collect_orderbook_ws import depth_msg_to_snapshot  # noqa: E402
+from scripts.collect_orderbook_ws import depth_msg_to_snapshot, snapshot_latency  # noqa: E402
 
 
 def test_valid_depth_message_carries_measured_latency():
@@ -44,3 +44,11 @@ def test_garbage_messages_are_none():
     assert depth_msg_to_snapshot({"lastUpdateId": 1, "bids": [], "asks": []}, 1.0) is None
     assert depth_msg_to_snapshot({"lastUpdateId": 1, "bids": [["0", "1"]], "asks": [["1", "1"]]}, 1.0) is None
     assert depth_msg_to_snapshot({"lastUpdateId": 1, "bids": [["100", "1"]], "asks": [["99", "1"]]}, 1.0) is None
+
+
+def test_snapshot_latency_trusted_only_while_trades_flow():
+    shared = {"latency_ms": 150.0, "last_trade_seen_ts": 1000.0}
+    assert snapshot_latency(shared, 1005.0) == 150.0          # fresh trade
+    assert snapshot_latency(shared, 1010.0) == 150.0          # exactly at the edge
+    assert snapshot_latency(shared, 1011.0) == 0.0            # stale -> untrusted
+    assert snapshot_latency({}, 1000.0) == 0.0                # no trades yet
