@@ -23,7 +23,7 @@ def test_hetzner_installed_units_are_represented() -> None:
     masks = _manifest_names("HETZNER_MASKED_UNITS.txt")
     inventory = repository_unit_inventory(ROOT)
 
-    assert len(installed) == 164
+    assert len(installed) == 166
     assert masks == {
         "aios-auto-coder.service",
         "aios-auto-promote.service",

@@ -168,6 +168,8 @@ def run_multi_exchange_cycle(engine) -> dict[str, Any]:
                             "execution_price": execution_price,
                             "fees_usd": entry_fee,
                             "execution_cost_usd": execution_cost,
+                            "ml_prob_up": analysis.get("ml_prob_up"),
+                            "signal_confidence": analysis.get("confidence"),
                         }
                     )
 

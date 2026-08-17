@@ -66,6 +66,27 @@ def _read(path: Path, default):
         return default
 
 
+def _ab_paper_line(main_path: Path, control_path: Path) -> str | None:
+    """Directional-v2 paper A/B digest; None when portfolio files are missing."""
+
+    try:
+        def stats(path: Path) -> tuple[int, float]:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            exchanges = [v for k, v in data.items() if k not in {"cross_arbitrage", "_risk_state"}]
+            closed = sum(int(v.get("closed_trades", 0) or 0) for v in exchanges)
+            realized = sum(float(v.get("realized_pnl_usd", 0.0) or 0.0) for v in exchanges)
+            return closed, realized
+
+        m_closed, m_pnl = stats(main_path)
+        c_closed, c_pnl = stats(control_path)
+    except Exception:
+        return None
+    return (
+        f"📊 Directional v2 paper A/B: main {m_closed} сд. ({m_pnl:+.2f}$) | "
+        f"control {c_closed} сд. ({c_pnl:+.2f}$)"
+    )
+
+
 def _abank_phone() -> dict:
     """Балансы и последние операции A-Bank с телефона (справочно, без записи в финансы)."""
     import json as _j
@@ -248,6 +269,14 @@ def build() -> str:
         lines.append(f"🚀 Крипто-Заработок (5 бирж $5k): Капитал ${tot_eq:,.2f} USD (PnL: {p_sign}${tot_pnl:.2f} USD)")
     except Exception:
         pass
+
+    # Directional v2 paper A/B (main vs control)
+    ab_line = _ab_paper_line(
+        ROOT / "data" / "multi_exchange_portfolios_owner_paper.json",
+        ROOT / "data" / "multi_exchange_portfolios_owner_paper_control.json",
+    )
+    if ab_line:
+        lines.append(ab_line)
 
     # Quant Signal Monitor (read-only WATCH-сигналы)
     try:
