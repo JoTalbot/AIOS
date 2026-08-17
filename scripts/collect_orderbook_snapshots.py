@@ -30,7 +30,8 @@ EXCHANGE_SYMBOLS = {"bitstamp": {"BTC", "ETH"}}
 class OrderbookStore:
     def __init__(self, path: Path):
         path.parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(path)
+        self.db = sqlite3.connect(path, timeout=30.0)
+        self.db.execute("PRAGMA busy_timeout=30000")
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=NORMAL")
         self.db.execute("""CREATE TABLE IF NOT EXISTS snapshots (
