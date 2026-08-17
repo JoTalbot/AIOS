@@ -126,6 +126,17 @@ def check() -> dict:
         except Exception as e:
             problems.append(f"🔴 {name}: ошибка проверки {e}")
 
+    # проблемы quant-мониторинга (дрифт, свежесть калибровки, застой A/B paper)
+    try:
+        _qm = json.loads(Path("/root/AIOS/data/reports/quant_ml_monitor.json").read_text(encoding="utf-8"))
+        if _qm.get("status") != "OK":
+            for _prob in _qm.get("problems") or []:
+                problems.append(f"🟠 quant: {_prob}")
+        else:
+            ok_count += 1
+    except Exception:
+        pass
+
     return {"ok": ok_count, "problems": problems, "total": ok_count + len(problems)}
 
 
