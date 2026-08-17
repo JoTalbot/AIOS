@@ -8,8 +8,8 @@
 | Метрика | Значение |
 |---|---:|
 | Package version | `19.9.0` |
-| Стабильных tracked-файлов | 6,314 |
-| Строк | 607,238 |
+| Стабильных tracked-файлов | 6,316 |
+| Строк | 607,258 |
 | Размер | 24.77 MiB |
 | Python-файлов | 3,488 |
 | Строк Python | 357,672 |
@@ -18,7 +18,7 @@
 | Test Python files / test functions | 949 / 6,634 |
 | Markdown-файлов | 2,036 |
 | Root `run_*.py` | 113 |
-| Уникальных tracked service/timer names | 200 |
+| Уникальных tracked service/timer names | 202 |
 
 ## Крупнейшие области
 
@@ -33,7 +33,7 @@
 | `attic` | 33 | 30,669 | 1.61 MiB |
 | `octopus_services` | 110 | 27,850 | 0.90 MiB |
 | `tg_bot` | 33 | 12,229 | 0.62 MiB |
-| `deploy` | 242 | 6,277 | 0.18 MiB |
+| `deploy` | 244 | 6,297 | 0.18 MiB |
 | `octopus_instructions` | 102 | 5,959 | 0.50 MiB |
 | `octopus_roadmap` | 13 | 4,741 | 0.22 MiB |
 | `tools` | 46 | 4,441 | 0.15 MiB |
@@ -52,8 +52,8 @@
 | `.py` | 3,488 |
 | `.md` | 2,036 |
 | `.json` | 147 |
-| `.service` | 130 |
-| `.timer` | 76 |
+| `.service` | 131 |
+| `.timer` | 77 |
 | `.sh` | 68 |
 | `.tsx` | 65 |
 | `.yaml` | 59 |
