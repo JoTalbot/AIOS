@@ -85,6 +85,37 @@ def ab_verdict(main_pnls: list[float], control_pnls: list[float], *,
     }
 
 
+def required_trades_for_power(effect_usd: float, sd_usd: float, *,
+                                power: float = 0.80, alpha: float = 0.10) -> int:
+    """Trades per arm needed to detect `effect_usd` with given power
+    (two-sided t-test approximation, pooled sd)."""
+
+    import math
+    from statistics import NormalDist
+
+    z_alpha = NormalDist().inv_cdf(1 - alpha / 2)
+    z_beta = NormalDist().inv_cdf(power)
+    n = int(math.ceil(2 * (sd_usd / effect_usd) ** 2 * (z_alpha + z_beta) ** 2))
+    return max(n, 2)
+
+
+def basket_benchmark(path: Path) -> dict | None:
+    """Latest basket-paper row as the passive benchmark (None when absent)."""
+
+    try:
+        lines = [l for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+        if not lines:
+            return None
+        last = json.loads(lines[-1])
+        return {
+            "value_usd": float(last.get("value_usd", 0.0)),
+            "pnl_pct": float(last.get("pnl_pct", 0.0)),
+            "fees_paid_usd": float(last.get("fees_paid_usd", 0.0)),
+        }
+    except (OSError, ValueError, TypeError):
+        return None
+
+
 def _portfolio_stats(data: dict) -> dict:
     """Aggregate paper metrics across exchange portfolios."""
 
@@ -184,10 +215,18 @@ def main() -> int:
     main_data = json.loads(MAIN.read_text(encoding="utf-8"))
     control_data = json.loads(CONTROL.read_text(encoding="utf-8"))
     verdict = ab_verdict(load_trade_pnls(main_data), load_trade_pnls(control_data))
+    basket = basket_benchmark(REPO_ROOT / "data" / "reports" / "basket_paper.jsonl")
+    power = {
+        "effect_0.1usd": required_trades_for_power(0.1, 2.0),
+        "effect_0.2usd": required_trades_for_power(0.2, 2.0),
+        "effect_0.3usd": required_trades_for_power(0.3, 2.0),
+    }
     report = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "comparison": compare_portfolios(main_data, control_data),
         "ab_verdict": verdict,
+        "basket_benchmark": basket,
+        "power_required_trades": power,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(report, indent=2, ensure_ascii=False))
@@ -207,7 +246,13 @@ def main() -> int:
         )
     else:
         text += (
-            "\n🔬 A/B вердикт ещё не готов (нужно ≥15 закрытых сделок в каждом контуре)"
+            "\n🔬 A/B вердикт ещё не готов (нужно ≥15 закрытых сделок в каждом контуре; "
+            f"для 80% мощности: {power['effect_0.2usd']} сделок/контур при эффекте 0.2$/сд.)"
+        )
+    if basket:
+        text += (
+            f"\n🧺 Бенчмарк корзина топ-10: {basket['pnl_pct']:+.2f}% "
+            f"(value ${basket['value_usd']:.2f}, fees ${basket['fees_paid_usd']:.2f})"
         )
     text += "\nПолные данные: data/reports/quant_ab_report.json"
     print(text.replace("<b>", "").replace("</b>", ""))

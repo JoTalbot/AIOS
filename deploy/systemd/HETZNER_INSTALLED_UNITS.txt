@@ -1,4 +1,4 @@
-# Installed aios-* unit-file names, read-only snapshot 2026-08-17 UTC (strategy-scoreboard added).
+# Installed aios-* unit-file names, read-only snapshot 2026-08-17 UTC (basket-paper added).
 aios-2captcha-balance.service
 aios-2captcha-balance.timer
 aios-accounting-report.service
@@ -31,6 +31,8 @@ aios-backlog-dedup.service
 aios-backlog-dedup.timer
 aios-backup-sessions.service
 aios-backup-sessions.timer
+aios-basket-paper.service
+aios-basket-paper.timer
 aios-calls-transcriber.service
 aios-chrome-colab-secondary.service
 aios-chrome-vnc.service
