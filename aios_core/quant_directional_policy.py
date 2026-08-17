@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 
@@ -36,6 +38,9 @@ class DirectionalV2Config:
     take_profit_pct: float = 0.02
     stop_loss_pct: float = -0.01
     trail_ratio: float = 0.988
+    ml_calibrate: bool = False
+    ml_calibrate_file: str = "data/quant/ml_prob_calibration.json"
+    ml_calibrate_floor: float = 0.50
 
     @classmethod
     def from_env(cls) -> DirectionalV2Config:
@@ -63,6 +68,9 @@ class DirectionalV2Config:
             take_profit_pct=max(0.0, float(os.environ.get("AIOS_QUANT_TAKE_PROFIT_PCT", "0.02"))),
             stop_loss_pct=min(0.0, float(os.environ.get("AIOS_QUANT_STOP_LOSS_PCT", "-0.01"))),
             trail_ratio=min(1.0, max(0.0, float(os.environ.get("AIOS_QUANT_TRAIL_RATIO", "0.988")))),
+            ml_calibrate=_env_bool("AIOS_QUANT_ML_CALIBRATE", False),
+            ml_calibrate_file=os.environ.get("AIOS_QUANT_ML_CALIBRATE_FILE", "data/quant/ml_prob_calibration.json"),
+            ml_calibrate_floor=min(1.0, max(0.0, float(os.environ.get("AIOS_QUANT_ML_CALIBRATE_FLOOR", "0.50")))),
         )
 
     def entry_execution_price(self, mid_price: float) -> float:
@@ -102,6 +110,21 @@ def portfolio_equity(
     return total_initial, total_equity, unpriced
 
 
+def _calibrated_ml_threshold(path: str) -> float | None:
+    """Read q90 threshold from the calibration file; None on any failure.
+
+    No cache on purpose: the file is read a few dozen times per 15-minute
+    scan, and this host's filesystem can return identical st_mtime_ns for
+    consecutive rewrites, so mtime-based caching would serve stale values.
+    """
+
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        return float(data.get("threshold_q90"))
+    except (OSError, ValueError, TypeError):
+        return None
+
+
 def entry_block_reason(
     config: DirectionalV2Config,
     analysis: dict[str, Any],
@@ -135,8 +158,14 @@ def entry_block_reason(
     if float(analysis.get("confidence", 0.0) or 0.0) < config.min_confidence:
         return "confidence_below_min"
     ml_prob = analysis.get("ml_prob_up")
-    if config.require_ml and (ml_prob is None or float(ml_prob) < config.ml_min_prob_up):
-        return "ml_not_confirmed"
+    if config.require_ml:
+        ml_min = config.ml_min_prob_up
+        if config.ml_calibrate:
+            calibrated = _calibrated_ml_threshold(config.ml_calibrate_file)
+            if calibrated is not None:
+                ml_min = min(ml_min, max(config.ml_calibrate_floor, calibrated))
+        if ml_prob is None or float(ml_prob) < ml_min:
+            return "ml_not_confirmed"
     rl_position = analysis.get("rl_position")
     if rl_position is not None and float(rl_position) <= config.rl_veto_position:
         return "rl_veto"
