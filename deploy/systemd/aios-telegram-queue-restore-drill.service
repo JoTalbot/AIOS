@@ -4,7 +4,7 @@ After=local-fs.target
 
 [Service]
 Type=oneshot
-User=root
+User=aios-telegram
 WorkingDirectory=/root/AIOS
 Environment=AIOS_TELEGRAM_BACKUP_DIR=/var/backups/aios/telegram-queues
 Environment=AIOS_TELEGRAM_KEY_BACKUP_DIR=/var/backups/aios/telegram-queue-keys

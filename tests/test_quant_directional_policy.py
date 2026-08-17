@@ -81,3 +81,53 @@ def test_bearish_signal_requires_hold_confidence_and_ml_confirmation():
     assert bearish_exit_confirmed(config, analysis, held_seconds=3_601)
     assert not bearish_exit_confirmed(config, analysis, held_seconds=100)
     assert not bearish_exit_confirmed(config, {**analysis, "ml_prob_up": 0.5}, held_seconds=3_601)
+
+
+def _entry_kwargs():
+    return {
+        "exchange": "kucoin",
+        "global_positions": 0,
+        "exchange_positions": 0,
+        "drawdown_pct": 0.0,
+        "daily_loss_pct": 0.0,
+        "candle_is_new": True,
+    }
+
+
+def test_ml_gate_calibration_lowers_threshold_to_q90(tmp_path):
+    cal_file = tmp_path / "ml_prob_calibration.json"
+    cal_file.write_text('{"threshold_q90": 0.5061}', encoding="utf-8")
+    config, analysis = _allowed(ml_calibrate=True, ml_calibrate_file=str(cal_file))
+    # ml_min_prob_up=0.60 (default) + calibrated q90=0.5061 -> effective min(0.60, 0.5061)
+    assert entry_block_reason(config, {**analysis, "ml_prob_up": 0.51}, **_entry_kwargs()) is None
+    assert entry_block_reason(config, {**analysis, "ml_prob_up": 0.50}, **_entry_kwargs()) == "ml_not_confirmed"
+
+
+def test_ml_gate_calibration_respects_floor_and_cap(tmp_path):
+    cal_file = tmp_path / "ml_prob_calibration.json"
+    cal_file.write_text('{"threshold_q90": 0.45}', encoding="utf-8")
+    # floor 0.50 wins
+    config, analysis = _allowed(ml_calibrate=True, ml_calibrate_file=str(cal_file))
+    assert entry_block_reason(config, {**analysis, "ml_prob_up": 0.51}, **_entry_kwargs()) is None
+    assert entry_block_reason(config, {**analysis, "ml_prob_up": 0.49}, **_entry_kwargs()) == "ml_not_confirmed"
+    # cap: owner's ml_min_prob_up never exceeded by calibration
+    cal_file.write_text('{"threshold_q90": 0.99}', encoding="utf-8")
+    config = DirectionalV2Config(entry_mode="enabled", require_ml=True, ml_calibrate=True, ml_calibrate_file=str(cal_file))
+    # calibrated 0.99 is capped by ml_min_prob_up=0.60 -> 0.59 blocked, 0.61 allowed
+    assert entry_block_reason(config, {**analysis, "ml_prob_up": 0.59}, **_entry_kwargs()) == "ml_not_confirmed"
+    assert entry_block_reason(config, {**analysis, "ml_prob_up": 0.61}, **_entry_kwargs()) is None
+
+
+def test_ml_gate_calibration_missing_file_falls_back_to_cap(tmp_path):
+    config, analysis = _allowed(ml_calibrate=True, ml_calibrate_file=str(tmp_path / "nope.json"))
+    # q90 file missing -> fall back to ml_min_prob_up=0.60 (strict, fail-closed)
+    assert entry_block_reason(config, {**analysis, "ml_prob_up": 0.59}, **_entry_kwargs()) == "ml_not_confirmed"
+    assert entry_block_reason(config, {**analysis, "ml_prob_up": 0.61}, **_entry_kwargs()) is None
+
+
+def test_ml_gate_calibration_disabled_keeps_static_threshold(tmp_path):
+    cal_file = tmp_path / "ml_prob_calibration.json"
+    cal_file.write_text('{"threshold_q90": 0.45}', encoding="utf-8")
+    config, analysis = _allowed(ml_calibrate=False, ml_calibrate_file=str(cal_file))
+    # static ml_min_prob_up=0.60 stays authoritative
+    assert entry_block_reason(config, {**analysis, "ml_prob_up": 0.55}, **_entry_kwargs()) == "ml_not_confirmed"

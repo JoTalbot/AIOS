@@ -8,7 +8,7 @@ Type=simple
 User=root
 WorkingDirectory=/root/AIOS
 Environment=PYTHONPATH=/root/AIOS
-ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/collect_orderbook_snapshots.py daemon --symbols BTC ETH SOL --exchanges binance kucoin mexc --interval 30 --depth 10 --retention-days 14
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/collect_orderbook_snapshots.py daemon --symbols BTC ETH SOL --exchanges binance kucoin mexc okx bitstamp coinbase --interval 5 --depth 10 --retention-days 14
 Restart=always
 RestartSec=15
 

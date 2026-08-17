@@ -1,0 +1,14 @@
+[Unit]
+Description=AIOS crypto news + LLM sentiment collector (Gemini)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+Environment=PYTHONPATH=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/collect_news_sentiment.py --limit 40
+
+[Install]
+WantedBy=multi-user.target

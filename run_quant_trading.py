@@ -50,6 +50,8 @@ def run_cycle(legacy, multi_engine) -> dict:
         float(risk.get("daily_loss_pct", 0.0) or 0.0),
         risk.get("block_reasons", {}),
     )
+    for trade in multi_result.get("cycle_trades", []):
+        logger.info(trade_line(trade))
     for signal in legacy_result.get("signals", []):
         if signal.get("signal") != "HOLD":
             logger.info(
@@ -59,6 +61,24 @@ def run_cycle(legacy, multi_engine) -> dict:
                 float(signal.get("confidence", 0.0)) * 100.0,
             )
     return {"legacy": legacy_result, "multi": multi_result}
+
+
+def trade_line(trade: dict) -> str:
+    """One-line introspection of a paper trade (unit-tested)."""
+
+    loc = f"{trade.get('exchange', '?')}:{trade.get('symbol', '?')}"
+    if trade.get("action") == "BUY_LONG":
+        return (
+            f"🔎 [TRADE] {loc} BUY_LONG mid={trade.get('mid_price'):.4f} "
+            f"exec={trade.get('execution_price'):.4f} fees={trade.get('fees_usd', 0.0):.4f} "
+            f"exec_cost={trade.get('execution_cost_usd', 0.0):.4f} "
+            f"conf={trade.get('signal_confidence')} ml_up={trade.get('ml_prob_up')}"
+        )
+    return (
+        f"🔎 [TRADE] {loc} CLOSE({trade.get('reason', '?')}) mid={trade.get('mid_price'):.4f} "
+        f"net={trade.get('net_pnl_usd', 0.0):+.4f} gross={trade.get('gross_pnl_usd', 0.0):+.4f} "
+        f"fees={trade.get('fees_usd', 0.0):.4f}"
+    )
 
 
 def run_daemon(interval_seconds: int = 900) -> None:

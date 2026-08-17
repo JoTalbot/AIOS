@@ -1,0 +1,20 @@
+[Unit]
+Description=AIOS T2 momentum paper loops (BTC/ETH/SOL hyst 50/40 + BNB/NEAR SMA50 + portfolio, daily TG)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+Environment=PYTHONPATH=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/run_t2_momentum.py --symbol BTC-USD --in-w 50 --out-w 40 --notify --daily-report
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/run_t2_momentum.py --symbol ETH-USD --in-w 50 --out-w 40 --notify --daily-report
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/run_t2_momentum.py --symbol SOL-USD --in-w 50 --out-w 40 --notify --daily-report
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/run_t2_momentum.py --symbol BNB-USD --notify --daily-report
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/run_t2_momentum.py --symbol NEAR-USD --notify --daily-report
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/t2_portfolio.py
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/dca_chart_report.py --send
+
+[Install]
+WantedBy=multi-user.target

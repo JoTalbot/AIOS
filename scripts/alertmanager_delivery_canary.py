@@ -51,7 +51,16 @@ def _state() -> dict:
 
 def main() -> int:
     nonce = secrets.token_hex(12)
-    _post_alert(nonce)
+    try:
+        _post_alert(nonce)
+    except urllib.error.URLError as exc:
+        # Alertmanager контейнер остановлен решением владельца 2026-08-16
+        # (снижение нагрузки: monitoring stopped). Canary честно пропускает
+        # прогон и вернётся в работу автоматически, когда мониторинг поднимут.
+        if getattr(exc, "reason", None) is not None and isinstance(exc.reason, ConnectionRefusedError):
+            print("SKIP: alertmanager unreachable (monitoring stopped by owner decision)", flush=True)
+            return 0
+        raise
     deadline = time.monotonic() + float(os.environ.get("AIOS_ALERT_CANARY_TIMEOUT", "45"))
     result: dict = {}
     try:

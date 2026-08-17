@@ -1,0 +1,9 @@
+[Unit]
+Description=AIOS Directional v2 paper A/B weekly report (main vs control)
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+Environment=PYTHONPATH=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/quant_ab_report.py --notify

@@ -1,0 +1,13 @@
+{
+  "strategy_name": "T2Momentum",
+  "params": {
+    "buy": {
+      "in_w": 50
+    },
+    "sell": {
+      "out_w": 40
+    }
+  },
+  "ft_stratparam_v": 1,
+  "export_time": "2026-08-16 restored-post-validation"
+}

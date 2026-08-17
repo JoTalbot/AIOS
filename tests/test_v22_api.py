@@ -64,14 +64,15 @@ def test_olx_price_intel_fixture(tmp_path, monkeypatch):
 
 
 def test_monetization_routes_registered():
-    """get_monetization_routes: 5 endpoint'ов, все под /api/v2/mon/."""
+    """get_monetization_routes: 6 endpoint'ов, все под /api/v2/mon/."""
     from aios_core.api.monetization_routes import get_monetization_routes
 
     routes = get_monetization_routes()
-    assert len(routes) == 5
+    assert len(routes) == 6
     paths = {r.path for r in routes}
     assert "/api/v2/mon/olx-price" in paths
     assert "/api/v2/mon/products" in paths
+    assert "/api/v2/mon/quant-signals" in paths
     assert all(p.startswith("/api/v2/mon/") for p in paths)
 
 

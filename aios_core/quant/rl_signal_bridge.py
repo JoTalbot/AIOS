@@ -20,10 +20,22 @@ from datetime import datetime, timezone
 from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MODEL_FILE = REPO_ROOT / "data" / "quant" / "models" / "ppo_v8.pt"  # лучшая LSTM-PPO (300 эп, +75.23%)
+MODEL_FILE = REPO_ROOT / "data" / "quant" / "models" / "ppo_v9.pt"  # LSTM-PPO v9 (300 эп, sum_rl +96% vs BH −114%)
 OUT_FILE = REPO_ROOT / "data" / "quant" / "rl_signals.json"
 
 LOG_TAG = "[RLSignalBridge]"
+
+# 32 актива среды обучения (quant_train_ppo.py, MultiAssetEnv):
+# self.names = sorted(assets.keys()) — onehot-индекс актива в этом порядке.
+# Используется как fallback; предпочтительно читать assets из чекпоинта
+# модели (ppo_v9.pt сохраняет {"policy", "assets"}), т.к. v8 обучалась с
+# MATIC, а v9 — с POL (разные индексы в onehot).
+ASSET_ORDER_DEFAULT = sorted([
+    "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX", "LINK", "DOT",
+    "POL", "LTC", "TRX", "ATOM", "UNI", "ETC", "FIL", "APT", "NEAR", "ARB",
+    "OP", "SUI", "TIA", "SEI", "TON", "INJ", "KAS", "FET", "WIF", "BONK",
+    "PEPE", "SHIB",
+])
 
 
 class RLSignalBridge:
@@ -33,6 +45,7 @@ class RLSignalBridge:
         self.model_file = Path(model_file or MODEL_FILE)
         self._policy = None
         self._model_available = self.model_file.exists()
+        self.asset_names = ASSET_ORDER_DEFAULT
 
     # ---- модель ----
     def _load_policy(self):
@@ -83,6 +96,7 @@ class RLSignalBridge:
 
             ckpt = torch.load(self.model_file, map_location="cpu")
             sd = ckpt.get("policy", ckpt)
+            self.asset_names = sorted(ckpt.get("assets") or ASSET_ORDER_DEFAULT)
             # определяем архитектуру по наличию lstm-слоя
             if "lstm.weight_ih_l0" in sd:
                 w = sd["fc_pre.weight"]
@@ -95,7 +109,7 @@ class RLSignalBridge:
                 net.load_state_dict(sd)
                 self._policy = net
                 self._is_lstm = True
-                print(f"{LOG_TAG} LSTM-PPO v4 загружена (obs_dim={obs_dim})")
+                print(f"{LOG_TAG} LSTM-PPO {MODEL_FILE.name} загружена (obs_dim={obs_dim})")
             else:
                 w = sd["fc_pre.weight"]
                 obs_dim = w.shape[1]
@@ -104,7 +118,7 @@ class RLSignalBridge:
                 net.load_state_dict(sd)
                 self._policy = net
                 self._is_lstm = False
-                print(f"{LOG_TAG} MLP-PPO v3 загружена (obs_dim={obs_dim})")
+                print(f"{LOG_TAG} MLP-PPO {MODEL_FILE.name} загружена (obs_dim={obs_dim})")
             net.eval()
         except Exception as e:
             print(f"{LOG_TAG} [WARN] Ошибка загрузки PPO-модели: {e}")
@@ -124,7 +138,7 @@ class RLSignalBridge:
             d = json.loads(r.read())
         return [[int(x[0]), float(x[1]), float(x[2]), float(x[3]), float(x[4]), float(x[5])] for x in d]
 
-    def _make_obs(self, rows: list, window: int = 10) -> Optional[list]:
+    def _make_obs(self, rows: list, asset_name: Optional[str] = None, window: int = 10) -> Optional[list]:
         import numpy as np
         if len(rows) < window + 1:
             return None
@@ -140,10 +154,14 @@ class RLSignalBridge:
                 m[i] = closes[i] / closes[i - period] - 1.0
             return m
         mom5 = mom(5); mom12 = mom(12)
-        vol_chg = [0.0] * n
-        for i in range(1, n):
-            vol_chg[i] = vols[i] / vols[i - 1] - 1.0 if vols[i-1] else 0.0
-        # волатильность
+        # vol_ratio: volume / rolling(10)-mean — признак #3 среды обучения v8.
+        # (Раньше здесь был vol_chg — несоответствие обучению: модель видела
+        #  другой 3-й статический признак.)
+        vol_ratio = [0.0] * n
+        for i in range(n):
+            lo = max(0, i - 9)
+            vol_ratio[i] = vols[i] / ((sum(vols[lo:i + 1]) / (i - lo + 1)) + 1e-9)
+        # vol_norm: rolling(10) std возвратов / среднее по ряду
         vol_arr = [0.01]*n
         for i in range(1, n):
             w = returns[max(0,i-10):i]
@@ -153,7 +171,7 @@ class RLSignalBridge:
         last = n - 1
         base = np.concatenate([
             rets_w,
-            [mom5[last], mom12[last], vol_chg[last], vol_arr[last]/vmean]
+            [mom5[last], mom12[last], vol_ratio[last], vol_arr[last]/vmean]
         ]).astype(np.float32)
         exp = self._obs_dim
         if base.shape[0] == exp:
@@ -161,22 +179,26 @@ class RLSignalBridge:
         # мультиактив-модель: base (window+4) + onehot (n_assets)
         if exp > base.shape[0]:
             n_assets = exp - base.shape[0]
+            asset_names = getattr(self, "asset_names", ASSET_ORDER_DEFAULT)
+            if asset_name is None or asset_name not in asset_names:
+                # Актив не из обучающего универсума — честно сообщаем «нет сигнала»
+                # вместо того, чтобы подставлять чужой onehot-индекс.
+                return None
             onehot = np.zeros(n_assets, dtype=np.float32)
-            # предполагаем BTC как индекс 0 (первый актив)
-            onehot[0] = 1.0
+            onehot[asset_names.index(asset_name)] = 1.0
             obs = np.concatenate([base, onehot]).astype(np.float32)
             if obs.shape[0] == exp:
                 return obs
         return None
 
     # ---- предсказание ----
-    def predict_symbol(self, binance_symbol: str) -> Optional[dict]:
+    def predict_symbol(self, binance_symbol: str, asset_name: Optional[str] = None) -> Optional[dict]:
         policy = self._load_policy()
         if policy is None:
             return None
         try:
             rows = self._fetch_binance(binance_symbol)
-            obs = self._make_obs(rows)
+            obs = self._make_obs(rows, asset_name)
             if obs is None:
                 return None
             import torch
@@ -184,6 +206,10 @@ class RLSignalBridge:
                 o_t = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
                 mean, _, _ = policy(o_t)
                 act = mean[0][0].item()
+                # В обучении (kg_v8) действие clamp(-1,1) до конвертации в
+                # дискрету {0,1,2}; без clamp mean может выйти за [-1,1] и дать
+                # недопустимую позицию (например, -0.5).
+                act = max(-1.0, min(1.0, act))
                 pos = int((act + 1) / 2 * 2) / 2.0  # 0, 0.5, 1
             return {
                 "symbol": binance_symbol,
@@ -204,12 +230,12 @@ class RLSignalBridge:
             symbols = {
                 "BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT", "BNB": "BNBUSDT",
                 "XRP": "XRPUSDT", "ADA": "ADAUSDT", "DOGE": "DOGEUSDT", "LINK": "LINKUSDT",
-                "DOT": "DOTUSDT", "MATIC": "MATICUSDT",
+                "DOT": "DOTUSDT", "POL": "POLUSDT",
             }
         signals = []
         for name, sym in symbols.items():
             try:
-                res = self.predict_symbol(sym)
+                res = self.predict_symbol(sym, asset_name=name)
                 if res:
                     res["asset"] = name
                     signals.append(res)

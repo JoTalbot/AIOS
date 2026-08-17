@@ -8,33 +8,33 @@
 | Метрика | Значение |
 |---|---:|
 | Package version | `19.9.0` |
-| Стабильных tracked-файлов | 6,116 |
-| Строк | 557,967 |
-| Размер | 22.25 MiB |
-| Python-файлов | 3,391 |
-| Строк Python | 339,738 |
-| Классов / функций / async | 2,961 / 19,204 / 1,631 |
+| Стабильных tracked-файлов | 6,338 |
+| Строк | 609,159 |
+| Размер | 24.84 MiB |
+| Python-файлов | 3,503 |
+| Строк Python | 359,263 |
+| Классов / функций / async | 2,985 / 19,856 / 1,636 |
 | Python syntax errors | 0 |
-| Test Python files / test functions | 931 / 6,550 |
-| Markdown-файлов | 1,979 |
+| Test Python files / test functions | 958 / 6,663 |
+| Markdown-файлов | 2,041 |
 | Root `run_*.py` | 113 |
-| Уникальных tracked service/timer names | 169 |
+| Уникальных tracked service/timer names | 204 |
 
 ## Крупнейшие области
 
 | Область | Файлов | Строк | Размер |
 |---|---:|---:|---:|
-| `aios_core` | 970 | 157,997 | 5.91 MiB |
+| `aios_core` | 971 | 158,129 | 5.92 MiB |
 | `skills` | 2,641 | 109,481 | 4.73 MiB |
-| `tests` | 505 | 66,555 | 2.29 MiB |
-| `docs` | 410 | 44,797 | 1.42 MiB |
-| `[root]` | 217 | 35,026 | 1.38 MiB |
+| `docs` | 472 | 75,780 | 3.25 MiB |
+| `tests` | 540 | 70,462 | 2.45 MiB |
+| `[root]` | 217 | 35,108 | 1.38 MiB |
+| `scripts` | 274 | 32,244 | 1.22 MiB |
 | `attic` | 33 | 30,669 | 1.61 MiB |
 | `octopus_services` | 110 | 27,850 | 0.90 MiB |
-| `scripts` | 186 | 16,772 | 0.64 MiB |
-| `tg_bot` | 32 | 12,060 | 0.62 MiB |
+| `tg_bot` | 33 | 12,229 | 0.62 MiB |
+| `deploy` | 246 | 6,323 | 0.18 MiB |
 | `octopus_instructions` | 102 | 5,959 | 0.50 MiB |
-| `deploy` | 211 | 5,876 | 0.17 MiB |
 | `octopus_roadmap` | 13 | 4,741 | 0.22 MiB |
 | `tools` | 46 | 4,441 | 0.15 MiB |
 | `converge` | 11 | 4,414 | 0.17 MiB |
@@ -49,13 +49,13 @@
 
 | Расширение | Файлов |
 |---|---:|
-| `.py` | 3,391 |
-| `.md` | 1,979 |
-| `.json` | 137 |
-| `.service` | 113 |
-| `.sh` | 67 |
+| `.py` | 3,503 |
+| `.md` | 2,041 |
+| `.json` | 147 |
+| `.service` | 132 |
+| `.timer` | 78 |
+| `.sh` | 68 |
 | `.tsx` | 65 |
-| `.timer` | 62 |
 | `.yaml` | 59 |
 | `.yml` | 58 |
 | `.ts` | 31 |
@@ -92,7 +92,7 @@
 | `aios_core/agent_memory_system.py` | 1,574 |
 | `run_coder_orchestrator.py` | 1,466 |
 | `tests/test_v10_12_modules.py` | 1,445 |
-| `run_telegram_bot.py` | 1,401 |
+| `run_telegram_bot.py` | 1,409 |
 | `tg_bot/phone.py` | 1,308 |
 | `tests/test_v10_15_behavioral.py` | 1,274 |
 | `tests/test_phase4_test_engine.py` | 1,258 |

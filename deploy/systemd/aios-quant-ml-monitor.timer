@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly AIOS Quant ML monitor
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=300
+Unit=aios-quant-ml-monitor.service
+
+[Install]
+WantedBy=timers.target

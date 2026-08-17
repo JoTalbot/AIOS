@@ -28,7 +28,14 @@ MODELS_DIR = QUANT_DIR / "models"
 
 LOG_TAG = "[QuantMLPredictor]"
 
-DEFAULT_FEATURES = ["open", "high", "low", "close", "volume", "ret1", "ema12", "ema26", "rsi", "vol_ma"]
+# Scale-free features (v2 model, trained by scripts/quant_ml_eval_train.py).
+# Identical scale across assets (BTC vs PEPE), which the old raw-price feature
+# set lacked; order must match the training script exactly.
+DEFAULT_FEATURES = [
+    "ret1", "ret3", "ret6", "ret12", "ret24",
+    "rsi", "bb_pos", "macd_norm", "ema_gap",
+    "vol_ratio", "vol_z", "bar_range_pct", "hl_pos",
+]
 
 
 class QuantMLPredictor:
@@ -42,8 +49,9 @@ class QuantMLPredictor:
 
     # ------------------------------------------------------------ loading ----
     def _load_model(self) -> None:
-        """Загрузить CatBoost-модель если она есть."""
+        """Загрузить CatBoost-модель; v2 (scale-free features) приоритетнее."""
         candidates = [
+            self.models_dir / "catboost_price_dir_v2.cbm",
             self.models_dir / "catboost_price_dir.cbm",
             self.models_dir / "catboost_price_dir.pkl",
         ]
@@ -69,24 +77,44 @@ class QuantMLPredictor:
 
     # -------------------------------------------------------- prediction ----
     def _features_from_csv(self, csv_path: Path) -> Optional[list]:
-        """Построить вектор признаков из последних строк CSV."""
+        """Построить вектор признаков из последних строк CSV.
+
+        Формулы должны совпадать 1:1 с scripts/quant_ml_eval_train.py
+        (_compute_features) — модель v2 обучена на этих же признаках.
+        """
         try:
             df = pd.read_csv(csv_path)
         except Exception as e:
             print(f"{LOG_TAG} [WARN] CSV {csv_path}: {e}")
             return None
-        if len(df) < 26:
+        if len(df) < 40:
             return None
         df = df.sort_values("timestamp_ms")
         df["close"] = pd.to_numeric(df["close"], errors="coerce")
         df["volume"] = pd.to_numeric(df["volume"], errors="coerce")
         g = df[["open", "high", "low", "close", "volume"]].copy()
         g["ret1"] = g["close"].pct_change()
+        g["ret3"] = g["close"].pct_change(3)
+        g["ret6"] = g["close"].pct_change(6)
+        g["ret12"] = g["close"].pct_change(12)
+        g["ret24"] = g["close"].pct_change(24)
+        chg = g["close"].pct_change()
+        up = chg.clip(lower=0).rolling(14).mean()
+        down = (-chg.clip(upper=0)).rolling(14).mean()
+        g["rsi"] = 100.0 - 100.0 / (1.0 + up / down.replace(0, 1e-9))
+        bb_mid = g["close"].rolling(20).mean()
+        bb_std = g["close"].rolling(20).std()
+        g["bb_pos"] = ((g["close"] - bb_mid + 2 * bb_std) / (4 * bb_std).replace(0, 1e-9)).clip(0, 1)
         g["ema12"] = g["close"].ewm(span=12).mean()
         g["ema26"] = g["close"].ewm(span=26).mean()
-        g["rsi"] = 100 - 100 / (1 + g["close"].pct_change().rolling(14).mean() /
-                                g["close"].pct_change().rolling(14).std().replace(0, 1e-9))
-        g["vol_ma"] = g["volume"].rolling(20).mean()
+        g["macd_norm"] = (g["ema12"] - g["ema26"]) / g["close"]
+        g["ema_gap"] = (g["ema12"] - g["ema26"]) / g["close"]
+        vol_mean = g["volume"].rolling(20).mean()
+        vol_std = g["volume"].rolling(20).std()
+        g["vol_ratio"] = g["volume"] / vol_mean.replace(0, 1e-9)
+        g["vol_z"] = (g["volume"] - vol_mean) / vol_std.replace(0, 1e-9)
+        g["bar_range_pct"] = (g["high"] - g["low"]) / g["close"]
+        g["hl_pos"] = (g["close"] - g["low"]) / (g["high"] - g["low"]).replace(0, 1e-9)
         last = g.dropna().iloc[-1]
         try:
             return [float(last[c]) for c in DEFAULT_FEATURES]
@@ -130,11 +158,17 @@ class QuantMLPredictor:
         """Прогноз по всем активам, для которых есть данные."""
         if not self.available:
             return [{"ok": False, "error": "Модель не обучена. Запустите Colab-ноутбук Quant ML Training."}]
+        # Мёртвые/переименованные тикеры (MATIC->POL, RNDR->RENDER): старые
+        # папки данных остаются, но в сигналы не включаются.
+        dead = {"MATIC", "RNDR"}
         if symbols is None:
             symbols = sorted(d.name for d in QUANT_DIR.iterdir()
-                             if d.is_dir() and not d.name.startswith("_") and d.name not in ("export", "models", "uniswap_v3"))
+                             if d.is_dir() and not d.name.startswith("_")
+                             and d.name not in ("export", "models", "uniswap_v3", *dead))
         out = []
         for s in symbols:
+            if s in dead:
+                continue
             r = self.predict_symbol(s)
             if r.get("ok"):
                 out.append(r)

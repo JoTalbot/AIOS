@@ -1,0 +1,14 @@
+[Unit]
+Description=AIOS Freqtrade T2 dry-run bot (independent live validation of T2 signals)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/AIOS
+ExecStart=/root/freqtrade-venv/bin/freqtrade trade --config /root/AIOS/scripts/freqtrade_config_t2.json --strategy T2Momentum --strategy-path /root/AIOS/scripts --userdir /root/AIOS/data/freqtrade --logfile /var/log/aios-freqtrade-t2-dry.log
+Restart=on-failure
+RestartSec=30
+MemoryMax=1536M
+
+[Install]
+WantedBy=multi-user.target

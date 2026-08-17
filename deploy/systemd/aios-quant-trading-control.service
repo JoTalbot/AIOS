@@ -1,0 +1,35 @@
+[Unit]
+Description=AIOS Quant Trading CONTROL (A/B legacy trail 0.988) - paper only
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+Environment=PYTHONPATH=/root/AIOS
+Environment=AIOS_QUANT_LEGACY_EXECUTION=0
+Environment=AIOS_QUANT_PORTFOLIO_FILE=multi_exchange_portfolios_owner_paper_control.json
+Environment=AIOS_QUANT_ENTRY_MODE=enabled
+Environment=AIOS_QUANT_ALLOWED_EXCHANGES=kraken,binance,bybit,okx,uniswap_v3,coinbase,kucoin,bitfinex,bitstamp,mexc
+Environment=AIOS_QUANT_MAX_GLOBAL_POSITIONS=1
+Environment=AIOS_QUANT_MAX_PER_EXCHANGE=1
+Environment=AIOS_QUANT_MAX_DRAWDOWN_PCT=0.25
+Environment=AIOS_QUANT_MAX_DAILY_LOSS_PCT=0.25
+Environment=AIOS_QUANT_MIN_CONFIDENCE=0.88
+Environment=AIOS_QUANT_REQUIRE_ML=1
+Environment=AIOS_QUANT_ML_MIN_PROB=0.65
+Environment=AIOS_QUANT_ML_CALIBRATE=1
+Environment=AIOS_QUANT_RL_VETO=0.30
+Environment=AIOS_QUANT_MIN_HOLD_SECONDS=7200
+Environment=AIOS_QUANT_HALF_SPREAD_RATE=0.0005
+Environment=AIOS_QUANT_SLIPPAGE_RATE=0.0005
+Environment=AIOS_QUANT_CANDLE_SECONDS=3600
+Environment=AIOS_QUANT_TRAIL_RATIO=0.988
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_quant_trading.py --daemon --interval 900
+Restart=always
+RestartSec=10
+MemoryMax=1024M
+
+[Install]
+WantedBy=multi-user.target

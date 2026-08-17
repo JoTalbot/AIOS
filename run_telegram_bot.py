@@ -8,6 +8,7 @@ AIOS Telegram Bot — управление агентами через Telegram.
     /start      — приветствие
     /stats      — статистика системы (БД, оркестратор, бэкапы)
     /status     — сводка по платформам
+    /quant      — статус quant-контуров (MM, DCA, A/B, ws-данные)
     /olx        — статистика OLX (объявления, цены)
     /olx_sub    — подписка на новые объявления по запросу
     /olx_unsub  — отписка
@@ -305,6 +306,11 @@ def cmd_stats() -> str:
 @_safe
 def cmd_platforms() -> str:
     from tg_bot.syscmds import cmd_platforms as _f
+    return _f()
+
+
+def cmd_quant() -> str:
+    from tg_bot.quant_cmds import cmd_quant as _f
     return _f()
 
 
@@ -1095,6 +1101,8 @@ def run_bot(token: str) -> None:
                     reply = cmd_stats()
                 elif cmd in ("/status", "/platforms"):
                     reply = cmd_platforms()
+                elif cmd == "/quant":
+                    reply = cmd_quant()
                 elif cmd in ("/calls", "/whisper"):
                     from tg_bot.calls import _handle_calls_intent
                     _handle_calls_intent(api, chat_id, "/calls")

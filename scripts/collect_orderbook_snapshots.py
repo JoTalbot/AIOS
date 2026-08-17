@@ -11,13 +11,27 @@ from pathlib import Path
 
 import ccxt
 
-EXCHANGE_CLASSES = {"binance": ccxt.binance, "kucoin": ccxt.kucoin, "mexc": ccxt.mexc}
+EXCHANGE_CLASSES = {
+    "binance": ccxt.binance,
+    "kucoin": ccxt.kucoin,
+    "mexc": ccxt.mexc,
+    "okx": ccxt.okx,
+    "bitstamp": ccxt.bitstamp,
+    "coinbase": ccxt.coinbase,
+}
+
+# Some exchanges only accept specific depth limits (kucoin: 20 or 100).
+MIN_DEPTH = {"kucoin": 20}
+
+# Exchanges that do not list all universe pairs (bitstamp: BTC/ETH only).
+EXCHANGE_SYMBOLS = {"bitstamp": {"BTC", "ETH"}}
 
 
 class OrderbookStore:
     def __init__(self, path: Path):
         path.parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(path)
+        self.db = sqlite3.connect(path, timeout=30.0)
+        self.db.execute("PRAGMA busy_timeout=30000")
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=NORMAL")
         self.db.execute("""CREATE TABLE IF NOT EXISTS snapshots (
@@ -89,11 +103,15 @@ def build_clients(names):
 def collect_once(clients, symbols, store: OrderbookStore, depth=10):
     saved = errors = 0
     for exchange, client in clients.items():
+        allowed = EXCHANGE_SYMBOLS.get(exchange)
         for base in symbols:
+            if allowed is not None and base not in allowed:
+                continue
             pair = f"{base}/USDT"
             started = time.monotonic()
             try:
-                book = client.fetch_order_book(pair, limit=depth)
+                fetch_depth = max(depth, MIN_DEPTH.get(exchange, depth))
+                book = client.fetch_order_book(pair, limit=fetch_depth)
                 row = normalize(exchange, base, book, (time.monotonic() - started) * 1000, depth)
                 if row:
                     store.add(row)
