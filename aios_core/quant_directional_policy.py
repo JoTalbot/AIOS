@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import os
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
+
+from aios_core.quant.ml_gate_calibration import calibrated_ml_threshold
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -110,21 +110,6 @@ def portfolio_equity(
     return total_initial, total_equity, unpriced
 
 
-def _calibrated_ml_threshold(path: str) -> float | None:
-    """Read q90 threshold from the calibration file; None on any failure.
-
-    No cache on purpose: the file is read a few dozen times per 15-minute
-    scan, and this host's filesystem can return identical st_mtime_ns for
-    consecutive rewrites, so mtime-based caching would serve stale values.
-    """
-
-    try:
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
-        return float(data.get("threshold_q90"))
-    except (OSError, ValueError, TypeError):
-        return None
-
-
 def entry_block_reason(
     config: DirectionalV2Config,
     analysis: dict[str, Any],
@@ -161,7 +146,7 @@ def entry_block_reason(
     if config.require_ml:
         ml_min = config.ml_min_prob_up
         if config.ml_calibrate:
-            calibrated = _calibrated_ml_threshold(config.ml_calibrate_file)
+            calibrated = calibrated_ml_threshold(config.ml_calibrate_file)
             if calibrated is not None:
                 ml_min = min(ml_min, max(config.ml_calibrate_floor, calibrated))
         if ml_prob is None or float(ml_prob) < ml_min:
