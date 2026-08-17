@@ -10,6 +10,37 @@
 
 ## Где закончили
 
+**2026-08-17 (Arena.ai, трейдинг-харденинг по решениям владельца):** (а) Ops:
+aios-chrome-colab-secondary (crash-loop 7536 рестартов, X-сервер отсутствует)
+остановлен+disable; BrowserMetrics Chrome 29G удалён (диск 94% → 54%).
+(б) Orderbook-хранилище: busy_timeout=30s в ws- и research-коллекторах
+(устранены database-locked разрывы); новый retention-прореживатель
+`scripts/prune_orderbook_ws.py` + таймер `aios-orderbook-ws-prune` (сырые 1Hz
+7 дней, старше — 1 сэмпл/минуту до 60 дней, хвост удаляется); юнит
+`aios-freqtrade-t2-dry` канонизирован в deploy/systemd; audit --strict: 0 drift.
+(в) Directional v2 paper: ML-гейт откалиброван по распределению модели
+(решение владельца): эффективный порог = min(0.65, max(0.50, q90)), q90=0.5061
+(287K сэмплов, 12 мес, 33 серии); скрипт `scripts/quant_ml_calibrate.py`,
+seam `aios_core/quant/ml_gate_calibration.py`, accounting-тесты; A/B main/control
+не тронуты (trail 1.0 vs 0.988). (г) Отложенная валидация: guarded hyperopt
+(300 эпох × 5 пар) дал 56/87 — ОТКЛОНЁН на OOS (лучше базы только BTC, хуже
+4/5); окна остаются 50/40 и 50/50; отчёт
+`docs/T2_HYPEROPT_GUARDED_VERDICT_2026-08-17_RU.md`.
+Полный pytest: только 3 преэкзистинг-провала чужих областей
+(tests/macro gran, test_v22_api monetization routes — ждут владельцев scope).
+Ветка `agent/20260817-trading-harden` (6 коммитов, не опубликована).
+Журнал: `coordination/sessions/20260817T080000Z-aios-arena-trading-harden.md`.
+
+## Следующий рекомендуемый шаг
+
+1. Наблюдать за входами Directional v2 (порог 0.5061; kill-switch DD/day 0.25%):
+   если входы появятся — сравнить A/B main vs control после ≥30 сделок.
+2. Через 2-4 недели: переобучить MM-сигнал на ws-данных (1Гц), модель очереди,
+   калибровка порогов; вердикт по MM.
+3. DCA-трекер: проверить депозиты/PnL, при желании владельца — реальные покупки.
+
+## Где закончили
+
 **2026-08-16 (Arena.ai, MM interim + guarded hyperopt):** промежуточная MM-проверка на
 ~13ч ws-данных (19 символов): сигнал направления жив на 30с (BTC AUC 0.867 n=1247,
 ETH 0.795, NEAR 0.843, ADA 0.826; 15м — затухает), но maker-edge НЕТ: naive убыточен
@@ -97,6 +128,12 @@ AIOS — production-монорепозиторий, объединяющий:
 
 ## Runtime operator decisions
 
+- `2026-08-17T08:00:00Z`: трейдинг-харденинг по решениям владельца — см. блок
+  «Где закончили» выше. Ключевые решения: (1) ML-гейт Directional v2
+  калибруется по q90 распределения модели, эффективный порог min(0.65, max(0.50,
+  q90)); (2) ws-снапшоты: retention 7д сырые + 60д минутные; (3)
+  aios-chrome-colab-secondary stop+disable, BrowserMetrics удалён.
+
 - `2026-08-16T10:46:00Z`: Снижение нагрузки по решению владельца (сценарий D).
   Убиты 9 осиротевших loky-воркеров hyperopt'а (~1.65 ГБ); renice +10 фоновым
   демонам; stop+disable: `aios-viber-desktop`, `aios-viber-autoreply`,
@@ -130,13 +167,7 @@ AIOS — production-монорепозиторий, объединяющий:
 9. **✅ LLM proxy/Kilo unfinished work — completed:** 36-model catalog, tool routing/SSE, Colab guards и atomic sync покрыты тестами и развернуты; runtime healthy.
 10. **🟡 Trading expectancy — controlled/frozen:** честный OOS walk-forward отрицательный (average −0.354%, PF 0.374); entries/live запрещены, пока новая гипотеза не пройдёт fresh OOS и 30d/200-close gates.
 
-## Следующий рекомендуемый шаг
-
-1. Через 2-4 недели: переобучить MM-сигнал на ws-данных (1Гц), модель очереди исполнения,
-   калибровка порогов; вердикт по MM.
-2. DCA-трекер: проверить депозиты/PnL, при желании владельца — реальные покупки.
-3. A/B paper main vs control: сравнить после накопления сделок (ML-гейт режет входы —
-   сделок пока 0 в обоих портфелях; контуры активны).
+## Следующий рекомендуемый шаг (см. новый блок выше)
 
 ## Следующий рекомендуемый шаг
 
