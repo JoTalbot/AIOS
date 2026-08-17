@@ -109,7 +109,7 @@ class RLSignalBridge:
                 net.load_state_dict(sd)
                 self._policy = net
                 self._is_lstm = True
-                print(f"{LOG_TAG} LSTM-PPO v4 загружена (obs_dim={obs_dim})")
+                print(f"{LOG_TAG} LSTM-PPO {MODEL_FILE.name} загружена (obs_dim={obs_dim})")
             else:
                 w = sd["fc_pre.weight"]
                 obs_dim = w.shape[1]
@@ -118,7 +118,7 @@ class RLSignalBridge:
                 net.load_state_dict(sd)
                 self._policy = net
                 self._is_lstm = False
-                print(f"{LOG_TAG} MLP-PPO v3 загружена (obs_dim={obs_dim})")
+                print(f"{LOG_TAG} MLP-PPO {MODEL_FILE.name} загружена (obs_dim={obs_dim})")
             net.eval()
         except Exception as e:
             print(f"{LOG_TAG} [WARN] Ошибка загрузки PPO-модели: {e}")

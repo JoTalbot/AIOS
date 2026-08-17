@@ -149,12 +149,29 @@ def markdown(report: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _refresh_rl_signals(data_root: Path) -> bool:
+    """Refresh rl_signals.json from the deployed PPO model (guarded)."""
+
+    try:
+        from aios_core.quant.rl_signal_bridge import RLSignalBridge
+
+        bridge = RLSignalBridge()
+        if bridge.available:
+            bridge.save(out_file=data_root / "rl_signals.json")
+            return True
+        print("RLSignalBridge: модель недоступна, rl_signals.json не обновлён")
+    except Exception as exc:
+        print(f"RLSignalBridge: ошибка обновления: {exc}")
+    return False
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path, default=Path("data/quant"))
     parser.add_argument("--json-output", type=Path, default=Path("data/reports/quant_signal_product.json"))
     parser.add_argument("--markdown-output", type=Path, default=Path("data/reports/quant_signal_product.md"))
     args = parser.parse_args()
+    _refresh_rl_signals(args.data_root)
     report = build_report(
         args.data_root,
         args.data_root / "ml_signals.json",
