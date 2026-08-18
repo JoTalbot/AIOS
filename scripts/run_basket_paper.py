@@ -154,31 +154,39 @@ def mark(state: dict, day: str) -> dict | None:
 def rebalance(state: dict, day: str, prices: dict[str, float],
               weights: dict[str, float] | None = None) -> dict:
     """Monthly rebalance to target weights (fee per traded leg, honest cash
-    flow). weights=None -> equal weights. On the first rebalance the whole
-    cash is invested."""
+    flow). weights=None -> equal weights. On the first buy the fee is paid
+    out of the deposit (cash ends at exactly 0)."""
 
     if weights is None:
         weights = {sym: 1.0 / len(prices) for sym in prices}
-    value = state.get("cash_usd", 0.0) + sum(
-        state["holdings"].get(sym, 0.0) * prices[sym] for sym in prices)
-    if value <= 0 and state.get("cash_usd", 0.0) > 0:
-        value = state["cash_usd"]
-        state["cash_usd"] = 0.0
-    fees = 0.0
-    holdings = {}
-    cash = state.get("cash_usd", 0.0)
-    for sym, px in prices.items():
-        qty = state["holdings"].get(sym, 0.0)
-        target_qty = value * weights.get(sym, 0.0) / px
-        diff = target_qty - qty
-        traded = abs(diff) * px
-        fees += traded * FEE
-        cash -= diff * px  # покупки тратят кэш, продажи возвращают
-        holdings[sym] = target_qty
-    cash -= fees
+    holdings = dict(state.get("holdings", {}))
+    holdings_value = sum(holdings.get(sym, 0.0) * prices[sym] for sym in prices)
+    pre_cash = float(state.get("cash_usd", 0.0))
+    first_buy = holdings_value <= 0 and pre_cash > 0
+
+    if first_buy:
+        budget = pre_cash * (1 - FEE)
+        for sym, px in prices.items():
+            holdings[sym] = budget * weights.get(sym, 0.0) / px
+        cash = 0.0
+        state["fees_paid_usd"] = state.get("fees_paid_usd", 0.0) + (pre_cash - budget)
+    else:
+        value = pre_cash + holdings_value
+        fees = 0.0
+        cash = pre_cash
+        for sym, px in prices.items():
+            qty = holdings.get(sym, 0.0)
+            target_qty = value * weights.get(sym, 0.0) / px
+            diff = target_qty - qty
+            traded = abs(diff) * px
+            fees += traded * FEE
+            cash -= diff * px
+            holdings[sym] = target_qty
+        cash -= fees
+        state["fees_paid_usd"] = state.get("fees_paid_usd", 0.0) + fees
+
     state["holdings"] = holdings
     state["cash_usd"] = cash
-    state["fees_paid_usd"] = state.get("fees_paid_usd", 0.0) + fees
     state["last_rebalance"] = day
     return state
 

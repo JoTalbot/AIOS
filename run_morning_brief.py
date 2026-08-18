@@ -305,6 +305,36 @@ def build() -> str:
         lines.append("🐻 Медвежий режим: BTC ниже SMA200 — для пассивных вложений "
                      "DCA/кэш предпочтительнее lump-sum (BASKET_VARIANTS 2026-08-17)")
 
+    # Корзина топ-10 (vol-targeting)
+    try:
+        basket_hist = _read(ROOT / "data" / "reports" / "basket_paper.jsonl", [])
+        basket_rows = ([json.loads(l) for l in
+                        (ROOT / "data" / "reports" / "basket_paper.jsonl")
+                        .read_text(encoding="utf-8").splitlines() if l]
+                       if (ROOT / "data" / "reports" / "basket_paper.jsonl").exists()
+                       else [])
+        if basket_rows:
+            b = basket_rows[-1]
+            lines.append(f"🧺 Корзина топ-10 (vol-targeting): ${b['value_usd']:.2f} "
+                         f"({b['pnl_pct']:+.2f}%)")
+    except Exception:
+        pass
+
+    # Scoreboard: последний вердикт
+    try:
+        sb_path = ROOT / "data" / "reports" / "strategy_scoreboard.jsonl"
+        sb_rows = ([json.loads(l) for l in sb_path.read_text(encoding="utf-8").splitlines() if l]
+                   if sb_path.exists() else [])
+        if sb_rows:
+            last = sb_rows[-1]
+            v = last.get("verdict") or {}
+            w = v.get("winner", "—")
+            if v.get("unstable"):
+                w += " ⚠️"
+            lines.append(f"🏆 Scoreboard ({last['date']}): победитель — {w}")
+    except Exception:
+        pass
+
     # Quant Signal Monitor (read-only WATCH-сигналы)
     try:
         qs = _read(ROOT / "data" / "reports" / "quant_signal_product.json", {})

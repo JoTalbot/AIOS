@@ -17,9 +17,9 @@ def test_first_rebalance_invests_cash_equally():
     prices = {sym: 100.0 for sym in TOP10}
     rebalance(state, "2026-08-17", prices)
     for sym in TOP10:
-        assert abs(state["holdings"][sym] - 1.0) < 1e-9  # $100 each / $100 px
-    # 10 legs * $100 * 0.1% = $1.0 списано с кэша (честный денежный поток)
-    assert abs(state["cash_usd"] + 1.0) < 1e-9
+        # $999 бюджета (после стартовой комиссии $1) поровну на 10 активов
+        assert abs(state["holdings"][sym] - 0.999) < 1e-9
+    assert state["cash_usd"] == 0.0  # депозит ушёл в позиции, комиссия из депозита
     assert abs(state["fees_paid_usd"] - 1.0) < 1e-9
     assert state["last_rebalance"] == "2026-08-17"
 
