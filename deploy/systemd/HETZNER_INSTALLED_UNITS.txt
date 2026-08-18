@@ -1,4 +1,4 @@
-# Installed aios-* unit-file names, read-only snapshot 2026-08-17 UTC (basket-paper added).
+# Installed aios-* unit-file names, read-only snapshot 2026-08-17 UTC (mm-hourly-features added).
 aios-2captcha-balance.service
 aios-2captcha-balance.timer
 aios-accounting-report.service
@@ -99,6 +99,8 @@ aios-memory-skills.service
 aios-memory-skills.timer
 aios-messenger-profile-backup.service
 aios-messenger-profile-backup.timer
+aios-mm-hourly-features.service
+aios-mm-hourly-features.timer
 aios-mm-queue-priority.service
 aios-mm-queue-priority.timer
 aios-morning-brief.service
