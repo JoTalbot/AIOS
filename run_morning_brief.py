@@ -66,6 +66,27 @@ def _read(path: Path, default):
         return default
 
 
+def btc_regime(csv_path: Path | None = None) -> str | None:
+    """'bear' когда BTC-дневное закрытие ниже SMA200, 'bull' выше; None без
+    достаточных данных (рекомендация BASKET_VARIANTS 2026-08-17: уведомление
+    о медвежьем режиме без автоматических действий)."""
+
+    import pandas as pd
+
+    path = Path(csv_path) if csv_path else ROOT / "data" / "quant" / "BTC" / "binance" / "BTC_1h.csv"
+    try:
+        df = pd.read_csv(path)
+        df["day"] = pd.to_datetime(df["timestamp_ms"], unit="ms").dt.strftime("%Y-%m-%d")
+        d = df.groupby("day")["close"].last()
+        if len(d) < 201:
+            return None
+        last = float(d.iloc[-1])
+        sma = float(d.iloc[-200:].mean())
+        return "bear" if last < sma else "bull"
+    except Exception:
+        return None
+
+
 def _ab_paper_line(main_path: Path, control_path: Path) -> str | None:
     """Directional-v2 paper A/B digest; None when portfolio files are missing."""
 
@@ -277,6 +298,12 @@ def build() -> str:
     )
     if ab_line:
         lines.append(ab_line)
+
+    # Медвежий режим (BTC < SMA200) — пассивная рекомендация, не действие
+    regime = btc_regime()
+    if regime == "bear":
+        lines.append("🐻 Медвежий режим: BTC ниже SMA200 — для пассивных вложений "
+                     "DCA/кэш предпочтительнее lump-sum (BASKET_VARIANTS 2026-08-17)")
 
     # Quant Signal Monitor (read-only WATCH-сигналы)
     try:

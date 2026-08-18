@@ -18,8 +18,8 @@ def test_first_rebalance_invests_cash_equally():
     rebalance(state, "2026-08-17", prices)
     for sym in TOP10:
         assert abs(state["holdings"][sym] - 1.0) < 1e-9  # $100 each / $100 px
-    assert state["cash_usd"] == 0.0
-    # 10 legs * $100 * 0.1% = $1.0
+    # 10 legs * $100 * 0.1% = $1.0 списано с кэша (честный денежный поток)
+    assert abs(state["cash_usd"] + 1.0) < 1e-9
     assert abs(state["fees_paid_usd"] - 1.0) < 1e-9
     assert state["last_rebalance"] == "2026-08-17"
 
