@@ -10,6 +10,15 @@
 
 ## Где закончили
 
+**2026-08-18 (Arena.ai, TG-команды и брифинг):** /basket, /ab, /scoreboard в
+Telegram-боте (обёртки в protected run_telegram_bot.py — selfguard-snapshot
+обновлён); строки корзины и scoreboard в утренний брифинг; фикс стартовой
+комиссии корзины (кэш заканчивается ровно 0). Текущий A/B: 4 vs 3 сделки.
+Коммит `1c2da1c3`, ветка `agent/20260818-tg-quant-commands`.
+Журнал: `coordination/sessions/20260818T010000Z-aios-arena-tg-quant-commands.md`.
+
+## Где закончили
+
 **2026-08-18 (Arena.ai, «делай как лучше» — рекомендации применены):**
 (1) live-корзина переведена на vol-targeting (веса ∝ 1/σ30d; TON — kraken,
 делистнутые серии отсеиваются фильтром свежести; честный кэш-поток;

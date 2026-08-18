@@ -8,14 +8,14 @@
 | Метрика | Значение |
 |---|---:|
 | Package version | `19.9.0` |
-| Стабильных tracked-файлов | 6,367 |
-| Строк | 611,797 |
-| Размер | 24.95 MiB |
-| Python-файлов | 3,521 |
-| Строк Python | 361,503 |
-| Классов / функций / async | 2,988 / 19,967 / 1,636 |
+| Стабильных tracked-файлов | 6,368 |
+| Строк | 612,045 |
+| Размер | 24.96 MiB |
+| Python-файлов | 3,522 |
+| Строк Python | 361,751 |
+| Классов / функций / async | 2,988 / 19,978 / 1,636 |
 | Python syntax errors | 0 |
-| Test Python files / test functions | 970 / 6,716 |
+| Test Python files / test functions | 971 / 6,721 |
 | Markdown-файлов | 2,046 |
 | Root `run_*.py` | 113 |
 | Уникальных tracked service/timer names | 210 |
@@ -27,12 +27,12 @@
 | `aios_core` | 971 | 158,144 | 5.92 MiB |
 | `skills` | 2,641 | 109,481 | 4.73 MiB |
 | `docs` | 477 | 76,067 | 3.27 MiB |
-| `tests` | 552 | 71,157 | 2.47 MiB |
-| `[root]` | 217 | 35,184 | 1.39 MiB |
-| `scripts` | 280 | 33,747 | 1.28 MiB |
+| `tests` | 553 | 71,237 | 2.47 MiB |
+| `[root]` | 217 | 35,241 | 1.39 MiB |
+| `scripts` | 280 | 33,755 | 1.28 MiB |
 | `attic` | 33 | 30,669 | 1.61 MiB |
 | `octopus_services` | 110 | 27,850 | 0.90 MiB |
-| `tg_bot` | 33 | 12,229 | 0.62 MiB |
+| `tg_bot` | 33 | 12,332 | 0.63 MiB |
 | `deploy` | 252 | 6,385 | 0.18 MiB |
 | `octopus_instructions` | 102 | 5,959 | 0.50 MiB |
 | `octopus_roadmap` | 13 | 4,741 | 0.22 MiB |
@@ -49,7 +49,7 @@
 
 | Расширение | Файлов |
 |---|---:|
-| `.py` | 3,521 |
+| `.py` | 3,522 |
 | `.md` | 2,046 |
 | `.json` | 147 |
 | `.service` | 135 |
@@ -92,7 +92,7 @@
 | `aios_core/agent_memory_system.py` | 1,574 |
 | `run_coder_orchestrator.py` | 1,466 |
 | `tests/test_v10_12_modules.py` | 1,445 |
-| `run_telegram_bot.py` | 1,409 |
+| `run_telegram_bot.py` | 1,436 |
 | `tg_bot/phone.py` | 1,308 |
 | `tests/test_v10_15_behavioral.py` | 1,274 |
 | `tests/test_phase4_test_engine.py` | 1,258 |

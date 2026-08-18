@@ -131,6 +131,31 @@ def cmd_quant() -> str:
     except Exception:
         pass
 
+    # корзина топ-10 (vol-targeting)
+    try:
+        state = json.loads((ROOT / "data/reports/basket_paper_state.json").read_text())
+        hist = [json.loads(l) for l in
+                (ROOT / "data/reports/basket_paper.jsonl").read_text().splitlines() if l]
+        if hist:
+            last = hist[-1]
+            lines.append(f"🧺 <b>Корзина топ-10:</b> ${last['value_usd']:.2f} "
+                         f"({last['pnl_pct']:+.2f}%) | правило {state.get('weights_rule', 'eq')}")
+    except Exception:
+        pass
+
+    # scoreboard: последний вердикт
+    try:
+        hist = [json.loads(l) for l in
+                (ROOT / "data/reports/strategy_scoreboard.jsonl").read_text().splitlines() if l]
+        if hist:
+            v = hist[-1].get("verdict") or {}
+            w = v.get("winner", "—")
+            if v.get("unstable"):
+                w += " ⚠️"
+            lines.append(f"🏆 <b>Scoreboard ({hist[-1]['date']}):</b> {w}")
+    except Exception:
+        pass
+
     # сервисы
     try:
         svc = subprocess.run(
@@ -146,3 +171,81 @@ def cmd_quant() -> str:
         lines.append(f"🖥 сервисы: ошибка ({e})")
 
     return "\n".join(lines)
+
+
+def cmd_basket() -> str:
+    """Корзина топ-10 (vol-targeting): значение, PnL, веса."""
+
+    try:
+        state = json.loads((ROOT / "data/reports/basket_paper_state.json").read_text())
+        hist = [json.loads(l) for l in
+                (ROOT / "data/reports/basket_paper.jsonl").read_text().splitlines() if l]
+        lines = ["🧺 <b>Корзина топ-10 (vol-targeting)</b>", ""]
+        if hist:
+            last = hist[-1]
+            lines.append(f"💰 ${last['value_usd']:.2f} ({last['pnl_pct']:+.2f}%) "
+                         f"| внесено ${last['invested_usd']:.0f} "
+                         f"| комиссии ${last['fees_paid_usd']:.2f}")
+            lines.append(f"📅 {last['day']} | правило: {state.get('weights_rule', 'eq')}")
+            lines.append(f"💵 кэш: ${state.get('cash_usd', 0.0):.2f}")
+        else:
+            lines.append("данных нет")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"🧺 Корзина: ошибка ({e})"
+
+
+def cmd_ab() -> str:
+    """A/B Directional v2: сделки, PnL, вердикт (если готов)."""
+
+    try:
+        from scripts.quant_ab_report import (ab_verdict, compare_portfolios,
+                                             load_trade_pnls)
+        m = json.loads((ROOT / "data/multi_exchange_portfolios_owner_paper.json").read_text())
+        c = json.loads((ROOT / "data/multi_exchange_portfolios_owner_paper_control.json").read_text())
+        cmp = compare_portfolios(m, c)
+        lines = ["⚖️ <b>Directional v2 A/B</b> (main trail 1.0 vs control 0.988)", ""]
+        for tag, key in (("🅰️ main", "main"), ("🅱️ control", "control")):
+            st = cmp[key]
+            lines.append(f"{tag}: {st['closed_trades']} сд. | PnL {st['realized_pnl_usd']:+.2f}$ "
+                         f"| equity {st['equity_usd']:.2f}$ | DD {st['max_drawdown_pct_seen']:.3f}%")
+        v = ab_verdict(load_trade_pnls(m), load_trade_pnls(c))
+        if v:
+            sig = "✅ значимо" if v["significant"] else "≈ незначимо"
+            lines.append(f"🔬 Вердикт готов: diff {v['diff_obs']:+.3f}$/сд. "
+                         f"CI90 [{v['ci90'][0]:+.3f}, {v['ci90'][1]:+.3f}] | {sig}")
+        else:
+            lines.append("🔬 Вердикт ещё не готов (нужно ≥15 закрытых сделок в каждом контуре)")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"⚖️ A/B: ошибка ({e})"
+
+
+def cmd_scoreboard() -> str:
+    """Последний вердикт ежемесячного scoreboard стратегий."""
+
+    try:
+        sb_path = ROOT / "data/reports/strategy_scoreboard.jsonl"
+        if not sb_path.exists():
+            return "🏆 Scoreboard: данных нет"
+        hist = [json.loads(l) for l in sb_path.read_text().splitlines() if l]
+        if not hist:
+            return "🏆 Scoreboard: данных нет"
+        lines = ["🏆 <b>Scoreboard стратегий</b>", ""]
+        for row in hist[-3:]:
+            v = row.get("verdict") or {}
+            bm = v.get("best_momentum") or {}
+            w = v.get("winner", "—")
+            if v.get("unstable"):
+                w += " ⚠️"
+            basket = row.get("top10_basket_pct")
+            basket_s = f"{basket:+.2f}%" if basket is not None else "—"
+            lines.append(
+                f"📅 {row['date']}: DV2 {row['dv2']['pnl_pct']:+.2f}% | "
+                f"корзина {basket_s} | рынок {row['market_mean_pct']:+.2f}% | 🥇 {w}"
+            )
+        lines.append("")
+        lines.append("Правило: моментум — только при PnL>корзины И OOS CAGR>0.")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"🏆 Scoreboard: ошибка ({e})"

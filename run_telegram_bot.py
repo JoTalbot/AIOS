@@ -9,6 +9,9 @@ AIOS Telegram Bot — управление агентами через Telegram.
     /stats      — статистика системы (БД, оркестратор, бэкапы)
     /status     — сводка по платформам
     /quant      — статус quant-контуров (MM, DCA, A/B, ws-данные)
+    /basket     — корзина топ-10 (vol-targeting): значение, PnL
+    /ab         — A/B Directional v2: сделки, PnL, вердикт
+    /scoreboard — последние вердикты ежемесячного бэктеста стратегий
     /olx        — статистика OLX (объявления, цены)
     /olx_sub    — подписка на новые объявления по запросу
     /olx_unsub  — отписка
@@ -311,6 +314,24 @@ def cmd_platforms() -> str:
 
 def cmd_quant() -> str:
     from tg_bot.quant_cmds import cmd_quant as _f
+    return _f()
+
+
+@_safe
+def cmd_basket() -> str:
+    from tg_bot.quant_cmds import cmd_basket as _f
+    return _f()
+
+
+@_safe
+def cmd_ab() -> str:
+    from tg_bot.quant_cmds import cmd_ab as _f
+    return _f()
+
+
+@_safe
+def cmd_scoreboard() -> str:
+    from tg_bot.quant_cmds import cmd_scoreboard as _f
     return _f()
 
 
@@ -1103,6 +1124,12 @@ def run_bot(token: str) -> None:
                     reply = cmd_platforms()
                 elif cmd == "/quant":
                     reply = cmd_quant()
+                elif cmd == "/basket":
+                    reply = cmd_basket()
+                elif cmd == "/ab":
+                    reply = cmd_ab()
+                elif cmd == "/scoreboard":
+                    reply = cmd_scoreboard()
                 elif cmd in ("/calls", "/whisper"):
                     from tg_bot.calls import _handle_calls_intent
                     _handle_calls_intent(api, chat_id, "/calls")
