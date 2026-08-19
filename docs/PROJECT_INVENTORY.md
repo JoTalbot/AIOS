@@ -9,10 +9,10 @@
 |---|---:|
 | Package version | `19.9.0` |
 | Стабильных tracked-файлов | 6,372 |
-| Строк | 612,890 |
+| Строк | 612,929 |
 | Размер | 25.00 MiB |
 | Python-файлов | 3,526 |
-| Строк Python | 362,596 |
+| Строк Python | 362,635 |
 | Классов / функций / async | 2,989 / 20,016 / 1,636 |
 | Python syntax errors | 0 |
 | Test Python files / test functions | 973 / 6,732 |
@@ -27,12 +27,12 @@
 | `aios_core` | 971 | 158,144 | 5.92 MiB |
 | `skills` | 2,641 | 109,481 | 4.73 MiB |
 | `docs` | 477 | 76,067 | 3.27 MiB |
-| `tests` | 555 | 71,408 | 2.48 MiB |
+| `tests` | 555 | 71,418 | 2.48 MiB |
 | `[root]` | 217 | 35,241 | 1.39 MiB |
 | `scripts` | 281 | 33,845 | 1.28 MiB |
 | `attic` | 33 | 30,669 | 1.61 MiB |
 | `octopus_services` | 110 | 27,850 | 0.90 MiB |
-| `tg_bot` | 34 | 12,916 | 0.65 MiB |
+| `tg_bot` | 34 | 12,945 | 0.66 MiB |
 | `deploy` | 252 | 6,385 | 0.18 MiB |
 | `octopus_instructions` | 102 | 5,959 | 0.50 MiB |
 | `octopus_roadmap` | 13 | 4,741 | 0.22 MiB |

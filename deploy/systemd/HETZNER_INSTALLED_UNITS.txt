@@ -1,4 +1,4 @@
-# Installed aios-* unit-file names, read-only snapshot 2026-08-17 UTC (mm-hourly-features added).
+# Installed aios-* unit-file names, read-only snapshot 2026-08-19 UTC (tg-trading-report added).
 aios-2captcha-balance.service
 aios-2captcha-balance.timer
 aios-accounting-report.service
@@ -160,6 +160,8 @@ aios-telegram-queue-backup.service
 aios-telegram-queue-backup.timer
 aios-telegram-queue-restore-drill.service
 aios-telegram-queue-restore-drill.timer
+aios-tg-trading-report.service
+aios-tg-trading-report.timer
 aios-treasury-audit.service
 aios-treasury-audit.timer
 aios-viber-autoreply.service

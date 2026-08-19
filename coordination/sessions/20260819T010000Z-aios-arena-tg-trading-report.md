@@ -83,3 +83,17 @@ claim: "coordination/claims/tg-trading-report--20260819T010000Z-aios-arena.md (�
 - Честный контекст OOS: SMA50-BTC на последних 30% окна −16.7%, последний
   месяц −4.1%, freqtrade T2 месяц −1.19% — правила на свежих данных не
   зарабатывают; большие проценты — in-sample-история 2023-2024.
+
+## Дополнение 4 (2026-08-19, инвесторский отчёт)
+
+- По решению владельца: (1) ежедневный утренний трейдинг-отчёт для чата
+  839699134 — таймер aios-tg-trading-report (05:30 UTC, Persistent, random
+  300с); sender получил --chat; (2) в боте осталась одна кнопка «📈 Трейдинг»
+  (MAIN_MENU_KEYBOARD и MAIN_MENU_INLINE); все команды доступны текстом.
+- Авторизация: новый credential /etc/aios/credentials/telegram_extra_chat_ids
+  (root:root 600); _allowed_chat_ids читает его (protected-файл → selfguard
+  snapshot обновлён).
+- ВАЖНО: пробная отправка дала «chat not found» — пользователь 839699134 ещё
+  не нажимал /start в боте (@AIOScontrol_bot). Таймер включён; доставка начнётся
+  автоматически после первого /start от этого пользователя.
+- Тесты: test_single_button_investor.py 5/5; inventory 174; бот перезапущен.

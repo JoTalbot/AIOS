@@ -2,6 +2,7 @@
 """Send the detailed trading report (Трейдинг button content) to the owner's
 Telegram chat: data chunks immediately, LLM section after generation."""
 
+import argparse
 import json
 import sys
 import urllib.request
@@ -9,6 +10,25 @@ from pathlib import Path
 
 ROOT = Path("/root/AIOS")
 sys.path.insert(0, str(ROOT))
+
+TARGET_CHAT = None  # переопределяется через --chat
+
+
+def _chat_id() -> int | None:
+    """--chat > env/credential владельца."""
+
+    if TARGET_CHAT is not None:
+        return TARGET_CHAT
+    raw = _env_chat()
+    try:
+        return int(raw) if raw else None
+    except ValueError:
+        return None
+
+
+def _env_chat() -> str:
+    v = _env("TELEGRAM_CHAT_ID") or _env("AIOS_OWNER_CHAT_ID")
+    return v
 
 
 def _env(key: str) -> str:
@@ -54,7 +74,7 @@ def _post(payload: dict, token: str) -> tuple[bool, str]:
 
 def tg_send(text: str) -> tuple[bool, str]:
     token = _env("TELEGRAM_BOT_TOKEN") or _env("AIOS_TELEGRAM_TOKEN")
-    chat = _env("TELEGRAM_CHAT_ID") or _env("AIOS_OWNER_CHAT_ID")
+    chat = _chat_id()
     if not token or not chat:
         return False, "no credentials"
     base = {
@@ -71,6 +91,15 @@ def tg_send(text: str) -> tuple[bool, str]:
 
 
 def main() -> int:
+    import argparse as _ap
+
+    global TARGET_CHAT
+    parser = _ap.ArgumentParser(description="Отправить детальный трейдинг-отчёт в TG")
+    parser.add_argument("--chat", type=int, default=None,
+                        help="chat_id получателя (по умолчанию — владелец)")
+    args = parser.parse_args()
+    TARGET_CHAT = args.chat
+
     from tg_bot.trading_report import full_report
 
     messages = full_report()
