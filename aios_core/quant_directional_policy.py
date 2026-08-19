@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from aios_core.quant.ml_gate_calibration import calibrated_ml_threshold
-
+from aios_core.quant.regime_guard import crash_kill_active
 
 def _env_bool(name: str, default: bool) -> bool:
     value = os.environ.get(name)
@@ -41,6 +41,7 @@ class DirectionalV2Config:
     ml_calibrate: bool = False
     ml_calibrate_file: str = "data/quant/ml_prob_calibration.json"
     ml_calibrate_floor: float = 0.50
+    regime_guard: bool = False; regime_file: str = "data/reports/market_regime_latest.json"
 
     @classmethod
     def from_env(cls) -> DirectionalV2Config:
@@ -71,6 +72,8 @@ class DirectionalV2Config:
             ml_calibrate=_env_bool("AIOS_QUANT_ML_CALIBRATE", False),
             ml_calibrate_file=os.environ.get("AIOS_QUANT_ML_CALIBRATE_FILE", "data/quant/ml_prob_calibration.json"),
             ml_calibrate_floor=min(1.0, max(0.0, float(os.environ.get("AIOS_QUANT_ML_CALIBRATE_FLOOR", "0.50")))),
+            regime_guard=_env_bool("AIOS_QUANT_REGIME_GUARD", False),
+            regime_file=os.environ.get("AIOS_QUANT_REGIME_FILE", "data/reports/market_regime_latest.json"),
         )
 
     def entry_execution_price(self, mid_price: float) -> float:
@@ -109,7 +112,6 @@ def portfolio_equity(
         total_equity += equity
     return total_initial, total_equity, unpriced
 
-
 def entry_block_reason(
     config: DirectionalV2Config,
     analysis: dict[str, Any],
@@ -126,6 +128,8 @@ def entry_block_reason(
 
     if config.entry_mode != "enabled":
         return "entry_mode_freeze"
+    if config.regime_guard and crash_kill_active(config.regime_file):
+        return "regime_crash_kill"
     if not candle_is_new:
         return "same_candle"
     if config.allowed_exchanges and exchange.lower() not in config.allowed_exchanges:
