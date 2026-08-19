@@ -35,9 +35,14 @@ def _snapshot() -> dict:
         },
         "basket": {"value": 998.44, "pnl_pct": -0.156, "invested": 1000.0, "fees": 1.0,
                    "date": "2026-08-18", "weights_rule": "inverse_vol_30d", "cash": 0.0},
-        "t2": {"legs": {"BTC": {"position": "CASH", "equity": 25473.13,
-                                 "cash_equiv": 23444.97, "trades": 68,
-                                 "last_signal": "2026-08-19"}},
+        "t2": {"legs": {"BTC": {"position": "LONG", "equity": 9948.24,
+                                 "cash_equiv": 9966.99, "trades": 1,
+                                 "last_signal": "2026-08-19",
+                                 "first_trade": "2026-08-18", "is_replay": False},
+                          "ETH": {"position": "LONG", "equity": 28135.49,
+                                  "cash_equiv": 12072.25, "trades": 45,
+                                  "last_signal": "2026-08-19",
+                                  "first_trade": "2023-10-21", "is_replay": True}},
                "portfolio": {"date": "2026-08-19", "portfolio": 26668.71, "bh": 25772.21}},
         "freqtrade": {"open": [("BTC/USDT", 64540.94, None, "2026-08-18 00:00:00", 645.41)],
                       "closed": 0},
@@ -60,7 +65,9 @@ def test_format_report_covers_all_sections():
     assert "Что это" in text
     assert "Робот А" in text and "Робот Б" in text
     assert "Автокопилка" in text and "Корзина топ-10" in text
-    assert "Моментум-роботы" in text and "вне рынка (кэш)" in text
+    assert "Моментум-роботы" in text
+    assert "Живой тест" in text and "Историческая симуляция" in text
+    assert "СИМУЛЯЦИЯ" in text
     assert "freqtrade" in text and "BTC/USDT" in text
     assert "снимков" in text and "5,816,805" in text
     assert "Кто лучший по тесту" in text and "корзина топ-10" in text
@@ -105,6 +112,9 @@ def test_prompt_for_llm_contains_key_numbers():
     assert "-7.73$" in prompt or "-7.73" in prompt
     assert "inverse_vol_30d" in prompt
     assert "top10_basket" in prompt
+    # T2-реплей помечен честно
+    assert "ИСТОРИЧЕСКАЯ СИМУЛЯЦИЯ" in prompt
+    assert "живой тест" in prompt
 
 
 def test_prompt_for_llm_no_crash_on_empty():

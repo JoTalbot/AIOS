@@ -8,14 +8,14 @@
 | Метрика | Значение |
 |---|---:|
 | Package version | `19.9.0` |
-| Стабильных tracked-файлов | 6,371 |
-| Строк | 612,823 |
+| Стабильных tracked-файлов | 6,372 |
+| Строк | 612,890 |
 | Размер | 25.00 MiB |
-| Python-файлов | 3,525 |
-| Строк Python | 362,529 |
-| Классов / функций / async | 2,988 / 20,010 / 1,636 |
+| Python-файлов | 3,526 |
+| Строк Python | 362,596 |
+| Классов / функций / async | 2,989 / 20,016 / 1,636 |
 | Python syntax errors | 0 |
-| Test Python files / test functions | 972 / 6,729 |
+| Test Python files / test functions | 973 / 6,732 |
 | Markdown-файлов | 2,046 |
 | Root `run_*.py` | 113 |
 | Уникальных tracked service/timer names | 210 |
@@ -27,12 +27,12 @@
 | `aios_core` | 971 | 158,144 | 5.92 MiB |
 | `skills` | 2,641 | 109,481 | 4.73 MiB |
 | `docs` | 477 | 76,067 | 3.27 MiB |
-| `tests` | 554 | 71,360 | 2.48 MiB |
+| `tests` | 555 | 71,408 | 2.48 MiB |
 | `[root]` | 217 | 35,241 | 1.39 MiB |
 | `scripts` | 281 | 33,845 | 1.28 MiB |
 | `attic` | 33 | 30,669 | 1.61 MiB |
 | `octopus_services` | 110 | 27,850 | 0.90 MiB |
-| `tg_bot` | 34 | 12,897 | 0.65 MiB |
+| `tg_bot` | 34 | 12,916 | 0.65 MiB |
 | `deploy` | 252 | 6,385 | 0.18 MiB |
 | `octopus_instructions` | 102 | 5,959 | 0.50 MiB |
 | `octopus_roadmap` | 13 | 4,741 | 0.22 MiB |
@@ -49,7 +49,7 @@
 
 | Расширение | Файлов |
 |---|---:|
-| `.py` | 3,525 |
+| `.py` | 3,526 |
 | `.md` | 2,046 |
 | `.json` | 147 |
 | `.service` | 135 |
@@ -83,7 +83,7 @@
 | Файл | Строк |
 |---|---:|
 | `aios_core/dashboard.py` | 3,494 |
-| `tg_bot/accounts.py` | 3,225 |
+| `tg_bot/accounts.py` | 3,236 |
 | `run_account_control.py` | 2,374 |
 | `aios_core/quant_trading_engine.py` | 1,776 |
 | `tests/test_v10_4_modules.py` | 1,676 |
@@ -96,7 +96,7 @@
 | `tg_bot/phone.py` | 1,308 |
 | `tests/test_v10_15_behavioral.py` | 1,274 |
 | `tests/test_phase4_test_engine.py` | 1,258 |
-| `tg_bot/callbacks.py` | 1,242 |
+| `tg_bot/callbacks.py` | 1,227 |
 
 ## Границы
 
