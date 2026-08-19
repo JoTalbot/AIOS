@@ -140,17 +140,24 @@ def snap_basket() -> dict:
 
 def snap_t2() -> dict:
     legs = {}
-    for tag, fname in (("BTC", "t2_paper_state.json"), ("ETH", "t2_paper_state_ethusd.json"),
+    for tag, fname in (("BTC", "t2_paper_state_btcusd.json"), ("ETH", "t2_paper_state_ethusd.json"),
                        ("SOL", "t2_paper_state_solusd.json"), ("BNB", "t2_paper_state_bnbusd.json"),
                        ("NEAR", "t2_paper_state_nearusd.json")):
         st = _read_json(ROOT / "data" / fname, {})
         if st:
+            trades = st.get("trades") or []
+            first_trade = trades[0].get("date") if trades else None
+            # сделки до 2026-08-01 = засеянный исторический реплей (2023+),
+            # а не живой daily-цикл (стартовал 16-18.08)
+            is_replay = bool(first_trade and str(first_trade) < "2026-08-01")
             legs[tag] = {
                 "position": st.get("position"),
                 "equity": round(float(st.get("equity", 0.0) or 0.0), 2),
                 "cash_equiv": round(float(st.get("cash_equiv", 0.0) or 0.0), 2),
-                "trades": len(st.get("trades") or []),
+                "trades": len(trades),
                 "last_signal": st.get("last_signal_date"),
+                "first_trade": first_trade,
+                "is_replay": is_replay,
             }
     port_path = ROOT / "data" / "t2_portfolio_equity.jsonl"
     port = None
@@ -291,7 +298,8 @@ def format_report(snap: dict) -> list[str]:
     t2 = snap["t2"]
     if t2.get("portfolio"):
         pct = (t2["portfolio"]["portfolio"] / 10000 - 1) * 100
-        lines.append(f"📈 Моментум-роботы: +{pct:.0f}% за всё время теста.")
+        lines.append(f"📈 Моментум-роботы: +{pct:.0f}% в СИМУЛЯЦИИ с 2023 года "
+                     f"(не заработок — подробности ниже).")
     if snap.get("btc_regime") == "bear":
         lines.append("🐻 Рынок в медвежьей фазе: BTC ниже своего долгосрочного среднего.")
     sb = snap["scoreboard"]
@@ -361,17 +369,33 @@ def format_report(snap: dict) -> list[str]:
     # ---------- T2 ----------
     lines.append("📈 <b>Моментум-роботы (T2)</b> — держим монету, пока растёт")
     lines.append("Что это: робот заходит, когда монета в устойчивом тренде, и выходит, когда "
-                 "тренд ломается. Проценты ниже — за всю историю теста (год), не за месяц.")
-    for tag, leg in t2["legs"].items():
-        pct = (leg["equity"] / 10000 - 1) * 100
-        state = {"LONG": "в позиции", "CASH": "вне рынка (кэш)"}.get(leg["position"], str(leg["position"]))
-        lines.append(f"• {tag}: {state} | счёт {_fmt_usd(leg['equity'])} (+{pct:.0f}%) | сделок {leg['trades']}")
+                 "тренд ломается.")
+    lines.append("⚠️ Честно: почти все цифры ниже — это СИМУЛЯЦИЯ «как будто запустили в "
+                 "октябре 2023 с $10,000», а не реальная прибыль. Живой ежедневный тест "
+                 "стартовал только 16-18 августа. Причём проверка последних месяцев "
+                 "показывает, что правило сейчас НЕ зарабатывает (минус на свежих данных).")
+    live_legs = [tag for tag, leg in t2["legs"].items() if not leg.get("is_replay")]
+    replay_legs = [tag for tag, leg in t2["legs"].items() if leg.get("is_replay")]
+    if live_legs:
+        lines.append("🟢 <b>Живой тест (старт 16-18 августа, настоящие виртуальные $10,000):</b>")
+        for tag in live_legs:
+            leg = t2["legs"][tag]
+            pct = (leg["equity"] / 10000 - 1) * 100
+            state = {"LONG": "в позиции", "CASH": "вне рынка (кэш)"}.get(leg["position"], str(leg["position"]))
+            lines.append(f"• {tag}: {state} | счёт {_fmt_usd(leg['equity'])} ({pct:+.1f}%) | сделок {leg['trades']}")
+    if replay_legs:
+        lines.append("📜 <b>Историческая симуляция (октябрь 2023 → сегодня, виртуально):</b>")
+        for tag in replay_legs:
+            leg = t2["legs"][tag]
+            pct = (leg["equity"] / 10000 - 1) * 100
+            lines.append(f"• {tag}: «как будто» $10,000 стали {_fmt_usd(leg['equity'])} "
+                         f"({pct:+.0f}%) | {leg['trades']} сделок с {leg.get('first_trade', '?')}")
     if t2["portfolio"]:
         p = t2["portfolio"]
         pct = (p["portfolio"] / 10000 - 1) * 100
         bh_pct = (p["bh"] / 10000 - 1) * 100
-        lines.append(f"🧺 все вместе: {_fmt_usd(p['portfolio'])} (+{pct:.0f}%) против простого "
-                     f"«купи и держи» (+{bh_pct:.0f}%)")
+        lines.append(f"🧺 историческая симуляция всех вместе: +{pct:.0f}% против простого "
+                     f"«купи и держи» +{bh_pct:.0f}% (за те же 2023-2026)")
     lines.append("")
 
     # ---------- freqtrade ----------
@@ -471,7 +495,12 @@ def prompt_for_llm(snap: dict) -> str:
     t2 = snap["t2"]
     for tag, leg in t2["legs"].items():
         pct = (leg["equity"] / 10000 - 1) * 100
-        parts.append(f"T2 {tag}: {leg['position']}, equity {leg['equity']}$ ({pct:+.1f}%)")
+        if leg.get("is_replay"):
+            parts.append(f"T2 {tag}: ИСТОРИЧЕСКАЯ СИМУЛЯЦИЯ с 2023 (не заработок), "
+                         f"«как будто» {leg['equity']}$ ({pct:+.1f}%)")
+        else:
+            parts.append(f"T2 {tag}: живой тест с 16-18.08.2026, equity {leg['equity']}$ "
+                         f"({pct:+.1f}%)")
     ft = snap["freqtrade"]
     parts.append(f"freqtrade T2 dry: {len(ft['open'])} открытых, {ft['closed']} закрытых")
     m = snap["mm"]
