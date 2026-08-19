@@ -53,3 +53,18 @@ claim: "coordination/claims/tg-trading-report--20260819T010000Z-aios-arena.md (�
 - Отчёт отправлен владельцу в TG (3 сообщения: 2 данных + LLM-аналитика).
 - Бот перезапущен; тесты test_trading_report.py 8/8; полный pytest зелёный
   (кроме регенерируемого inventory).
+
+## Дополнение 2 (2026-08-19, фикс кнопки)
+
+- Владелец сообщил: кнопка «📈 Трейдинг» (текстовая клавиатура) присылала СТАРЫЙ
+  treasury-отчёт («Мультибиржевой Paper Trading», 10 бирж) — текст попадал в
+  _handle_treasury_intent по ключевому слову «трейдинг».
+- Фикс: единый хелпер send_full_report в tg_bot/trading_report.py; в
+  tg_bot/accounts.py (_handle_account_intent) перехват нормализованного текста
+  «трейдинг»/«📈 трейдинг» ДО treasury-интента; inline-callback nav_trading
+  переведён на тот же хелпер (дублирование убрано).
+- Живая симуляция текстового пути: handled=True, отправляется человеческий
+  отчёт, старый treasury НЕ вызывается. Бот перезапущен; отчёт отправлен
+  владельцу в TG (3/3 сообщений).
+- Тесты: test_trading_button_path.py (3) + обновлённый test_trading_report.py —
+  11/11 зелёные.

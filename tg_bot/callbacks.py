@@ -1170,26 +1170,11 @@ def _handle_nav_callback(api, chat_id: int, cb_id: str, data: str) -> None:
             from tg_bot.treasury import _handle_treasury_intent as _hti
             _hti(api, chat_id, "казначейство и резервы")
         elif data == "nav_trading":
-            from tg_bot.trading_report import build_snapshot, format_report, llm_section
-
             try:
-                snap = build_snapshot()
-                for msg in format_report(snap):
-                    api.send_message(chat_id, msg)
+                from tg_bot.trading_report import send_full_report
+                send_full_report(api, chat_id)
             except Exception as _e_tr:
                 api.send_message(chat_id, f"⚠️ Трейдинг-отчёт: {_e_tr}")
-                return
-            api.send_message(chat_id, "⏳ LLM-аналитика готовится…")
-            import threading
-
-            def _bg_llm(a, cid, snap_):
-                try:
-                    for msg in llm_section(snap_):
-                        a.send_message(cid, msg)
-                except Exception as _e_llm:
-                    a.send_message(cid, f"🤖 LLM-аналитика: ошибка ({_e_llm})")
-
-            threading.Thread(target=_bg_llm, args=(api, chat_id, snap), daemon=True).start()
         elif data == "crypto_refresh":
             from tg_bot.treasury import _handle_treasury_intent as _hti
             _hti(api, chat_id, "крипто заработок")

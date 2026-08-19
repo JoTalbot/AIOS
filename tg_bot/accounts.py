@@ -659,6 +659,17 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     except Exception:
         pass
 
+    # Кнопка текстовой клавиатуры «📈 Трейдинг» — новый человеческий отчёт
+    # (до treasury-intent, у которого «трейдинг» числится ключевым словом).
+    _t_norm = " ".join(str(text or "").casefold().split())
+    if _t_norm in ("трейдинг", "📈 трейдинг", "трейдинг отчёт", "трейдинг отчет"):
+        try:
+            from tg_bot.trading_report import send_full_report
+            send_full_report(api, chat_id)
+        except Exception as _e_tr:
+            api.send_message(chat_id, f"⚠️ Трейдинг-отчёт: {_e_tr}")
+        return True
+
     # Workflow readiness, jobs, inventory, metrics, bank monitor, recovery, reports and leads precede broad CRM words.
     if _m()._handle_treasury_intent(api, chat_id, text):
         return True
