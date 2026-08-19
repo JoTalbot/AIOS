@@ -1,4 +1,4 @@
-# Installed aios-* unit-file names, read-only snapshot 2026-08-19 UTC (tg-trading-report added).
+# Installed aios-* unit-file names, read-only snapshot 2026-08-19 UTC (regime-engine added).
 aios-2captcha-balance.service
 aios-2captcha-balance.timer
 aios-accounting-report.service
@@ -137,6 +137,8 @@ aios-quant-ml-inference.service
 aios-quant-trading.service
 aios-rag-refresh.service
 aios-rag-refresh.timer
+aios-regime-engine.service
+aios-regime-engine.timer
 aios-report-export.service
 aios-report-export.timer
 aios-rotate-backups.service

@@ -239,9 +239,14 @@ def build_snapshot() -> dict:
         regime = btc_regime()
     except Exception:
         regime = None
+    try:
+        regime_payload = _read_json(ROOT / "data" / "reports" / "market_regime_latest.json", {})
+    except Exception:
+        regime_payload = {}
     return {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "btc_regime": regime,
+        "market_regime": regime_payload if isinstance(regime_payload, dict) else {},
         "directional": snap_directional(),
         "dca": snap_dca(),
         "basket": snap_basket(),
@@ -300,7 +305,11 @@ def format_report(snap: dict) -> list[str]:
         pct = (t2["portfolio"]["portfolio"] / 10000 - 1) * 100
         lines.append(f"📈 Моментум-роботы: +{pct:.0f}% в СИМУЛЯЦИИ с 2023 года "
                      f"(не заработок — подробности ниже).")
-    if snap.get("btc_regime") == "bear":
+    mr = snap.get("market_regime") or {}
+    if mr.get("regime"):
+        lines.append(f"🎛 Режим рынка: {mr['regime']} (риск {mr.get('risk_level', '?')}) — "
+                     f"стратегия: {mr.get('strategy_family', '—')}.")
+    elif snap.get("btc_regime") == "bear":
         lines.append("🐻 Рынок в медвежьей фазе: BTC ниже своего долгосрочного среднего.")
     sb = snap["scoreboard"]
     if sb:
@@ -459,6 +468,20 @@ def format_report(snap: dict) -> list[str]:
                      "деньгах, тихие стратегии (копилка и корзина) накапливают, всё под "
                      "автоматической защитой от крупных потерь.")
     lines.append("")
+    mr = snap.get("market_regime") or {}
+    if mr.get("regime"):
+        lines.append(f"🎛 <b>Режим рынка и защита</b>")
+        lines.append(f"• режим: <b>{mr['regime']}</b> | уровень риска: {mr.get('risk_level', '?')}")
+        lines.append(f"• рекомендуемое семейство стратегий: {mr.get('strategy_family', '—')}")
+        lines.append("• защита: в режимах CRASH/PANIC бумажные входы робота блокируются "
+                     "(сохранение капитала); дневная просадка ограничена 0.25%.")
+        triggers = mr.get("triggers") or []
+        if triggers:
+            lines.append("• что изменит режим:")
+            for t in triggers[:3]:
+                lines.append(f"   – {t}")
+        lines.append("")
+
     lines.append("📖 <b>Словарик</b>")
     lines.append("стоп — автопродажа, чтобы убыток не рос; тренд — общее направление цены; "
                  "просадка — насколько счёт опускался от максимума; волатильность — насколько "
@@ -506,6 +529,10 @@ def prompt_for_llm(snap: dict) -> str:
     m = snap["mm"]
     if m:
         parts.append(f"ws-снапшотов {m.get('snapshots', 0):,} за {m.get('span_h', 0)} ч")
+    mr = snap.get("market_regime") or {}
+    if mr.get("regime"):
+        parts.append(f"Режим рынка: {mr['regime']} (риск {mr.get('risk_level')}); "
+                     f"триггеры: {'; '.join((mr.get('triggers') or [])[:3])}")
     sb = snap["scoreboard"]
     if sb:
         v = sb.get("verdict") or {}
@@ -519,14 +546,17 @@ SYSTEM_PROMPT = (
     "виртуальные (paper) — реальные деньги не используются. Известные факты системы: "
     "попытки угадывать короткие движения рынка не дают преимущества (проверено десятками "
     "честных тестов); тихие стратегии (корзина из 10 монет, еженедельная копилка) — "
-    "единственные устойчиво положительные; сейчас рынок в медвежьей фазе. "
-    "Пиши без жаргона; если без термина никак — объясни его в скобках. "
+    "единственные устойчиво положительные. Пиши без жаргона; термин объясняй в скобках. "
+    "НИКОГДА не пиши «рынок точно пойдёт вверх/вниз» — только вероятностные сценарии. "
     "Формат ответа (русский, до 900 символов): "
-    "1) «Главное за 30 секунд» — 3-4 простых предложения; "
-    "2) «Что с каждым портфелем» — по одной строке на портфель; "
-    "3) «Чего ждать» — 3 сценария на 1-2 недели с вероятностями в процентах и что каждый "
-    "сценарий значит для обычного человека. В конце обязательная строка: "
-    "«Это не финансовый совет — система работает на виртуальные деньги»."
+    "1) «Главное за 30 секунд» — 3-4 предложения, включая текущий режим рынка и уровень риска; "
+    "2) «Что с каждым портфелем» — по одной строке (лучшая и худшая стратегия месяца); "
+    "3) «Чего ждать» — 3 сценария на 1-2 недели с вероятностями в %, для каждого — что "
+    "значит для обычного человека и какой триггер подтвердит сценарий; "
+    "4) «Насколько можно доверять» — одной строкой: уверенность в оценке (низкая/средняя), "
+    "качество данных (по числу сделок и глубине истории). "
+    "В конце обязательная строка: «Это не финансовый совет — система работает на "
+    "виртуальные деньги»."
 )
 
 
@@ -565,6 +595,25 @@ def full_report() -> list[str]:
 
     snap = build_snapshot()
     return format_report(snap) + llm_section(snap)
+
+
+def is_trading_button_text(text: str | None) -> bool:
+    """Кнопка текстовой клавиатуры «📈 Трейдинг» (и варианты написания)."""
+
+    norm = " ".join(str(text or "").casefold().split())
+    return norm in ("трейдинг", "📈 трейдинг", "трейдинг отчёт", "трейдинг отчет")
+
+
+def handle_trading_text_intent(api, chat_id, text: str) -> bool:
+    """Текстовый путь кнопки: отчёт; True если текст был «Трейдинг»."""
+
+    if not is_trading_button_text(text):
+        return False
+    try:
+        send_full_report(api, chat_id)
+    except Exception as _e:
+        api.send_message(chat_id, f"⚠️ Трейдинг-отчёт: {_e}")
+    return True
 
 
 def send_full_report(api, chat_id) -> None:

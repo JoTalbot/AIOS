@@ -651,23 +651,9 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
-    # Фриланс-сводка (v22.7): «фриланс», «что по фрилансу» — до treasury, т.к. широкая фраза
-    try:
-        from tg_bot.dashboard import _handle_freelance_summary_intent as _hfs
-        if _hfs(api, chat_id, text):
-            return True
-    except Exception:
-        pass
-
-    # Кнопка текстовой клавиатуры «📈 Трейдинг» — новый человеческий отчёт
-    # (до treasury-intent, у которого «трейдинг» числится ключевым словом).
-    _t_norm = " ".join(str(text or "").casefold().split())
-    if _t_norm in ("трейдинг", "📈 трейдинг", "трейдинг отчёт", "трейдинг отчет"):
-        try:
-            from tg_bot.trading_report import send_full_report
-            send_full_report(api, chat_id)
-        except Exception as _e_tr:
-            api.send_message(chat_id, f"⚠️ Трейдинг-отчёт: {_e_tr}")
+    # Фриланс и «Трейдинг» — широкие фразы, перехват до treasury (seam-модуль)
+    from tg_bot.pre_treasury_intents import pre_treasury_intents
+    if pre_treasury_intents(api, chat_id, text):
         return True
 
     # Workflow readiness, jobs, inventory, metrics, bank monitor, recovery, reports and leads precede broad CRM words.

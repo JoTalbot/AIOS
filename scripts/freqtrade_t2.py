@@ -50,7 +50,11 @@ class T2Momentum(IStrategy):
     out_w = IntParameter(20, 90, default=40, space="sell")
 
     # ---- risk ----
-    stoploss = -0.99  # no hard stoploss: SMA exit is the protection
+    # Страховочный жёсткий стоп −15% (ревизия 2026-08-19): основной выход —
+    # SMA-пересечение, а это аварийная защита капитала. Ранее стоял −0.99
+    # (интерпретируется freqtrade как −99% → стоп-цена = 1% от входа —
+    # недостижимый и вводящий в заблуждение).
+    stoploss = -0.15
     trailing_stop = False
     use_custom_stoploss = False
 
