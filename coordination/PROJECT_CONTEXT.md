@@ -10,6 +10,19 @@
 
 ## Где закончили
 
+**2026-08-19 (Arena.ai, кнопка «Трейдинг» — детальный отчёт):** tg_bot/trading_report.py —
+полный снапшот всех портфелей (A/B с trade_log, DCA VA+control, корзина
+vol-targeting, T2 5 ног + портфель, freqtrade dry, MM/ws/очередь, scoreboard,
+сервисы) + LLM-аналитика и сценарии-прогнозы через LLMBalancer (структура
+риски/анализ/сценарии с вероятностями, дисклеймер «не финансовый совет»;
+системный промпт заземляет модель на известные результаты исследований).
+Кнопка nav_trading: данные мгновенно, LLM в фоновом потоке (бот не блокируется).
+Живая проверка: groq 404 → fallback mistral, корректный ответ. Тесты 7/7.
+PR #198 (`b2362aa2`). Журнал:
+`coordination/sessions/20260819T010000Z-aios-arena-tg-trading-report.md`.
+
+## Где закончили
+
 **2026-08-18 (Arena.ai, TG-команды и брифинг):** /basket, /ab, /scoreboard в
 Telegram-боте (обёртки в protected run_telegram_bot.py — selfguard-snapshot
 обновлён); строки корзины и scoreboard в утренний брифинг; фикс стартовой
