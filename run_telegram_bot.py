@@ -565,6 +565,10 @@ def _allowed_chat_ids() -> set[int]:
     raw = os.environ.get("TELEGRAM_CHAT_ID", "") or read_systemd_credential(
         "telegram_owner_chat_id"
     )
+    # Дополнительные доверенные чаты (решение владельца 2026-08-19):
+    # отдельный credential, чтобы список владельца не ломал int(chat) отправителей.
+    extra = read_systemd_credential("telegram_extra_chat_ids")
+    raw = f"{raw},{extra}" if extra else raw
     allowed: set[int] = set()
     for value in raw.split(","):
         try:

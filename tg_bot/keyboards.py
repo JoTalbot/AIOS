@@ -3,33 +3,20 @@ from __future__ import annotations
 
 
 MAIN_MENU_KEYBOARD = {
+    # Решение владельца 2026-08-19: в боте одна кнопка — «Трейдинг».
+    # Все команды (/quant, /olx, /ab, /scoreboard, …) остаются доступны текстом.
     "keyboard": [
-        [{"text": "📊 Сводка"}, {"text": "🏬 Каталог"}],
-        [{"text": "🆚 Конкуренты"}, {"text": "🛒 OLX"}],
-        [{"text": "💼 Фриланс"}, {"text": "💰 Казначейство"}],
-        [{"text": "📈 Трейдинг"}, {"text": "📦 Новая Почта"}],
-        [{"text": "📲 Телефон & Банки"}, {"text": "🛡 SRE Статус"}],
-        [{"text": "❓ Помощь"}, {"text": "🧭 Меню"}],
+        [{"text": "📈 Трейдинг"}],
     ],
     "resize_keyboard": True,
     "one_time_keyboard": False,
 }
 
 
-# Inline-главное меню (v22.8): красивая навигация кнопками под сообщением
+# Inline-главное меню: по решению владельца 2026-08-19 одна кнопка — «Трейдинг»
 MAIN_MENU_INLINE = {
     "inline_keyboard": [
-        [{"text": "📊 Сводка", "callback_data": "nav_dashboard"},
-         {"text": "🏬 Каталог", "callback_data": "nav_catalog"}],
-        [{"text": "🆚 Конкуренты", "callback_data": "nav_competitors"},
-         {"text": "🛒 OLX", "callback_data": "nav_olx"}],
-        [{"text": "💼 Фриланс", "callback_data": "nav_freelance"},
-         {"text": "💰 Казначейство", "callback_data": "nav_treasury"}],
-        [{"text": "📈 Трейдинг", "callback_data": "nav_trading"},
-         {"text": "📦 Новая Почта", "callback_data": "nav_np"}],
-        [{"text": "📲 Телефон & Банки", "callback_data": "nav_phone"},
-         {"text": "🛡 SRE", "callback_data": "nav_sre"}],
-        [{"text": "❓ Помощь", "callback_data": "nav_help"}],
+        [{"text": "📈 Трейдинг", "callback_data": "nav_trading"}],
     ]
 }
 
