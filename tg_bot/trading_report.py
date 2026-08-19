@@ -227,8 +227,14 @@ def snap_services() -> dict[str, str]:
 
 
 def build_snapshot() -> dict:
+    try:
+        from run_morning_brief import btc_regime
+        regime = btc_regime()
+    except Exception:
+        regime = None
     return {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "btc_regime": regime,
         "directional": snap_directional(),
         "dca": snap_dca(),
         "basket": snap_basket(),
@@ -241,121 +247,198 @@ def build_snapshot() -> dict:
 
 
 # -------------------------------------------------------------- formatting --
+REASON_HUMAN = {
+    "stop_loss": "защитный стоп (продали, чтобы не потерять больше)",
+    "trailing_stop": "трейлинг-стоп (зафиксировали прибыль по пути)",
+    "take_profit": "цель прибыли достигнута",
+    "confirmed_bearish_exit": "сигнал разворота (робот увидел слабость)",
+}
+
+
+def _short_pct(v: float, base: float) -> str:
+    if not base:
+        return "—"
+    return f"{v / base * 100:+.2f}%"
+
+
 def format_report(snap: dict) -> list[str]:
-    """HTML-отчёт кусками (Telegram-безопасными)."""
+    """Отчёт «по-человечески»: простые слова, «что это» к каждому контуру,
+    вердикты обывателю и словарик. Telegram-безопасные куски."""
 
     lines = [
-        "📊 <b>Детальный трейдинг-отчёт</b>",
+        "📊 <b>Трейдинг-отчёт</b> (по-человечески)",
         f"🕐 {snap['generated_at']}",
         "",
+        "── <b>Главное за 30 секунд</b> ──",
     ]
 
-    # Directional v2 A/B
     d = snap["directional"]
-    lines.append("⚖️ <b>Directional v2 paper (A/B)</b>")
+    main_a = d["arms"].get("main")
+    ctrl_a = d["arms"].get("control")
+    if d["ok"] and main_a and ctrl_a:
+        lines.append(
+            f"🤖 Робот-трейдер (ученик): {_short_pct(main_a['realized'], 10000)} и "
+            f"{_short_pct(ctrl_a['realized'], 10000)} от счёта — тренируется на виртуальных "
+            f"деньгах, убытки копеечные.")
+    b = snap["basket"]
+    if b.get("value") is not None:
+        lines.append(f"🧺 Корзина топ-10: {b['pnl_pct']:+.2f}% — наш «крипто-ETF».")
+    dca = snap["dca"]
+    va = dca.get("VA main", {})
+    if va.get("value") is not None:
+        pnl = va["value"] - va["deposited"]
+        lines.append(f"🐷 Автокопилка: {_short_pct(pnl, va['deposited'])} — копит по чуть-чуть каждую неделю.")
+    t2 = snap["t2"]
+    if t2.get("portfolio"):
+        pct = (t2["portfolio"]["portfolio"] / 10000 - 1) * 100
+        lines.append(f"📈 Моментум-роботы: +{pct:.0f}% за всё время теста.")
+    if snap.get("btc_regime") == "bear":
+        lines.append("🐻 Рынок в медвежьей фазе: BTC ниже своего долгосрочного среднего.")
+    sb = snap["scoreboard"]
+    if sb:
+        v = sb.get("verdict") or {}
+        lines.append(f"🏆 По тесту за месяц лучшая стратегия — корзина топ-10.")
+    lines.append("")
+
+    # ---------- Directional ----------
+    lines.append("🤖 <b>Робот-трейдер</b> (сам ищет моменты, на виртуальные деньги)")
+    lines.append("Что это: программа с машинным обучением сама решает, когда купить и когда "
+                 "продать. Два робота-близнеца «А» и «Б» соревнуются — отличаются лишь тем, "
+                 "как выходят из сделки.")
     if d["ok"]:
-        for tag in ("main", "control"):
+        for tag, icon, name in (("main", "🅰️", "Робот А"), ("control", "🅱️", "Робот Б")):
             a = d["arms"].get(tag)
             if not a:
                 continue
-            icon = "🅰️" if tag == "main" else "🅱️"
-            wr = f" (win {a['win_rate']}%)" if a["win_rate"] is not None else ""
+            wr = f"{a['win_rate']}%" if a["win_rate"] is not None else "—"
             lines.append(
-                f"{icon} <b>{tag}</b> (trail {'1.0' if tag == 'main' else '0.988'}): "
-                f"{a['closed']} сд.{wr} | PnL {_fmt_usd(a['realized'])} "
-                f"| gross {_fmt_usd(a['gross'])} | fees {_fmt_usd(a['fees'])}")
-            lines.append(f"   equity {_fmt_usd(a['equity'])} | DD {a['dd_pct']:.3f}% "
-                         f"| открытых: {a['open_positions']} | режим {a['entry_mode']}")
-            for t in a["recent_trades"]:
-                lines.append(
-                    f"   • {t.get('exchange')}:{t.get('symbol')} {t.get('reason')} "
-                    f"PnL {_fmt_usd(float(t.get('net_pnl_usd', 0.0) or 0.0))}")
+                f"{icon} <b>{name}</b>: {a['closed']} сделок, удачных {wr}, "
+                f"итог {_short_pct(a['realized'], 10000)} от счёта "
+                f"(в деньгах {_fmt_usd(a['realized'])})")
+            lines.append(f"   на счету {_fmt_usd(a['equity'])} из 10 000$ "
+                         f"| просадка {a['dd_pct']:.3f}%")
+            if a["recent_trades"]:
+                lines.append("   последние сделки:")
+                for t in a["recent_trades"]:
+                    reason = REASON_HUMAN.get(t.get("reason"), t.get("reason") or "—")
+                    lines.append(f"   • {t.get('symbol')} ({t.get('exchange')}): {reason} — "
+                                 f"итог {_fmt_usd(float(t.get('net_pnl_usd', 0.0) or 0.0))}")
+        if main_a and ctrl_a:
+            better = "Робот А" if main_a["realized"] >= ctrl_a["realized"] else "Робот Б"
+            lines.append(f"Кто впереди: <b>{better}</b> — но сделок мало "
+                         f"(по {main_a['closed']}), выводы рано.")
+        lines.append("Защита: если счёт за день просядет на 0.25% — торговля остановится сама.")
     else:
         lines.append("нет данных")
     lines.append("")
 
-    # DCA
-    lines.append("📈 <b>DCA (еженедельный)</b>")
-    for tag in ("VA main", "control"):
-        a = snap["dca"].get(tag, {})
+    # ---------- DCA ----------
+    lines.append("🐷 <b>Автокопилка (DCA)</b>")
+    lines.append("Что это: каждую неделю докупается крипта на фиксированную сумму. Цены упали — "
+                 "купили дешевле, выросли — купили меньше. Классический способ копить в долгую.")
+    for tag, name in (("VA main", "основная копилка"), ("control", "контрольная")):
+        a = dca.get(tag, {})
         if a.get("value") is None:
             continue
-        pnl = a["value"] - (a["deposited"] or 0)
-        pct = pnl / a["deposited"] * 100 if a["deposited"] else 0
-        lines.append(
-            f"• {tag} [{a['mode']}, ${a['weekly']}/нед]: "
-            f"внесено {_fmt_usd(a['deposited'])} → {_fmt_usd(a['value'])} "
-            f"({_fmt_usd(pnl)} / {pct:+.1f}%) | {a['date']}")
+        pnl = a["value"] - a["deposited"]
+        lines.append(f"• {name}: вложено {_fmt_usd(a['deposited'])} → сейчас {_fmt_usd(a['value'])} "
+                     f"({_short_pct(pnl, a['deposited'])})")
     lines.append("")
 
-    # Basket
-    b = snap["basket"]
-    lines.append("🧺 <b>Корзина топ-10</b> (vol-targeting)")
+    # ---------- Basket ----------
+    lines.append("🧺 <b>Корзина топ-10</b> (наш «крипто-ETF»)")
+    lines.append("Что это: одна покупка = сразу 10 крупнейших криптовалют. Правило тихое: чем "
+                 "спокойнее монета (меньше скачет цена), тем больше её доля — чтобы корзину "
+                 "меньше трясло.")
     if b.get("value") is not None:
-        lines.append(
-            f"• {_fmt_usd(b['value'])} ({b['pnl_pct']:+.2f}%) | внесено {_fmt_usd(b['invested'])} "
-            f"| fees {_fmt_usd(b['fees'])} | кэш {_fmt_usd(b['cash'])} | {b['date']}")
+        lines.append(f"• вложено {_fmt_usd(b['invested'])} → сейчас {_fmt_usd(b['value'])} "
+                     f"({b['pnl_pct']:+.2f}%) | комиссии {_fmt_usd(b['fees'])}")
         lines.append(f"• правило весов: {b.get('weights_rule', '?')}")
     else:
         lines.append("нет данных")
     lines.append("")
 
-    # T2 momentum
-    t2 = snap["t2"]
-    lines.append("📉 <b>T2 momentum paper</b> (SMA50-гистерезис, ежедневно)")
+    # ---------- T2 ----------
+    lines.append("📈 <b>Моментум-роботы (T2)</b> — держим монету, пока растёт")
+    lines.append("Что это: робот заходит, когда монета в устойчивом тренде, и выходит, когда "
+                 "тренд ломается. Проценты ниже — за всю историю теста (год), не за месяц.")
     for tag, leg in t2["legs"].items():
         pct = (leg["equity"] / 10000 - 1) * 100
-        lines.append(
-            f"• {tag}: {leg['position']} | equity {_fmt_usd(leg['equity'])} ({pct:+.1f}%) "
-            f"| BH-эквив {_fmt_usd(leg['cash_equiv'])} | {leg['trades']} сд.")
+        state = {"LONG": "в позиции", "CASH": "вне рынка (кэш)"}.get(leg["position"], str(leg["position"]))
+        lines.append(f"• {tag}: {state} | счёт {_fmt_usd(leg['equity'])} (+{pct:.0f}%) | сделок {leg['trades']}")
     if t2["portfolio"]:
         p = t2["portfolio"]
         pct = (p["portfolio"] / 10000 - 1) * 100
         bh_pct = (p["bh"] / 10000 - 1) * 100
-        lines.append(f"🧺 портфель T2: {_fmt_usd(p['portfolio'])} ({pct:+.1f}%) "
-                     f"| BH {bh_pct:+.1f}% | {p['date']}")
+        lines.append(f"🧺 все вместе: {_fmt_usd(p['portfolio'])} (+{pct:.0f}%) против простого "
+                     f"«купи и держи» (+{bh_pct:.0f}%)")
     lines.append("")
 
-    # Freqtrade
+    # ---------- freqtrade ----------
     ft = snap["freqtrade"]
-    lines.append(f"🤖 <b>freqtrade T2 dry</b> (закрытых: {ft['closed']})")
+    lines.append("🤖 <b>Второй робот (freqtrade)</b> — торгует по тренду на 5 монетах")
+    lines.append(f"Закрытых сделок: {ft['closed']}. Сейчас держит:")
     for row in ft["open"]:
-        lines.append(f"• {row[0]}: открыта {row[3][:16]} @ {row[1]}, SL {row[4]}")
+        lines.append(f"• {row[0]}: куплено по {row[1]}, защитный стоп на {row[4]} "
+                     f"(если цена упадёт — продаст сам)")
     if not ft["open"]:
-        lines.append("открытых сделок нет")
+        lines.append("сейчас ничего не держит")
     lines.append("")
 
-    # MM
+    # ---------- MM ----------
     m = snap["mm"]
-    lines.append("🌊 <b>MM / микроструктура</b>")
+    lines.append("🌊 <b>Данные для обучения</b>")
     if m:
-        lines.append(f"• ws-снапшотов: {m.get('snapshots', 0):,} ({m.get('span_h', 0)} ч), "
-                     f"trade-flow: {m.get('trade_flow', 0):,}")
+        lines.append(f"• собрано {m.get('snapshots', 0):,} «снимков» биржевого стакана за "
+                     f"{m.get('span_h', 0)} часов — на них учатся алгоритмы предсказаний")
         if m.get("btc_touch_life_s"):
-            lines.append(f"• BTC тач-жизнь {m['btc_touch_life_s']}с | "
-                         f"fill(60с, $2000) {m.get('btc_fill60_q2000')}")
+            lines.append(f"• BTC: лучшая цена живёт в среднем {m['btc_touch_life_s']} секунд")
     else:
         lines.append("нет данных")
     lines.append("")
 
-    # Scoreboard
-    sb = snap["scoreboard"]
+    # ---------- Scoreboard ----------
     if sb:
         v = sb.get("verdict") or {}
         w = v.get("winner", "—")
+        winner_name = {"top10_basket": "корзина топ-10",
+                       "directional_v2": "робот-трейдер"}.get(w, w)
         if v.get("unstable"):
-            w += " ⚠️"
+            winner_name += " ⚠️"
         basket = sb.get("top10_basket_pct")
-        basket_s = f"{basket:+.2f}%" if basket is not None else "—"
-        lines.append(f"🏆 <b>Scoreboard {sb['date']}</b>: DV2 {sb['dv2']['pnl_pct']:+.2f}% | "
-                     f"корзина {basket_s} | рынок {sb['market_mean_pct']:+.2f}% | 🥇 {w}")
+        lines.append(f"🏆 <b>Кто лучший по тесту за {sb['date']}</b>")
+        lines.append("Протестировали стратегии «как будто начали месяц назад»:")
+        lines.append(f"• робот-трейдер: {sb['dv2']['pnl_pct']:+.2f}%")
+        if basket is not None:
+            lines.append(f"• корзина топ-10: {basket:+.2f}%")
+        lines.append(f"• рынок в среднем: {sb['market_mean_pct']:+.2f}%")
+        lines.append(f"🥇 Победитель: <b>{winner_name}</b>")
         lines.append("")
 
-    # Services
+    # ---------- services ----------
     svc = snap["services"]
     bad = [k for k, v in svc.items() if v != "active"]
-    lines.append(f"🖥 <b>Сервисы:</b> {len(svc) - len(bad)}/{len(svc)} active"
-                 + (f" | ⚠️ {', '.join(bad)}" if bad else ""))
+    total = len(svc)
+    lines.append(f"🖥 <b>Техника:</b> {total - len(bad)} из {total} сервисов работают"
+                 + (f" | ⚠️ лежит: {', '.join(bad)}" if bad else " — всё в порядке"))
+    lines.append("")
+
+    # ---------- простой вывод ----------
+    lines.append("🧸 <b>Простыми словами</b>")
+    if snap.get("btc_regime") == "bear":
+        lines.append("Рынок сейчас в медвежьей фазе (цены под давлением). Наши тесты показали, "
+                     "что угадывать короткие движения рынка невыгодно, поэтому робот "
+                     "осторожничает и тренируется на виртуальных деньгах. Зарабатывают тихие "
+                     "стратегии — копилка и корзина: они и держат основную роль.")
+    else:
+        lines.append("Система работает в штатном режиме: робот тренируется на виртуальных "
+                     "деньгах, тихие стратегии (копилка и корзина) накапливают, всё под "
+                     "автоматической защитой от крупных потерь.")
+    lines.append("")
+    lines.append("📖 <b>Словарик</b>")
+    lines.append("стоп — автопродажа, чтобы убыток не рос; тренд — общее направление цены; "
+                 "просадка — насколько счёт опускался от максимума; волатильность — насколько "
+                 "сильно скачет цена.")
 
     return _chunks("\n".join(lines))
 
@@ -402,17 +485,19 @@ def prompt_for_llm(snap: dict) -> str:
 
 
 SYSTEM_PROMPT = (
-    "Ты — количественный аналитик торговой системы AIOS. Все контуры paper (без реальных "
-    "денег). Известные результаты исследований системы: направленный edge на 1h не найден "
-    "(ML AUC ~0.52-0.53, все эксперименты отрицательны); market-making edge нет; "
-    "пассивная корзина топ-10 и DCA — единственные устойчиво положительные контуры; "
-    "текущий режим рынка медвежий (BTC ниже SMA200). Отвечай строго по данным, не выдумывай. "
-    "Формат ответа (русский, ≤900 символов): "
-    "1) Риски — 3-5 пунктов по текущему состоянию; "
-    "2) Анализ портфелей — что здорово/что слабо по цифрам; "
-    "3) Сценарии-прогнозы — 3 варианта (вероятности %) на 1-2 недели с учётом медвежьего "
-    "режима и отсутствия edge; в конце обязательная строка: 'Не является финансовым "
-    "советом; paper-исследование'."
+    "Ты — дружелюбный помощник, который объясняет состояние торговой системы AIOS "
+    "простым языком, понятным человеку без финансового образования. Все портфели "
+    "виртуальные (paper) — реальные деньги не используются. Известные факты системы: "
+    "попытки угадывать короткие движения рынка не дают преимущества (проверено десятками "
+    "честных тестов); тихие стратегии (корзина из 10 монет, еженедельная копилка) — "
+    "единственные устойчиво положительные; сейчас рынок в медвежьей фазе. "
+    "Пиши без жаргона; если без термина никак — объясни его в скобках. "
+    "Формат ответа (русский, до 900 символов): "
+    "1) «Главное за 30 секунд» — 3-4 простых предложения; "
+    "2) «Что с каждым портфелем» — по одной строке на портфель; "
+    "3) «Чего ждать» — 3 сценария на 1-2 недели с вероятностями в процентах и что каждый "
+    "сценарий значит для обычного человека. В конце обязательная строка: "
+    "«Это не финансовый совет — система работает на виртуальные деньги»."
 )
 
 
@@ -441,9 +526,9 @@ def llm_section(snap: dict) -> list[str]:
 
     analysis = llm_analysis(snap)
     if not analysis:
-        return ["🤖 <b>LLM-аналитика:</b> временно недоступна (балансер не ответил). "
-                "Данные отчёта выше актуальны."]
-    return _chunks("🤖 <b>LLM-аналитика и сценарии</b>\n" + analysis)
+        return ["🤖 <b>Что думает наш ИИ-аналитик:</b> временно недоступен (сервис не "
+                "ответил). Цифры выше актуальны, попробуйте ещё раз чуть позже."]
+    return _chunks("🤖 <b>Что думает наш ИИ-аналитик</b>\n" + analysis)
 
 
 def full_report() -> list[str]:

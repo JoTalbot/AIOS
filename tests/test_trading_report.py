@@ -55,14 +55,25 @@ def test_format_report_covers_all_sections():
     snap = _snapshot()
     chunks = format_report(snap)
     text = "\n".join(chunks)
-    assert "Directional v2" in text and "main" in text and "control" in text
-    assert "DCA" in text and "va" in text and "dca" in text
-    assert "Корзина топ-10" in text and "inverse_vol_30d" in text
-    assert "T2 momentum" in text and "CASH" in text
+    # человеческие маркеры: главное, объяснения, словарик
+    assert "Главное за 30 секунд" in text
+    assert "Что это" in text
+    assert "Робот А" in text and "Робот Б" in text
+    assert "Автокопилка" in text and "Корзина топ-10" in text
+    assert "Моментум-роботы" in text and "вне рынка (кэш)" in text
     assert "freqtrade" in text and "BTC/USDT" in text
-    assert "ws-снапшотов" in text and "5,816,805" in text
-    assert "Scoreboard 2026-08" in text and "top10_basket" in text
-    assert "⚠️ aios-freqtrade-t2-dry" in text
+    assert "снимков" in text and "5,816,805" in text
+    assert "Кто лучший по тесту" in text and "корзина топ-10" in text
+    assert "Словарик" in text
+    assert "Простыми словами" in text
+    assert "⚠️ лежит: aios-freqtrade-t2-dry" in text
+
+
+def test_format_report_human_verdict_names_winner():
+    snap = _snapshot()
+    text = "\n".join(format_report(snap))
+    # победитель переведён на человеческий язык
+    assert "Победитель: <b>корзина топ-10</b>" in text
 
 
 def test_format_report_no_crash_on_empty():
