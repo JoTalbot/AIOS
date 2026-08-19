@@ -538,6 +538,29 @@ def full_report() -> list[str]:
     return format_report(snap) + llm_section(snap)
 
 
+def send_full_report(api, chat_id) -> None:
+    """Отправка отчёта в чат: данные сразу, LLM-аналитика в фоновом потоке.
+
+    Используется кнопкой «Трейдинг» (и inline-callback nav_trading, и
+    текстовой клавиатурой MAIN_MENU_KEYBOARD) — единая точка сборки.
+    """
+
+    snap = build_snapshot()
+    for msg in format_report(snap):
+        api.send_message(chat_id, msg)
+    api.send_message(chat_id, "⏳ LLM-аналитика готовится…")
+    import threading
+
+    def _bg():
+        try:
+            for msg in llm_section(snap):
+                api.send_message(chat_id, msg)
+        except Exception as _e:
+            api.send_message(chat_id, f"🤖 LLM-аналитика: ошибка ({_e})")
+
+    threading.Thread(target=_bg, daemon=True).start()
+
+
 if __name__ == "__main__":
     for msg in full_report():
         print("=" * 60)

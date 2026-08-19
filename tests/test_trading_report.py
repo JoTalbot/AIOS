@@ -119,5 +119,4 @@ def test_nav_trading_wired_to_report():
 
     src = _P("/root/AIOS/tg_bot/callbacks.py").read_text(encoding="utf-8")
     assert 'data == "nav_trading"' in src
-    assert "tg_bot.trading_report" in src
-    assert "llm_section" in src
+    assert "from tg_bot.trading_report import send_full_report" in src
