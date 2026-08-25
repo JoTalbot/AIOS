@@ -127,6 +127,6 @@ def test_prompt_for_llm_no_crash_on_empty():
 def test_nav_trading_wired_to_report():
     from pathlib import Path as _P
 
-    src = _P("/root/AIOS/tg_bot/callbacks.py").read_text(encoding="utf-8")
+    src = (_P(__file__).resolve().parents[1] / "tg_bot" / "callbacks.py").read_text(encoding="utf-8")
     assert 'data == "nav_trading"' in src
     assert "from tg_bot.trading_report import send_full_report" in src

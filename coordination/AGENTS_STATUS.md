@@ -15,6 +15,7 @@
 
 | Обновлено UTC | Агент | Результат | Skill получен |
 |---|---|---|---|
+| 2026-08-25T20:36:00Z | Arena.ai Agent Mode | DONE — 8 затронутых файлов, 100 tests passed; E/F hard gate и compile clean. | skills/arena/pytest-path-hermeticity/SKILL.md |
 | 2026-08-25T20:16:09Z | Arena.ai Agent Mode | DONE — dependency contract/collection закрыты и подтверждены CI до запуска tests; оставшиеся full-pytest failures классифицированы как pre-existing hermeticity/runtime baseline. | skills/arena/dependency-collection-closure/SKILL.md |
 | 2026-08-25T19:39:20Z | Arena.ai Agent Mode | DONE — dashboard, CI, v20 Kernel/runtime завершены; OpenHands blockers переданы в PR #243; draft PR #248 запущен, inventory drift исправлен. | skills/arena/coordination-dashboard/SKILL.md, skills/arena/v20-kernel-contract/SKILL.md, skills/arena/github-ci-baseline/SKILL.md, skills/arena/openhands-cloud-v1-review/SKILL.md |
 | 2026-08-25T08:20:00Z | OpenHands (external agent) | DONE — протокол задокументирован, проверки 4/4, коммит на ветке agent/20260825T074311Z-openhands-skills-protocol/agent-skills-protocol. Дальше — публикация в origin по решению владельца. | skills/coder/agent-skills-protocol-bootstrap/SKILL.md |
@@ -24,7 +25,6 @@
 | 2026-08-18T01:20:00Z | Arena.ai Agent Mode | — | — |
 | 2026-08-18T00:40:00Z | Arena.ai Agent Mode | — | — |
 | 2026-08-17T23:50:00Z | Arena.ai Agent Mode | — | — |
-| 2026-08-17T23:00:00Z | Arena.ai Agent Mode | — | — |
 
 ## Блокеры и несогласованности
 

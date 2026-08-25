@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# ruff: noqa: E501
 """v20.0 Activation: тесты новых раннеров — фриланс-воронка, flash-arb алерты, mesh fleet.
 
 Без сети: внешние вызовы мокнуты/используются tmp-path состояния.
@@ -13,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path("/root/AIOS")
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_runner(name: str, file: str):
@@ -92,7 +93,6 @@ def test_mesh_fleet_lease_release(tmp_path, monkeypatch):
     from aios_core.android_mesh import AndroidMeshFleet
     fleet = AndroidMeshFleet.__new__(AndroidMeshFleet)
     # подменяем файл флота на tmp
-    import types
     fleet.fleet_file = tmp_path / "fleet.json"
     fleet.devices = {}
     # минимальный контракт: методы существуют и callable
