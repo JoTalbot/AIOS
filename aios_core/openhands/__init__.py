@@ -34,6 +34,7 @@ from .state_machine import (
     can_transition,
     transition,
 )
+from .store import ContourStore
 from .verdicts import parse_review_verdict
 
 __all__ = [
@@ -43,6 +44,7 @@ __all__ = [
     "AgentProfile",
     "AgentRole",
     "ContourService",
+    "ContourStore",
     "ContourTask",
     "FailureReport",
     "Gate",

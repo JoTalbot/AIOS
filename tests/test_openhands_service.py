@@ -2,13 +2,7 @@
 
 import pytest
 
-from aios_core.openhands import (
-    ContourService,
-    Gate,
-    OHOrchestrator,
-    TaskExtras,
-    parse_review_verdict,
-)
+from aios_core.openhands import ContourService, ContourStore, Gate, OHOrchestrator, TaskExtras, parse_review_verdict
 from aios_core.openhands.audit import OHAuditLogger
 from aios_core.openhands.models import ReviewDecision
 from aios_core.orchestrator import TaskStatus
@@ -139,7 +133,8 @@ class TestContourService:
         _, prompt = client.started[0]
         assert "agent/custom" in prompt
 
-    def test_status_unknown_task_raises(self, audit):
-        service = ContourService(client=VerdictClient(), github=None, audit=audit)
+    def test_status_unknown_task_raises(self, tmp_path, audit):
+        store = ContourStore(state_dir=tmp_path)
+        service = ContourService(client=VerdictClient(), github=None, audit=audit, store=store)
         with pytest.raises(KeyError):
             service.status("nope")

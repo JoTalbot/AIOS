@@ -15,6 +15,7 @@ from .audit import OHAuditLogger
 from .github import GitHubHelper
 from .models import AgentRole, Gate, TaskExtras
 from .runner import ConversationClient, OHOrchestrator, RunResult
+from .store import ContourStore
 
 
 @dataclass
@@ -36,6 +37,8 @@ class ContourService:
         audit: аудит-логгер контура.
         repository: ``owner/repo`` для Cloud-разговоров.
         base_branch: базовая ветка для diff/PR.
+        store: персистентное хранилище; None — in-memory (по умолчанию
+            создаётся ``ContourStore`` в octopus/state dir).
     """
 
     client: ConversationClient
@@ -43,7 +46,24 @@ class ContourService:
     audit: OHAuditLogger = field(default_factory=OHAuditLogger)
     repository: str | None = None
     base_branch: str = "main"
+    store: ContourStore | None = None
     _tasks: dict[str, ContourTask] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.store is None:
+            self.store = ContourStore()
+        self._restore()
+
+    def _restore(self) -> None:
+        """Восстановить задачи из store (рестарт процесса)."""
+        for task_id, record in self.store.load_all().items():
+            if record is None:
+                continue
+            task, extras, contour_status = record
+            result = None
+            if contour_status is not None:
+                result = RunResult(status=contour_status, extras=extras, error=extras.error)
+            self._tasks[task_id] = ContourTask(task=task, extras=extras, result=result)
 
     def submit(
         self,
@@ -60,6 +80,7 @@ class ContourService:
         if required_gates is not None:
             extras.required_gates = required_gates
         self._tasks[task.id] = ContourTask(task=task, extras=extras)
+        self.store.save(task, extras)
         self.audit.log("task_submitted", task.id, AgentRole.ORCHESTRATOR, title=title)
         return task.id
 
@@ -78,11 +99,21 @@ class ContourService:
         entry.task.status = self._canonical_status(result.status)
         if result.error:
             entry.task.error = result.error
+        self.store.save(entry.task, entry.extras, contour_status=result.status)
         return result
 
     def status(self, task_id: str) -> dict:
         """Сводный статус: каноническая задача + контурные поля."""
-        entry = self._tasks[task_id]
+        entry = self._tasks.get(task_id)
+        if entry is None:
+            record = self.store.load(task_id)
+            if record is None:
+                raise KeyError(task_id)
+            task, extras, contour_status = record
+            entry = ContourTask(task=task, extras=extras)
+            if contour_status is not None:
+                entry.result = RunResult(status=contour_status, extras=extras, error=extras.error)
+            self._tasks[task_id] = entry
         contour_status = entry.result.status if entry.result else TaskStatus.PENDING
         return {
             "task_id": task_id,
