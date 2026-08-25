@@ -5,6 +5,7 @@ AIOS владеет оркестрацией, состоянием задач, �
 разговоров, а не новые классы агентов. Подробнее: AIOS_OPENHANDS_INTEGRATION_PLAN.md.
 """
 
+from .api import router as oh_contour_router
 from .client import OpenHandsClient, resolve_api_key
 from .errors import (
     OpenHandsAPIError,
@@ -67,6 +68,7 @@ __all__ = [
     "can_transition",
     "check_paths",
     "conversation_title",
+    "oh_contour_router",
     "parse_review_verdict",
     "path_allowed",
     "rbac_role_name",

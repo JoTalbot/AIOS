@@ -122,6 +122,9 @@ class ContourService:
             "contour_status": contour_status,
             "retry_count": entry.extras.retry_count,
             "passed_gates": sorted(g.value for g in entry.extras.passed_gates),
+            "review_decision": (
+                entry.extras.review_decision.value if entry.extras.review_decision else None
+            ),
             "artifacts": list(entry.extras.artifacts),
             "error": entry.extras.error,
         }
