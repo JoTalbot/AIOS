@@ -8,7 +8,6 @@ from typing import Protocol
 from aios_core.orchestrator import TaskStatus
 from .agent_score import AgentScoreboard
 from .audit import OHAuditLogger
-from .event_evidence import build_completion_report
 from .evidence_gate import EvidenceGate
 from .gates import apply_gate, can_advance
 from .github import GitHubHelper
@@ -79,10 +78,7 @@ class OHOrchestrator:
                 extras.error = last_error
                 self._audit.log("stage_error", task_id, AgentRole.ORCHESTRATOR, stage=status, error=last_error)
                 if status in (TaskStatus.PLANNING, TaskStatus.RUNNING, OHStatus.TESTING, OHStatus.QA):
-                    if isinstance(exc, TransitionError) and "COMPLETED запрещён" in last_error:
-                        status = TaskStatus.BLOCKED
-                    else:
-                        status = TaskStatus.BLOCKED
+                    status = TaskStatus.BLOCKED
                 else:
                     status = TaskStatus.BLOCKED
         self._audit.log("task_completed" if status == TaskStatus.COMPLETED else "task_blocked", task_id, AgentRole.ORCHESTRATOR, status=status)
@@ -151,6 +147,13 @@ class OHOrchestrator:
         self._audit.log_decision(task_id, role, verdict)
         return verdict
 
+    def _gate_identity_for(self, role: AgentRole, task_id: str) -> tuple[str | None, str | None]:
+        for event in reversed(self._audit.chain.events):
+            payload = event.payload
+            if payload.get("type") == "openhands.gate_pass" and payload.get("agent") == role.value and payload.get("task_id") == task_id:
+                return payload.get("commit_sha"), payload.get("diff_hash")
+        return None, None
+
     def _evidence_context(self, task_id: str, extras: TaskExtras, branch: str) -> dict[str, object]:
         context: dict[str, object] = {"tests": Gate.TESTS in extras.passed_gates, "reviewer": ReviewDecision.APPROVED.value if Gate.REVIEW in extras.passed_gates else None, "security": ReviewDecision.APPROVED.value if Gate.SECURITY_REVIEW in extras.passed_gates else None, "audit_chain": self._audit.verify_chain()}
         if self._github is not None:
@@ -160,6 +163,11 @@ class OHOrchestrator:
                 context["changed_files"] = self._github.changed_files(self._base)
             except Exception:
                 pass
+        test_commit, test_diff = self._gate_identity_for(AgentRole.TESTER, task_id)
+        context["test_commit_sha"] = test_commit
+        context["test_diff_hash"] = test_diff
+        context["evidence_commit_sha"] = context.get("commit_sha")
+        context["evidence_diff_hash"] = context.get("diff_hash")
         context["audit_checkpoint"] = bool(self._audit.chain.checkpoints)
         return context
 
