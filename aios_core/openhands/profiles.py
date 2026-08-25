@@ -49,6 +49,7 @@ _ROLE_INSTRUCTIONS: dict[AgentRole, str] = {
 
 
 def _render_permissions(perms: AgentPermissions) -> str:
+    """Рендер блока ограничений доступа для промпта."""
     lines = [
         f"Доступ на чтение: {perms.read}; запись: {perms.write}.",
         "Разрешённые пути записи: " + (", ".join(f"`{p}`" for p in perms.allowed_paths) or "нет"),
