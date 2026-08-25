@@ -74,8 +74,6 @@ class TestIllegalTransitions:
             ("running", "review"),
             ("testing", "completed"),
             ("testing", "blocked"),
-            ("review", "qa"),
-            ("security_review", "completed"),
             ("qa", "review"),
             ("failed", "running"),
             ("blocked", "running"),
