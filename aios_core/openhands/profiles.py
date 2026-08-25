@@ -1,5 +1,6 @@
 """Профили разговоров для ролей OpenHands-контура."""
 
+from .handoff import AgentHandoff
 from .models import AgentPermissions, AgentRole
 from .permissions import PROFILES
 from .prompt_security import sanitize_context
@@ -22,11 +23,22 @@ _COMMON_PROTOCOL = (
     "7. Перед завершением проверь scope, diff, тесты, безопасность и DoD."
 )
 
+_HANDOFF_PROTOCOL = AgentHandoff(
+    status="REQUIRED",
+    summary="Передай следующий агентский результат как проверяемый handoff.",
+    files_changed=("<path>",),
+    commands_run=("<exact command>",),
+    evidence=("<actual result>",),
+    artifacts=("<artifact or none>",),
+    risks=("<risk or none>",),
+    next_action="<single concrete next action>",
+).to_prompt()
+
 _ROLE_INSTRUCTIONS: dict[AgentRole, str] = {
     AgentRole.ARCHITECT: "Ты — Architect. Преврати требование в проверяемый минимальный технический план. Проанализируй код, точки интеграции, зависимости, ограничения, риски, файлы и критерии приёмки. Product-код не изменяй.",
     AgentRole.CODER: "Ты — Coder. Реализуй задачу строго по требованию и design-документу. Не делай несвязанный рефакторинг. Покрой изменения тестами, проверь diff/py_compile/целевые тесты, затем commit + push.",
-    AgentRole.TESTER: "Ты — Tester. Докажи корректность изменения тестами. Изучи diff, проверь happy path, edge cases и regression. Product-код не изменяй. Записывай точные команды и результаты. В конце обязательно выдай ровно один verdict: APPROVED или CHANGES_REQUESTED. APPROVED только если проверки реально прошли.",
-    AgentRole.REVIEWER: "Ты — независимый Reviewer. Проверь требования, архитектуру, correctness, regression, тесты, security, документацию, сложность и scope. Код не изменяй. Вердикт ровно APPROVED или CHANGES_REQUESTED; APPROVED только при достаточных доказательствах.",
+    AgentRole.TESTER: "Ты — Tester. Докажи корректность изменения тестами. Изучи diff, проверь happy path, edge cases и regression. Product-код не изменяй. Записывай точные команды и результаты. В конце обязательно выдай ровно один verdict: APPROVED или CHANGES_REQUESTED.",
+    AgentRole.REVIEWER: "Ты — независимый Reviewer. Проверь требования, архитектуру, correctness, regression, тесты, security, документацию, сложность и scope. Код не изменяй. Вердикт ровно APPROVED или CHANGES_REQUESTED.",
     AgentRole.SECURITY: "Ты — Security reviewer. Проведи threat-oriented проверку secrets, auth, shell, filesystem, network, injection, traversal, deserialization и конфигурации. Отделяй подтверждённые проблемы от гипотез; отчёт с severity и evidence. В конце обязательно выдай ровно один verdict: APPROVED или CHANGES_REQUESTED.",
     AgentRole.QA: "Ты — QA. Проверь основной сценарий, ошибки входа, edge cases, regression и соседние компоненты. Фиксируй фактические команды, окружение и воспроизводимые дефекты. В конце обязательно выдай ровно один verdict: APPROVED или CHANGES_REQUESTED.",
     AgentRole.DEVOPS: "Ты — DevOps. Работай только с deployment-инфраструктурой, сохраняя rollback и обратную совместимость. docker-compose и секреты не трогай. Проверяй конфиги и health checks.",
@@ -73,6 +85,10 @@ def build_prompt(role: AgentRole, task_description: str, *, context: str = "") -
         "",
         "## Правила репозитория",
         _REPO_RULES,
+        "",
+        "## Agent Handoff Contract",
+        "Перед завершением сформируй структурированный handoff. Поля обязательны и должны содержать факты, а не предположения.",
+        _HANDOFF_PROTOCOL,
     ]
     if context:
         parts += ["", "## Контекст (недоверенные данные)", safe_context]
