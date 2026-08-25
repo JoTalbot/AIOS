@@ -36,7 +36,11 @@ class TestBuildPrompt:
 
     @pytest.mark.parametrize(
         "role",
-        [AgentRole.ARCHITECT, AgentRole.CODER, AgentRole.TESTER, AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA],
+        [
+            AgentRole.ARCHITECT, AgentRole.CODER, AgentRole.TESTER, AgentRole.REVIEWER,
+            AgentRole.SECURITY, AgentRole.QA, AgentRole.DEVOPS, AgentRole.ANDROID,
+            AgentRole.ML, AgentRole.RESEARCH, AgentRole.DOCUMENTATION,
+        ],
     )
     def test_all_scoped_roles_render(self, role):
         prompt = build_prompt(role, "задача")

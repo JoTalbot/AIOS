@@ -2,11 +2,13 @@
 
 Связывает каноническую ``orchestrator.Task`` с контурным lifecycle
 (``OHOrchestrator`` + ``TaskExtras``), не меняя protected ``orchestrator.py``.
-Хранилище MVP — in-memory; персистентность (octopus state / БД) — F7+.
+Персистентность — ``ContourStore`` (атомарный JSON); исполнение — синхронное
+(``run_task``) или фоновое (``run_task_async``), сериализованное run-lock'ом.
 """
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 
 from aios_core.orchestrator import Task, TaskStatus
@@ -48,6 +50,10 @@ class ContourService:
     base_branch: str = "main"
     store: ContourStore | None = None
     _tasks: dict[str, ContourTask] = field(default_factory=dict)
+    # Одна workspace-копия на процесс: lifecycle'ы сериализуются run-lock'ом.
+    _run_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _state_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _running: set[str] = field(default_factory=set, repr=False)
 
     def __post_init__(self) -> None:
         if self.store is None:
@@ -85,22 +91,61 @@ class ContourService:
         return task.id
 
     def run_task(self, task_id: str) -> RunResult:
-        """Выполнить MVP-lifecycle принятой задачи и синхронизировать статус."""
+        """Выполнить MVP-lifecycle принятой задачи и синхронизировать статус.
+
+        Сериализуется run-lock'ом: workspace одна, параллельные lifecycle
+        (git checkout/reset в одном дереве) недопустимы.
+        """
         entry = self._tasks[task_id]
-        orchestrator = OHOrchestrator(
-            client=self.client,
-            github=self.github,
-            audit=self.audit,
-            repository=self.repository,
-            base_branch=self.base_branch,
-        )
-        result = orchestrator.run(task_id, entry.task.name, entry.task.description, entry.extras)
+        with self._run_lock:
+            orchestrator = OHOrchestrator(
+                client=self.client,
+                github=self.github,
+                audit=self.audit,
+                repository=self.repository,
+                base_branch=self.base_branch,
+            )
+            result = orchestrator.run(task_id, entry.task.name, entry.task.description, entry.extras)
         entry.result = result
         entry.task.status = self._canonical_status(result.status)
         if result.error:
             entry.task.error = result.error
         self.store.save(entry.task, entry.extras, contour_status=result.status)
         return result
+
+    def run_task_async(self, task_id: str) -> str:
+        """Запустить lifecycle в фоновом потоке.
+
+        Returns: ``"started"``.
+        Raises:
+            KeyError: задача не найдена.
+            RuntimeError: задача уже выполняется.
+        """
+        if task_id not in self._tasks:
+            raise KeyError(task_id)
+        with self._state_lock:
+            if task_id in self._running:
+                raise RuntimeError(f"задача {task_id} уже выполняется")
+            self._running.add(task_id)
+        threading.Thread(
+            target=self._run_guard, args=(task_id,), daemon=True, name=f"oh-run-{task_id}"
+        ).start()
+        return "started"
+
+    def _run_guard(self, task_id: str) -> None:
+        """Фоновый прогон: гарантированно освобождает слот _running."""
+        try:
+            self.run_task(task_id)
+        except Exception as exc:  # фон не должен умереть молча — аудит и store
+            self.audit.log("async_run_error", task_id, AgentRole.ORCHESTRATOR, error=str(exc))
+        finally:
+            with self._state_lock:
+                self._running.discard(task_id)
+
+    def is_running(self, task_id: str) -> bool:
+        """Выполняется ли задача прямо сейчас (фон)."""
+        with self._state_lock:
+            return task_id in self._running
 
     def status(self, task_id: str) -> dict:
         """Сводный статус: каноническая задача + контурные поля."""
@@ -120,6 +165,7 @@ class ContourService:
             "title": entry.task.name,
             "canonical_status": entry.task.status,
             "contour_status": contour_status,
+            "running": self.is_running(task_id),
             "retry_count": entry.extras.retry_count,
             "passed_gates": sorted(g.value for g in entry.extras.passed_gates),
             "review_decision": (

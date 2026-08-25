@@ -112,3 +112,39 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - Финальный регресс 139/139 (контур + octopus).
 - Ветка `agent/oh-f11-report`, PR draft. План F0–F11 завершён.
 - Оставшееся: мерж стека, монтирование router, реальный E2E против Cloud (нужен OPENHANDS_API_KEY), профили 5 оставшихся ролей.
+
+## Post-F11 (2026-08-25) — мерж стека, монтирование, реальный E2E
+
+- Все PR #218–#228 замержены в main (по порядку, merge-коммитами).
+- PR #229: монтирование oh-contour router — create_app (FastAPI sub-app Mount) + main.py; env-флаг OH_CONTOUR_HTTP_ENABLED; +2 теста.
+- PR #230: связка ветки с Cloud (prepare_branch/sync_branch, push-инструкции Coder/Tester); +4 теста.
+- Реальный E2E: задача e9079198ebf8 (docstring _render_permissions) — 4 Cloud-разговора (architect/coder/tester/reviewer), STATUS=completed, draft PR #231 создан контуром; Cloud-агенты сами закоммитили и запушили изменения.
+- Наблюдение: вердикт reviewer = fallback APPROVED (токен не найден в событиях) — кандидат на улучшение парсинга.
+- Следующий шаг: async run + атомарный state, профили 5 ролей.
+
+## Post-F11 продолжение — async/atomic + профили
+
+- PR #232: run_task_async (run-lock, running-флаг, HTTP background=true/409) + атомарный state (tmp+os.replace); +7 тестов.
+- PR #233: профили 5 пост-MVP ролей (devops/android/ml/research/documentation) — PROFILES+RBAC+инструкции; +10 тестов.
+- Регресс 162/162, ruff чист. Все пункты Remaining Work F11 закрыты.
+- ОТКРЫТО: вердикт-парсинг reviewer (fallback), мерж #229–#233, ротация OpenHands API-ключа (был раскрыт в чате).
+
+## Post-F11 (2026-08-25) — добивка CI стека oh-profiles-5
+
+- PR #233 помечен `[ops]` в заголовке (ручная правка `.env.example` — только комментарии, gate-bypass по протоколу).
+- `build(deps)`: `pytest-asyncio>=1.4.0` в requirements.txt + `pytest-asyncio==1.4.0` в requirements.lock (коммит 767ff311).
+  Причина: aios-validation/coverage ставят только requirements.txt и падали с ModuleNotFoundError: pytest_asyncio.
+- check_dependency_contract --strict: 0 ошибок; async-тесты собираются (test_admin_api 20); контур-регресс зелёный.
+- Оставшиеся failure на PR #233 — преэкзистинг main: ruff по старым файлам, CodeQL 3.37.6 vs 4.37.8, dashboard-browser Docker digest.
+- Следующий шаг: дождаться CI на 767ff311, затем мерж #233 (стек 229–232 входит в него кумулятивно) — решение владельца.
+
+## Добивка CI — финал (2026-08-25, head 12b3c5b1)
+
+- `[ops]` убран из заголовка #233: вместо bypass удалён `.env.example` из диффа
+  (переменные OH_CONTOUR_* уже описаны в docs/OPENHANDS_INTEGRATION.md) — no-secrets gate зелёный.
+- `docs/PROJECT_INVENTORY.md` регенерирован (коммит 12b3c5b1) — validation прошёл stale-check.
+- pytest_asyncio починен: validation теперь падает на преэкзистинге `No module named pandas`
+  (test_basket_*, test_best_move, test_lead_lag) — идентично main.
+- Итог CI на 12b3c5b1: gate ✅; 20 success; 12 failure — полностью совпадают с baseline main
+  (ruff legacy, CodeQL версия, dashboard digest, pandas в validation, pinned-image scan).
+- PR #233 готов к мержу по решению владельца (стек #229–#232 входит кумулятивно).

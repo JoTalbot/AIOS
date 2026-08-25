@@ -218,12 +218,33 @@ class AIOSAPI(OLXHandlersMixin, DevicesShardsMixin, PlatformsModulesMixin, CoreH
         if os.environ.get("AIOS_MONETIZATION_ENABLED", "1").strip().lower() not in {"0", "false", "no"}:
             try:
                 import logging as _lg
+
                 from aios_core.api.monetization_routes import get_monetization_routes
                 routes.extend(get_monetization_routes())
                 _lg.getLogger("AIOS.API").info("💰 monetization routes registered: /api/v2/mon/*")
             except Exception as _mon_exc:
                 import logging as _lg
                 _lg.getLogger("AIOS.API").warning(f"⚠️ monetization routes not loaded: {_mon_exc}")
+
+        # OpenHands-контур: HTTP API поверх ContourService
+        # (выключается env OH_CONTOUR_HTTP_ENABLED=0).
+        # Router — FastAPI, поэтому оборачивается в sub-app: FastAPI APIRoute
+        # требует fastapi middleware context, которого нет в plain Starlette.
+        if os.environ.get("OH_CONTOUR_HTTP_ENABLED", "1").strip().lower() not in {"0", "false", "no"}:
+            try:
+                import logging as _lg
+
+                from fastapi import FastAPI
+                from starlette.routing import Mount
+
+                from aios_core.openhands import oh_contour_router
+                contour_app = FastAPI(title="AIOS OpenHands Contour")
+                contour_app.include_router(oh_contour_router)
+                routes.append(Mount("/", contour_app, name="oh-contour"))
+                _lg.getLogger("AIOS.API").info("🤖 oh-contour routes registered: /api/v1/oh-contour/*")
+            except Exception as _oh_exc:
+                import logging as _lg
+                _lg.getLogger("AIOS.API").warning(f"⚠️ oh-contour routes not loaded: {_oh_exc}")
 
         async def _value_error_response(request: Request, exc: ValueError):
             # Например: неизвестный профиль платформы (?profile=...).

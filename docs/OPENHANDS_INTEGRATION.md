@@ -37,8 +37,11 @@ OpenHands-разговоров, а не новые классы агентов A
 
 ## HTTP API
 
-Router `oh_contour_router` (не смонтирован в `main.py` — монтирование =
-`app.include_router(oh_contour_router)`, решение владельца entrypoint'а).
+Router `oh_contour_router` смонтирован:
+- прод-API (`aios_core.api.app.create_app`, Starlette): FastAPI sub-app через
+  `Mount("/")` (FastAPI APIRoute требует middleware context), выключается
+  env `OH_CONTOUR_HTTP_ENABLED=0`;
+- `main.py` (NiceGUI): `app.include_router(oh_contour_router)`.
 
 Авторизация: заголовок `x-octopus-token` (как в octopus orchestrator).
 
