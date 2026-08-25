@@ -1,0 +1,53 @@
+name: OpenHands Audit Integrity
+
+on:
+  pull_request:
+    paths:
+      - "aios_core/openhands/**"
+      - "tests/test_openhands_*.py"
+      - ".github/workflows/openhands-audit-integrity.yml"
+  push:
+    branches:
+      - main
+      - "agent/**"
+    paths:
+      - "aios_core/openhands/**"
+      - "tests/test_openhands_*.py"
+      - ".github/workflows/openhands-audit-integrity.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit-integrity:
+    name: OpenHands audit chain integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          pip install pytest
+
+      - name: Run OpenHands audit tests
+        run: |
+          pytest -q tests/test_openhands_checkpoint_chain.py \
+            tests/test_openhands_checkpoint_identity.py \
+            tests/test_openhands_checkpoint_integrity.py \
+            tests/test_openhands_critical_checkpoints.py \
+            tests/test_openhands_git_identity_gate.py \
+            tests/test_openhands_audit_restore_fail_closed.py
+
+      - name: Verify Python syntax
+        run: python -m compileall -q aios_core/openhands
