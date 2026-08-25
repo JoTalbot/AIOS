@@ -1,6 +1,7 @@
 """OpenHands-контур AIOS."""
 from .agent_score import AgentScoreboard, AgentStats
 from .api import router as oh_contour_router
+from .ci_provenance import CIProvenance, CIProvenanceCollector
 from .client import OpenHandsClient, resolve_api_key
 from .errors import OpenHandsAPIError, OpenHandsAuthError, OpenHandsError, OpenHandsStartError, OpenHandsTimeoutError
 from .evidence import CompletionReport, DoDItem, Evidence, EvidenceKind, dod_for_role
@@ -26,7 +27,7 @@ from .verdicts import parse_review_verdict
 
 __all__ = [
     "MVP_ROLES", "PROFILES", "AgentPermissions", "AgentProfile", "AgentRole", "AgentMemoryEntry", "AgentScoreboard", "AgentStats",
-    "AdaptiveRouter", "CompletionReport", "ContourService", "ContourStore", "ContourTask", "DoDItem", "Evidence", "EvidenceKind", "EvaluationScenario", "SCENARIOS", "FailureReport", "Gate",
+    "AdaptiveRouter", "CIProvenance", "CIProvenanceCollector", "CompletionReport", "ContourService", "ContourStore", "ContourTask", "DoDItem", "Evidence", "EvidenceKind", "EvaluationScenario", "SCENARIOS", "FailureReport", "Gate",
     "GitHubHelper", "GitOperationError", "GitRunner", "MICRO_AGENTS", "MetaReview", "MicroAgentSpec", "OHOrchestrator", "OpenHandsAPIError", "OpenHandsAuthError",
     "OpenHandsClient", "OpenHandsError", "OpenHandsStartError", "OpenHandsTimeoutError", "PromptEvaluation", "PromptOptimizationSuggestion",
     "PromptSecurityResult", "ReviewDecision", "RouteDecision", "RunResult", "SpecialistResult", "SpecialistReviewPipeline", "SpecialistVerdict", "TaskExtras", "TaskMemory", "TaskType", "TransitionError", "allowed_transitions",
