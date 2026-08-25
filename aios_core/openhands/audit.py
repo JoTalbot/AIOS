@@ -48,7 +48,7 @@ class OHAuditLogger:
             self.checkpoint(task_id, agent, gate_decision=fields.get("decision"), commit_sha=fields.get("commit_sha"), diff_hash=fields.get("diff_hash"))
         return result
 
-    def log_transition(self, task_id: str, agent: AgentRole | str, src: str, dst: str, **fields: Any) -> dict:
+    def log_transition(self, task_id: str, agent: AgentRole | str, src: str, dst: str, **fields: Any) -> str:
         return self.log("transition", task_id, agent, src=src, dst=dst, **fields)
 
     def log_decision(self, task_id: str, agent: AgentRole | str, decision: str, **fields: Any) -> dict:
@@ -67,6 +67,7 @@ class OHAuditLogger:
             "gate_decision": checkpoint.gate_decision,
             "commit_sha": checkpoint.commit_sha,
             "diff_hash": checkpoint.diff_hash,
+            "checkpoint_hash": checkpoint.checkpoint_hash,
         }
         self._logger.record(event)
         return checkpoint
