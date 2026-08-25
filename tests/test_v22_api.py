@@ -1,9 +1,10 @@
 """v22 Platform groundwork tests: APIMonetizationManager + OLX Price Intelligence."""
 import sys
+from pathlib import Path
 
-import pytest
-
-sys.path.insert(0, "/root/AIOS")
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "scripts"))
 
 
 def test_api_monetization_manager_balance(tmp_path):
@@ -109,8 +110,9 @@ def test_rate_limiter_bucket(monkeypatch):
 
 def test_usage_report_aggregation(tmp_path, monkeypatch):
     """api_usage_report: агрегация по клиентам/продуктам за окно."""
-    import json, time, importlib
-    sys.path.insert(0, "/root/AIOS/scripts")
+    import importlib
+    import json
+    import time
     ledger = tmp_path / "api_usage_ledger.jsonl"
     now = time.time()
     events = [

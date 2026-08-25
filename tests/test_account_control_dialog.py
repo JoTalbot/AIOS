@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Tests for Telegram account-control dialogue (Google + Instagram)."""
 import json
 import sys
@@ -22,10 +23,17 @@ def _patch_run(monkeypatch, fake):
 
 def _patch_project_root(monkeypatch, root: Path) -> None:
     """Изолировать mutable data handlers от production worktree."""
+    import tg_bot.voice as tbv
+
     root.mkdir(parents=True, exist_ok=True)
+    data = root / "data"
     monkeypatch.setattr(m, "PROJECT_ROOT", root)
     monkeypatch.setattr(acc, "PROJECT_ROOT", root)
     monkeypatch.setattr(tbc, "PROJECT_ROOT", root)
+    monkeypatch.setattr(tbi, "INBOX_SCHEDULE_FILE", data / "inbox_schedule.json")
+    monkeypatch.setattr(m, "INBOX_SCHEDULE_FILE", data / "inbox_schedule.json")
+    monkeypatch.setattr(tbv, "VOICE_REPLY_FILE", data / "voice_reply.json")
+    monkeypatch.setattr(m, "VOICE_REPLY_FILE", data / "voice_reply.json")
 
 
 class FakeAPI:
@@ -537,7 +545,8 @@ def test_inbox_mark_read(monkeypatch):
     assert any("Инбокс обработан" in x for x in api.messages)
 
 
-def test_inbox_schedule_cmd(monkeypatch):
+def test_inbox_schedule_cmd(monkeypatch, tmp_path):
+    _patch_project_root(monkeypatch, tmp_path)
     api = FakeAPI()
     sched_file = m.INBOX_SCHEDULE_FILE
     if sched_file.exists():
@@ -579,7 +588,8 @@ def test_analytics_intent(monkeypatch, tmp_path):
     assert "+4" in joined or "54" in joined
 
 
-def test_post_schedule_intent(monkeypatch):
+def test_post_schedule_intent(monkeypatch, tmp_path):
+    _patch_project_root(monkeypatch, tmp_path)
     import subprocess
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: type("R", (), {"stdout": "", "stderr": "", "returncode": 0})())
     api = FakeAPI()
@@ -619,7 +629,8 @@ def test_templates_save_and_use(monkeypatch):
     tfile.unlink(missing_ok=True)
 
 
-def test_voice_reply_toggle(monkeypatch):
+def test_voice_reply_toggle(monkeypatch, tmp_path):
+    _patch_project_root(monkeypatch, tmp_path)
     vfile = m.VOICE_REPLY_FILE
     if vfile.exists():
         vfile.unlink()

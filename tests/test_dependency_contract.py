@@ -19,8 +19,8 @@ def test_dependency_contract_is_consistent() -> None:
     report = dependency_contract(ROOT)
 
     assert report["errors"] == []
-    assert report["counts"] == {"minimal": 13, "direct": 47, "locked": 198}
-    assert report["transitive_locked_count"] == 151
+    assert report["counts"] == {"minimal": 13, "direct": 50, "locked": 204}
+    assert report["transitive_locked_count"] == 154
 
 
 def test_websockets_constraint_matches_web3_compatible_lock() -> None:

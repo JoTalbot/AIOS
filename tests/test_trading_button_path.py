@@ -25,11 +25,27 @@ def test_send_full_report_sends_data_and_llm_placeholder():
     import tg_bot.trading_report as mod
 
     orig_llm = mod.llm_section
+    orig_snapshot = mod.build_snapshot
+    orig_formatter = mod.format_report
     mod.llm_section = lambda snap: ["🤖 тестовая аналитика"]
+    mod.format_report = lambda snap: ["Главное за 30 секунд"]
+    mod.build_snapshot = lambda: {
+        "generated_at": "test",
+        "directional": {"arms": {}},
+        "dca": {},
+        "basket": {},
+        "t2": {"legs": {}},
+        "freqtrade": {"open": [], "closed": 0},
+        "mm": {},
+        "scoreboard": None,
+        "services": {},
+    }
     try:
         send_full_report(api, 123)
     finally:
         mod.llm_section = orig_llm
+        mod.build_snapshot = orig_snapshot
+        mod.format_report = orig_formatter
     assert api.messages, "сообщения не отправлены"
     assert any("Главное за 30 секунд" in m for m in api.messages)
     assert "⏳ LLM-аналитика готовится…" in api.messages

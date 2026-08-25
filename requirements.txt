@@ -36,11 +36,13 @@ opentelemetry-sdk
 opentelemetry-exporter-otlp
 openai
 numpy
+pandas>=3.0.5,<4
 scikit-learn
 stripe
 chromadb
 litellm>=1.97.0,<2
 web3
+ccxt>=4.5.75,<5
 networkx
 paho-mqtt
 qiskit

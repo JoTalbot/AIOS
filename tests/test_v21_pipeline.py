@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# ruff: noqa: E501
 """v21.0 Scale: тесты OLX Pipeline (склад→объявление→продажа→ТТН).
 
 Изолированные tmp-копии данных: боевой склад не трогаем.
@@ -7,13 +8,11 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import shutil
-import sys
 from pathlib import Path
 
 import pytest
 
-ROOT = Path("/root/AIOS")
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load(name: str, file: str):
