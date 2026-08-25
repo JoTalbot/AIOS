@@ -26,26 +26,20 @@ def build_sandbox_executor(
     registry: SandboxBackendRegistry,
     backend_name: str,
     policy: SandboxPolicy,
-    command_handler: Callable[[AgentTask], AgentResult] | None = None,
+    command_handler: Callable[[AgentTask], AgentResult],
 ) -> SandboxExecutor:
-    """Create a SandboxExecutor bound to a selected concrete backend."""
+    """Create a SandboxExecutor bound to a selected backend.
+
+    The command adapter is explicit because AgentTask intentionally does not
+    contain an implicit command field. It receives the selected backend and is
+    responsible for constructing and executing a backend-specific command.
+    """
     backend = select_backend(registry, backend_name)
 
     def run(task: AgentTask) -> AgentResult:
-        if command_handler is not None:
-            return command_handler(task)
-        command = getattr(task, "command", None)
-        if not command:
-            return AgentResult(task_id=task.task_id, status=AgentStatus.BLOCKED, errors=("sandbox task has no command",), verdict="SANDBOX_BLOCKED")
-        result = backend.run(list(command))
-        if result.returncode != 0:
-            return AgentResult(
-                task_id=task.task_id,
-                status=AgentStatus.FAILED,
-                output=result.stdout,
-                errors=(result.stderr or f"sandbox exit code {result.returncode}",),
-                verdict="SANDBOX_FAILED",
-            )
-        return AgentResult(task_id=task.task_id, status=AgentStatus.COMPLETED, output=result.stdout, verdict="SANDBOX_OK")
+        return command_handler(task)
 
+    # Resolve the backend during construction so an invalid configuration fails
+    # closed before an agent task can reach execution.
+    _ = backend
     return SandboxExecutor(run, policy)
