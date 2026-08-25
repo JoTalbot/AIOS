@@ -104,12 +104,13 @@ store (рестарт), api (auth/404/flow).
    проверен fake-клиентом по протоколу `ConversationClient`.
 2. HTTP `run` синхронный — длинные lifecycle блокируют запрос.
 3. State-файл без атомарной записи/lock — при первой реальной конкуренции.
-4. Роутер не смонтирован в `main.py` — решение владельца entrypoint'а.
+4. ~~Роутер не смонтирован~~ — смонтирован в `create_app` (sub-app `Mount`) и `main.py`
+   (post-F11); выключается env `OH_CONTOUR_HTTP_ENABLED=0`.
 
 ## Remaining Work
 
 - Реальный E2E: submit задачи → прогон против Cloud → draft PR (нужен `OPENHANDS_API_KEY`).
-- Монтирование router в host-приложение (`app.include_router(oh_contour_router)`).
+- ~~Монтирование router в host-приложение~~ (выполнено post-F11).
 - Асинхронный run (фоновая задача + polling status).
 - Профили и промпты остальных 5 ролей (devops/android/ml/research/documentation).
 - Атомарная запись state (tmp+rename) при конкуренции.
@@ -117,6 +118,6 @@ store (рестарт), api (auth/404/flow).
 ## Recommended Next Steps
 
 1. Мерж стека #218–#227 (по порядку или squash).
-2. Монтирование router + production env (`OH_CONTOUR_TOKEN`, `OH_CONTOUR_REPO`, ключи).
+2. Production env на хосте (`OH_CONTOUR_TOKEN`, `OH_CONTOUR_REPO`, ключи).
 3. Первый реальный E2E на безопасной микрозадаче (docstring/типы) — проверка всей цепочки.
 4. По результатам E2E: async run, атомарный state, профили остальных ролей.

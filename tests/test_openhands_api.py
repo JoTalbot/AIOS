@@ -129,3 +129,35 @@ class TestVerdict:
     def test_verdict_unknown_task_404(self, client):
         resp = client.get("/api/v1/oh-contour/tasks/nope/verdict", headers=TOKEN_HEADERS)
         assert resp.status_code == 404
+
+
+class TestProductionMount:
+    """Монтирование router в прод-фабрику aios_core.api.app.create_app."""
+
+    def test_contour_mounted_in_create_app(self, tmp_path):
+        from starlette.testclient import TestClient as StarletteClient
+
+        from aios_core.api.app import create_app
+        from aios_core.openhands.service import ContourService
+        from aios_core.openhands.store import ContourStore
+
+        app = create_app(auth_required=False)
+        c = StarletteClient(app)
+        assert c.post("/api/v1/oh-contour/tasks", json={"title": "X"}).status_code == 401
+
+        contour_api.set_service(ContourService(client=FakeClient(), store=ContourStore(state_dir=tmp_path)))
+        try:
+            resp = c.post("/api/v1/oh-contour/tasks", json={"title": "Mount"}, headers=TOKEN_HEADERS)
+            assert resp.status_code == 201
+            assert c.get("/health").status_code == 200  # соседние маршруты не сломаны
+        finally:
+            contour_api.set_service(None)
+
+    def test_contour_disabled_by_env(self, monkeypatch):
+        from starlette.testclient import TestClient as StarletteClient
+
+        from aios_core.api.app import create_app
+
+        monkeypatch.setenv("OH_CONTOUR_HTTP_ENABLED", "0")
+        c = StarletteClient(create_app(auth_required=False))
+        assert c.post("/api/v1/oh-contour/tasks", json={"title": "X"}).status_code == 404
