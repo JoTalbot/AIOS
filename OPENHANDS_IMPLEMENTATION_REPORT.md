@@ -47,7 +47,7 @@
 ## Agent Architecture
 
 Роли (`models.AgentRole`): MVP — orchestrator/architect/coder/tester/reviewer;
-подключены профилями security/qa; задекларированы devops/android/ml/research/documentation.
+подключены профилями security/qa и (post-F11) devops/android/ml/research/documentation.
 Роль = `AgentProfile` (RBAC-имя, read/write, allowed_paths) + self-contained промпт
 (`build_prompt`). Разговоры изолированы, контур склеивает их состоянием задачи.
 
@@ -109,11 +109,11 @@ store (рестарт), api (auth/404/flow).
 
 ## Remaining Work
 
-- Реальный E2E: submit задачи → прогон против Cloud → draft PR (нужен `OPENHANDS_API_KEY`).
+- ~~Реальный E2E~~ (выполнен post-F11: задача `e9079198ebf8` → 4 Cloud-разговора → draft PR #231).
 - ~~Монтирование router в host-приложение~~ (выполнено post-F11).
-- Асинхронный run (фоновая задача + polling status).
-- Профили и промпты остальных 5 ролей (devops/android/ml/research/documentation).
-- Атомарная запись state (tmp+rename) при конкуренции.
+- ~~Асинхронный run (фоновая задача + polling status)~~ и ~~атомарная запись state~~
+  (выполнено post-F11: run_task_async + run-lock; tmp+os.replace).
+- ~~Профили и промпты остальных 5 ролей~~ (выполнено post-F11: доменные allowed_paths + RBAC + инструкции).
 
 ## Recommended Next Steps
 

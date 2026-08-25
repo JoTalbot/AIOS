@@ -78,6 +78,69 @@ PROFILES: dict[AgentRole, AgentProfile] = {
         role=AgentRole.QA,
         permissions=_perms(read="all", write="reports", allowed_paths=("reports/qa/**",)),
     ),
+    # Пост-MVP роли (подключены post-F11): узкие allowed_paths под домен.
+    AgentRole.DEVOPS: AgentProfile(
+        role=AgentRole.DEVOPS,
+        permissions=_perms(
+            read="project",
+            write="deploy",
+            allowed_paths=("deploy/**", "deployment/**", "scripts/deploy*.py", "reports/devops/**"),
+            # docker-compose*.yml — protected по AGENTS.md, devops их не трогает.
+            deny_paths=(".env*", "data/.llm_keys.json", "**/*secret*", "**/*token*", "docker-compose*.yml"),
+            secret_allowlist=(),
+        ),
+    ),
+    AgentRole.ANDROID: AgentProfile(
+        role=AgentRole.ANDROID,
+        permissions=_perms(
+            read="project",
+            write="workspace",
+            allowed_paths=(
+                "android_companion/**",
+                "aios_core/android_*.py",
+                "tests/test_android*.py",
+                "reports/android/**",
+            ),
+            deny_paths=(".env*", "data/.llm_keys.json", "**/*secret*", "**/*token*"),
+            secret_allowlist=(),
+        ),
+    ),
+    AgentRole.ML: AgentProfile(
+        role=AgentRole.ML,
+        permissions=_perms(
+            read="project",
+            write="workspace",
+            allowed_paths=(
+                "aios_core/ml_*.py",
+                "aios_core/model_*.py",
+                "models/**",
+                "analytics/**",
+                "tests/test_ml*.py",
+                "reports/ml/**",
+            ),
+            deny_paths=(".env*", "data/.llm_keys.json", "**/*secret*", "**/*token*"),
+            secret_allowlist=(),
+        ),
+    ),
+    AgentRole.RESEARCH: AgentProfile(
+        role=AgentRole.RESEARCH,
+        permissions=_perms(
+            read="all",
+            write="reports",
+            allowed_paths=("reports/research/**", "docs/research/**"),
+            secret_allowlist=(),
+        ),
+    ),
+    AgentRole.DOCUMENTATION: AgentProfile(
+        role=AgentRole.DOCUMENTATION,
+        permissions=_perms(
+            read="project",
+            write="docs",
+            allowed_paths=("docs/**", "README*.md", "*.md"),
+            deny_paths=(".env*", "data/.llm_keys.json", "**/*secret*", "**/*token*"),
+            secret_allowlist=(),
+        ),
+    ),
 }
 
 # RBAC-пермишены на роль (resource:action, wildcards по aios_core/rbac.py).
@@ -89,6 +152,11 @@ _RBAC_PERMISSIONS: dict[AgentRole, tuple[str, ...]] = {
     AgentRole.REVIEWER: ("repo:read", "reports:write"),
     AgentRole.SECURITY: ("repo:read", "reports:write"),
     AgentRole.QA: ("repo:read", "reports:write"),
+    AgentRole.DEVOPS: ("repo:read", "deploy:write"),
+    AgentRole.ANDROID: ("repo:read", "android:write"),
+    AgentRole.ML: ("repo:read", "ml:write"),
+    AgentRole.RESEARCH: ("repo:read", "reports:write"),
+    AgentRole.DOCUMENTATION: ("repo:read", "docs:write"),
 }
 
 

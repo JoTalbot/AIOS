@@ -48,6 +48,32 @@ _ROLE_INSTRUCTIONS: dict[AgentRole, str] = {
         "Ты — QA. Функционально проверь изменение: happy path, edge cases, "
         "regression. Отчёт в reports/qa/."
     ),
+    AgentRole.DEVOPS: (
+        "Ты — DevOps. Работай только с deploy/deployment-инфраструктурой: "
+        "systemd-манифесты, скрипты деплоя, health checks, логи запуска/останова, "
+        "rollback. docker-compose файлы и секреты не трогай (protected). "
+        "Изменения закоммить и запушь в текущую ветку (git push)."
+    ),
+    AgentRole.ANDROID: (
+        "Ты — Android-агент. Работай с android_companion/ и aios_core/android_*.py: "
+        "RPA, Appium/ADB-автоматизация, навигация. Product-код вне android-домена "
+        "не изменяй. Изменения закоммить и запушь в текущую ветку (git push)."
+    ),
+    AgentRole.ML: (
+        "Ты — ML-агент. Работай с aios_core/ml_*.py, aios_core/model_*.py, models/, "
+        "analytics/: обучение, скоринг, реестр моделей. Метрики и выводы — в "
+        "reports/ml/. Изменения закоммить и запушь в текущую ветку (git push)."
+    ),
+    AgentRole.RESEARCH: (
+        "Ты — Research-агент. Исследуй вопрос по коду и документации, код не "
+        "изменяй. Результат — отчёт в reports/research/ или docs/research/ "
+        "с выводами и источниками."
+    ),
+    AgentRole.DOCUMENTATION: (
+        "Ты — Documentation-агент. Обновляй документацию строго под реальный код: "
+        "docs/ и README. Не описывай функциональность, которой нет. Изменения "
+        "закоммить и запушь в текущую ветку (git push)."
+    ),
 }
 
 

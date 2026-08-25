@@ -48,6 +48,45 @@ class TestProfiles:
         assert not path_allowed("data/.llm_keys.json", perms)
         assert path_allowed("aios_core/openhands/models.py", perms)
 
+    def test_all_roles_have_profiles_and_instructions(self):
+        from aios_core.openhands.profiles import _ROLE_INSTRUCTIONS
+
+        scoped = [r for r in AgentRole if r is not AgentRole.ORCHESTRATOR]
+        for role in scoped:
+            assert role in PROFILES, role
+            assert role in _ROLE_INSTRUCTIONS, role
+
+    def test_devops_domain_scoped(self):
+        perms = PROFILES[AgentRole.DEVOPS].permissions
+        assert path_allowed("deploy/systemd/aios-api.service", perms)
+        assert path_allowed("reports/devops/x.md", perms)
+        assert not path_allowed("docker-compose.prod.yml", perms)  # protected
+        assert not path_allowed("aios_core/foo.py", perms)
+        assert not path_allowed(".env", perms)
+
+    def test_android_domain_scoped(self):
+        perms = PROFILES[AgentRole.ANDROID].permissions
+        assert path_allowed("android_companion/app.py", perms)
+        assert path_allowed("aios_core/android_appium.py", perms)
+        assert not path_allowed("aios_core/llm_balancer.py", perms)
+
+    def test_ml_domain_scoped(self):
+        perms = PROFILES[AgentRole.ML].permissions
+        assert path_allowed("aios_core/ml_planner_scorer.py", perms)
+        assert path_allowed("models/x.bin", perms)
+        assert not path_allowed("aios_core/orchestrator.py", perms)
+
+    def test_research_and_documentation_report_only(self):
+        research = PROFILES[AgentRole.RESEARCH].permissions
+        assert path_allowed("reports/research/x.md", research)
+        assert path_allowed("docs/research/x.md", research)
+        assert not path_allowed("aios_core/foo.py", research)
+        docs = PROFILES[AgentRole.DOCUMENTATION].permissions
+        assert path_allowed("docs/OPENHANDS_INTEGRATION.md", docs)
+        assert path_allowed("README.md", docs)
+        assert not path_allowed(".env", docs)
+        assert not path_allowed("aios_core/foo.py", docs)
+
 
 class TestRbacRegistration:
     def test_register_roles(self):
