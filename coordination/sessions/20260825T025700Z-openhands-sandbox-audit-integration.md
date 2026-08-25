@@ -99,3 +99,9 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - Код не изменён; регресс контура 131/131.
 - Ветка `agent/oh-f9-docs`, PR draft.
 - Следующий шаг: F10 — repository skills (.agents/skills/*), F11 — финальный отчёт.
+
+## F10 (2026-08-25) — repository skills
+
+- `.agents/skills/oh-contour-{architecture,testing,security}/SKILL.md` — AgentSkills формат, фактура сверена с кодом (модули, FakeClient, env, границы).
+- Ветка `agent/oh-f10-skills`, PR draft.
+- Следующий шаг: F11 — финальный отчёт OPENHANDS_IMPLEMENTATION_REPORT.md.
