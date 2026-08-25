@@ -1,11 +1,11 @@
-"""Fail-closed completion gate for OpenHands evidence."""
+"""Fail-closed completion gate with execution-bound evidence."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Mapping
 
-from .models import Gate, ReviewDecision, TaskExtras
+from .models import ReviewDecision, TaskExtras
 
 
 class EvidenceGateStatus(StrEnum):
@@ -26,21 +26,27 @@ class EvidenceGateResult:
 class EvidenceGate:
     """Single authoritative, fail-closed gate for transition to COMPLETED."""
 
-    REQUIRED = ("task_id", "commit_sha", "diff_hash", "changed_files", "tests", "reviewer", "security", "audit_checkpoint", "audit_chain")
+    REQUIRED = ("task_id", "commit_sha", "diff_hash", "changed_files", "tests", "reviewer", "security", "audit_checkpoint", "audit_chain", "test_commit_binding", "test_diff_binding", "evidence_commit_binding", "evidence_diff_binding")
 
     def evaluate(self, extras: TaskExtras, evidence: Mapping[str, Any] | None = None) -> EvidenceGateResult:
         evidence = evidence or {}
         missing: list[str] = []
         if not extras.task_id:
             missing.append("task_id")
-        if not evidence.get("commit_sha"):
+        commit_sha = evidence.get("commit_sha")
+        diff_hash = evidence.get("diff_hash")
+        if not commit_sha:
             missing.append("commit_sha")
-        if not evidence.get("diff_hash"):
+        if not diff_hash:
             missing.append("diff_hash")
         if "changed_files" not in evidence:
             missing.append("changed_files")
-        if not evidence.get("tests"):
+        if evidence.get("tests") is not True:
             missing.append("tests")
+        if evidence.get("test_commit_sha") != commit_sha:
+            missing.append("test_commit_binding")
+        if evidence.get("test_diff_hash") != diff_hash:
+            missing.append("test_diff_binding")
         if evidence.get("reviewer") != ReviewDecision.APPROVED.value:
             missing.append("reviewer")
         if evidence.get("security") != ReviewDecision.APPROVED.value:
@@ -49,6 +55,10 @@ class EvidenceGate:
             missing.append("audit_checkpoint")
         if evidence.get("audit_chain") is not True:
             missing.append("audit_chain")
+        if evidence.get("evidence_commit_sha") != commit_sha:
+            missing.append("evidence_commit_binding")
+        if evidence.get("evidence_diff_hash") != diff_hash:
+            missing.append("evidence_diff_binding")
         if not extras.gates_satisfied():
             missing.extend(f"gate:{gate.value}" for gate in sorted(extras.missing_gates(), key=lambda g: g.value))
         if missing:
