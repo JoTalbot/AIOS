@@ -20,6 +20,7 @@ class CIProvenance:
     commit_sha: str
     conclusion: str
     job_name: str
+    required_workflows: tuple[str, ...]
 
     def as_evidence(self) -> dict[str, object]:
         return {
@@ -30,11 +31,13 @@ class CIProvenance:
             "ci_commit_sha": self.commit_sha,
             "ci_conclusion": self.conclusion,
             "ci_job_name": self.job_name,
+            "ci_required_workflows": self.required_workflows,
+            "ci_required_workflows_success": True,
         }
 
 
 class CIProvenanceCollector:
-    """Finds and waits for a successful GitHub Actions run bound to one commit."""
+    """Finds successful GitHub Actions runs/jobs bound to exactly one commit."""
 
     def __init__(self, repo_slug: str, token: str, *, api_opener: object = urllib.request.urlopen, sleep: Callable[[float], None] = time.sleep) -> None:
         self.repo_slug = repo_slug
@@ -56,16 +59,22 @@ class CIProvenanceCollector:
             raise OpenHandsAPIError(f"GitHub Actions API HTTP {exc.code}: {exc.read().decode(errors='replace')[:300]}", status_code=exc.code) from exc
 
     def collect(self, commit_sha: str, *, workflow_names: tuple[str, ...] = ("AIOS Core Gate", "OpenHands Audit Integrity"), timeout: float = 600.0, poll_interval: float = 5.0) -> CIProvenance:
+        if not workflow_names:
+            raise ValueError("workflow_names must not be empty")
         deadline = time.monotonic() + timeout
         while True:
             runs = self._get(f"/actions/runs?head_sha={commit_sha}&per_page=100").get("workflow_runs", [])
             candidates = [r for r in runs if r.get("name") in workflow_names and r.get("head_sha") == commit_sha]
+            completed: dict[str, tuple[dict, dict]] = {}
+            pending = False
             for workflow_name in workflow_names:
                 matching = [r for r in candidates if r.get("name") == workflow_name]
                 if not matching:
+                    pending = True
                     continue
                 run = max(matching, key=lambda r: r.get("id", 0))
                 if run.get("status") != "completed":
+                    pending = True
                     continue
                 if run.get("conclusion") != "success":
                     raise OpenHandsAPIError(f"CI workflow {workflow_name} for {commit_sha[:12]} concluded {run.get('conclusion')!r}")
@@ -73,7 +82,10 @@ class CIProvenanceCollector:
                 successful = [j for j in jobs if j.get("status") == "completed" and j.get("conclusion") == "success"]
                 if not successful:
                     raise OpenHandsAPIError(f"CI workflow {workflow_name} has no successful job")
-                job = successful[0]
+                completed[workflow_name] = (run, successful[0])
+            if len(completed) == len(workflow_names) and not pending:
+                workflow_name = workflow_names[0]
+                run, job = completed[workflow_name]
                 return CIProvenance(
                     workflow_name=workflow_name,
                     workflow_id=int(run.get("workflow_id", 0)),
@@ -82,7 +94,9 @@ class CIProvenanceCollector:
                     commit_sha=commit_sha,
                     conclusion="success",
                     job_name=str(job.get("name", "")),
+                    required_workflows=workflow_names,
                 )
             if time.monotonic() >= deadline:
-                raise OpenHandsAPIError(f"timeout waiting for CI provenance for {commit_sha[:12]}")
+                missing = [name for name in workflow_names if name not in completed]
+                raise OpenHandsAPIError(f"timeout waiting for CI provenance for {commit_sha[:12]}: {missing}")
             self.sleep(poll_interval)
