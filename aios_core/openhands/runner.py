@@ -76,7 +76,14 @@ class OHOrchestrator:
                     raise
         report = None
         if status != TaskStatus.COMPLETED:
-            report = FailureReport(task_id=task_id, reason="retry limit exhausted" if extras.retry_count >= extras.max_retries else "task not completed", attempts=extras.retry_count + 1, last_error=last_error or extras.error, files_changed=tuple(self._safe_changed_files(branch)), suggested_next_step="разобрать отчёт и завести задачу вручную")
+            report = FailureReport(
+                task_id=task_id,
+                reason="repair/retry limit exhausted" if extras.retry_count >= extras.max_retries or extras.repair_count >= extras.max_repairs else "task not completed",
+                attempts=extras.retry_count + extras.repair_count + 1,
+                last_error=last_error or extras.error,
+                files_changed=tuple(self._safe_changed_files(branch)),
+                suggested_next_step="разобрать отчёт и завести задачу вручную",
+            )
             self._audit.log_decision(task_id, AgentRole.ORCHESTRATOR, "failed", reason=report.reason)
         return RunResult(status=status, extras=extras, report=report, error=last_error)
 
@@ -87,6 +94,7 @@ class OHOrchestrator:
             if not extras.can_retry():
                 return self._move(status, TaskStatus.CANCELLED, task_id, extras)
             return self._move(status, TaskStatus.PLANNING, task_id, extras)
+
         stage = self._stage_of(status, extras)
         if stage is None:
             raise RuntimeError(f"неизвестный статус стадии: {status}")
@@ -94,9 +102,17 @@ class OHOrchestrator:
         if role is not None:
             decision = self._run_stage(task_id, role, description, extras, branch, memory)
             if role == AgentRole.REVIEWER and decision == ReviewDecision.CHANGES_REQUESTED:
+                extras.review_decision = ReviewDecision.CHANGES_REQUESTED
                 self._audit.log_decision(task_id, AgentRole.REVIEWER, decision)
-                # Repair loop: возвращаемся прямо к Coder, не заставляя Architect повторять план.
+                if not extras.can_repair():
+                    raise TransitionError(f"лимит repair-итераций исчерпан ({extras.repair_count}/{extras.max_repairs})")
+                extras.register_repair()
                 return self._move(status, TaskStatus.RUNNING, task_id, extras)
+            if role in (AgentRole.TESTER, AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA):
+                if decision != ReviewDecision.APPROVED:
+                    raise TransitionError(f"{role.value}: gate не подтверждён, verdict={decision}")
+                if role == AgentRole.REVIEWER:
+                    extras.review_decision = ReviewDecision.APPROVED
         else:
             self._audit.log("stage_skip_conversation", task_id, AgentRole.ORCHESTRATOR, stage=status)
         if next_status == TaskStatus.COMPLETED:
@@ -107,10 +123,6 @@ class OHOrchestrator:
         has_security = Gate.SECURITY_REVIEW in extras.required_gates
         has_qa = Gate.QA in extras.required_gates
         if status == OHStatus.TESTING:
-            if has_security:
-                return AgentRole.TESTER, OHStatus.REVIEW
-            if has_qa:
-                return AgentRole.TESTER, OHStatus.QA
             return AgentRole.TESTER, OHStatus.REVIEW
         if status == OHStatus.REVIEW:
             if has_security:
@@ -120,7 +132,7 @@ class OHOrchestrator:
             return (AgentRole.SECURITY, OHStatus.QA) if has_qa else (AgentRole.SECURITY, TaskStatus.COMPLETED)
         return {s: (role, nxt) for s, role, nxt in _MVP_STAGES}.get(status)
 
-    def _run_stage(self, task_id: str, role: AgentRole, description: str, extras: TaskExtras, branch: str, memory: TaskMemory) -> str | None:
+    def _run_stage(self, task_id: str, role: AgentRole, description: str, extras: TaskExtras, branch: str, memory: TaskMemory) -> ReviewDecision | None:
         memory_context = memory.compact_context()
         repair_context = memory.repair_context() if role == AgentRole.CODER else ""
         context_parts = [f"Ветка: {branch}.", f"Предыдущие разговоры: {extras.conversation_ids or 'нет'}."]
@@ -134,23 +146,32 @@ class OHOrchestrator:
         conversation_id = start.get("app_conversation_id", "")
         if not conversation_id:
             conversation_id = self._client.wait_start_task(start_task_id).get("app_conversation_id", "")
+        if not conversation_id:
+            raise RuntimeError(f"OpenHands не вернул conversation_id для роли {role.value}")
         extras.conversation_ids[role.value] = conversation_id
         self._audit.log("conversation_started", task_id, role, conversation_id=conversation_id, url=self._client.conversation_url(conversation_id))
         self._client.wait_execution(conversation_id)
-        verdict = self._verdict_of(task_id, role, conversation_id) if role in (AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA) else None
-        memory.add(AgentMemoryEntry(role=role.value, summary=f"Завершена стадия {role.value}; verdict={verdict or 'n/a'}", decisions=[str(verdict)] if verdict else [], evidence=["conversation completed"]))
+        verdict = self._verdict_of(task_id, role, conversation_id) if role in (AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA, AgentRole.TESTER) else None
+        memory.add(
+            AgentMemoryEntry(
+                role=role.value,
+                summary=f"Завершена стадия {role.value}; verdict={verdict.value if verdict else 'n/a'}",
+                decisions=[verdict.value] if verdict else [],
+                evidence=["conversation completed"],
+            )
+        )
         return verdict
 
-    def _verdict_of(self, task_id: str, role: AgentRole, conversation_id: str) -> str:
+    def _verdict_of(self, task_id: str, role: AgentRole, conversation_id: str) -> ReviewDecision:
         try:
             payload = self._client.events_search(conversation_id)
         except Exception as exc:
-            self._audit.log("verdict_fallback", task_id, role, reason=f"events: {exc}")
-            return ReviewDecision.APPROVED
+            self._audit.log("verdict_error", task_id, role, reason=f"events: {exc}")
+            raise RuntimeError(f"не удалось получить verdict {role.value}: {exc}") from exc
         verdict = parse_review_verdict(payload)
         if verdict is None:
-            self._audit.log("verdict_fallback", task_id, role, reason="no token in events")
-            return ReviewDecision.APPROVED
+            self._audit.log("verdict_missing", task_id, role, reason="no explicit APPROVED/CHANGES_REQUESTED token")
+            raise RuntimeError(f"{role.value}: отсутствует явный verdict; fail-closed")
         self._audit.log_decision(task_id, role, verdict)
         return verdict
 
