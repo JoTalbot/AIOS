@@ -8,6 +8,7 @@ from typing import Protocol
 from aios_core.orchestrator import TaskStatus
 from .agent_score import AgentScoreboard
 from .audit import OHAuditLogger
+from .ci_provenance import CIProvenanceCollector
 from .evidence_gate import EvidenceGate
 from .gates import apply_gate, can_advance
 from .github import GitHubHelper
@@ -51,9 +52,9 @@ _MVP_STAGES: tuple[tuple[str, AgentRole | None, str], ...] = (
 
 
 class OHOrchestrator:
-    """Lifecycle runner: plan → code → test → review → specialist review → gates → PR."""
+    """Lifecycle runner: plan → code → test → review → specialist review → CI → gates → PR."""
 
-    def __init__(self, client: ConversationClient, github: GitHubHelper | None = None, audit: OHAuditLogger | None = None, repository: str | None = None, base_branch: str = "main", scoreboard: AgentScoreboard | None = None, evidence_gate: EvidenceGate | None = None) -> None:
+    def __init__(self, client: ConversationClient, github: GitHubHelper | None = None, audit: OHAuditLogger | None = None, repository: str | None = None, base_branch: str = "main", scoreboard: AgentScoreboard | None = None, evidence_gate: EvidenceGate | None = None, ci_provenance: CIProvenanceCollector | None = None) -> None:
         self._client = client
         self._github = github
         self._audit = audit or OHAuditLogger()
@@ -61,6 +62,7 @@ class OHOrchestrator:
         self._base = base_branch
         self.scoreboard = scoreboard or AgentScoreboard()
         self._evidence_gate = evidence_gate or EvidenceGate()
+        self._ci_provenance = ci_provenance
 
     def run(self, task_id: str, title: str, description: str, extras: TaskExtras | None = None) -> RunResult:
         extras = extras or TaskExtras(task_id=task_id)
@@ -77,10 +79,7 @@ class OHOrchestrator:
                 last_error = str(exc)
                 extras.error = last_error
                 self._audit.log("stage_error", task_id, AgentRole.ORCHESTRATOR, stage=status, error=last_error)
-                if status in (TaskStatus.PLANNING, TaskStatus.RUNNING, OHStatus.TESTING, OHStatus.QA):
-                    status = TaskStatus.BLOCKED
-                else:
-                    status = TaskStatus.BLOCKED
+                status = TaskStatus.BLOCKED
         self._audit.log("task_completed" if status == TaskStatus.COMPLETED else "task_blocked", task_id, AgentRole.ORCHESTRATOR, status=status)
         return RunResult(status=status, extras=extras, error=last_error, scoreboard=self.scoreboard)
 
@@ -172,11 +171,6 @@ class OHOrchestrator:
         return context
 
     def _finalize(self, task_id: str, title: str, description: str, extras: TaskExtras, branch: str) -> None:
-        evidence = self._evidence_context(task_id, extras, branch)
-        gate_result = self._evidence_gate.evaluate(extras, evidence)
-        if not gate_result.allowed:
-            self._audit.log("evidence_gate_block", task_id, AgentRole.ORCHESTRATOR, missing=gate_result.missing)
-            raise TransitionError(f"COMPLETED запрещён: missing evidence={list(gate_result.missing)}")
         if self._github is None:
             raise TransitionError("COMPLETED запрещён: GitHub helper обязателен для evidence gate")
         self._github.sync_branch(branch)
@@ -187,9 +181,21 @@ class OHOrchestrator:
             raise RuntimeError(f"diff содержит запрещённые пути: {denied}")
         if changed:
             self._github.push_branch(branch)
-            pr = self._github.create_pull_request(branch=branch, title=f"oh({task_id}): {title}", body=description, base=self._base, draft=True)
-            extras.artifacts = (*extras.artifacts, pr.get("html_url", ""))
-            self._audit.log("pr_created", task_id, AgentRole.ORCHESTRATOR, url=pr.get("html_url", ""))
+        commit_sha = self._github.head_sha()
+        evidence = self._evidence_context(task_id, extras, branch)
+        evidence["commit_sha"] = commit_sha
+        if self._ci_provenance is None:
+            raise TransitionError("COMPLETED запрещён: CI provenance collector обязателен")
+        provenance = self._ci_provenance.collect(commit_sha)
+        evidence.update(provenance.as_evidence())
+        self._audit.log("ci_provenance_collected", task_id, AgentRole.ORCHESTRATOR, **provenance.as_evidence())
+        gate_result = self._evidence_gate.evaluate(extras, evidence)
+        if not gate_result.allowed:
+            self._audit.log("evidence_gate_block", task_id, AgentRole.ORCHESTRATOR, missing=gate_result.missing)
+            raise TransitionError(f"COMPLETED запрещён: missing evidence={list(gate_result.missing)}")
+        pr = self._github.create_pull_request(branch=branch, title=f"oh({task_id}): {title}", body=description, base=self._base, draft=True)
+        extras.artifacts = (*extras.artifacts, pr.get("html_url", ""))
+        self._audit.log("pr_created", task_id, AgentRole.ORCHESTRATOR, url=pr.get("html_url", ""))
 
     def _move(self, src: str, dst: str, task_id: str, extras: TaskExtras) -> str:
         new_status = transition(src, dst, extras)
