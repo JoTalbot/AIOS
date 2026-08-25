@@ -39,7 +39,7 @@ numpy
 scikit-learn
 stripe
 chromadb
-litellm>=1.96.2,<2
+litellm>=1.97.0,<2
 web3
 networkx
 paho-mqtt
