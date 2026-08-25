@@ -60,7 +60,16 @@ curl -X POST "$AIOS/api/v1/oh-contour/tasks" \
   -d '{"title": "Добавить docstring в module.py", "required_gates": ["tests", "review"]}'
 ```
 
-## Программный вход
+## Governed production-вход
+
+Прямой `ContourService.run_task()` остаётся внутренним/legacy API. Для запуска Cloud-задач
+в production использовать `aios_core.architecture.GovernedOpenHandsRunner`: capability
+`openhands_cloud_run` проходит Policy Kernel, explicit human approval, lifecycle,
+heartbeat, budget, Execution Kernel и hash-chained audit до первого Cloud side effect.
+HTTP router пока вызывает legacy service напрямую и **не готов для production Cloud run**
+до переноса на governed runner.
+
+## Программный вход (legacy/internal)
 
 ```python
 from aios_core.openhands import ContourService, OpenHandsClient

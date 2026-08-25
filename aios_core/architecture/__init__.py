@@ -9,6 +9,7 @@ from .delegation import DelegationGrant, DelegationRegistry
 from .delegation_chain import DelegationChainValidator
 from .health import ArchitectureHealth, architecture_health
 from .idempotency import IdempotencyLedger, IdempotencyRecord
+from .openhands_adapter import GovernedOpenHandsRunner, OpenHandsCapabilityAdapter
 from .risk import RiskControls, controls_for
 from .runtime import ArchitectureRuntime
 from .security_profile import ArchitectureSecurityProfile
@@ -31,9 +32,11 @@ __all__ = [
     "DelegationChainValidator",
     "DelegationGrant",
     "DelegationRegistry",
+    "GovernedOpenHandsRunner",
     "HMACSigner",
     "IdempotencyLedger",
     "IdempotencyRecord",
+    "OpenHandsCapabilityAdapter",
     "RiskControls",
     "SpecialistInvocation",
     "SupervisedRun",

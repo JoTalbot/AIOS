@@ -72,6 +72,13 @@ ArchitectureRuntime                 ← composition root
 - deterministic architecture health snapshot;
 - integrated tests проверяют signature, replay, scope expansion, risk и integrity.
 
+## OpenHands backend
+
+`OpenHandsCapabilityAdapter` делает `ContourService.run_task` capability
+`openhands_cloud_run`. Публичный `GovernedOpenHandsRunner` не имеет прямого Cloud path:
+policy allow, human approval, runtime health/budget и audit обязательны до вызова contour.
+Текущий OpenHands HTTP router остаётся legacy bypass и не считается production-ready.
+
 ## Следующие этапы
 
 1. Подключить authenticated approval transport к `ApprovalGate.decide`.
