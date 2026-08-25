@@ -1,4 +1,4 @@
-"""Verify reported file changes against the authoritative git diff."""
+"""Verify reported file changes against authoritative git reality and RBAC paths."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -6,6 +6,7 @@ from pathlib import PurePosixPath
 from typing import Iterable
 
 from .handoff import AgentHandoff
+from .models import AgentRole
 from .permissions import check_paths
 
 
@@ -33,18 +34,15 @@ def _normalize(paths: Iterable[str]) -> tuple[str, ...]:
 
 
 def verify_handoff_files(
+    role: AgentRole,
     handoff: AgentHandoff,
     actual_files: Iterable[str],
-    *,
-    allowed_paths: Iterable[str] = (),
-    deny_paths: Iterable[str] = (),
 ) -> FileEvidence:
+    """Require exact path agreement and enforce the canonical role permission matrix."""
     actual = _normalize(actual_files)
     reported = _normalize(handoff.files_changed)
     missing = tuple(sorted(set(actual) - set(reported)))
     extra = tuple(sorted(set(reported) - set(actual)))
-    permission_errors: list[str] = []
-    if allowed_paths or deny_paths:
-        permission_errors.extend(check_paths(list(actual), allowed_paths, deny_paths))
-    passed = not missing and not extra and not permission_errors
-    return FileEvidence(passed, actual, reported, missing, extra, tuple(permission_errors))
+    _, denied = check_paths(role, list(actual))
+    passed = not missing and not extra and not denied
+    return FileEvidence(passed, actual, reported, missing, extra, tuple(sorted(denied)))
