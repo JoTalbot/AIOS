@@ -120,9 +120,22 @@ def submit_task(req: SubmitRequest, x_octopus_token: str = Header(default="")):
 
 
 @router.post("/tasks/{task_id}/run")
-def run_task(task_id: str, x_octopus_token: str = Header(default="")):
-    """Синхронно выполнить MVP-lifecycle задачи. Возвращает RunResult."""
+def run_task(task_id: str, background: bool = False, x_octopus_token: str = Header(default="")):
+    """Выполнить MVP-lifecycle задачи.
+
+    ``background=true`` — запуск в фоновом потоке (202-подобный ответ
+    ``{"ok", "task_id", "state": "started"}``); прогресс — через GET status.
+    Иначе — синхронно, возвращает RunResult.
+    """
     _check_token(x_octopus_token)
+    if background:
+        try:
+            state = get_service().run_task_async(task_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="Task not found") from None
+        except RuntimeError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from None
+        return {"ok": True, "task_id": task_id, "state": state}
     try:
         result = get_service().run_task(task_id)
     except KeyError:

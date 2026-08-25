@@ -105,6 +105,30 @@ class TestContourStore:
         assert len(store.list_ids()) == 1
         assert store.load(task.id)[1].retry_count == 2
 
+    def test_atomic_write_no_tmp_leftovers(self, tmp_path):
+        store = ContourStore(state_dir=tmp_path)
+        task = Task(name="X", description="Y")
+        store.save(task, TaskExtras(task_id=task.id))
+        assert (tmp_path / "oh_contour_tasks.json").exists()
+        assert list(tmp_path.glob("*.tmp")) == []
+
+    def test_concurrent_saves_consistent(self, tmp_path):
+        import threading
+
+        store = ContourStore(state_dir=tmp_path)
+
+        def save_one(i):
+            task = Task(name=f"t{i}", description="d")
+            store.save(task, TaskExtras(task_id=f"t-{i}"), contour_status="pending")
+
+        threads = [threading.Thread(target=save_one, args=(i,)) for i in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert len(store.list_ids()) == 20
+        assert list(tmp_path.glob("*.tmp")) == []
+
 
 class TestServicePersistence:
     def test_submit_persists_and_restore_after_restart(self, tmp_path, audit):

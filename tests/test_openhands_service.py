@@ -61,6 +61,55 @@ class TestRunnerVerdict:
         decisions = audit.backend.query(event_type="openhands.decision")
         assert any(d.get("decision") == ReviewDecision.CHANGES_REQUESTED for d in decisions)
 
+
+class TestAsyncRun:
+    def _drain(self, service, task_id, timeout_s=10.0):
+        import time
+
+        deadline = time.monotonic() + timeout_s
+        while service.is_running(task_id) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert not service.is_running(task_id)
+
+    def test_async_run_started_and_completes(self, audit):
+        client = VerdictClient(event_texts=["APPROVED"])
+        service = ContourService(client=client, github=None, audit=audit)
+        task_id = service.submit("Сделать Z", "Описание Z")
+        assert service.run_task_async(task_id) == "started"
+        self._drain(service, task_id)
+        status = service.status(task_id)
+        assert status["contour_status"] == TaskStatus.COMPLETED
+        assert status["running"] is False
+
+    def test_async_duplicate_raises_409_semantics(self, audit):
+        import threading
+
+        started = threading.Event()
+        release = threading.Event()
+        client = VerdictClient(event_texts=["APPROVED"])
+
+        def blocking_wait(cid, **kw):
+            started.set()
+            release.wait(10)
+            return "idle"
+
+        client.wait_execution = blocking_wait
+        service = ContourService(client=client, github=None, audit=audit)
+        task_id = service.submit("Фича", "Описание")
+        assert service.run_task_async(task_id) == "started"
+        assert started.wait(10)
+        assert service.is_running(task_id)
+        assert service.status(task_id)["running"] is True
+        with pytest.raises(RuntimeError, match="уже выполняется"):
+            service.run_task_async(task_id)
+        release.set()
+        self._drain(service, task_id)
+
+    def test_async_unknown_task_raises(self, audit):
+        service = ContourService(client=VerdictClient(), github=None, audit=audit)
+        with pytest.raises(KeyError):
+            service.run_task_async("nope")
+
     def test_approved_token_completes(self, audit):
         client = VerdictClient(event_texts=["Всё чисто. APPROVED"])
         orch = OHOrchestrator(client=client, github=None, audit=audit)

@@ -130,6 +130,27 @@ class TestVerdict:
         resp = client.get("/api/v1/oh-contour/tasks/nope/verdict", headers=TOKEN_HEADERS)
         assert resp.status_code == 404
 
+    def test_run_background_started(self, client):
+        resp = client.post("/api/v1/oh-contour/tasks", json={"title": "BG"}, headers=TOKEN_HEADERS)
+        task_id = resp.json()["task_id"]
+        resp = client.post(f"/api/v1/oh-contour/tasks/{task_id}/run?background=true", headers=TOKEN_HEADERS)
+        assert resp.status_code == 200
+        assert resp.json() == {"ok": True, "task_id": task_id, "state": "started"}
+        # Фоновый прогон завершается (FakeClient быстрый); статус включает running.
+        import time
+
+        for _ in range(200):
+            status = client.get(f"/api/v1/oh-contour/tasks/{task_id}", headers=TOKEN_HEADERS).json()
+            if not status["running"]:
+                break
+            time.sleep(0.05)
+        assert status["running"] is False
+        assert status["contour_status"] == "completed"
+
+    def test_run_background_unknown_404(self, client):
+        resp = client.post("/api/v1/oh-contour/tasks/nope/run?background=true", headers=TOKEN_HEADERS)
+        assert resp.status_code == 404
+
 
 class TestProductionMount:
     """Монтирование router в прод-фабрику aios_core.api.app.create_app."""

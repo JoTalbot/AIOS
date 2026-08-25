@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from pathlib import Path
 
 from aios_core.orchestrator import Task, TaskStatus
@@ -95,10 +96,15 @@ def task_from_dict(data: dict) -> Task:
 
 
 class ContourStore:
-    """JSON-хранилище контурных задач (одна запись = task + extras + result)."""
+    """JSON-хранилище контурных задач (одна запись = task + extras + result).
+
+    Потокобезопасно: read-modify-write под lock, запись атомарна
+    (tmp-файл + ``os.replace``) — частично записанный state невозможен.
+    """
 
     def __init__(self, state_dir: Path | None = None) -> None:
         self._dir = Path(state_dir) if state_dir else _default_state_dir()
+        self._lock = threading.Lock()
 
     def _path(self) -> Path:
         try:
@@ -119,17 +125,21 @@ class ContourStore:
         return {}
 
     def _save_all(self, data: dict) -> None:
-        self._path().write_text(json.dumps(data, indent=2, ensure_ascii=False))
+        path = self._path()
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+        os.replace(tmp, path)
 
     def save(self, task: Task, extras: TaskExtras, contour_status: str | None = None) -> None:
-        """Сохранить/обновить запись задачи."""
-        data = self._load_all()
-        data[extras.task_id] = {
-            "task": task_to_dict(task),
-            "extras": extras_to_dict(extras),
-            "contour_status": contour_status,
-        }
-        self._save_all(data)
+        """Сохранить/обновить запись задачи (атомарно)."""
+        with self._lock:
+            data = self._load_all()
+            data[extras.task_id] = {
+                "task": task_to_dict(task),
+                "extras": extras_to_dict(extras),
+                "contour_status": contour_status,
+            }
+            self._save_all(data)
 
     def load(self, task_id: str) -> tuple[Task, TaskExtras, str | None] | None:
         """Загрузить (task, extras, contour_status) или None."""
