@@ -33,6 +33,7 @@ class ChainCheckpoint:
     agent: str = "system"
     gate_decision: str | None = None
     commit_sha: str | None = None
+    diff_hash: str | None = None
 
 
 class AuditChain:
@@ -51,8 +52,8 @@ class AuditChain:
         self._last_event_id, self._last_hash = event_id, event_hash
         return event
 
-    def checkpoint(self, *, task_id: str = "system", agent: str = "system", gate_decision: str | None = None, commit_sha: str | None = None) -> ChainCheckpoint:
-        checkpoint = ChainCheckpoint(len(self._events), self._last_event_id, self._last_hash, task_id, agent, gate_decision, commit_sha)
+    def checkpoint(self, *, task_id: str = "system", agent: str = "system", gate_decision: str | None = None, commit_sha: str | None = None, diff_hash: str | None = None) -> ChainCheckpoint:
+        checkpoint = ChainCheckpoint(len(self._events), self._last_event_id, self._last_hash, task_id, agent, gate_decision, commit_sha, diff_hash)
         self._checkpoints.append(checkpoint)
         return checkpoint
 
@@ -82,7 +83,7 @@ class AuditChain:
                 checkpoint = ChainCheckpoint(
                     int(stored["sequence"]), stored.get("last_event_id"), str(stored["root_hash"]),
                     str(stored.get("task_id", "system")), str(stored.get("agent", "system")),
-                    stored.get("gate_decision"), stored.get("commit_sha"),
+                    stored.get("gate_decision"), stored.get("commit_sha"), stored.get("diff_hash"),
                 )
             except (KeyError, TypeError, ValueError):
                 raise ValueError("invalid persisted OpenHands audit checkpoint") from None
