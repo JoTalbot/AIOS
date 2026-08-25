@@ -3,8 +3,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Iterable
 
 from .evidence import CompletionReport, dod_for_role
+from .file_evidence import FileEvidence, verify_handoff_files
 from .handoff import AgentHandoff
 from .models import AgentRole, Gate, TaskExtras
 
@@ -27,11 +29,21 @@ class GateResult:
     role: AgentRole
     decision: GateDecision
     reasons: tuple[str, ...] = ()
+    file_evidence: FileEvidence | None = None
 
 
-def validate_gate(role: AgentRole, handoff: AgentHandoff, report: CompletionReport | None = None) -> GateResult:
-    """Fail closed unless handoff and, when supplied, verified completion evidence pass."""
+def validate_gate(
+    role: AgentRole,
+    handoff: AgentHandoff,
+    report: CompletionReport | None = None,
+    *,
+    actual_files: Iterable[str] | None = None,
+    allowed_paths: Iterable[str] = (),
+    deny_paths: Iterable[str> = (),
+) -> GateResult:
+    """Fail closed unless handoff, verified report and supplied git reality pass."""
     reasons: list[str] = []
+    file_evidence = None
     if not handoff.status.strip(): reasons.append("status missing")
     if not handoff.summary.strip(): reasons.append("summary missing")
     if not handoff.evidence: reasons.append("handoff evidence missing")
@@ -42,20 +54,46 @@ def validate_gate(role: AgentRole, handoff: AgentHandoff, report: CompletionRepo
         if not report.required_dod_passed(required): reasons.append("required DoD not satisfied")
         if not report.evidence_passed(): reasons.append("verified evidence missing or failed")
 
+    if actual_files is not None:
+        file_evidence = verify_handoff_files(
+            handoff,
+            actual_files,
+            allowed_paths=allowed_paths,
+            deny_paths=deny_paths,
+        )
+        if not file_evidence.passed:
+            reasons.append("git file evidence does not match handoff or permissions")
+
     if role in _ROLE_GATE and handoff.verdict not in {"APPROVED", "CHANGES_REQUESTED"}:
         reasons.append("gate role requires APPROVED or CHANGES_REQUESTED")
     if role is AgentRole.CODER and not handoff.files_changed:
         reasons.append("coder handoff must list changed files")
-    return GateResult(role, GateDecision.BLOCK if reasons else GateDecision.PASS, tuple(reasons))
+    return GateResult(role, GateDecision.BLOCK if reasons else GateDecision.PASS, tuple(reasons), file_evidence)
 
 
 def can_advance(result: GateResult) -> bool:
     return result.decision is GateDecision.PASS
 
 
-def apply_gate(role: AgentRole, handoff: AgentHandoff, extras: TaskExtras, report: CompletionReport | None = None) -> GateResult:
-    """Validate handoff plus verified report, recording a gate only after PASS."""
-    result = validate_gate(role, handoff, report)
+def apply_gate(
+    role: AgentRole,
+    handoff: AgentHandoff,
+    extras: TaskExtras,
+    report: CompletionReport | None = None,
+    *,
+    actual_files: Iterable[str] | None = None,
+    allowed_paths: Iterable[str] = (),
+    deny_paths: Iterable[str] = (),
+) -> GateResult:
+    """Validate handoff, verified report and optional git reality before recording a gate."""
+    result = validate_gate(
+        role,
+        handoff,
+        report,
+        actual_files=actual_files,
+        allowed_paths=allowed_paths,
+        deny_paths=deny_paths,
+    )
     if not can_advance(result):
         return result
     gate = _ROLE_GATE.get(role)
