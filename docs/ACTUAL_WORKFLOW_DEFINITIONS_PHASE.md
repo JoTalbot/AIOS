@@ -33,3 +33,8 @@ Production Candidate
 - Core Runtime validation runs automatically.
 - Regression failures prevent release progression.
 - Production candidate creation requires green checks.
+
+## Current Phase
+
+- Workflow specification documented.
+- Next step: create actual `.github/workflows` definitions.
