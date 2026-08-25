@@ -22,6 +22,10 @@ def passing_evidence():
         "audit_chain": True,
         "evidence_commit_sha": "a" * 40,
         "evidence_diff_hash": "b" * 64,
+        "ci_run_id": 123456,
+        "ci_job_id": 789012,
+        "ci_commit_sha": "a" * 40,
+        "ci_conclusion": "success",
     }
 
 
@@ -69,3 +73,27 @@ def test_evidence_identity_must_match_current_git_state():
     result = EvidenceGate().evaluate(passing_extras(), evidence)
     assert result.status == EvidenceGateStatus.BLOCK
     assert "evidence_diff_binding" in result.missing
+
+
+def test_failed_ci_run_cannot_authorize_completion():
+    evidence = passing_evidence()
+    evidence["ci_conclusion"] = "failure"
+    result = EvidenceGate().evaluate(passing_extras(), evidence)
+    assert result.status == EvidenceGateStatus.BLOCK
+    assert "ci_run_binding" in result.missing
+
+
+def test_stale_ci_commit_cannot_authorize_completion():
+    evidence = passing_evidence()
+    evidence["ci_commit_sha"] = "c" * 40
+    result = EvidenceGate().evaluate(passing_extras(), evidence)
+    assert result.status == EvidenceGateStatus.BLOCK
+    assert "ci_run_binding" in result.missing
+
+
+def test_ci_run_requires_job_identity():
+    evidence = passing_evidence()
+    evidence.pop("ci_job_id")
+    result = EvidenceGate().evaluate(passing_extras(), evidence)
+    assert result.status == EvidenceGateStatus.BLOCK
+    assert "ci_job_binding" in result.missing
