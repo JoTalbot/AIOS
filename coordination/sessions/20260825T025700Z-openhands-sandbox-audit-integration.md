@@ -57,3 +57,12 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - Последний безопасный commit: `0cabd94` (main). Незакоммиченные изменения: перечисленные новые файлы (оставлены в worktree намеренно — commit/push не запрашивался).
 - Следующий шаг: подтверждение владельца на фазу F1 (skeleton `aios_core/openhands/`) и ответы на Q1–Q4 из §10 плана.
 - Риски: P1 (missing autocoder_v3_1) требует решения владельца; AGENTS.md не перезаписывать (конфликт C1).
+
+## F5 (2026-08-25) — оркестратор контура + GitHub helper
+
+- Новые модули: `aios_core/openhands/github.py` (GitRunner subprocess без shell; GitHubHelper: branch/commit/changed_files/push + PR REST, токен не логируется), `aios_core/openhands/runner.py` (OHOrchestrator: MVP lifecycle, retry ≤3 → CANCELLED + FailureReport, finalize = diff-проверка check_paths + draft PR).
+- `state_machine.py`: гейт засчитывается при переходе ИЗ стадии (credit → gate-check порядок); review→{completed,qa}, security_review→completed — MVP-маршруты для default-гейтов tests+review.
+- Найденные баги при TDD: двойной зачёт retry, early-exit на FAILED, pre-check гейтов ломал review→completed. Все исправлены, покрыты тестами.
+- Тесты: 35 новых (github реальный tmp-repo, runner fake-клиент по Protocol); регресс контура 93/93, ruff чист.
+- Ветка `agent/oh-f5-orchestrator`, PR создаётся draft.
+- Следующий шаг: F6 — вердикт Reviewer из событий разговора + связка с TaskQueue/Registry.

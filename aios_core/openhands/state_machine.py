@@ -30,8 +30,8 @@ _TRANSITIONS: dict[str, frozenset[str]] = {
     OHStatus.READY: frozenset({TaskStatus.RUNNING, TaskStatus.CANCELLED}),
     TaskStatus.RUNNING: frozenset({OHStatus.TESTING, TaskStatus.FAILED, TaskStatus.CANCELLED}),
     OHStatus.TESTING: frozenset({OHStatus.REVIEW, TaskStatus.FAILED}),
-    OHStatus.REVIEW: frozenset({OHStatus.SECURITY_REVIEW, OHStatus.BLOCKED}),
-    OHStatus.SECURITY_REVIEW: frozenset({OHStatus.QA, OHStatus.BLOCKED}),
+    OHStatus.REVIEW: frozenset({OHStatus.SECURITY_REVIEW, OHStatus.QA, TaskStatus.COMPLETED, OHStatus.BLOCKED}),
+    OHStatus.SECURITY_REVIEW: frozenset({OHStatus.QA, TaskStatus.COMPLETED, OHStatus.BLOCKED}),
     OHStatus.QA: frozenset({TaskStatus.COMPLETED, TaskStatus.FAILED}),
     OHStatus.BLOCKED: frozenset({TaskStatus.PLANNING, TaskStatus.CANCELLED}),
     TaskStatus.FAILED: frozenset({TaskStatus.PLANNING, TaskStatus.CANCELLED}),
@@ -74,7 +74,9 @@ def transition(
     """Проверить и применить переход ``src → dst`` с учётом gate-правил.
 
     Gate-правила:
-    - успешный уход со стадии TESTING/REVIEW/SECURITY_REVIEW/QA засчитывает её гейт;
+    - гейт стадии засчитывается при ВХОДЕ на следующую стадию (в момент
+      ``transition``): успешное завершение стадии подтверждается самим фактом
+      перехода из неё;
     - в COMPLETED нельзя, пока не пройдены все ``extras.required_gates``;
     - выход из FAILED/BLOCKED на повторную попытку возможен только при
       ``extras.can_retry()`` (лимит ``extras.max_retries``); при исчерпании
@@ -95,12 +97,14 @@ def transition(
             )
         extras.register_retry()
 
+    # Гейт исходной стадии засчитывается при успешном уходе из неё
+    # (переход в FAILED/BLOCKED/CANCELLED — не засчитывает).
+    gate = _STAGE_GATE.get(s_src)
+    if gate is not None and s_dst not in (TaskStatus.FAILED, OHStatus.BLOCKED, TaskStatus.CANCELLED):
+        extras.passed_gates |= {gate}
+
     if s_dst == TaskStatus.COMPLETED and not extras.gates_satisfied():
         missing = ", ".join(sorted(g.value for g in extras.missing_gates()))
         raise TransitionError(f"COMPLETED запрещён: не пройдены гейты: {missing}")
-
-    gate = _STAGE_GATE.get(s_src)
-    if gate is not None and s_dst not in (TaskStatus.FAILED, OHStatus.BLOCKED):
-        extras.passed_gates |= {gate}
 
     return s_dst

@@ -13,6 +13,7 @@ from .errors import (
     OpenHandsStartError,
     OpenHandsTimeoutError,
 )
+from .github import GitHubHelper, GitOperationError, GitRunner
 from .models import (
     MVP_ROLES,
     AgentPermissions,
@@ -25,6 +26,7 @@ from .models import (
 )
 from .permissions import PROFILES, check_paths, path_allowed, rbac_role_name, register_roles
 from .profiles import build_prompt, conversation_title
+from .runner import OHOrchestrator, RunResult
 from .state_machine import (
     TransitionError,
     allowed_transitions,
@@ -40,6 +42,10 @@ __all__ = [
     "AgentRole",
     "FailureReport",
     "Gate",
+    "GitHubHelper",
+    "GitOperationError",
+    "GitRunner",
+    "OHOrchestrator",
     "OpenHandsAPIError",
     "OpenHandsAuthError",
     "OpenHandsClient",
@@ -47,6 +53,7 @@ __all__ = [
     "OpenHandsStartError",
     "OpenHandsTimeoutError",
     "ReviewDecision",
+    "RunResult",
     "TaskExtras",
     "TransitionError",
     "allowed_transitions",
