@@ -18,6 +18,7 @@ from .prompt_security import PromptSecurityResult, inspect_untrusted_input, sani
 from .router import AdaptiveRouter, RouteDecision, default_route_candidates
 from .runner import OHOrchestrator, RunResult
 from .service import ContourService, ContourTask
+from .specialist_pipeline import SpecialistResult, SpecialistReviewPipeline, conservative_executor
 from .state_machine import TransitionError, allowed_transitions, can_transition, transition
 from .store import ContourStore
 from .task_profiles import TaskType, classify_task, guidance_for
@@ -28,8 +29,8 @@ __all__ = [
     "AdaptiveRouter", "CompletionReport", "ContourService", "ContourStore", "ContourTask", "DoDItem", "Evidence", "EvidenceKind", "EvaluationScenario", "SCENARIOS", "FailureReport", "Gate",
     "GitHubHelper", "GitOperationError", "GitRunner", "MICRO_AGENTS", "MetaReview", "MicroAgentSpec", "OHOrchestrator", "OpenHandsAPIError", "OpenHandsAuthError",
     "OpenHandsClient", "OpenHandsError", "OpenHandsStartError", "OpenHandsTimeoutError", "PromptEvaluation", "PromptOptimizationSuggestion",
-    "PromptSecurityResult", "ReviewDecision", "RouteDecision", "RunResult", "SpecialistVerdict", "TaskExtras", "TaskMemory", "TaskType", "TransitionError", "allowed_transitions",
-    "aggregate_verdicts", "assert_evaluation_suite", "assert_prompt_contract", "build_prompt", "can_transition", "check_paths", "classify_task", "conversation_title", "default_route_candidates", "dod_for_role", "evaluate_prompt",
+    "PromptSecurityResult", "ReviewDecision", "RouteDecision", "RunResult", "SpecialistResult", "SpecialistReviewPipeline", "SpecialistVerdict", "TaskExtras", "TaskMemory", "TaskType", "TransitionError", "allowed_transitions",
+    "aggregate_verdicts", "assert_evaluation_suite", "assert_prompt_contract", "build_prompt", "can_transition", "check_paths", "classify_task", "conservative_executor", "conversation_title", "default_route_candidates", "dod_for_role", "evaluate_prompt",
     "guidance_for", "inspect_untrusted_input", "oh_contour_router", "parse_review_verdict", "path_allowed", "rbac_role_name", "register_roles",
     "resolve_api_key", "run_prompt_evaluation", "sanitize_context", "select_micro_agents", "suggest_improvements", "transition",
 ]
