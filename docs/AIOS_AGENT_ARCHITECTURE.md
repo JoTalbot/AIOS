@@ -51,6 +51,13 @@ MVP (`MVP_ROLES`): `orchestrator`, `architect`, `coder`, `tester`, `reviewer`.
   allowed_paths добавлены в F4); контурный оркестратор может регистрироваться
   там как агент. HTTP-монтирование контура — в host-приложение отдельным решением.
 
+## Автопилот
+
+`scripts/openhands_autopilot.py` — генератор задач по всему проекту: коллекторы
+`ruff` и `todo` (TODO/FIXME по файлам) → очередь → `submit_queue` в `ContourService`.
+Самостоятельные коллекторы добавлять в `collect_queue`; новый доменный гейт —
+смотреть `docs/TASK_LIFECYCLE.md` (автоподбор `infer_gates`).
+
 ## Конфигурация
 
 Все внешние связи — env-переменные (см. таблицу в `docs/OPENHANDS_INTEGRATION.md`).
