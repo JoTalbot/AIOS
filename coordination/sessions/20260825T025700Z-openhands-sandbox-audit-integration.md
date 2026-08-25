@@ -128,3 +128,12 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - PR #233: профили 5 пост-MVP ролей (devops/android/ml/research/documentation) — PROFILES+RBAC+инструкции; +10 тестов.
 - Регресс 162/162, ruff чист. Все пункты Remaining Work F11 закрыты.
 - ОТКРЫТО: вердикт-парсинг reviewer (fallback), мерж #229–#233, ротация OpenHands API-ключа (был раскрыт в чате).
+
+## Post-F11 (2026-08-25) — добивка CI стека oh-profiles-5
+
+- PR #233 помечен `[ops]` в заголовке (ручная правка `.env.example` — только комментарии, gate-bypass по протоколу).
+- `build(deps)`: `pytest-asyncio>=1.4.0` в requirements.txt + `pytest-asyncio==1.4.0` в requirements.lock (коммит 767ff311).
+  Причина: aios-validation/coverage ставят только requirements.txt и падали с ModuleNotFoundError: pytest_asyncio.
+- check_dependency_contract --strict: 0 ошибок; async-тесты собираются (test_admin_api 20); контур-регресс зелёный.
+- Оставшиеся failure на PR #233 — преэкзистинг main: ruff по старым файлам, CodeQL 3.37.6 vs 4.37.8, dashboard-browser Docker digest.
+- Следующий шаг: дождаться CI на 767ff311, затем мерж #233 (стек 229–232 входит в него кумулятивно) — решение владельца.
