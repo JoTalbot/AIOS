@@ -90,8 +90,8 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 ## Git
 
 - Коммиты: `59b0851f` (dashboard), `910174ca` (v20 Kernel/runtime), `ba39aab0` (CodeQL v4), плюс финальный coordination handoff.
-- Опубликованная ветка/PR: будет создан draft PR из фиксированной session-ветки `arena/01a03a3f-aios`.
-- Незакоммиченные изменения: только финальный skill/session/dashboard до последнего коммита.
+- Опубликованная ветка/PR: `arena/01a03a3f-aios`, draft PR #248 https://github.com/JoTalbot/AIOS/pull/248.
+- Незакоммиченные изменения: нет после финального handoff commit.
 - Чужие изменения, которые не были затронуты: все файлы под OpenHands claim и реализации открытых PR #242–#247.
 
 ## Handoff
