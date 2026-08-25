@@ -1,39 +1,23 @@
-"""Аудит-события OpenHands-контура поверх ``aios_core.audit_logger.AuditLogger``.
-
-Все значения проходят маскирование секретов до записи: в лог не попадают
-passwords, tokens, API keys, private keys, cookies (Этап 17 master-плана).
-"""
+"""Аудит-события OpenHands с маскированием секретов и hash-chain."""
 
 import re
 from typing import Any
+from uuid import uuid4
 
 from aios_core.audit_logger import AuditLogger
 
+from .audit_chain import AuditChain
 from .models import AgentRole
 
 EVENT_PREFIX = "openhands"
-
-# Ключи, значения которых маскируются всегда.
-_SENSITIVE_KEY = re.compile(
-    r"(password|passwd|secret|token|api[_-]?key|private[_-]?key|cookie|credential|authorization)",
-    re.IGNORECASE,
-)
-# Значения, похожие на секреты: длинные base64/hex-строки (≥20 символов).
+_SENSITIVE_KEY = re.compile(r"(password|passwd|secret|token|api[_-]?key|private[_-]?key|cookie|credential|authorization)", re.IGNORECASE)
 _SENSITIVE_VALUE = re.compile(r"\b[A-Za-z0-9+/=_-]{20,}\b")
-
 MASK = "***"
 
 
 def mask_secrets(obj: Any) -> Any:
-    """Рекурсивно замаскировать секреты в dict/list/str перед записью в лог."""
     if isinstance(obj, dict):
-        masked = {}
-        for key, value in obj.items():
-            if _SENSITIVE_KEY.search(str(key)):
-                masked[key] = MASK
-            else:
-                masked[key] = mask_secrets(value)
-        return masked
+        return {key: MASK if _SENSITIVE_KEY.search(str(key)) else mask_secrets(value) for key, value in obj.items()}
     if isinstance(obj, (list, tuple)):
         return [mask_secrets(item) for item in obj]
     if isinstance(obj, str):
@@ -42,37 +26,33 @@ def mask_secrets(obj: Any) -> Any:
 
 
 class OHAuditLogger:
-    """Обёртка над AuditLogger: контурный тип события + маскирование секретов."""
+    """OpenHands audit facade with secret masking and tamper-evident event links."""
 
-    def __init__(self, logger: AuditLogger | None = None) -> None:
+    def __init__(self, logger: AuditLogger | None = None, chain: AuditChain | None = None) -> None:
         self._logger = logger or AuditLogger()
+        self._chain = chain or AuditChain()
 
-    def log(
-        self,
-        action: str,
-        task_id: str,
-        agent: AgentRole | str,
-        **fields: Any,
-    ) -> dict:
-        """Записать событие контура (тип ``openhands.<action>``) с маскированием."""
+    def log(self, action: str, task_id: str, agent: AgentRole | str, **fields: Any) -> dict:
         role = agent.value if isinstance(agent, AgentRole) else str(agent)
-        event = {
-            "type": f"{EVENT_PREFIX}.{action}",
-            "task_id": task_id,
-            "agent": role,
-            **fields,
-        }
-        return self._logger.record(mask_secrets(event))
+        event_id = uuid4().hex
+        event = mask_secrets({"type": f"{EVENT_PREFIX}.{action}", "task_id": task_id, "agent": role, **fields})
+        chain_event = self._chain.append(event_id, event)
+        event.update({"event_id": event_id, "parent_event_id": chain_event.parent_event_id, "event_hash": chain_event.event_hash})
+        return self._logger.record(event)
 
     def log_transition(self, task_id: str, agent: AgentRole | str, src: str, dst: str, **fields: Any) -> dict:
-        """Событие смены статуса задачи."""
         return self.log("transition", task_id, agent, src=src, dst=dst, **fields)
 
     def log_decision(self, task_id: str, agent: AgentRole | str, decision: str, **fields: Any) -> dict:
-        """Событие решения (gate, review, retry, fail)."""
         return self.log("decision", task_id, agent, decision=decision, **fields)
+
+    def verify_chain(self) -> bool:
+        return self._chain.verify()
+
+    @property
+    def chain(self) -> AuditChain:
+        return self._chain
 
     @property
     def backend(self) -> AuditLogger:
-        """Нижележащий AuditLogger (для query/stats)."""
         return self._logger
