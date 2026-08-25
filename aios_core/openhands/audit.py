@@ -1,4 +1,4 @@
-"""OpenHands audit with secret masking and persistent hash-chain restoration."""
+"""OpenHands audit with secret masking and execution-bound checkpoints."""
 import re
 from typing import Any
 from uuid import uuid4
@@ -27,7 +27,7 @@ def mask_secrets(obj: Any) -> Any:
 
 
 class OHAuditLogger:
-    """OpenHands audit facade with durable chain and automatic critical-event checkpoints."""
+    """OpenHands audit facade with durable, execution-bound checkpoints."""
 
     def __init__(self, logger: AuditLogger | None = None, chain: AuditChain | None = None) -> None:
         self._logger = logger or AuditLogger()
@@ -45,7 +45,7 @@ class OHAuditLogger:
         event.update({"event_id": event_id, "parent_event_id": chain_event.parent_event_id, "event_hash": chain_event.event_hash})
         result = self._logger.record(event)
         if action in CRITICAL_ACTIONS:
-            self.checkpoint(task_id, agent)
+            self.checkpoint(task_id, agent, gate_decision=fields.get("decision"), commit_sha=fields.get("commit_sha"))
         return result
 
     def log_transition(self, task_id: str, agent: AgentRole | str, src: str, dst: str, **fields: Any) -> dict:
@@ -54,8 +54,8 @@ class OHAuditLogger:
     def log_decision(self, task_id: str, agent: AgentRole | str, decision: str, **fields: Any) -> dict:
         return self.log("decision", task_id, agent, decision=decision, **fields)
 
-    def checkpoint(self, task_id: str = "system", agent: AgentRole | str = "system") -> ChainCheckpoint:
-        checkpoint = self._chain.checkpoint()
+    def checkpoint(self, task_id: str = "system", agent: AgentRole | str = "system", *, gate_decision: str | None = None, commit_sha: str | None = None) -> ChainCheckpoint:
+        checkpoint = self._chain.checkpoint(task_id=task_id, agent=agent.value if isinstance(agent, AgentRole) else str(agent), gate_decision=gate_decision, commit_sha=commit_sha)
         role = agent.value if isinstance(agent, AgentRole) else str(agent)
         event = {
             "type": f"{EVENT_PREFIX}.{CHECKPOINT_ACTION}",
@@ -64,6 +64,8 @@ class OHAuditLogger:
             "sequence": checkpoint.sequence,
             "last_event_id": checkpoint.last_event_id,
             "root_hash": checkpoint.root_hash,
+            "gate_decision": checkpoint.gate_decision,
+            "commit_sha": checkpoint.commit_sha,
         }
         self._logger.record(event)
         return checkpoint
