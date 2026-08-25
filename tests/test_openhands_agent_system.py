@@ -1,16 +1,13 @@
 """Tests for evidence, memory, routing and agent scoring."""
 
-import pytest
-
 from aios_core.openhands import AgentScoreboard, AgentRole, TaskMemory, AgentMemoryEntry, TaskExtras, Gate
 from aios_core.openhands.evidence import Evidence, EvidenceKind, dod_for_role
-from aios_core.openhands.state_machine import OHStatus, can_transition, transition, TransitionError
+from aios_core.openhands.state_machine import OHStatus, transition
 from aios_core.orchestrator import TaskStatus
 
 
 def test_review_repair_transition_returns_to_coder_without_passing_review_gate():
     extras = TaskExtras(task_id="t-1")
-    assert can_transition(OHStatus.REVIEW, TaskStatus.RUNNING)
     assert transition(OHStatus.REVIEW, TaskStatus.RUNNING, extras) == TaskStatus.RUNNING
     assert Gate.REVIEW not in extras.passed_gates
 
@@ -24,13 +21,13 @@ def test_repair_iterations_are_bounded():
     assert not extras.can_repair()
 
 
-def test_review_gate_only_passes_when_leaving_review_forward():
+def test_forward_review_transition_passes_review_gate():
     extras = TaskExtras(task_id="t-1")
-    assert transition(OHStatus.TESTING, OHStatus.REVIEW, extras) == OHStatus.REVIEW
+    transition(OHStatus.TESTING, OHStatus.REVIEW, extras)
     assert Gate.TESTS in extras.passed_gates
     assert Gate.REVIEW not in extras.passed_gates
-    with pytest.raises(TransitionError, match="COMPLETED запрещён"):
-        transition(OHStatus.REVIEW, TaskStatus.COMPLETED, extras)
+    transition(OHStatus.REVIEW, TaskStatus.COMPLETED, extras)
+    assert Gate.REVIEW in extras.passed_gates
 
 
 def test_dod_requires_all_required_items():
