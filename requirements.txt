@@ -47,3 +47,4 @@ qiskit
 qiskit-aer
 torch
 snntorch
+pytest-asyncio>=1.4.0
