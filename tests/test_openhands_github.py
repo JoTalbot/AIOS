@@ -95,3 +95,54 @@ class TestPullRequest:
         with pytest.raises(OpenHandsAPIError) as exc:
             gh.create_pull_request(branch="b", title="t", body="b")
         assert exc.value.status_code == 422
+
+
+class TestBranchSync:
+    """prepare/sync ветки для связки с Cloud (агенты пушат в remote)."""
+
+    def test_prepare_branch_pushes_when_remote_exists(self, repo, tmp_path):
+        remote = tmp_path / "remote.git"
+        subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
+        subprocess.run(["git", "remote", "add", "origin", str(remote)], cwd=repo, check=True)
+
+        gh = GitHubHelper(repo)
+        gh.prepare_branch("agent/oh-x")
+        out = subprocess.run(
+            ["git", "ls-remote", "--heads", "origin", "agent/oh-x"],
+            cwd=repo, check=True, capture_output=True, text=True,
+        )
+        assert "agent/oh-x" in out.stdout
+
+    def test_prepare_branch_without_remote_is_local_only(self, repo):
+        gh = GitHubHelper(repo)
+        gh.prepare_branch("agent/oh-y")
+        assert gh.current_branch() == "agent/oh-y"
+
+    def test_sync_branch_picks_remote_changes(self, repo, tmp_path):
+        remote = tmp_path / "remote.git"
+        subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
+        subprocess.run(["git", "remote", "add", "origin", str(remote)], cwd=repo, check=True)
+        gh = GitHubHelper(repo)
+        gh.prepare_branch("agent/oh-z")
+
+        # «Cloud-агент»: клонирует, коммитит и пушит в ветку.
+        other = tmp_path / "cloud_clone"
+        subprocess.run(["git", "clone", str(remote), str(other)], check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "c@c"], cwd=other, check=True)
+        subprocess.run(["git", "config", "user.name", "c"], cwd=other, check=True)
+        subprocess.run(["git", "checkout", "agent/oh-z"], cwd=other, check=True, capture_output=True)
+        (other / "cloud_change.py").write_text("x = 1\n")
+        subprocess.run(["git", "add", "."], cwd=other, check=True)
+        subprocess.run(["git", "commit", "-m", "cloud change"], cwd=other, check=True, capture_output=True)
+        subprocess.run(["git", "push"], cwd=other, check=True, capture_output=True)
+
+        assert not (repo / "cloud_change.py").exists()
+        gh.sync_branch("agent/oh-z")
+        assert (repo / "cloud_change.py").exists()
+        assert gh.changed_files("main") == ["cloud_change.py"]
+
+    def test_sync_branch_without_remote_is_noop(self, repo):
+        gh = GitHubHelper(repo)
+        gh.create_branch("agent/oh-w")
+        gh.sync_branch("agent/oh-w")  # не падает
+        assert gh.current_branch() == "agent/oh-w"
