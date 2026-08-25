@@ -43,6 +43,8 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - 03:10Z — созданы `AIOS_ARCHITECTURE_AUDIT.md` и `AIOS_OPENHANDS_INTEGRATION_PLAN.md` (вкл. конфликты C1–C6 и фазы F0–F11).
 - 03:20Z — оператор подтвердил полный цикл (ветка→коммит→draft PR на фазу), OpenHands = Cloud API. Ветка `agent/oh-f1-openhands-skeleton`; коммит `a3c218b` (документы аудита).
 - 03:35Z — F1: `aios_core/openhands/` (`models.py`, `state_machine.py`) + 31 unit-тест. Проверки: py_compile OK, ruff OK, новые тесты 31/31, regression `tests/test_orchestrator_*` 106/106. Коммит `0e6d07a`. Песочница потребовала доустановки pytest/ruff/pytest-asyncio/pyyaml/starlette (prod venv недоступен — ок, это среда разработки).
+- 03:40Z — F1 запушен, draft PR #218 (ветка `agent/oh-f1-openhands-skeleton`).
+- 03:55Z — F2: `permissions.py` (роли→RBACEngine, path enforcement, protected-gate) + `audit.py` (OHAuditLogger + маскирование секретов). Проверки: ruff OK, новые тесты 23/23, regression rbac+audit 38/38, F1-тесты 31/31. Найден и исправлен побочный артефакт: fallback AuditLogger писал audit_log.jsonl в cwd при прогоне — фикстура переведена на tmp_path. Ветка `agent/oh-f2-permissions-audit`, коммит `511fa7d`.
 
 ## Результат / handoff
 
