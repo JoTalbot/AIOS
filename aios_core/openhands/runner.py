@@ -46,7 +46,7 @@ _MVP_STAGES: tuple[tuple[str, AgentRole | None, str], ...] = (
     (TaskStatus.PLANNING, AgentRole.ARCHITECT, OHStatus.READY),
     (OHStatus.READY, None, TaskStatus.RUNNING),
     (TaskStatus.RUNNING, AgentRole.CODER, OHStatus.TESTING),
-    (OHStatus.QA, AgentRole.QA, TaskStatus.COMPLETED),
+    (TaskStatus.QA, AgentRole.QA, TaskStatus.COMPLETED),
 )
 
 
@@ -110,8 +110,8 @@ class OHOrchestrator:
         fields: dict[str, object] = {"decision": decision} if decision is not None else {}
         if self._github is not None and branch is not None:
             try:
-                fields["commit_sha"] = self._github.head_sha(branch)
-                fields["diff_hash"] = self._github.diff_hash(self._base, branch)
+                fields["commit_sha"] = self._github.head_sha()
+                fields["diff_hash"] = self._github.diff_hash(self._base)
             except Exception as exc:
                 self._audit.log("git_identity_error", task_id, AgentRole.ORCHESTRATOR, action=action, error=str(exc))
                 raise TransitionError(f"{action}: невозможно получить Git identity, gate заблокирован") from exc
@@ -158,8 +158,8 @@ class OHOrchestrator:
         context: dict[str, object] = {"tests": Gate.TESTS in extras.passed_gates, "reviewer": ReviewDecision.APPROVED.value if Gate.REVIEW in extras.passed_gates else None, "security": ReviewDecision.APPROVED.value if Gate.SECURITY_REVIEW in extras.passed_gates else None, "audit_chain": self._audit.verify_chain()}
         if self._github is not None:
             try:
-                context["commit_sha"] = self._github.head_sha(branch)
-                context["diff_hash"] = self._github.diff_hash(self._base, branch)
+                context["commit_sha"] = self._github.head_sha()
+                context["diff_hash"] = self._github.diff_hash(self._base)
                 context["changed_files"] = self._github.changed_files(self._base)
             except Exception:
                 pass
