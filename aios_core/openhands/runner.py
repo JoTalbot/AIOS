@@ -8,6 +8,7 @@ from typing import Protocol
 from aios_core.orchestrator import TaskStatus
 from .agent_score import AgentScoreboard
 from .audit import OHAuditLogger
+from .ci_policy import policy_for
 from .ci_provenance import CIProvenanceCollector
 from .evidence_gate import EvidenceGate
 from .gates import apply_gate, can_advance
@@ -186,9 +187,11 @@ class OHOrchestrator:
         evidence["commit_sha"] = commit_sha
         if self._ci_provenance is None:
             raise TransitionError("COMPLETED запрещён: CI provenance collector обязателен")
-        provenance = self._ci_provenance.collect(commit_sha)
+        ci_policy = policy_for(description)
+        provenance = self._ci_provenance.collect(commit_sha, workflow_names=ci_policy.required_workflows)
         evidence.update(provenance.as_evidence())
-        self._audit.log("ci_provenance_collected", task_id, AgentRole.ORCHESTRATOR, **provenance.as_evidence())
+        evidence["ci_task_type"] = ci_policy.task_type.value
+        self._audit.log("ci_provenance_collected", task_id, AgentRole.ORCHESTRATOR, ci_task_type=ci_policy.task_type.value, ci_required_workflows=ci_policy.required_workflows, **provenance.as_evidence())
         gate_result = self._evidence_gate.evaluate(extras, evidence)
         if not gate_result.allowed:
             self._audit.log("evidence_gate_block", task_id, AgentRole.ORCHESTRATOR, missing=gate_result.missing)
