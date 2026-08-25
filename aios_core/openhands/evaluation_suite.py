@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .evaluator import evaluate_prompt
-from .profiles import build_prompt
 from .models import AgentRole
+from .profiles import build_prompt
 
 
 @dataclass(frozen=True)
@@ -31,8 +31,8 @@ def run_prompt_evaluation() -> dict[str, bool]:
     results: dict[str, bool] = {}
     for scenario in SCENARIOS:
         prompt = build_prompt(scenario.role, scenario.task)
-        contract = evaluate_prompt(prompt)
-        results[scenario.name] = contract.passed and all(term.lower() in prompt.lower() for term in scenario.expected_terms)
+        contract = evaluate_prompt(prompt, scenario.task)
+        results[scenario.name] = contract.score >= 1.0 and all(term.lower() in prompt.lower() for term in scenario.expected_terms)
     return results
 
 
