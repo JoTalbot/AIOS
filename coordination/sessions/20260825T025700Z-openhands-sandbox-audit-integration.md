@@ -75,3 +75,12 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - Тесты 13 новых; регресс контура 106/106, octopus 8/8, ruff чист.
 - Ветка `agent/oh-f6-verdict-service`, PR draft.
 - Следующий шаг: F7 — персистентность (octopus state / registry поля F4), либо F7-доки: docs + AGENTS.md/skills репо-уровня.
+
+## F7 (2026-08-25) — ContourStore персистентность
+
+- `store.py`: ContourStore (JSON; state dir: OCTOPUS_ORCHESTRATOR_STATE_DIR → OH_CONTOUR_STATE_DIR → /var/lib/aios/oh_contour → repo-local fallback); round-trip Task/TaskExtras; битый state не роняет контур.
+- `service.py`: submit/run_task сохраняют, restore при старте, status() читает store лениво.
+- Найденный дефект: дефолтный системный dir падал в CI без root → ленивый mkdir + fallback.
+- Тесты 13; регресс контура 119/119, octopus 8/8, ruff чист. .gitignore += .oh_contour/.
+- Ветка `agent/oh-f7-persistence`, PR draft.
+- Следующий шаг: F8 — HTTP API поверх ContourService (FastAPI router, токен-авторизация как в octopus).
