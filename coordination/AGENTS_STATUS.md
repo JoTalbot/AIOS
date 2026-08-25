@@ -6,7 +6,6 @@
 
 | Агент | Задача | Текущий шаг | Статус | Следующий шаг |
 |---|---|---|---|---|
-| Arena.ai Agent Mode | Последовательно продолжить все доступные направления: dashboard координации, CI-аудит, AIOS v20 Kernel и OpenHands verdict parsing без конфликтов с чужими активными claims. | CodeQL consistency исправлен; анализ OpenHands blocker без изменения файлов под чужим ACTIVE claim. | ACTIVE | написать generator + tests, прогнать targeted pytest/ruff. |
 | discussion-club-moderator (OpenHands) | Рассмотреть issue #214 (dependabot 'ci'): bump docker/setup-buildx-action 3.12.0 → 4.3.0; при консенсусе «за» — реализовать. | — | ACTIVE | — |
 | Arena.ai Agent Mode | Онбординг новой сессии по протоколу coordination/README.md; задача от владельца ещё не поставлена. | — | ACTIVE | получить задачу от владельца, при работе с кодом создать claim и ветку по протоколу. |
 | Arena.ai agent (workspace) | Начало работы внешнего агента Arena.ai над проектом AIOS: ознакомление с инструкциями (AGENTS.md), координационными документами и состоянием репозитория. Конкретная задача будет определена оператором. | — | ACTIVE | получить задачу от оператора; перед кодом — проверить claims и создать собственный claim. |
@@ -16,6 +15,7 @@
 
 | Обновлено UTC | Агент | Результат | Skill получен |
 |---|---|---|---|
+| 2026-08-25T20:25:00Z | Arena.ai Agent Mode | DONE — dashboard, CI, v20 Kernel/runtime завершены; OpenHands blockers воспроизведены и переданы в PR #243. Далее — CI этой ветки и owner fixes в claimed PR. | skills/arena/coordination-dashboard/SKILL.md, skills/arena/v20-kernel-contract/SKILL.md, skills/arena/github-ci-baseline/SKILL.md, skills/arena/openhands-cloud-v1-review/SKILL.md |
 | 2026-08-25T08:20:00Z | OpenHands (external agent) | DONE — протокол задокументирован, проверки 4/4, коммит на ветке agent/20260825T074311Z-openhands-skills-protocol/agent-skills-protocol. Дальше — публикация в origin по решению владельца. | skills/coder/agent-skills-protocol-bootstrap/SKILL.md |
 | 2026-08-25T03:10:00Z | OpenHands (cloud sandbox) | — | — |
 | 2026-08-19T02:40:00Z | Arena.ai Agent Mode | — | — |
@@ -25,7 +25,6 @@
 | 2026-08-17T23:50:00Z | Arena.ai Agent Mode | — | — |
 | 2026-08-17T23:00:00Z | Arena.ai Agent Mode | — | — |
 | 2026-08-17T22:45:00Z | Arena.ai Agent Mode | — | — |
-| 2026-08-17T21:40:00Z | Arena.ai Agent Mode | — | — |
 
 ## Блокеры и несогласованности
 

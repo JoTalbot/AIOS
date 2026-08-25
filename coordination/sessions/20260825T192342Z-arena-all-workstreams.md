@@ -1,13 +1,13 @@
 ---
 session_id: "20260825T192342Z-arena-all-workstreams"
-status: "ACTIVE"
+status: "DONE"
 agent: "Arena.ai Agent Mode"
 machine: "e2b.local"
 started_utc: "2026-08-25T19:23:42Z"
-updated_utc: "2026-08-25T20:10:00Z"
+updated_utc: "2026-08-25T20:25:00Z"
 branch: "arena/01a03a3f-aios"
 base_commit: "e12c34c10e51c16f62bfcbc24327818dad0a8a9c"
-claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-all-workstreams.md"
+claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-all-workstreams.md (снят при завершении)"
 ---
 
 ## Цель
@@ -37,8 +37,8 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 
 ## Текущий шаг (виден другим агентам)
 
-- Текущий шаг: CodeQL consistency исправлен; анализ OpenHands blocker без изменения файлов под чужим ACTIVE claim.
-- Обновлено UTC: 2026-08-25T20:10:00Z
+- Текущий шаг: DONE — dashboard, CI, v20 Kernel/runtime завершены; OpenHands blockers воспроизведены и переданы в PR #243. Далее — CI этой ветки и owner fixes в claimed PR.
+- Обновлено UTC: 2026-08-25T20:25:00Z
 
 ## Ход работы и решения
 
@@ -52,6 +52,8 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 - 19:58Z — внешний Python dataclasses reference подтвердил `frozen=True` для read-only decision objects; репозиторный runtime показал, что wall-clock heartbeat и вечный `alive` были небезопасны, поэтому использован monotonic TTL.
 - 20:05Z — CodeQL upstream: v4 официально использует Node 24; Git ref `v4` = annotated tag object `4c0873...` → commit `db488d...`. Workflow смешивал refs и CI annotation сообщал config 3.37.6 vs runner 4.37.8; все три steps унифицированы на один v4 tag-object SHA.
 - 20:08Z — Docker baseline локализован: падает только Trivy gate образа `prom/alertmanager:v0.33.1`; upstream выпустил v0.34.0 2026-08-16. Registry недоступен из sandbox (TLS EOF), поэтому новый digest и security scan не подтверждены — production pin не менялся и CVE ignore не добавлялся.
+- 20:20Z — OpenHands PR #243 проверен read-only через `git archive` head в `/tmp`: dedicated audit tests падают при collection из-за `TaskStatus.QA` (должен быть `OHStatus.QA`). Дополнительно официальный Cloud V1 contract выявил ошибочное использование start-task `id` как conversation ID в SpecialistSpawner. Точный fail-closed алгоритм и contract-test опубликованы: PR comment `#issuecomment-5415671556`.
+- 20:25Z — OpenHands код не изменён: scope всё ещё занят чужим ACTIVE claim; применён protocol-safe review/handoff вместо конфликтующей правки.
 
 ## Изменённые файлы
 
@@ -65,7 +67,8 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 - `skills/arena/v20-kernel-contract/SKILL.md` — Kernel/runtime safety algorithm.
 - `.github/workflows/codeql.yml` — единый SHA CodeQL Action v4 для init/autobuild/analyze.
 - `skills/arena/github-ci-baseline/SKILL.md` — fallback-диагностика CI через Checks API.
-- Этот журнал и coordination claims — текущий handoff.
+- `skills/arena/openhands-cloud-v1-review/SKILL.md` — Cloud V1 ID lifecycle и isolated branch review.
+- Этот журнал — финальный handoff; собственный claim снят.
 
 ## Проверки
 
@@ -81,19 +84,20 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 - `[PASS]` PyYAML parse + assertion: all 3 CodeQL refs equal one 40-char SHA.
 - `[PASS]` `python scripts/verify_supply_chain_pins.py` — `supply_chain_pin_findings=0`.
 - `[NOT RUN]` Docker image scan v0.34.0 — Docker unavailable, registry TLS EOF; no unverified pin change.
+- `[PASS/EXPECTED FAIL]` isolated PR #243 audit command — reproduced collection blocker `AttributeError: QA`; review sent to owner.
 - `[NOT RUN]` full pytest — sandbox lacks full production dependencies; targeted tests used an isolated temporary venv.
 
 ## Git
 
-- Коммиты: нет.
-- Опубликованная ветка/PR: нет.
-- Незакоммиченные изменения: собственные coordination-файлы.
-- Чужие изменения, которые не были затронуты: все файлы под OpenHands claim и открытые PR.
+- Коммиты: `59b0851f` (dashboard), `910174ca` (v20 Kernel/runtime), `ba39aab0` (CodeQL v4), плюс финальный coordination handoff.
+- Опубликованная ветка/PR: будет создан draft PR из фиксированной session-ветки `arena/01a03a3f-aios`.
+- Незакоммиченные изменения: только финальный skill/session/dashboard до последнего коммита.
+- Чужие изменения, которые не были затронуты: все файлы под OpenHands claim и реализации открытых PR #242–#247.
 
 ## Handoff
 
-- Последняя завершённая точка: стартовый аудит и выбор безопасного первого шага.
-- Следующий конкретный шаг: написать generator + tests, прогнать targeted pytest/ruff.
-- Блокеры: OpenHands ACTIVE claim конфликтует с requested scope.
-- Риски: stale claims должны отображаться как inconsistency, а не считаться активной работой без пояснения.
-- Что нельзя делать без повторной проверки: менять `aios_core/openhands/**`, мержить чужие PR, выполнять production deploy.
+- Последняя завершённая точка: четыре направления обработаны — 3 реализованы, OpenHands проверен и передан owner с двумя точными blockers.
+- Следующий конкретный шаг: дождаться CI draft PR; отдельно получить и просканировать digest `prom/alertmanager:v0.34.0`, затем обновить canonical production pin только при зелёном Trivy.
+- Блокеры: Docker registry недоступен из sandbox; OpenHands ACTIVE claim запрещает прямую правку PR #243 в этой сессии.
+- Риски: Kernel — foundation без persistent append-only audit sink и без подключения к execution enforcement point; dashboard показывает исторически не закрытые ACTIVE sessions как есть.
+- Что нельзя делать без повторной проверки: менять `aios_core/openhands/**`, добавлять Trivy ignore без CVE assessment, мержить чужие PR или выполнять production deploy.
