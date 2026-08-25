@@ -36,8 +36,10 @@ from pydantic import BaseModel, Field
 # Config
 # ---------------------------------------------------------------------------
 TOKEN = os.getenv("OCTOPUS_TOKEN", "default")
-STATE_DIR = Path("/root/agents/-Octopus/data/agent_orchestrator")
-EXPERIENCE_POOL = Path("/root/agents/-Octopus/experience")
+STATE_DIR = Path(
+    os.getenv("OCTOPUS_ORCHESTRATOR_STATE_DIR", "/root/agents/-Octopus/data/agent_orchestrator")
+)
+EXPERIENCE_POOL = Path(os.getenv("OCTOPUS_EXPERIENCE_DIR", "/root/agents/-Octopus/experience"))
 MAX_PARALLEL = int(os.getenv("OCTOPUS_BATCH_MAX_PARALLEL", "64"))
 
 router = APIRouter(prefix="/api/v3/orchestrator", tags=["multi-agent"])
@@ -60,6 +62,13 @@ class AgentRegistration(BaseModel):
     max_parallel: int = Field(default=64, ge=1, le=256)
     priority: int = Field(default=5, ge=1, le=10)
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    # OpenHands-контур (план F4); все поля optional — обратная совместимость.
+    role: str = Field(default="", description="Contour role (architect/coder/tester/...)")
+    permissions: List[str] = Field(default_factory=list, description="RBAC permission strings")
+    allowed_paths: List[str] = Field(default_factory=list, description="Writable path globs")
+    memory_scope: str = Field(default="", description="Memory scope (project/orchestration)")
+    parent_agent: str = Field(default="", description="Parent agent ID")
+    current_task: str = Field(default="", description="Current task ID")
 
 class AgentStatus(BaseModel):
     agent_id: str
@@ -71,6 +80,9 @@ class AgentStatus(BaseModel):
     tasks_completed: int
     experience_shared: int
     status: str = "active"
+    role: str = ""
+    parent_agent: str = ""
+    current_task: str = ""
 
 class TaskSubmission(BaseModel):
     agent_id: str
@@ -148,6 +160,12 @@ def register_agent(req: AgentRegistration, x_octopus_token: str = Header(default
         "max_parallel": req.max_parallel,
         "priority": req.priority,
         "metadata": req.metadata,
+        "role": req.role,
+        "permissions": req.permissions,
+        "allowed_paths": req.allowed_paths,
+        "memory_scope": req.memory_scope,
+        "parent_agent": req.parent_agent,
+        "current_task": req.current_task,
         "registered_at": _utc_now(),
         "last_heartbeat": time.time(),
         "tasks_submitted": 0,
