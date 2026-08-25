@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aios_core.architecture import ArchitectureRuntime
+from aios_core.architecture import ApprovalGate, ArchitectureAuditStore, ArchitectureRuntime
 from aios_core.execution import Action, ExecutionContext, ExecutionKernel
 from aios_core.kernel import AgentIdentity, AuditLogger, IdentityRegistry, Kernel, PolicyEngine, TrustManager
 from aios_core.runtime import AgentBudget, HeartbeatManager, LifecycleManager
@@ -16,7 +16,13 @@ class FakeCapabilities:
         return {"success": True, "result": {"executed": kwargs["capability_name"]}}
 
 
-def _runtime(*, allowed: bool = True, max_actions: int = 1):
+def _runtime(
+    *,
+    allowed: bool = True,
+    max_actions: int = 1,
+    approval: ApprovalGate | None = None,
+    audit: ArchitectureAuditStore | None = None,
+):
     identity = AgentIdentity("agent-1", "developer", ("execute_tool",))
     identities = IdentityRegistry((identity,))
     trust = TrustManager()
@@ -24,8 +30,8 @@ def _runtime(*, allowed: bool = True, max_actions: int = 1):
     policies = PolicyEngine()
     if allowed:
         policies.allow("execute_tool", "T1")
-    audit = AuditLogger()
-    policy = Kernel(identities, trust, policies, audit)
+    policy_audit = AuditLogger()
+    policy = Kernel(identities, trust, policies, policy_audit)
 
     lifecycle = LifecycleManager()
     lifecycle.register(identity.agent_id)
@@ -41,8 +47,10 @@ def _runtime(*, allowed: bool = True, max_actions: int = 1):
         lifecycle=lifecycle,
         heartbeat=heartbeat,
         budgets={identity.agent_id: budget},
+        approval=approval,
+        audit=audit,
     )
-    return runtime, capabilities, budget, audit
+    return runtime, capabilities, budget, policy_audit
 
 
 def _request():
@@ -83,7 +91,7 @@ def test_runtime_health_and_budget_are_enforced_after_policy() -> None:
     runtime.lifecycle.stop("agent-1")
     stopped = runtime.execute(action, context)
 
-    assert exhausted.error == "agent action budget exhausted"
+    assert exhausted.error == "agent_budget:agent action budget exhausted"
     assert stopped.error == "agent_not_running:stopped"
     assert capabilities.calls == []
     assert budget.actions_used == 0

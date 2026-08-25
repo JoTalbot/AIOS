@@ -15,10 +15,13 @@ Action + ExecutionContext
 ArchitectureRuntime                 ← composition root
     ├─ Policy Kernel (PDP/control plane)
     │    IdentityRegistry → TrustManager → PolicyEngine → AuditLogger
+    ├─ Human approval gate (configured high-risk capabilities)
     ├─ Runtime enforcement
     │    Lifecycle RUNNING → heartbeat alive → AgentBudget
-    └─ Execution Kernel (PEP/data plane)
-         CapabilityEngine.execute → Observation
+    ├─ Execution Kernel (PEP/data plane)
+    │    CapabilityEngine.execute → Observation
+    └─ Persistent audit
+         correlation task_id:action_id → hash-chained JSONL
 ```
 
 Главный инвариант: capability side effect недостижим, пока policy decision не разрешил
@@ -41,6 +44,8 @@ ArchitectureRuntime                 ← composition root
 - отсутствующий policy grant / capability / trust → audited deny;
 - agent не RUNNING, heartbeat stale или budget отсутствует/исчерпан → execution deny;
 - structured CapabilityEngine envelope нормализуется: `result` не содержит transport envelope;
+- high-risk capability требует explicit decision, approval одноразово привязан к `action_id`;
+- каждый этап пишет correlation `task_id:action_id` в append-only hash chain;
 - Supervisor ограничен `budget_agents`, а graph валидируется до запуска executor;
 - OpenHands и legacy Orchestrator должны входить через adapters, а не обходить
   `ArchitectureRuntime.execute()`.
@@ -57,8 +62,8 @@ ArchitectureRuntime                 ← composition root
 
 ## Следующие этапы
 
-1. Persistent append-only audit sink и correlation `task_id/action_id`.
-2. Adapter `Supervisor ExecutionEngine → ArchitectureRuntime.execute` для role capabilities.
-3. Human approval gate между PDP и PEP для high-risk действий.
+1. Adapter `Supervisor ExecutionEngine → ArchitectureRuntime.execute` для role capabilities.
+2. Подключить authenticated approval transport к `ApprovalGate.decide`.
+3. Перенести hash-chain sink из local JSONL в append-only durable storage.
 4. Точечный patch protected Orchestrator только после отдельного review/selfguard workflow.
 5. Удаление/закрытие superseded draft PR после подтверждения владельца — без автоматического merge.

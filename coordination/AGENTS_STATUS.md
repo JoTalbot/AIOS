@@ -15,6 +15,7 @@
 
 | Обновлено UTC | Агент | Результат | Skill получен |
 |---|---|---|---|
+| 2026-08-25T21:53:29Z | Arena.ai Agent Mode | DONE — one-shot approval и hash-chained correlation audit готовы; 40 architecture tests passed. | skills/arena/architecture-approval-audit/SKILL.md |
 | 2026-08-25T20:54:03Z | Arena.ai Agent Mode | DONE — единый PDP → runtime enforcement → PEP composition root и bounded supervisor готовы; 36 tests passed. | skills/arena/v20-architecture-consolidation/SKILL.md |
 | 2026-08-25T20:36:00Z | Arena.ai Agent Mode | DONE — 8 затронутых файлов, 100 tests passed; E/F hard gate и compile clean. | skills/arena/pytest-path-hermeticity/SKILL.md |
 | 2026-08-25T20:16:09Z | Arena.ai Agent Mode | DONE — dependency contract/collection закрыты и подтверждены CI до запуска tests; оставшиеся full-pytest failures классифицированы как pre-existing hermeticity/runtime baseline. | skills/arena/dependency-collection-closure/SKILL.md |
@@ -24,7 +25,6 @@
 | 2026-08-19T02:40:00Z | Arena.ai Agent Mode | — | — |
 | 2026-08-19T01:00:00Z | Arena.ai Agent Mode | — | — |
 | 2026-08-18T01:20:00Z | Arena.ai Agent Mode | — | — |
-| 2026-08-18T00:40:00Z | Arena.ai Agent Mode | — | — |
 
 ## Блокеры и несогласованности
 
