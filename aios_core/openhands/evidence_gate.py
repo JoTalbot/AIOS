@@ -1,4 +1,4 @@
-"""Fail-closed completion gate with execution-bound evidence."""
+"""Fail-closed completion gate with execution- and CI-bound evidence."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,7 +26,12 @@ class EvidenceGateResult:
 class EvidenceGate:
     """Single authoritative, fail-closed gate for transition to COMPLETED."""
 
-    REQUIRED = ("task_id", "commit_sha", "diff_hash", "changed_files", "tests", "reviewer", "security", "audit_checkpoint", "audit_chain", "test_commit_binding", "test_diff_binding", "evidence_commit_binding", "evidence_diff_binding")
+    REQUIRED = (
+        "task_id", "commit_sha", "diff_hash", "changed_files", "tests",
+        "reviewer", "security", "audit_checkpoint", "audit_chain",
+        "test_commit_binding", "test_diff_binding", "evidence_commit_binding",
+        "evidence_diff_binding", "ci_run_binding", "ci_job_binding",
+    )
 
     def evaluate(self, extras: TaskExtras, evidence: Mapping[str, Any] | None = None) -> EvidenceGateResult:
         evidence = evidence or {}
@@ -59,6 +64,16 @@ class EvidenceGate:
             missing.append("evidence_commit_binding")
         if evidence.get("evidence_diff_hash") != diff_hash:
             missing.append("evidence_diff_binding")
+
+        ci_run_id = evidence.get("ci_run_id")
+        ci_job_id = evidence.get("ci_job_id")
+        ci_commit_sha = evidence.get("ci_commit_sha")
+        ci_conclusion = evidence.get("ci_conclusion")
+        if not ci_run_id or ci_commit_sha != commit_sha or ci_conclusion != "success":
+            missing.append("ci_run_binding")
+        if not ci_job_id:
+            missing.append("ci_job_binding")
+
         if not extras.gates_satisfied():
             missing.extend(f"gate:{gate.value}" for gate in sorted(extras.missing_gates(), key=lambda g: g.value))
         if missing:
