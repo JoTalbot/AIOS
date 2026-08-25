@@ -4,7 +4,7 @@ status: "ACTIVE"
 agent: "Arena.ai Agent Mode"
 machine: "e2b.local"
 started_utc: "2026-08-25T19:23:42Z"
-updated_utc: "2026-08-25T19:58:00Z"
+updated_utc: "2026-08-25T20:10:00Z"
 branch: "arena/01a03a3f-aios"
 base_commit: "e12c34c10e51c16f62bfcbc24327818dad0a8a9c"
 claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-all-workstreams.md"
@@ -37,8 +37,8 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 
 ## Текущий шаг (виден другим агентам)
 
-- Текущий шаг: v20 Kernel/runtime завершён (12 tests); исправление общего CodeQL v3/v4 CI-конфликта отдельным атомарным коммитом.
-- Обновлено UTC: 2026-08-25T19:58:00Z
+- Текущий шаг: CodeQL consistency исправлен; анализ OpenHands blocker без изменения файлов под чужим ACTIVE claim.
+- Обновлено UTC: 2026-08-25T20:10:00Z
 
 ## Ход работы и решения
 
@@ -50,6 +50,8 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 - 19:41Z — deep research Kernel: NIST ZTA разделяет policy engine и enforcement point, требует динамической проверки identity/context/trust и audit каждого решения. В PR #247 фактический `Kernel.process` несовместим с API: `PolicyEngine.evaluate(capability)` вызывается как `(context, trust)`, а `AuditLogger.record(dict)` получает dataclass. Следующий шаг — типизированный fail-closed контракт и regression tests.
 - 19:58Z — v20 foundation интегрирован и исправлен: IdentityRegistry, валидируемые trust levels, explicit fail-closed policy reasons, immutable decisions, non-mutating UTC audit. Runtime hardened: ordered lifecycle, monotonic heartbeat TTL, exhausted budget rejection. Targeted tests 12/12, ruff/compile/size-budget зелёные.
 - 19:58Z — внешний Python dataclasses reference подтвердил `frozen=True` для read-only decision objects; репозиторный runtime показал, что wall-clock heartbeat и вечный `alive` были небезопасны, поэтому использован monotonic TTL.
+- 20:05Z — CodeQL upstream: v4 официально использует Node 24; Git ref `v4` = annotated tag object `4c0873...` → commit `db488d...`. Workflow смешивал refs и CI annotation сообщал config 3.37.6 vs runner 4.37.8; все три steps унифицированы на один v4 tag-object SHA.
+- 20:08Z — Docker baseline локализован: падает только Trivy gate образа `prom/alertmanager:v0.33.1`; upstream выпустил v0.34.0 2026-08-16. Registry недоступен из sandbox (TLS EOF), поэтому новый digest и security scan не подтверждены — production pin не менялся и CVE ignore не добавлялся.
 
 ## Изменённые файлы
 
@@ -61,6 +63,8 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 - `aios_core/runtime/**` — bounded lifecycle/heartbeat/budget foundation.
 - `tests/kernel/**` — 12 foundation/chain/runtime regression tests.
 - `skills/arena/v20-kernel-contract/SKILL.md` — Kernel/runtime safety algorithm.
+- `.github/workflows/codeql.yml` — единый SHA CodeQL Action v4 для init/autobuild/analyze.
+- `skills/arena/github-ci-baseline/SKILL.md` — fallback-диагностика CI через Checks API.
 - Этот журнал и coordination claims — текущий handoff.
 
 ## Проверки
@@ -74,6 +78,9 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 - `[PASS]` `/tmp/aios-check-venv/bin/ruff check aios_core/kernel aios_core/runtime tests/kernel`.
 - `[PASS]` `python -m py_compile aios_core/kernel/*.py aios_core/runtime/*.py tests/kernel/*.py`.
 - `[PASS]` `python scripts/check_module_size_budget.py --strict` — 0 contract errors.
+- `[PASS]` PyYAML parse + assertion: all 3 CodeQL refs equal one 40-char SHA.
+- `[PASS]` `python scripts/verify_supply_chain_pins.py` — `supply_chain_pin_findings=0`.
+- `[NOT RUN]` Docker image scan v0.34.0 — Docker unavailable, registry TLS EOF; no unverified pin change.
 - `[NOT RUN]` full pytest — sandbox lacks full production dependencies; targeted tests used an isolated temporary venv.
 
 ## Git
