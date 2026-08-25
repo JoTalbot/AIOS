@@ -9,6 +9,7 @@
 SupervisorTask
     ↓ AgentSupervisor / ExecutionGraphBuilder
 Specialist plan (bounded, deterministic)
+    ↓ DelegationRegistry (owner/task/role/agent/capability/expiry)
     ↓ SupervisorRuntimeExecutor (role → scoped invocation)
 Action + ExecutionContext
     ↓
@@ -64,6 +65,6 @@ ArchitectureRuntime                 ← composition root
 
 1. Подключить authenticated approval transport к `ApprovalGate.decide`.
 2. Перенести hash-chain sink из local JSONL в append-only durable storage.
-3. Добавить scoped delegation expiry/owner metadata для `SpecialistInvocation`.
+3. Добавить cryptographic signature/issuer verification к delegation grants.
 4. Точечный patch protected Orchestrator только после отдельного review/selfguard workflow.
 5. Удаление/закрытие superseded draft PR после подтверждения владельца — без автоматического merge.

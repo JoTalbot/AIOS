@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING, Any
 from aios_core.execution import Action, ExecutionContext, Observation
 from aios_core.supervisor import ExecutionGraph, ExecutionResult, SupervisorDecision
 
+from .delegation import DelegationRegistry
+
 if TYPE_CHECKING:
     from .runtime import ArchitectureRuntime
 
@@ -19,6 +21,7 @@ class SpecialistInvocation:
 
     agent_id: str
     capability: str
+    delegation_id: str
     arguments: dict[str, Any] = field(default_factory=dict)
     authority: str = "supervisor"
 
@@ -42,10 +45,12 @@ class SupervisorRuntimeExecutor:
         *,
         task_id: str,
         invocations: dict[str, SpecialistInvocation],
+        delegations: DelegationRegistry,
     ) -> None:
         self.runtime = runtime
         self.task_id = task_id
         self.invocations = dict(invocations)
+        self.delegations = delegations
         self.observations: dict[str, Observation] = {}
         self._lock = Lock()
 
@@ -55,6 +60,13 @@ class SupervisorRuntimeExecutor:
         except KeyError as exc:
             raise RuntimeError(f"missing governed invocation for role: {role}") from exc
 
+        self.delegations.validate(
+            invocation.delegation_id,
+            task_id=self.task_id,
+            role=role,
+            agent_id=invocation.agent_id,
+            capability=invocation.capability,
+        )
         observation = self.runtime.execute(
             Action(invocation.capability, dict(invocation.arguments)),
             ExecutionContext(

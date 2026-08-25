@@ -21,6 +21,7 @@ from .approval import ApprovalGate, ApprovalStatus
 from .audit import ArchitectureAuditStore
 
 if TYPE_CHECKING:
+    from .delegation import DelegationRegistry
     from .supervisor_adapter import SpecialistInvocation, SupervisedRun
 
 
@@ -144,6 +145,7 @@ class ArchitectureRuntime:
         self,
         task: SupervisorTask,
         invocations: Mapping[str, SpecialistInvocation],
+        delegations: DelegationRegistry,
     ) -> SupervisedRun:
         """Plan specialists and execute every role through this governed runtime."""
         from aios_core.supervisor import ExecutionEngine
@@ -155,6 +157,7 @@ class ArchitectureRuntime:
             self,
             task_id=task.task_id,
             invocations=dict(invocations),
+            delegations=delegations,
         )
         results = ExecutionEngine(adapter, max_agents=task.budget_agents).run(graph)
         return SupervisedRun(decision, graph, results, dict(adapter.observations))
