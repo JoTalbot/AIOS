@@ -144,3 +144,4 @@ data/.cards_vault.json
 # Generated Calls dashboards (runtime output, may reflect private CRM schema)
 /converge/static/calls_dashboard.html
 /data/stitch_calls_dashboard.html
+.oh_contour/
