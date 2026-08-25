@@ -32,7 +32,7 @@ class ChainCheckpoint:
 
 
 class AuditChain:
-    """Append-only hash chain with checkpoints that detect truncation."""
+    """Append-only hash chain with checkpoints that survive restoration."""
 
     def __init__(self) -> None:
         self._last_hash = "GENESIS"
@@ -56,15 +56,29 @@ class AuditChain:
     def from_persisted(cls, events: Iterable[Mapping[str, Any]]) -> "AuditChain":
         chain = cls()
         ordered = [dict(event) for event in events if event.get("event_hash") and event.get("event_id")]
-        ordered.sort(key=lambda e: e.get("timestamp", ""))
+        ordered.sort(key=lambda e: (str(e.get("timestamp", "")), str(e.get("event_id", ""))))
         for stored in ordered:
             event_id = str(stored["event_id"])
             parent_id = stored.get("parent_event_id")
             payload = {k: v for k, v in stored.items() if k not in {"event_id", "parent_event_id", "event_hash", "id", "timestamp"}}
-            event = ChainEvent(event_id, parent_id, payload, str(stored["event_hash"]))
-            chain._events.append(event)
-            chain._last_event_id, chain._last_hash = event_id, event.event_hash
+            chain._events.append(ChainEvent(event_id, parent_id, payload, str(stored["event_hash"])))
+        chain._restore_checkpoints(ordered)
+        if not chain.verify():
+            raise ValueError("persisted OpenHands audit chain or checkpoint is invalid")
+        if chain._events:
+            chain._last_event_id = chain._events[-1].event_id
+            chain._last_hash = chain._events[-1].event_hash
         return chain
+
+    def _restore_checkpoints(self, stored_events: list[Mapping[str, Any]]) -> None:
+        for stored in stored_events:
+            if stored.get("type") != "openhands.audit_checkpoint":
+                continue
+            try:
+                checkpoint = ChainCheckpoint(int(stored["sequence"]), stored.get("last_event_id"), str(stored["root_hash"]))
+            except (KeyError, TypeError, ValueError):
+                raise ValueError("invalid persisted OpenHands audit checkpoint") from None
+            self._checkpoints.append(checkpoint)
 
     def verify(self) -> bool:
         parent_hash = "GENESIS"
@@ -77,7 +91,7 @@ class AuditChain:
                 return False
             parent_hash, parent_id = event.event_hash, event.event_id
         for checkpoint in self._checkpoints:
-            if checkpoint.sequence > len(self._events):
+            if checkpoint.sequence > len(self._events) or checkpoint.sequence < 0:
                 return False
             if checkpoint.sequence == 0:
                 if checkpoint.root_hash != "GENESIS" or checkpoint.last_event_id is not None:
