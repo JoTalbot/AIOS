@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Iterable
+from typing import Callable
 
 from .meta_review import MetaReview, SpecialistVerdict, aggregate_verdicts
 from .micro_agents import MicroAgentSpec, select_micro_agents
@@ -16,36 +16,30 @@ class SpecialistResult:
     verdict: ReviewDecision
     evidence: str = ""
     error: str | None = None
+    spawned: bool = False
 
 
 class SpecialistReviewPipeline:
-    """Run selected specialist checks and produce one deterministic meta-verdict.
+    """Run selected specialists, auto-spawn missing runtimes, then aggregate."""
 
-    The executor is injected so the pipeline stays independent from a concrete
-    OpenHands client and can be tested without network access.
-    """
-
-    def __init__(self, executor: Callable[[MicroAgentSpec, str], SpecialistResult]):
+    def __init__(self, executor: Callable[[MicroAgentSpec, str], SpecialistResult], spawner: Callable[[MicroAgentSpec, str], SpecialistResult] | None = None):
         self._executor = executor
+        self._spawner = spawner
 
     def run(self, task_type: str, context: str = "") -> tuple[tuple[SpecialistResult, ...], MetaReview]:
         specs = select_micro_agents(task_type)
-        results = tuple(self._executor(spec, context) for spec in specs)
-        verdicts = tuple(
-            SpecialistVerdict(
-                name=result.spec.name,
-                decision=result.verdict,
-                summary=result.evidence,
-            )
-            for result in results
-        )
-        return results, aggregate_verdicts(verdicts)
+        results: list[SpecialistResult] = []
+        for spec in specs:
+            result = self._executor(spec, context)
+            if result.error and self._spawner is not None:
+                result = self._spawner(spec, context)
+                if result.error is None:
+                    result = SpecialistResult(result.spec, result.verdict, result.evidence, None, True)
+            results.append(result)
+        verdicts = tuple(SpecialistVerdict(name=r.spec.name, decision=r.verdict, summary=r.evidence) for r in results)
+        return tuple(results), aggregate_verdicts(verdicts)
 
 
 def conservative_executor(spec: MicroAgentSpec, context: str) -> SpecialistResult:
     """Safe default when no specialist runtime is attached: fail closed."""
-    return SpecialistResult(
-        spec=spec,
-        verdict=ReviewDecision.CHANGES_REQUESTED,
-        error="specialist runtime is not attached",
-    )
+    return SpecialistResult(spec=spec, verdict=ReviewDecision.CHANGES_REQUESTED, error="specialist runtime is not attached")
