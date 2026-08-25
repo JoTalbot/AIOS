@@ -8,6 +8,7 @@ from typing import Protocol
 from aios_core.orchestrator import TaskStatus
 from .agent_score import AgentScoreboard
 from .audit import OHAuditLogger
+from .event_evidence import build_completion_report
 from .gates import apply_gate, can_advance
 from .github import GitHubHelper
 from .handoff import AgentHandoff
@@ -178,6 +179,8 @@ class OHOrchestrator:
         extras.conversation_ids[role.value] = conversation_id
         self._audit.log("conversation_started", task_id, role, conversation_id=conversation_id, url=self._client.conversation_url(conversation_id))
         execution_result = self._client.wait_execution(conversation_id)
+        payload = self._client.events_search(conversation_id)
+        report = build_completion_report(payload, role.value)
         verdict = self._verdict_of(task_id, role, conversation_id) if role in (AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA, AgentRole.TESTER) else None
         if verdict == ReviewDecision.APPROVED and role == AgentRole.REVIEWER:
             task_type = classify_task(description).value
@@ -185,18 +188,21 @@ class OHOrchestrator:
             if specialist_decision != ReviewDecision.APPROVED:
                 verdict = ReviewDecision.CHANGES_REQUESTED
         evidence_text = execution_result if isinstance(execution_result, str) else str(execution_result)
+        handoff = AgentHandoff(
+            status="COMPLETED" if verdict in (None, ReviewDecision.APPROVED) else "CHANGES_REQUESTED",
+            summary=f"Stage {role.value} completed; runtime evidence collected.",
+            commands_run=tuple(e.command for e in report.evidence) or (f"OpenHands conversation {conversation_id}",),
+            evidence=tuple(e.result for e in report.evidence) or ((evidence_text[-1500:] or ""),),
+            next_action=f"Advance after {role.value}" if verdict == ReviewDecision.APPROVED else "Repair and rerun stage",
+            verdict=verdict.value if verdict else None,
+        )
+        gate_result = apply_gate(role, handoff, extras, report)
+        self._audit.log("gate_validation", task_id, role, decision=gate_result.decision.value, reasons=gate_result.reasons)
+        if not can_advance(gate_result):
+            if verdict == ReviewDecision.APPROVED:
+                raise TransitionError(f"{role.value}: quality gate blocked by evidence/DoD: {gate_result.reasons}")
+            return verdict
         if verdict == ReviewDecision.APPROVED:
-            handoff = AgentHandoff(
-                status="COMPLETED",
-                summary=f"Stage {role.value} completed with explicit approval.",
-                commands_run=(f"OpenHands conversation {conversation_id}",),
-                evidence=(evidence_text[-1500:] or "conversation completed",),
-                next_action=f"Advance after {role.value}",
-                verdict="APPROVED",
-            )
-            gate_result = apply_gate(role, handoff, extras)
-            if not can_advance(gate_result):
-                raise TransitionError(f"{role.value}: quality gate blocked: {gate_result.reasons}")
             gate = {AgentRole.TESTER: Gate.TESTS, AgentRole.REVIEWER: Gate.REVIEW, AgentRole.SECURITY: Gate.SECURITY_REVIEW, AgentRole.QA: Gate.QA}.get(role)
             if gate is not None:
                 self._audit.log("gate_passed", task_id, role, gate=gate.value, missing=sorted(g.value for g in extras.missing_gates()))
