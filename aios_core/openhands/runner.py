@@ -30,6 +30,7 @@ from .models import (
 from .permissions import check_paths
 from .profiles import build_prompt, conversation_title
 from .state_machine import OHStatus, TransitionError, transition
+from .verdicts import parse_review_verdict
 
 
 class ConversationClient(Protocol):
@@ -48,6 +49,8 @@ class ConversationClient(Protocol):
     def wait_start_task(self, start_task_id: str, **kwargs) -> dict: ...
 
     def wait_execution(self, conversation_id: str, **kwargs) -> str: ...
+
+    def events_search(self, conversation_id: str, *, limit: int = 100) -> dict: ...
 
     def conversation_url(self, conversation_id: str) -> str: ...
 
@@ -234,11 +237,23 @@ class OHOrchestrator:
             url=self._client.conversation_url(conversation_id),
         )
         self._client.wait_execution(conversation_id)
-        return None if role != AgentRole.REVIEWER else self._review_verdict(extras)
+        if role in (AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA):
+            return self._verdict_of(task_id, role, conversation_id)
+        return None
 
-    def _review_verdict(self, extras: TaskExtras) -> str:
-        """Вердикт Reviewer (до парсинга событий — F9: по умолчанию APPROVED)."""
-        return ReviewDecision.APPROVED
+    def _verdict_of(self, task_id: str, role: AgentRole, conversation_id: str) -> str:
+        """Вердикт роли из событий разговора; fallback APPROVED с аудитом."""
+        try:
+            payload = self._client.events_search(conversation_id)
+        except Exception as exc:
+            self._audit.log("verdict_fallback", task_id, role, reason=f"events: {exc}")
+            return ReviewDecision.APPROVED
+        verdict = parse_review_verdict(payload)
+        if verdict is None:
+            self._audit.log("verdict_fallback", task_id, role, reason="no token in events")
+            return ReviewDecision.APPROVED
+        self._audit.log_decision(task_id, role, verdict)
+        return verdict
 
     def _finalize(self, task_id: str, title: str, description: str, extras: TaskExtras, branch: str) -> None:
         """Ветка, проверка diff по правам, PR — перед COMPLETED."""
