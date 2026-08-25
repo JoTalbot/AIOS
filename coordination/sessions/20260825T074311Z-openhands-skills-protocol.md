@@ -4,7 +4,7 @@ status: "DONE"
 agent: "OpenHands (external agent)"
 machine: "openhands-sandbox -> server aios (167.233.95.7)"
 started_utc: "2026-08-25T07:43:11Z"
-updated_utc: "2026-08-25T07:51:49Z"
+updated_utc: "2026-08-25T07:57:30Z"
 branch: "agent/20260825T074311Z-openhands-skills-protocol/agent-skills-protocol"
 base_commit: "25155a61"
 claim: "coordination/claims/agent-skills-protocol--20260825T074311Z-openhands-skills-protocol.md (удалён по протоколу)"
@@ -83,7 +83,7 @@ claim: "coordination/claims/agent-skills-protocol--20260825T074311Z-openhands-sk
 ## Git
 
 - Коммиты: см. лог ветки (один коммит, только свои пути).
-- Опубликованная ветка/PR: нет — push не выполнен (only-paths правило; решение владельца).
+- Опубликованная ветка/PR: ветка опубликована в origin, PR #241 https://github.com/JoTalbot/AIOS/pull/241.
 - Незакоммиченные изменения: нет (в моём worktree).
 - Чужие изменения, которые не были затронуты: все из «Исходное состояние».
 
