@@ -24,6 +24,11 @@ def _hash(event_id: str, parent_event_id: str | None, payload: dict[str, Any], p
     return hashlib.sha256(_canonical(body).encode("utf-8")).hexdigest()
 
 
+def _checkpoint_hash(sequence: int, last_event_id: str | None, root_hash: str, task_id: str, agent: str, gate_decision: str | None, commit_sha: str | None, diff_hash: str | None) -> str:
+    body = {"sequence": sequence, "last_event_id": last_event_id, "root_hash": root_hash, "task_id": task_id, "agent": agent, "gate_decision": gate_decision, "commit_sha": commit_sha, "diff_hash": diff_hash}
+    return hashlib.sha256(_canonical(body).encode("utf-8")).hexdigest()
+
+
 @dataclass(frozen=True)
 class ChainCheckpoint:
     sequence: int
@@ -34,10 +39,15 @@ class ChainCheckpoint:
     gate_decision: str | None = None
     commit_sha: str | None = None
     diff_hash: str | None = None
+    checkpoint_hash: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.checkpoint_hash:
+            object.__setattr__(self, "checkpoint_hash", _checkpoint_hash(self.sequence, self.last_event_id, self.root_hash, self.task_id, self.agent, self.gate_decision, self.commit_sha, self.diff_hash))
 
 
 class AuditChain:
-    """Append-only hash chain with execution-bound checkpoints."""
+    """Append-only hash chain with cryptographically bound checkpoints."""
 
     def __init__(self) -> None:
         self._last_hash = "GENESIS"
@@ -81,11 +91,8 @@ class AuditChain:
         checkpoints.sort(key=lambda e: (int(e.get("sequence", -1)), str(e.get("last_event_id", ""))))
         for stored in checkpoints:
             try:
-                checkpoint = ChainCheckpoint(
-                    int(stored["sequence"]), stored.get("last_event_id"), str(stored["root_hash"]),
-                    str(stored.get("task_id", "system")), str(stored.get("agent", "system")),
-                    stored.get("gate_decision"), stored.get("commit_sha"), stored.get("diff_hash"),
-                )
+                checkpoint_hash = str(stored["checkpoint_hash"])
+                checkpoint = ChainCheckpoint(int(stored["sequence"]), stored.get("last_event_id"), str(stored["root_hash"]), str(stored.get("task_id", "system")), str(stored.get("agent", "system")), stored.get("gate_decision"), stored.get("commit_sha"), stored.get("diff_hash"), checkpoint_hash)
             except (KeyError, TypeError, ValueError):
                 raise ValueError("invalid persisted OpenHands audit checkpoint") from None
             self._checkpoints.append(checkpoint)
@@ -100,16 +107,21 @@ class AuditChain:
             if event.event_hash != expected:
                 return False
             parent_hash, parent_id = event.event_hash, event.event_id
+        previous_sequence = -1
         for checkpoint in self._checkpoints:
-            if checkpoint.sequence > len(self._events) or checkpoint.sequence < 0:
+            if checkpoint.sequence < 0 or checkpoint.sequence > len(self._events) or checkpoint.sequence < previous_sequence:
+                return False
+            expected_checkpoint_hash = _checkpoint_hash(checkpoint.sequence, checkpoint.last_event_id, checkpoint.root_hash, checkpoint.task_id, checkpoint.agent, checkpoint.gate_decision, checkpoint.commit_sha, checkpoint.diff_hash)
+            if checkpoint.checkpoint_hash != expected_checkpoint_hash:
                 return False
             if checkpoint.sequence == 0:
                 if checkpoint.root_hash != "GENESIS" or checkpoint.last_event_id is not None:
                     return False
-                continue
-            event = self._events[checkpoint.sequence - 1]
-            if checkpoint.last_event_id != event.event_id or checkpoint.root_hash != event.event_hash:
-                return False
+            else:
+                event = self._events[checkpoint.sequence - 1]
+                if checkpoint.last_event_id != event.event_id or checkpoint.root_hash != event.event_hash:
+                    return False
+            previous_sequence = checkpoint.sequence
         return True
 
     @property
