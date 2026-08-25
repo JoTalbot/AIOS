@@ -31,6 +31,7 @@ class EvidenceGate:
         "reviewer", "security", "audit_checkpoint", "audit_chain",
         "test_commit_binding", "test_diff_binding", "evidence_commit_binding",
         "evidence_diff_binding", "ci_run_binding", "ci_job_binding",
+        "ci_required_workflows_success",
     )
 
     def evaluate(self, extras: TaskExtras, evidence: Mapping[str, Any] | None = None) -> EvidenceGateResult:
@@ -73,6 +74,8 @@ class EvidenceGate:
             missing.append("ci_run_binding")
         if not ci_job_id:
             missing.append("ci_job_binding")
+        if evidence.get("ci_required_workflows_success") is not True:
+            missing.append("ci_required_workflows_success")
 
         if not extras.gates_satisfied():
             missing.extend(f"gate:{gate.value}" for gate in sorted(extras.missing_gates(), key=lambda g: g.value))
