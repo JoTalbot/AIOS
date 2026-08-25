@@ -5,10 +5,11 @@ from uuid import uuid4
 
 from aios_core.audit_logger import AuditLogger
 
-from .audit_chain import AuditChain
+from .audit_chain import AuditChain, ChainCheckpoint
 from .models import AgentRole
 
 EVENT_PREFIX = "openhands"
+CHECKPOINT_ACTION = "audit_checkpoint"
 _SENSITIVE_KEY = re.compile(r"(password|passwd|secret|token|api[_-]?key|private[_-]?key|cookie|credential|authorization)", re.IGNORECASE)
 _SENSITIVE_VALUE = re.compile(r"\b[A-Za-z0-9+/=_-]{20,}\b")
 MASK = "***"
@@ -25,7 +26,7 @@ def mask_secrets(obj: Any) -> Any:
 
 
 class OHAuditLogger:
-    """OpenHands audit facade with durable chain restoration."""
+    """OpenHands audit facade with durable chain and persisted checkpoints."""
 
     def __init__(self, logger: AuditLogger | None = None, chain: AuditChain | None = None) -> None:
         self._logger = logger or AuditLogger()
@@ -48,6 +49,20 @@ class OHAuditLogger:
 
     def log_decision(self, task_id: str, agent: AgentRole | str, decision: str, **fields: Any) -> dict:
         return self.log("decision", task_id, agent, decision=decision, **fields)
+
+    def checkpoint(self, task_id: str = "system", agent: AgentRole | str = "system") -> ChainCheckpoint:
+        checkpoint = self._chain.checkpoint()
+        role = agent.value if isinstance(agent, AgentRole) else str(agent)
+        event = {
+            "type": f"{EVENT_PREFIX}.{CHECKPOINT_ACTION}",
+            "task_id": task_id,
+            "agent": role,
+            "sequence": checkpoint.sequence,
+            "last_event_id": checkpoint.last_event_id,
+            "root_hash": checkpoint.root_hash,
+        }
+        self._logger.record(event)
+        return checkpoint
 
     def verify_chain(self) -> bool:
         return self._chain.verify()
