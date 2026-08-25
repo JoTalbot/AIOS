@@ -5,6 +5,14 @@ AIOS владеет оркестрацией, состоянием задач, �
 разговоров, а не новые классы агентов. Подробнее: AIOS_OPENHANDS_INTEGRATION_PLAN.md.
 """
 
+from .client import OpenHandsClient, resolve_api_key
+from .errors import (
+    OpenHandsAPIError,
+    OpenHandsAuthError,
+    OpenHandsError,
+    OpenHandsStartError,
+    OpenHandsTimeoutError,
+)
 from .models import (
     MVP_ROLES,
     AgentPermissions,
@@ -16,6 +24,7 @@ from .models import (
     TaskExtras,
 )
 from .permissions import PROFILES, check_paths, path_allowed, rbac_role_name, register_roles
+from .profiles import build_prompt, conversation_title
 from .state_machine import (
     TransitionError,
     allowed_transitions,
@@ -31,14 +40,23 @@ __all__ = [
     "AgentRole",
     "FailureReport",
     "Gate",
+    "OpenHandsAPIError",
+    "OpenHandsAuthError",
+    "OpenHandsClient",
+    "OpenHandsError",
+    "OpenHandsStartError",
+    "OpenHandsTimeoutError",
     "ReviewDecision",
     "TaskExtras",
     "TransitionError",
     "allowed_transitions",
+    "build_prompt",
     "can_transition",
     "check_paths",
+    "conversation_title",
     "path_allowed",
     "rbac_role_name",
     "register_roles",
+    "resolve_api_key",
     "transition",
 ]
