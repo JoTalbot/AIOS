@@ -24,7 +24,7 @@
 | `test_openhands_runner.py` | F5 | Lifecycle: happy path, optional gates, retry, deny-paths, PR |
 | `test_openhands_service.py` | F6 | ContourService: submit/run/status, канонический маппинг |
 | `test_openhands_store.py` | F7 | Round-trip, рестарт, corrupted state, env override |
-| `test_openhands_api.py` | F8 | HTTP: auth 401, submit 201/422, flow, 404, failure_report |
+| `test_openhands_api.py` | F8 | HTTP: auth 401, submit 201/422, flow, 404, failure_report; монтирование в `create_app` (sub-app + env-флаг) |
 | `test_octopus_registry_contour.py` | F4 | Реестр octopus: role/permissions/allowed_paths |
 
 ## Ключевые сценарии runner

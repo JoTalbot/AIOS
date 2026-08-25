@@ -180,10 +180,12 @@ from aios_core.ab_testing.bandit import bandit
 from aios_core.api.v1.router import v1_router
 from aios_core.api.v2.router import v2_router
 from aios_core.dashboard_views.dead_letter_view import render_dead_letter_view
+from aios_core.openhands import oh_contour_router
 from aios_core.webhooks.retry import retry_handler
 
 app.include_router(v1_router)
 app.include_router(v2_router)
+app.include_router(oh_contour_router)
 
 
 @app.post("/api/v1/ab_testing/select", tags=["A/B Testing"])

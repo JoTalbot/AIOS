@@ -107,6 +107,9 @@ class OHOrchestrator:
         """Выполнить полный MVP-lifecycle задачи (с retry по state machine)."""
         extras = extras or TaskExtras(task_id=task_id)
         branch = extras.branch or f"agent/oh-{task_id}"
+        if self._github is not None:
+            # Cloud клонирует репозиторий по selected_branch — ветка нужна на remote.
+            self._github.prepare_branch(branch, self._base)
         status: str = TaskStatus.PENDING
         last_error: str | None = None
 
@@ -260,6 +263,8 @@ class OHOrchestrator:
         if self._github is None:
             self._audit.log("finalize_skipped", task_id, AgentRole.ORCHESTRATOR, reason="no github helper")
             return
+        # Изменения пушат Cloud-агенты — локальное дерево синхронизируем с remote.
+        self._github.sync_branch(branch)
         changed = self._github.changed_files(self._base)
         allowed, denied = check_paths(AgentRole.CODER, changed)
         self._audit.log(

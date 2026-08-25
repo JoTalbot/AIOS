@@ -100,6 +100,38 @@ class GitHubHelper:
         """Push ветки с tracking."""
         self.git.run("push", "-u", remote, branch)
 
+    def has_remote(self, remote: str = "origin") -> bool:
+        """Есть ли настроенный remote (в тестах локальных репо его нет)."""
+        return self.git.run("remote", "get-url", remote, check=False).returncode == 0
+
+    def prepare_branch(self, branch: str, base: str = "main", remote: str = "origin") -> str:
+        """Создать ветку от base и запушить (если remote настроен).
+
+        Cloud-разговоры клонируют репозиторий по ``selected_branch`` — ветка
+        обязана существовать на remote до старта стадий.
+        """
+        self.create_branch(branch, base)
+        if self.has_remote(remote):
+            self.push_branch(branch, remote)
+        return branch
+
+    def sync_branch(self, branch: str, remote: str = "origin") -> None:
+        """Подтянуть состояние ветки с remote.
+
+        Cloud-агенты пушат изменения в ветку; локальное дерево перед diff
+        обязано отражать remote (workspace — выделенный клон контура,
+        reset --hard в нём безопасен).
+        """
+        if not self.has_remote(remote):
+            return
+        self.git.run("fetch", remote, branch)
+        exists = self.git.run("rev-parse", "--verify", branch, check=False)
+        if exists.returncode == 0:
+            self.git.run("checkout", branch)
+        else:
+            self.git.run("checkout", "-b", branch, f"{remote}/{branch}")
+        self.git.run("reset", "--hard", f"{remote}/{branch}")
+
     # ── GitHub API ────────────────────────────────────────────────
 
     def create_pull_request(

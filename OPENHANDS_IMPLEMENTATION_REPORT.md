@@ -47,7 +47,7 @@
 ## Agent Architecture
 
 Роли (`models.AgentRole`): MVP — orchestrator/architect/coder/tester/reviewer;
-подключены профилями security/qa; задекларированы devops/android/ml/research/documentation.
+подключены профилями security/qa и (post-F11) devops/android/ml/research/documentation.
 Роль = `AgentProfile` (RBAC-имя, read/write, allowed_paths) + self-contained промпт
 (`build_prompt`). Разговоры изолированы, контур склеивает их состоянием задачи.
 
@@ -104,19 +104,20 @@ store (рестарт), api (auth/404/flow).
    проверен fake-клиентом по протоколу `ConversationClient`.
 2. HTTP `run` синхронный — длинные lifecycle блокируют запрос.
 3. State-файл без атомарной записи/lock — при первой реальной конкуренции.
-4. Роутер не смонтирован в `main.py` — решение владельца entrypoint'а.
+4. ~~Роутер не смонтирован~~ — смонтирован в `create_app` (sub-app `Mount`) и `main.py`
+   (post-F11); выключается env `OH_CONTOUR_HTTP_ENABLED=0`.
 
 ## Remaining Work
 
-- Реальный E2E: submit задачи → прогон против Cloud → draft PR (нужен `OPENHANDS_API_KEY`).
-- Монтирование router в host-приложение (`app.include_router(oh_contour_router)`).
-- Асинхронный run (фоновая задача + polling status).
-- Профили и промпты остальных 5 ролей (devops/android/ml/research/documentation).
-- Атомарная запись state (tmp+rename) при конкуренции.
+- ~~Реальный E2E~~ (выполнен post-F11: задача `e9079198ebf8` → 4 Cloud-разговора → draft PR #231).
+- ~~Монтирование router в host-приложение~~ (выполнено post-F11).
+- ~~Асинхронный run (фоновая задача + polling status)~~ и ~~атомарная запись state~~
+  (выполнено post-F11: run_task_async + run-lock; tmp+os.replace).
+- ~~Профили и промпты остальных 5 ролей~~ (выполнено post-F11: доменные allowed_paths + RBAC + инструкции).
 
 ## Recommended Next Steps
 
 1. Мерж стека #218–#227 (по порядку или squash).
-2. Монтирование router + production env (`OH_CONTOUR_TOKEN`, `OH_CONTOUR_REPO`, ключи).
+2. Production env на хосте (`OH_CONTOUR_TOKEN`, `OH_CONTOUR_REPO`, ключи).
 3. Первый реальный E2E на безопасной микрозадаче (docstring/типы) — проверка всей цепочки.
 4. По результатам E2E: async run, атомарный state, профили остальных ролей.

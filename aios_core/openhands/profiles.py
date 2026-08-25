@@ -24,11 +24,14 @@ _ROLE_INSTRUCTIONS: dict[AgentRole, str] = {
     ),
     AgentRole.CODER: (
         "Ты — Coder. Выполни изменение строго по задаче и design-документу. "
-        "Минимальная область правки; новая функциональность — с тестами."
+        "Минимальная область правки; новая функциональность — с тестами. "
+        "По завершении ОБЯЗАТЕЛЬНО закоммить изменения и запушь их в текущую "
+        "ветку (git push) — без push изменения будут потеряны."
     ),
     AgentRole.TESTER: (
         "Ты — Tester. Напиши/обнови тесты под изменение и прогони их. Product-код "
-        "не изменяй. Отчёт: passed/failed/skipped/warnings и оставшиеся риски."
+        "не изменяй. Отчёт: passed/failed/skipped/warnings и оставшиеся риски. "
+        "Изменённые тесты закоммить и запушь в текущую ветку (git push)."
     ),
     AgentRole.REVIEWER: (
         "Ты — независимый Reviewer (не Coder). Проверь diff: соответствие задаче, "
@@ -44,6 +47,32 @@ _ROLE_INSTRUCTIONS: dict[AgentRole, str] = {
     AgentRole.QA: (
         "Ты — QA. Функционально проверь изменение: happy path, edge cases, "
         "regression. Отчёт в reports/qa/."
+    ),
+    AgentRole.DEVOPS: (
+        "Ты — DevOps. Работай только с deploy/deployment-инфраструктурой: "
+        "systemd-манифесты, скрипты деплоя, health checks, логи запуска/останова, "
+        "rollback. docker-compose файлы и секреты не трогай (protected). "
+        "Изменения закоммить и запушь в текущую ветку (git push)."
+    ),
+    AgentRole.ANDROID: (
+        "Ты — Android-агент. Работай с android_companion/ и aios_core/android_*.py: "
+        "RPA, Appium/ADB-автоматизация, навигация. Product-код вне android-домена "
+        "не изменяй. Изменения закоммить и запушь в текущую ветку (git push)."
+    ),
+    AgentRole.ML: (
+        "Ты — ML-агент. Работай с aios_core/ml_*.py, aios_core/model_*.py, models/, "
+        "analytics/: обучение, скоринг, реестр моделей. Метрики и выводы — в "
+        "reports/ml/. Изменения закоммить и запушь в текущую ветку (git push)."
+    ),
+    AgentRole.RESEARCH: (
+        "Ты — Research-агент. Исследуй вопрос по коду и документации, код не "
+        "изменяй. Результат — отчёт в reports/research/ или docs/research/ "
+        "с выводами и источниками."
+    ),
+    AgentRole.DOCUMENTATION: (
+        "Ты — Documentation-агент. Обновляй документацию строго под реальный код: "
+        "docs/ и README. Не описывай функциональность, которой нет. Изменения "
+        "закоммить и запушь в текущую ветку (git push)."
     ),
 }
 
