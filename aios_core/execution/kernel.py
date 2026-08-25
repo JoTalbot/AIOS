@@ -38,6 +38,18 @@ class ExecutionKernel:
                 agent_id=context.agent_id,
                 authority=context.authority,
             )
+
+            # CapabilityEngine returns a structured execution envelope. Preserve
+            # its success/error semantics instead of treating every returned
+            # envelope as a successful observation.
+            if isinstance(result, dict) and result.get("success") is False:
+                return Observation(
+                    action_id=action.id,
+                    success=False,
+                    result=result.get("result"),
+                    error=result.get("error"),
+                )
+
             return Observation.from_result(action, result)
         except Exception as exc:
             return Observation.failed(action, str(exc))
