@@ -16,6 +16,7 @@ from .profiles import build_prompt, conversation_title
 from .prompt_optimizer import PromptOptimizationSuggestion, suggest_improvements
 from .specialist_pipeline import SpecialistResult, SpecialistReviewPipeline
 from .state_machine import OHStatus, TransitionError, transition
+from .task_profiles import classify_task
 from .verdicts import parse_review_verdict
 
 
@@ -60,6 +61,7 @@ class OHOrchestrator:
     def run(self, task_id: str, title: str, description: str, extras: TaskExtras | None = None) -> RunResult:
         extras = extras or TaskExtras(task_id=task_id)
         branch = extras.branch or f"agent/oh-{task_id}"
+        branch = branch
         memory = TaskMemory(task_id)
         if self._github is not None:
             self._github.prepare_branch(branch, self._base)
@@ -83,14 +85,7 @@ class OHOrchestrator:
         suggestions = suggest_improvements(self.scoreboard)
         report = None
         if status != TaskStatus.COMPLETED:
-            report = FailureReport(
-                task_id=task_id,
-                reason="repair/retry limit exhausted" if extras.retry_count >= extras.max_retries or extras.repair_count >= extras.max_repairs else "task not completed",
-                attempts=extras.retry_count + extras.repair_count + 1,
-                last_error=last_error or extras.error,
-                files_changed=tuple(self._safe_changed_files(branch)),
-                suggested_next_step="разобрать отчёт и завести задачу вручную",
-            )
+            report = FailureReport(task_id=task_id, reason="repair/retry limit exhausted" if extras.retry_count >= extras.max_retries or extras.repair_count >= extras.max_repairs else "task not completed", attempts=extras.retry_count + extras.repair_count + 1, last_error=last_error or extras.error, files_changed=tuple(self._safe_changed_files(branch)), suggested_next_step="разобрать отчёт и завести задачу вручную")
             self._audit.log_decision(task_id, AgentRole.ORCHESTRATOR, "failed", reason=report.reason)
         return RunResult(status=status, extras=extras, report=report, error=last_error, scoreboard=self.scoreboard, prompt_suggestions=suggestions)
 
@@ -136,27 +131,12 @@ class OHOrchestrator:
 
     @staticmethod
     def _gate_for_role(role: AgentRole) -> Gate | None:
-        return {
-            AgentRole.TESTER: Gate.TESTS,
-            AgentRole.REVIEWER: Gate.REVIEW,
-            AgentRole.SECURITY: Gate.SECURITY_REVIEW,
-            AgentRole.QA: Gate.QA,
-        }.get(role)
+        return {AgentRole.TESTER: Gate.TESTS, AgentRole.REVIEWER: Gate.REVIEW, AgentRole.SECURITY: Gate.SECURITY_REVIEW, AgentRole.QA: Gate.QA}.get(role)
 
     def _run_specialists(self, task_id: str, description: str, branch: str, task_type: str, memory: TaskMemory) -> ReviewDecision:
-        """Run the specialist fan-out through the real OpenHands client."""
         def executor(spec, context: str) -> SpecialistResult:
-            prompt = build_prompt(
-                spec.role,
-                f"SPECIALIST REVIEW: {spec.name}\nPurpose: {spec.purpose}\n\nTask:\n{description}",
-                context=context,
-            )
-            start = self._client.start_conversation(
-                prompt,
-                repository=self._repository,
-                branch=branch,
-                title=conversation_title(spec.role, f"{task_id}-{spec.name}"),
-            )
+            prompt = build_prompt(spec.role, f"SPECIALIST REVIEW: {spec.name}\nPurpose: {spec.purpose}\n\nTask:\n{description}", context=context)
+            start = self._client.start_conversation(prompt, repository=self._repository, branch=branch, title=conversation_title(spec.role, f"{task_id}-{spec.name}"))
             start_task_id = start.get("id", "")
             conversation_id = start.get("app_conversation_id", "")
             if not conversation_id:
@@ -176,18 +156,9 @@ class OHOrchestrator:
         context = memory.compact_context()
         results, meta = SpecialistReviewPipeline(executor).run(task_type, context)
         for result in results:
-            memory.add(AgentMemoryEntry(
-                role=f"micro:{result.spec.name}",
-                summary=f"specialist verdict={result.verdict.value}",
-                decisions=[result.verdict.value],
-                evidence=[result.evidence[-1000:] if result.evidence else result.error or "no evidence"],
-            ))
+            memory.add(AgentMemoryEntry(role=f"micro:{result.spec.name}", summary=f"specialist verdict={result.verdict.value}", decisions=[result.verdict.value], evidence=[result.evidence[-1000:] if result.evidence else result.error or "no evidence"]))
             self._audit.log_decision(task_id, result.spec.role, result.verdict, specialist=result.spec.name, error=result.error)
-            self.scoreboard.record(
-                f"micro:{result.spec.name}",
-                success=result.verdict == ReviewDecision.APPROVED,
-                reviewer_rejected=result.verdict == ReviewDecision.CHANGES_REQUESTED,
-            )
+            self.scoreboard.record(f"micro:{result.spec.name}", success=result.verdict == ReviewDecision.APPROVED, reviewer_rejected=result.verdict == ReviewDecision.CHANGES_REQUESTED)
         self._audit.log_decision(task_id, AgentRole.REVIEWER, meta.decision, specialist="meta-review", blockers=meta.blockers)
         return meta.decision
 
@@ -212,8 +183,8 @@ class OHOrchestrator:
         execution_result = self._client.wait_execution(conversation_id)
         verdict = self._verdict_of(task_id, role, conversation_id) if role in (AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA, AgentRole.TESTER) else None
         if verdict == ReviewDecision.APPROVED and role == AgentRole.REVIEWER:
-            task_type = getattr(extras, "task_type", None) or "feature"
-            specialist_decision = self._run_specialists(task_id, description, branch, str(task_type), memory)
+            task_type = classify_task(description).value
+            specialist_decision = self._run_specialists(task_id, description, branch, task_type, memory)
             if specialist_decision != ReviewDecision.APPROVED:
                 verdict = ReviewDecision.CHANGES_REQUESTED
         if verdict == ReviewDecision.APPROVED:
@@ -221,20 +192,9 @@ class OHOrchestrator:
             if gate is not None:
                 extras.mark_gate_passed(gate)
                 self._audit.log("gate_passed", task_id, role, gate=gate.value, missing=sorted(g.value for g in extras.missing_gates()))
-        self.scoreboard.record(
-            role.value,
-            success=verdict in (None, ReviewDecision.APPROVED),
-            iterations=extras.repair_count + 1,
-            reviewer_rejected=role == AgentRole.REVIEWER and verdict == ReviewDecision.CHANGES_REQUESTED,
-            security_violation=role == AgentRole.SECURITY and verdict == ReviewDecision.CHANGES_REQUESTED,
-        )
+        self.scoreboard.record(role.value, success=verdict in (None, ReviewDecision.APPROVED), iterations=extras.repair_count + 1, reviewer_rejected=role == AgentRole.REVIEWER and verdict == ReviewDecision.CHANGES_REQUESTED, security_violation=role == AgentRole.SECURITY and verdict == ReviewDecision.CHANGES_REQUESTED)
         evidence_text = execution_result if isinstance(execution_result, str) else str(execution_result)
-        memory.add(AgentMemoryEntry(
-            role=role.value,
-            summary=f"Завершена стадия {role.value}; verdict={verdict.value if verdict else 'n/a'}",
-            decisions=[verdict.value] if verdict else [],
-            evidence=[evidence_text[-1500:] or "conversation completed"],
-        ))
+        memory.add(AgentMemoryEntry(role=role.value, summary=f"Завершена стадия {role.value}; verdict={verdict.value if verdict else 'n/a'}", decisions=[verdict.value] if verdict else [], evidence=[evidence_text[-1500:] or "conversation completed"]))
         return verdict
 
     def _verdict_of(self, task_id: str, role: AgentRole, conversation_id: str) -> ReviewDecision:
