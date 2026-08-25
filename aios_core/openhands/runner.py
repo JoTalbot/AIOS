@@ -9,6 +9,7 @@ from aios_core.orchestrator import TaskStatus
 from .agent_score import AgentScoreboard
 from .audit import OHAuditLogger
 from .event_evidence import build_completion_report
+from .evidence_gate import EvidenceGate
 from .gates import apply_gate, can_advance
 from .github import GitHubHelper
 from .handoff import AgentHandoff
@@ -53,13 +54,14 @@ _MVP_STAGES: tuple[tuple[str, AgentRole | None, str], ...] = (
 class OHOrchestrator:
     """Lifecycle runner: plan → code → test → review → specialist review → gates → PR."""
 
-    def __init__(self, client: ConversationClient, github: GitHubHelper | None = None, audit: OHAuditLogger | None = None, repository: str | None = None, base_branch: str = "main", scoreboard: AgentScoreboard | None = None) -> None:
+    def __init__(self, client: ConversationClient, github: GitHubHelper | None = None, audit: OHAuditLogger | None = None, repository: str | None = None, base_branch: str = "main", scoreboard: AgentScoreboard | None = None, evidence_gate: EvidenceGate | None = None) -> None:
         self._client = client
         self._github = github
         self._audit = audit or OHAuditLogger()
         self._repository = repository
         self._base = base_branch
         self.scoreboard = scoreboard or AgentScoreboard()
+        self._evidence_gate = evidence_gate or EvidenceGate()
 
     def run(self, task_id: str, title: str, description: str, extras: TaskExtras | None = None) -> RunResult:
         extras = extras or TaskExtras(task_id=task_id)
@@ -104,7 +106,8 @@ class OHOrchestrator:
         if status == OHStatus.SECURITY_REVIEW:
             return self._run_review_stage(task_id, title, description, extras, branch, memory, AgentRole.SECURITY, OHStatus.QA)
         if status == OHStatus.QA:
-            return self._run_review_stage(task_id, title, description, extras, branch, memory, AgentRole.QA, TaskStatus.COMPLETED)
+            self._finalize(task_id, title, description, extras, branch)
+            return TaskStatus.COMPLETED
         raise TransitionError(f"неизвестный OpenHands status: {status}")
 
     def _audit_gate_identity(self, task_id: str, role: AgentRole, action: str, *, decision: str | None = None, branch: str | None = None) -> None:
@@ -119,7 +122,6 @@ class OHOrchestrator:
         self._audit.log(action, task_id, role, branch=branch, **fields)
 
     def _run_agent_stage(self, task_id: str, title: str, description: str, extras: TaskExtras, branch: str, memory: TaskMemory, role: AgentRole, next_status: str) -> str:
-        # Existing stage implementation remains responsible for execution/evidence.
         verdict = self._verdict_of(task_id, role, extras.conversation_ids.get(role.value, "")) if extras.conversation_ids.get(role.value) else None
         if verdict is not None:
             self._audit_gate_identity(task_id, role, "handoff", decision=verdict.value, branch=branch)
@@ -128,7 +130,12 @@ class OHOrchestrator:
     def _run_review_stage(self, task_id: str, title: str, description: str, extras: TaskExtras, branch: str, memory: TaskMemory, role: AgentRole, next_status: str) -> str:
         verdict = self._verdict_of(task_id, role, extras.conversation_ids.get(role.value, "")) if extras.conversation_ids.get(role.value) else None
         if verdict is not None:
-            self._audit_gate_identity(task_id, role, "gate_pass" if verdict == ReviewDecision.APPROVED else "gate_block", decision=verdict.value, branch=branch)
+            action = "gate_pass" if verdict == ReviewDecision.APPROVED else "gate_block"
+            self._audit_gate_identity(task_id, role, action, decision=verdict.value, branch=branch)
+            if verdict == ReviewDecision.APPROVED:
+                gate = {AgentRole.TESTER: Gate.TESTS, AgentRole.REVIEWER: Gate.REVIEW, AgentRole.SECURITY: Gate.SECURITY_REVIEW, AgentRole.QA: Gate.QA}.get(role)
+                if gate is not None:
+                    extras.mark_gate_passed(gate)
         return next_status
 
     def _verdict_of(self, task_id: str, role: AgentRole, conversation_id: str) -> ReviewDecision:
@@ -144,12 +151,26 @@ class OHOrchestrator:
         self._audit.log_decision(task_id, role, verdict)
         return verdict
 
+    def _evidence_context(self, task_id: str, extras: TaskExtras, branch: str) -> dict[str, object]:
+        context: dict[str, object] = {"tests": Gate.TESTS in extras.passed_gates, "reviewer": ReviewDecision.APPROVED.value if Gate.REVIEW in extras.passed_gates else None, "security": ReviewDecision.APPROVED.value if Gate.SECURITY_REVIEW in extras.passed_gates else None, "audit_chain": self._audit.verify_chain()}
+        if self._github is not None:
+            try:
+                context["commit_sha"] = self._github.head_sha(branch)
+                context["diff_hash"] = self._github.diff_hash(self._base, branch)
+                context["changed_files"] = self._github.changed_files(self._base)
+            except Exception:
+                pass
+        context["audit_checkpoint"] = bool(self._audit.chain.checkpoints)
+        return context
+
     def _finalize(self, task_id: str, title: str, description: str, extras: TaskExtras, branch: str) -> None:
-        if not extras.gates_satisfied():
-            raise TransitionError(f"COMPLETED запрещён: не пройдены gates={sorted(g.value for g in extras.missing_gates())}")
+        evidence = self._evidence_context(task_id, extras, branch)
+        gate_result = self._evidence_gate.evaluate(extras, evidence)
+        if not gate_result.allowed:
+            self._audit.log("evidence_gate_block", task_id, AgentRole.ORCHESTRATOR, missing=gate_result.missing)
+            raise TransitionError(f"COMPLETED запрещён: missing evidence={list(gate_result.missing)}")
         if self._github is None:
-            self._audit.log("finalize_skipped", task_id, AgentRole.ORCHESTRATOR, reason="no github helper")
-            return
+            raise TransitionError("COMPLETED запрещён: GitHub helper обязателен для evidence gate")
         self._github.sync_branch(branch)
         changed = self._github.changed_files(self._base)
         allowed, denied = check_paths(AgentRole.CODER, changed)
