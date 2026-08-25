@@ -61,6 +61,17 @@ ArchitectureRuntime                 ← composition root
 - PR #243 (OpenHands) остаётся отдельным agent backend и должен подключаться через
   supervisor/execution adapters после снятия его coordination claim.
 
+## Security control batch (10 итераций)
+
+- canonical HMAC signer для injected key material;
+- signed approval commands с timestamp/nonce replay protection;
+- signed delegation artifacts и chain scope attenuation;
+- idempotency ledger для безопасных retries;
+- capability owner/risk registry и derived security profile;
+- audit query/export без изменения chain;
+- deterministic architecture health snapshot;
+- integrated tests проверяют signature, replay, scope expansion, risk и integrity.
+
 ## Следующие этапы
 
 1. Подключить authenticated approval transport к `ApprovalGate.decide`.
