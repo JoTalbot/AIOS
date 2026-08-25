@@ -1,5 +1,4 @@
-"""Аудит-события OpenHands с маскированием секретов и hash-chain."""
-
+"""OpenHands audit with secret masking and persistent hash-chain restoration."""
 import re
 from typing import Any
 from uuid import uuid4
@@ -26,11 +25,15 @@ def mask_secrets(obj: Any) -> Any:
 
 
 class OHAuditLogger:
-    """OpenHands audit facade with secret masking and tamper-evident event links."""
+    """OpenHands audit facade with durable chain restoration."""
 
     def __init__(self, logger: AuditLogger | None = None, chain: AuditChain | None = None) -> None:
         self._logger = logger or AuditLogger()
-        self._chain = chain or AuditChain()
+        if chain is not None:
+            self._chain = chain
+        else:
+            persisted = self._logger.query(event_type=f"{EVENT_PREFIX}.", limit=100000)
+            self._chain = AuditChain.from_persisted(persisted)
 
     def log(self, action: str, task_id: str, agent: AgentRole | str, **fields: Any) -> dict:
         role = agent.value if isinstance(agent, AgentRole) else str(agent)
