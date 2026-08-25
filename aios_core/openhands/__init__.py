@@ -14,6 +14,7 @@ from .permissions import PROFILES, check_paths, path_allowed, rbac_role_name, re
 from .profiles import build_prompt, conversation_title
 from .prompt_optimizer import PromptOptimizationSuggestion, suggest_improvements
 from .prompt_security import PromptSecurityResult, inspect_untrusted_input, sanitize_context
+from .router import AdaptiveRouter, RouteDecision, default_route_candidates
 from .runner import OHOrchestrator, RunResult
 from .service import ContourService, ContourTask
 from .state_machine import TransitionError, allowed_transitions, can_transition, transition
@@ -23,11 +24,11 @@ from .verdicts import parse_review_verdict
 
 __all__ = [
     "MVP_ROLES", "PROFILES", "AgentPermissions", "AgentProfile", "AgentRole", "AgentMemoryEntry", "AgentScoreboard", "AgentStats",
-    "CompletionReport", "ContourService", "ContourStore", "ContourTask", "DoDItem", "Evidence", "EvidenceKind", "EvaluationScenario", "SCENARIOS", "FailureReport", "Gate",
+    "AdaptiveRouter", "CompletionReport", "ContourService", "ContourStore", "ContourTask", "DoDItem", "Evidence", "EvidenceKind", "EvaluationScenario", "SCENARIOS", "FailureReport", "Gate",
     "GitHubHelper", "GitOperationError", "GitRunner", "MICRO_AGENTS", "MicroAgentSpec", "OHOrchestrator", "OpenHandsAPIError", "OpenHandsAuthError",
     "OpenHandsClient", "OpenHandsError", "OpenHandsStartError", "OpenHandsTimeoutError", "PromptEvaluation", "PromptOptimizationSuggestion",
-    "PromptSecurityResult", "ReviewDecision", "RunResult", "TaskExtras", "TaskMemory", "TaskType", "TransitionError", "allowed_transitions",
-    "assert_evaluation_suite", "assert_prompt_contract", "build_prompt", "can_transition", "check_paths", "classify_task", "conversation_title", "dod_for_role", "evaluate_prompt",
+    "PromptSecurityResult", "ReviewDecision", "RouteDecision", "RunResult", "TaskExtras", "TaskMemory", "TaskType", "TransitionError", "allowed_transitions",
+    "assert_evaluation_suite", "assert_prompt_contract", "build_prompt", "can_transition", "check_paths", "classify_task", "conversation_title", "default_route_candidates", "dod_for_role", "evaluate_prompt",
     "guidance_for", "inspect_untrusted_input", "oh_contour_router", "parse_review_verdict", "path_allowed", "rbac_role_name", "register_roles",
     "resolve_api_key", "run_prompt_evaluation", "sanitize_context", "select_micro_agents", "suggest_improvements", "transition",
 ]
