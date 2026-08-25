@@ -48,7 +48,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Fast-forward main and apply pinned stack
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         env:
           VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
           ENV_FILE_CONTENTS: ${{ secrets.ENV_FILE_CONTENTS }}
