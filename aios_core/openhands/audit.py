@@ -32,7 +32,7 @@ class OHAuditLogger:
         if chain is not None:
             self._chain = chain
         else:
-            persisted = self._logger.query(event_type=f"{EVENT_PREFIX}.", limit=100000)
+            persisted = [event for event in self._logger.query(limit=100000) if str(event.get("type", "")).startswith(f"{EVENT_PREFIX}.")]
             self._chain = AuditChain.from_persisted(persisted)
 
     def log(self, action: str, task_id: str, agent: AgentRole | str, **fields: Any) -> dict:
