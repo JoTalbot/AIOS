@@ -178,6 +178,7 @@ class OHOrchestrator:
             raise RuntimeError(f"OpenHands не вернул conversation_id для роли {role.value}")
         extras.conversation_ids[role.value] = conversation_id
         self._audit.log("conversation_started", task_id, role, conversation_id=conversation_id, url=self._client.conversation_url(conversation_id))
+        before_files = self._safe_changed_files(branch)
         execution_result = self._client.wait_execution(conversation_id)
         payload = self._client.events_search(conversation_id)
         report = build_completion_report(payload, role.value)
@@ -187,20 +188,23 @@ class OHOrchestrator:
             specialist_decision = self._run_specialists(task_id, description, branch, task_type, memory)
             if specialist_decision != ReviewDecision.APPROVED:
                 verdict = ReviewDecision.CHANGES_REQUESTED
+        after_files = self._safe_changed_files(branch)
+        stage_files = tuple(sorted(set(after_files) - set(before_files)))
         evidence_text = execution_result if isinstance(execution_result, str) else str(execution_result)
         handoff = AgentHandoff(
             status="COMPLETED" if verdict in (None, ReviewDecision.APPROVED) else "CHANGES_REQUESTED",
             summary=f"Stage {role.value} completed; runtime evidence collected.",
+            files_changed=stage_files,
             commands_run=tuple(e.command for e in report.evidence) or (f"OpenHands conversation {conversation_id}",),
             evidence=tuple(e.result for e in report.evidence) or ((evidence_text[-1500:] or ""),),
             next_action=f"Advance after {role.value}" if verdict == ReviewDecision.APPROVED else "Repair and rerun stage",
             verdict=verdict.value if verdict else None,
         )
-        gate_result = apply_gate(role, handoff, extras, report)
-        self._audit.log("gate_validation", task_id, role, decision=gate_result.decision.value, reasons=gate_result.reasons)
+        gate_result = apply_gate(role, handoff, extras, report, actual_files=stage_files)
+        self._audit.log("gate_validation", task_id, role, decision=gate_result.decision.value, reasons=gate_result.reasons, files=stage_files)
         if not can_advance(gate_result):
             if verdict == ReviewDecision.APPROVED:
-                raise TransitionError(f"{role.value}: quality gate blocked by evidence/DoD: {gate_result.reasons}")
+                raise TransitionError(f"{role.value}: quality gate blocked by evidence/DoD/git: {gate_result.reasons}")
             return verdict
         if verdict == ReviewDecision.APPROVED:
             gate = {AgentRole.TESTER: Gate.TESTS, AgentRole.REVIEWER: Gate.REVIEW, AgentRole.SECURITY: Gate.SECURITY_REVIEW, AgentRole.QA: Gate.QA}.get(role)
