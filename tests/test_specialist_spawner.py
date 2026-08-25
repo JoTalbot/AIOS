@@ -2,12 +2,13 @@ from aios_core.openhands.specialist_spawner import SpecialistSpawner
 
 
 class FakeClient:
-    def __init__(self):
+    def __init__(self, result=None):
+        self.result = result or {"conversation_id": "conv-security-1", "start_task_id": "task-1"}
         self.calls = []
 
     def start_conversation(self, prompt, **kwargs):
         self.calls.append(("start", prompt, kwargs))
-        return {"conversation_id": "conv-security-1", "start_task_id": "task-1"}
+        return self.result
 
     def wait_start_task(self, start_task_id, **kwargs):
         self.calls.append(("start_wait", start_task_id))
@@ -21,15 +22,10 @@ class FakeClient:
 def test_spawner_starts_and_waits_for_specialist():
     client = FakeClient()
     result = SpecialistSpawner(client, repository="JoTalbot/AIOS").spawn(
-        role="security",
-        task_id="T-1",
-        title="Security review",
-        description="Review authentication changes",
-        changed_files=["auth/service.py"],
-        branch="agent/oh-T-1",
-        reasons=("auth path",),
+        role="security", task_id="T-1", title="Security review",
+        description="Review authentication changes", changed_files=["auth/service.py"],
+        branch="agent/oh-T-1", reasons=("auth path",),
     )
-
     assert result.conversation_id == "conv-security-1"
     assert result.start_task_id == "task-1"
     assert [call[0] for call in client.calls] == ["start", "start_wait", "execution_wait"]
@@ -38,18 +34,11 @@ def test_spawner_starts_and_waits_for_specialist():
 
 
 def test_spawner_fails_closed_without_conversation_id():
-    class NoConversationClient(FakeClient):
-        def start_conversation(self, prompt, **kwargs):
-            return {}
-
-    client = NoConversationClient()
+    client = FakeClient(result={"start_task_id": "task-1"})
     try:
         SpecialistSpawner(client).spawn(
-            role="security",
-            task_id="T-2",
-            title="Security review",
-            description="Review changes",
-            changed_files=["auth/service.py"],
+            role="security", task_id="T-2", title="Security review",
+            description="Review changes", changed_files=[".github/workflows/ci.yml"],
             branch="agent/oh-T-2",
         )
     except RuntimeError as exc:
