@@ -8,6 +8,7 @@ from .evaluation_suite import EvaluationScenario, SCENARIOS, assert_evaluation_s
 from .evaluator import PromptEvaluation, assert_prompt_contract, evaluate_prompt
 from .github import GitHubHelper, GitOperationError, GitRunner
 from .memory import AgentMemoryEntry, TaskMemory
+from .meta_review import MetaReview, SpecialistVerdict, aggregate_verdicts
 from .micro_agents import MICRO_AGENTS, MicroAgentSpec, select_micro_agents
 from .models import MVP_ROLES, AgentPermissions, AgentProfile, AgentRole, FailureReport, Gate, ReviewDecision, TaskExtras
 from .permissions import PROFILES, check_paths, path_allowed, rbac_role_name, register_roles
@@ -25,10 +26,10 @@ from .verdicts import parse_review_verdict
 __all__ = [
     "MVP_ROLES", "PROFILES", "AgentPermissions", "AgentProfile", "AgentRole", "AgentMemoryEntry", "AgentScoreboard", "AgentStats",
     "AdaptiveRouter", "CompletionReport", "ContourService", "ContourStore", "ContourTask", "DoDItem", "Evidence", "EvidenceKind", "EvaluationScenario", "SCENARIOS", "FailureReport", "Gate",
-    "GitHubHelper", "GitOperationError", "GitRunner", "MICRO_AGENTS", "MicroAgentSpec", "OHOrchestrator", "OpenHandsAPIError", "OpenHandsAuthError",
+    "GitHubHelper", "GitOperationError", "GitRunner", "MICRO_AGENTS", "MetaReview", "MicroAgentSpec", "OHOrchestrator", "OpenHandsAPIError", "OpenHandsAuthError",
     "OpenHandsClient", "OpenHandsError", "OpenHandsStartError", "OpenHandsTimeoutError", "PromptEvaluation", "PromptOptimizationSuggestion",
-    "PromptSecurityResult", "ReviewDecision", "RouteDecision", "RunResult", "TaskExtras", "TaskMemory", "TaskType", "TransitionError", "allowed_transitions",
-    "assert_evaluation_suite", "assert_prompt_contract", "build_prompt", "can_transition", "check_paths", "classify_task", "conversation_title", "default_route_candidates", "dod_for_role", "evaluate_prompt",
+    "PromptSecurityResult", "ReviewDecision", "RouteDecision", "RunResult", "SpecialistVerdict", "TaskExtras", "TaskMemory", "TaskType", "TransitionError", "allowed_transitions",
+    "aggregate_verdicts", "assert_evaluation_suite", "assert_prompt_contract", "build_prompt", "can_transition", "check_paths", "classify_task", "conversation_title", "default_route_candidates", "dod_for_role", "evaluate_prompt",
     "guidance_for", "inspect_untrusted_input", "oh_contour_router", "parse_review_verdict", "path_allowed", "rbac_role_name", "register_roles",
     "resolve_api_key", "run_prompt_evaluation", "sanitize_context", "select_micro_agents", "suggest_improvements", "transition",
 ]
