@@ -100,11 +100,21 @@ class OHOrchestrator:
         if status == OHStatus.REVIEW:
             return self._run_review_stage(task_id, title, description, extras, branch, memory, AgentRole.REVIEWER, OHStatus.SECURITY_REVIEW)
         if status == OHStatus.SECURITY_REVIEW:
-            return self._run_review_stage(task_id, title, description, extras, branch, memory, AgentRole.SECURITY, OHStatus.QA)
+            return self._run_security_review_stage(task_id, title, description, extras, branch, memory)
         if status == OHStatus.QA:
             self._finalize(task_id, title, description, extras, branch)
             return TaskStatus.COMPLETED
         raise TransitionError(f"неизвестный OpenHands status: {status}")
+
+    def _run_security_review_stage(self, task_id: str, title: str, description: str, extras: TaskExtras, branch: str, memory: TaskMemory) -> str:
+        changed = self._github.changed_files(self._base) if self._github is not None else []
+        policy = resolve_ci_policy(description, changed)
+        self._audit.log("security_policy_checked", task_id, AgentRole.ORCHESTRATOR, security_forced=policy.security_forced, reasons=policy.reasons)
+        conversation_id = extras.conversation_ids.get(AgentRole.SECURITY.value, "")
+        if policy.security_forced and not conversation_id:
+            self._audit.log("security_review_required", task_id, AgentRole.ORCHESTRATOR, reasons=policy.reasons)
+            raise TransitionError("security review required: Security Specialist не был запущен")
+        return self._run_review_stage(task_id, title, description, extras, branch, memory, AgentRole.SECURITY, OHStatus.QA)
 
     def _audit_gate_identity(self, task_id: str, role: AgentRole, action: str, *, decision: str | None = None, branch: str | None = None) -> None:
         fields: dict[str, object] = {"decision": decision} if decision is not None else {}
