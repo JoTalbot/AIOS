@@ -133,6 +133,15 @@ class OHOrchestrator:
             return (AgentRole.SECURITY, OHStatus.QA) if has_qa else (AgentRole.SECURITY, TaskStatus.COMPLETED)
         return {s: (role, nxt) for s, role, nxt in _MVP_STAGES}.get(status)
 
+    @staticmethod
+    def _gate_for_role(role: AgentRole) -> Gate | None:
+        return {
+            AgentRole.TESTER: Gate.TESTS,
+            AgentRole.REVIEWER: Gate.REVIEW,
+            AgentRole.SECURITY: Gate.SECURITY_REVIEW,
+            AgentRole.QA: Gate.QA,
+        }.get(role)
+
     def _run_stage(self, task_id: str, role: AgentRole, description: str, extras: TaskExtras, branch: str, memory: TaskMemory) -> ReviewDecision | None:
         memory_context = memory.compact_context()
         repair_context = memory.repair_context() if role == AgentRole.CODER else ""
@@ -153,6 +162,11 @@ class OHOrchestrator:
         self._audit.log("conversation_started", task_id, role, conversation_id=conversation_id, url=self._client.conversation_url(conversation_id))
         execution_result = self._client.wait_execution(conversation_id)
         verdict = self._verdict_of(task_id, role, conversation_id) if role in (AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA, AgentRole.TESTER) else None
+        if verdict == ReviewDecision.APPROVED:
+            gate = self._gate_for_role(role)
+            if gate is not None:
+                extras.mark_gate_passed(gate)
+                self._audit.log("gate_passed", task_id, role, gate=gate.value, missing=sorted(g.value for g in extras.missing_gates()))
         self.scoreboard.record(
             role.value,
             success=verdict in (None, ReviewDecision.APPROVED),
@@ -185,6 +199,8 @@ class OHOrchestrator:
         return verdict
 
     def _finalize(self, task_id: str, title: str, description: str, extras: TaskExtras, branch: str) -> None:
+        if not extras.gates_satisfied():
+            raise TransitionError(f"COMPLETED запрещён: не пройдены gates={sorted(g.value for g in extras.missing_gates())}")
         if self._github is None:
             self._audit.log("finalize_skipped", task_id, AgentRole.ORCHESTRATOR, reason="no github helper")
             return
