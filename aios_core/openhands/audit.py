@@ -10,6 +10,7 @@ from .models import AgentRole
 
 EVENT_PREFIX = "openhands"
 CHECKPOINT_ACTION = "audit_checkpoint"
+CRITICAL_ACTIONS = frozenset({"gate_pass", "gate_block", "handoff", "security_review"})
 _SENSITIVE_KEY = re.compile(r"(password|passwd|secret|token|api[_-]?key|private[_-]?key|cookie|credential|authorization)", re.IGNORECASE)
 _SENSITIVE_VALUE = re.compile(r"\b[A-Za-z0-9+/=_-]{20,}\b")
 MASK = "***"
@@ -26,7 +27,7 @@ def mask_secrets(obj: Any) -> Any:
 
 
 class OHAuditLogger:
-    """OpenHands audit facade with durable chain and persisted checkpoints."""
+    """OpenHands audit facade with durable chain and automatic critical-event checkpoints."""
 
     def __init__(self, logger: AuditLogger | None = None, chain: AuditChain | None = None) -> None:
         self._logger = logger or AuditLogger()
@@ -42,7 +43,10 @@ class OHAuditLogger:
         event = mask_secrets({"type": f"{EVENT_PREFIX}.{action}", "task_id": task_id, "agent": role, **fields})
         chain_event = self._chain.append(event_id, event)
         event.update({"event_id": event_id, "parent_event_id": chain_event.parent_event_id, "event_hash": chain_event.event_hash})
-        return self._logger.record(event)
+        result = self._logger.record(event)
+        if action in CRITICAL_ACTIONS:
+            self.checkpoint(task_id, agent)
+        return result
 
     def log_transition(self, task_id: str, agent: AgentRole | str, src: str, dst: str, **fields: Any) -> dict:
         return self.log("transition", task_id, agent, src=src, dst=dst, **fields)
