@@ -3,6 +3,34 @@
 import pytest
 
 from aios_core.openhands import AgentRole, build_prompt, conversation_title
+from aios_core.openhands.models import AgentPermissions
+from aios_core.openhands.profiles import _render_permissions
+
+
+class TestRenderPermissions:
+    def test_render_permissions_has_docstring(self):
+        assert _render_permissions.__doc__ is not None
+        assert _render_permissions.__doc__.strip()
+
+    def test_render_permissions_full_block(self):
+        perms = AgentPermissions(
+            read="project",
+            write="none",
+            allowed_paths=("tests/**", "reports/**"),
+            deny_paths=(".env",),
+        )
+        rendered = _render_permissions(perms)
+        assert "Доступ на чтение: project; запись: none." in rendered
+        assert "`tests/**`" in rendered and "`reports/**`" in rendered
+        assert "Запрещённые пути: `.env`" in rendered
+        assert "Секреты не выдаются" in rendered
+
+    def test_render_permissions_without_deny_paths_and_with_allowlist(self):
+        perms = AgentPermissions(read="all", write="workspace", secret_allowlist=("GITHUB_TOKEN",))
+        rendered = _render_permissions(perms)
+        assert "Запрещённые пути:" not in rendered
+        assert "Секреты не выдаются" not in rendered
+        assert "Разрешённые пути записи: нет" in rendered
 
 
 class TestBuildPrompt:
