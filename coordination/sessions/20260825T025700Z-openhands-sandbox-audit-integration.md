@@ -112,3 +112,12 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - Финальный регресс 139/139 (контур + octopus).
 - Ветка `agent/oh-f11-report`, PR draft. План F0–F11 завершён.
 - Оставшееся: мерж стека, монтирование router, реальный E2E против Cloud (нужен OPENHANDS_API_KEY), профили 5 оставшихся ролей.
+
+## Post-F11 (2026-08-25) — мерж стека, монтирование, реальный E2E
+
+- Все PR #218–#228 замержены в main (по порядку, merge-коммитами).
+- PR #229: монтирование oh-contour router — create_app (FastAPI sub-app Mount) + main.py; env-флаг OH_CONTOUR_HTTP_ENABLED; +2 теста.
+- PR #230: связка ветки с Cloud (prepare_branch/sync_branch, push-инструкции Coder/Tester); +4 теста.
+- Реальный E2E: задача e9079198ebf8 (docstring _render_permissions) — 4 Cloud-разговора (architect/coder/tester/reviewer), STATUS=completed, draft PR #231 создан контуром; Cloud-агенты сами закоммитили и запушили изменения.
+- Наблюдение: вердикт reviewer = fallback APPROVED (токен не найден в событиях) — кандидат на улучшение парсинга.
+- Следующий шаг: async run + атомарный state, профили 5 ролей.
