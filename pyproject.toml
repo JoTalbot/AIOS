@@ -16,7 +16,7 @@ authors = [
 # exact production resolution is requirements.lock. See docs/DEPENDENCY_POLICY.md.
 dependencies = [
     "starlette>=1.6.0",
-    "uvicorn>=0.52.3",
+    "uvicorn>=0.52.4",
     "httpx>=0.28.1",
     "PyYAML>=6.0.3",
     "python-dateutil>=2.9.0.post0",
