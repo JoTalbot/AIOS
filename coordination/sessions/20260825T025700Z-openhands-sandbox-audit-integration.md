@@ -121,3 +121,10 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - Реальный E2E: задача e9079198ebf8 (docstring _render_permissions) — 4 Cloud-разговора (architect/coder/tester/reviewer), STATUS=completed, draft PR #231 создан контуром; Cloud-агенты сами закоммитили и запушили изменения.
 - Наблюдение: вердикт reviewer = fallback APPROVED (токен не найден в событиях) — кандидат на улучшение парсинга.
 - Следующий шаг: async run + атомарный state, профили 5 ролей.
+
+## Post-F11 продолжение — async/atomic + профили
+
+- PR #232: run_task_async (run-lock, running-флаг, HTTP background=true/409) + атомарный state (tmp+os.replace); +7 тестов.
+- PR #233: профили 5 пост-MVP ролей (devops/android/ml/research/documentation) — PROFILES+RBAC+инструкции; +10 тестов.
+- Регресс 162/162, ruff чист. Все пункты Remaining Work F11 закрыты.
+- ОТКРЫТО: вердикт-парсинг reviewer (fallback), мерж #229–#233, ротация OpenHands API-ключа (был раскрыт в чате).
