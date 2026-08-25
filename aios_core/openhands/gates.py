@@ -5,12 +5,20 @@ from dataclasses import dataclass
 from enum import Enum
 
 from .handoff import AgentHandoff
-from .models import AgentRole
+from .models import AgentRole, Gate, TaskExtras
 
 
 class GateDecision(str, Enum):
     PASS = "PASS"
     BLOCK = "BLOCK"
+
+
+_ROLE_GATE: dict[AgentRole, Gate] = {
+    AgentRole.TESTER: Gate.TESTS,
+    AgentRole.REVIEWER: Gate.REVIEW,
+    AgentRole.SECURITY: Gate.SECURITY_REVIEW,
+    AgentRole.QA: Gate.QA,
+}
 
 
 @dataclass(frozen=True)
@@ -32,8 +40,7 @@ def validate_gate(role: AgentRole, handoff: AgentHandoff) -> GateResult:
     if not handoff.next_action.strip():
         reasons.append("next_action missing")
 
-    gate_roles = {AgentRole.TESTER, AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA}
-    if role in gate_roles and handoff.verdict not in {"APPROVED", "CHANGES_REQUESTED"}:
+    if role in _ROLE_GATE and handoff.verdict not in {"APPROVED", "CHANGES_REQUESTED"}:
         reasons.append("gate role requires APPROVED or CHANGES_REQUESTED")
 
     if role is AgentRole.CODER and not handoff.files_changed:
@@ -47,3 +54,14 @@ def validate_gate(role: AgentRole, handoff: AgentHandoff) -> GateResult:
 
 def can_advance(result: GateResult) -> bool:
     return result.decision is GateDecision.PASS
+
+
+def apply_gate(role: AgentRole, handoff: AgentHandoff, extras: TaskExtras) -> GateResult:
+    """Validate a handoff and record its gate only after successful validation."""
+    result = validate_gate(role, handoff)
+    if not can_advance(result):
+        return result
+    gate = _ROLE_GATE.get(role)
+    if gate is not None:
+        extras.mark_gate_passed(gate)
+    return result
