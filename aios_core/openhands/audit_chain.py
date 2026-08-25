@@ -1,4 +1,4 @@
-"""Hash-linked audit events with durable checkpoints."""
+"""Hash-linked audit events with durable, execution-bound checkpoints."""
 from __future__ import annotations
 
 import hashlib
@@ -29,10 +29,14 @@ class ChainCheckpoint:
     sequence: int
     last_event_id: str | None
     root_hash: str
+    task_id: str = "system"
+    agent: str = "system"
+    gate_decision: str | None = None
+    commit_sha: str | None = None
 
 
 class AuditChain:
-    """Append-only hash chain with checkpoints that survive restoration."""
+    """Append-only hash chain with execution-bound checkpoints."""
 
     def __init__(self) -> None:
         self._last_hash = "GENESIS"
@@ -47,8 +51,8 @@ class AuditChain:
         self._last_event_id, self._last_hash = event_id, event_hash
         return event
 
-    def checkpoint(self) -> ChainCheckpoint:
-        checkpoint = ChainCheckpoint(len(self._events), self._last_event_id, self._last_hash)
+    def checkpoint(self, *, task_id: str = "system", agent: str = "system", gate_decision: str | None = None, commit_sha: str | None = None) -> ChainCheckpoint:
+        checkpoint = ChainCheckpoint(len(self._events), self._last_event_id, self._last_hash, task_id, agent, gate_decision, commit_sha)
         self._checkpoints.append(checkpoint)
         return checkpoint
 
@@ -75,7 +79,11 @@ class AuditChain:
             if stored.get("type") != "openhands.audit_checkpoint":
                 continue
             try:
-                checkpoint = ChainCheckpoint(int(stored["sequence"]), stored.get("last_event_id"), str(stored["root_hash"]))
+                checkpoint = ChainCheckpoint(
+                    int(stored["sequence"]), stored.get("last_event_id"), str(stored["root_hash"]),
+                    str(stored.get("task_id", "system")), str(stored.get("agent", "system")),
+                    stored.get("gate_decision"), stored.get("commit_sha"),
+                )
             except (KeyError, TypeError, ValueError):
                 raise ValueError("invalid persisted OpenHands audit checkpoint") from None
             self._checkpoints.append(checkpoint)
