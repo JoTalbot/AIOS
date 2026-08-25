@@ -85,6 +85,11 @@ class TaskExtras:
     def missing_gates(self) -> frozenset[Gate]:
         return self.required_gates - self.passed_gates
 
+    def mark_gate_passed(self, gate: Gate) -> None:
+        """Record an explicitly approved gate without allowing arbitrary values."""
+        if gate in self.required_gates:
+            self.passed_gates = frozenset((*self.passed_gates, gate))
+
     def can_retry(self) -> bool:
         return self.retry_count < self.max_retries
 
