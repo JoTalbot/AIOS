@@ -1,4 +1,4 @@
-"""Оркестратор OpenHands-контура AIOS с bounded repair loop и task memory."""
+"""Оркестратор OpenHands-контура AIOS с bounded repair loop, memory и specialist review."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from .models import AgentRole, FailureReport, Gate, ReviewDecision, TaskExtras
 from .permissions import check_paths
 from .profiles import build_prompt, conversation_title
 from .prompt_optimizer import PromptOptimizationSuggestion, suggest_improvements
+from .specialist_pipeline import SpecialistResult, SpecialistReviewPipeline
 from .state_machine import OHStatus, TransitionError, transition
 from .verdicts import parse_review_verdict
 
@@ -46,7 +47,7 @@ _MVP_STAGES: tuple[tuple[str, AgentRole | None, str], ...] = (
 
 
 class OHOrchestrator:
-    """Lifecycle runner: plan → code → test → review → optional gates → PR."""
+    """Lifecycle runner: plan → code → test → review → specialist review → gates → PR."""
 
     def __init__(self, client: ConversationClient, github: GitHubHelper | None = None, audit: OHAuditLogger | None = None, repository: str | None = None, base_branch: str = "main", scoreboard: AgentScoreboard | None = None) -> None:
         self._client = client
@@ -142,6 +143,54 @@ class OHOrchestrator:
             AgentRole.QA: Gate.QA,
         }.get(role)
 
+    def _run_specialists(self, task_id: str, description: str, branch: str, task_type: str, memory: TaskMemory) -> ReviewDecision:
+        """Run the specialist fan-out through the real OpenHands client."""
+        def executor(spec, context: str) -> SpecialistResult:
+            prompt = build_prompt(
+                spec.role,
+                f"SPECIALIST REVIEW: {spec.name}\nPurpose: {spec.purpose}\n\nTask:\n{description}",
+                context=context,
+            )
+            start = self._client.start_conversation(
+                prompt,
+                repository=self._repository,
+                branch=branch,
+                title=conversation_title(spec.role, f"{task_id}-{spec.name}"),
+            )
+            start_task_id = start.get("id", "")
+            conversation_id = start.get("app_conversation_id", "")
+            if not conversation_id:
+                conversation_id = self._client.wait_start_task(start_task_id).get("app_conversation_id", "")
+            if not conversation_id:
+                return SpecialistResult(spec, ReviewDecision.CHANGES_REQUESTED, error="missing conversation_id")
+            try:
+                evidence = self._client.wait_execution(conversation_id)
+                payload = self._client.events_search(conversation_id)
+                verdict = parse_review_verdict(payload)
+                if verdict is None:
+                    return SpecialistResult(spec, ReviewDecision.CHANGES_REQUESTED, error="missing explicit verdict")
+                return SpecialistResult(spec, verdict, str(evidence)[-1500:])
+            except Exception as exc:
+                return SpecialistResult(spec, ReviewDecision.CHANGES_REQUESTED, error=str(exc))
+
+        context = memory.compact_context()
+        results, meta = SpecialistReviewPipeline(executor).run(task_type, context)
+        for result in results:
+            memory.add(AgentMemoryEntry(
+                role=f"micro:{result.spec.name}",
+                summary=f"specialist verdict={result.verdict.value}",
+                decisions=[result.verdict.value],
+                evidence=[result.evidence[-1000:] if result.evidence else result.error or "no evidence"],
+            ))
+            self._audit.log_decision(task_id, result.spec.role, result.verdict, specialist=result.spec.name, error=result.error)
+            self.scoreboard.record(
+                f"micro:{result.spec.name}",
+                success=result.verdict == ReviewDecision.APPROVED,
+                reviewer_rejected=result.verdict == ReviewDecision.CHANGES_REQUESTED,
+            )
+        self._audit.log_decision(task_id, AgentRole.REVIEWER, meta.decision, specialist="meta-review", blockers=meta.blockers)
+        return meta.decision
+
     def _run_stage(self, task_id: str, role: AgentRole, description: str, extras: TaskExtras, branch: str, memory: TaskMemory) -> ReviewDecision | None:
         memory_context = memory.compact_context()
         repair_context = memory.repair_context() if role == AgentRole.CODER else ""
@@ -162,6 +211,11 @@ class OHOrchestrator:
         self._audit.log("conversation_started", task_id, role, conversation_id=conversation_id, url=self._client.conversation_url(conversation_id))
         execution_result = self._client.wait_execution(conversation_id)
         verdict = self._verdict_of(task_id, role, conversation_id) if role in (AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA, AgentRole.TESTER) else None
+        if verdict == ReviewDecision.APPROVED and role == AgentRole.REVIEWER:
+            task_type = getattr(extras, "task_type", None) or "feature"
+            specialist_decision = self._run_specialists(task_id, description, branch, str(task_type), memory)
+            if specialist_decision != ReviewDecision.APPROVED:
+                verdict = ReviewDecision.CHANGES_REQUESTED
         if verdict == ReviewDecision.APPROVED:
             gate = self._gate_for_role(role)
             if gate is not None:
@@ -175,14 +229,12 @@ class OHOrchestrator:
             security_violation=role == AgentRole.SECURITY and verdict == ReviewDecision.CHANGES_REQUESTED,
         )
         evidence_text = execution_result if isinstance(execution_result, str) else str(execution_result)
-        memory.add(
-            AgentMemoryEntry(
-                role=role.value,
-                summary=f"Завершена стадия {role.value}; verdict={verdict.value if verdict else 'n/a'}",
-                decisions=[verdict.value] if verdict else [],
-                evidence=[evidence_text[-1500:] or "conversation completed"],
-            )
-        )
+        memory.add(AgentMemoryEntry(
+            role=role.value,
+            summary=f"Завершена стадия {role.value}; verdict={verdict.value if verdict else 'n/a'}",
+            decisions=[verdict.value] if verdict else [],
+            evidence=[evidence_text[-1500:] or "conversation completed"],
+        ))
         return verdict
 
     def _verdict_of(self, task_id: str, role: AgentRole, conversation_id: str) -> ReviewDecision:
