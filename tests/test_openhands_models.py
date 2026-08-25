@@ -52,6 +52,13 @@ class TestTaskExtras:
         extras.passed_gates |= {Gate.REVIEW}
         assert extras.gates_satisfied()
 
+    def test_mark_gate_passed_accepts_only_required_gates(self):
+        extras = TaskExtras(task_id="t", required_gates=frozenset({Gate.TESTS}))
+        extras.mark_gate_passed(Gate.TESTS)
+        assert extras.passed_gates == frozenset({Gate.TESTS})
+        extras.mark_gate_passed(Gate.REVIEW)
+        assert extras.passed_gates == frozenset({Gate.TESTS})
+
     def test_retry_counter(self):
         extras = TaskExtras(task_id="t", max_retries=2)
         assert extras.can_retry()
