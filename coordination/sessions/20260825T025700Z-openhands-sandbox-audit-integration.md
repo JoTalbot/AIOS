@@ -47,6 +47,8 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - 03:55Z — F2: `permissions.py` (роли→RBACEngine, path enforcement, protected-gate) + `audit.py` (OHAuditLogger + маскирование секретов). Проверки: ruff OK, новые тесты 23/23, regression rbac+audit 38/38, F1-тесты 31/31. Найден и исправлен побочный артефакт: fallback AuditLogger писал audit_log.jsonl в cwd при прогоне — фикстура переведена на tmp_path. Ветка `agent/oh-f2-permissions-audit`, коммит `511fa7d`.
 - 04:00Z — F2 запушен, draft PR #219.
 - 04:15Z — F3: `errors.py` + `client.py` (V1 app-server: auth/start/start-task poll/execution wait/events; таймауты+max_polls) + `profiles.py` (build_prompt из permissions.PROFILES + правила AGENTS.md). Contract-тесты на httpx.MockTransport (без сети): 27/27; регресс контура 81/81; ruff чисто. Ветка `agent/oh-f3-cloud-client`, коммит `2d50ccd`.
+- 04:35Z — F3 запушен, draft PR #220.
+- 04:50Z — F4: octopus registry расширен (AgentRegistration/AgentStatus +role/permissions/allowed_paths/memory_scope/parent_agent/current_task, все optional; register/heartbeat их персистят) + P5: STATE_DIR/EXPERIENCE_POOL → env `OCTOPUS_ORCHESTRATOR_STATE_DIR`/`OCTOPUS_EXPERIENCE_DIR`. Инцидент самоконтроля: `ruff --fix` на весь файл наводил косметику (24 pre-existing ошибок baseline main) — откачен через `git checkout`, в diff оставлены только точечные правки (24 строки). Тесты: 6/6 новые (TestClient, state→tmp_path), regression octopus 6/6. Ветка `agent/oh-f4-octopus-registry`, коммит `7c64052`.
 
 ## Результат / handoff
 
