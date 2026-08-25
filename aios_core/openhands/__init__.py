@@ -15,6 +15,7 @@ from .models import (
     ReviewDecision,
     TaskExtras,
 )
+from .permissions import PROFILES, check_paths, path_allowed, rbac_role_name, register_roles
 from .state_machine import (
     TransitionError,
     allowed_transitions,
@@ -24,6 +25,7 @@ from .state_machine import (
 
 __all__ = [
     "MVP_ROLES",
+    "PROFILES",
     "AgentPermissions",
     "AgentProfile",
     "AgentRole",
@@ -34,5 +36,9 @@ __all__ = [
     "TransitionError",
     "allowed_transitions",
     "can_transition",
+    "check_paths",
+    "path_allowed",
+    "rbac_role_name",
+    "register_roles",
     "transition",
 ]
