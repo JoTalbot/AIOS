@@ -27,12 +27,14 @@ from .models import (
 from .permissions import PROFILES, check_paths, path_allowed, rbac_role_name, register_roles
 from .profiles import build_prompt, conversation_title
 from .runner import OHOrchestrator, RunResult
+from .service import ContourService, ContourTask
 from .state_machine import (
     TransitionError,
     allowed_transitions,
     can_transition,
     transition,
 )
+from .verdicts import parse_review_verdict
 
 __all__ = [
     "MVP_ROLES",
@@ -40,6 +42,8 @@ __all__ = [
     "AgentPermissions",
     "AgentProfile",
     "AgentRole",
+    "ContourService",
+    "ContourTask",
     "FailureReport",
     "Gate",
     "GitHubHelper",
@@ -61,6 +65,7 @@ __all__ = [
     "can_transition",
     "check_paths",
     "conversation_title",
+    "parse_review_verdict",
     "path_allowed",
     "rbac_role_name",
     "register_roles",

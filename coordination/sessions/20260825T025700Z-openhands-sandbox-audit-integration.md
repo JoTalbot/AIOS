@@ -66,3 +66,12 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - Тесты: 35 новых (github реальный tmp-repo, runner fake-клиент по Protocol); регресс контура 93/93, ruff чист.
 - Ветка `agent/oh-f5-orchestrator`, PR создаётся draft.
 - Следующий шаг: F6 — вердикт Reviewer из событий разговора + связка с TaskQueue/Registry.
+
+## F6 (2026-08-25) — вердикт из событий + ContourService
+
+- `verdicts.py`: parse_review_verdict (APPROVED/CHANGES_REQUESTED маркеры, консервативно CHANGES побеждает).
+- `runner.py`: протокол + events_search; вердикт Reviewer/Security/QA из событий, fallback APPROVED с аудитом verdict_fallback.
+- `service.py`: ContourService submit/run_task/status — входная точка контура; каноническая Task + TaskExtras без правки protected orchestrator.py.
+- Тесты 13 новых; регресс контура 106/106, octopus 8/8, ruff чист.
+- Ветка `agent/oh-f6-verdict-service`, PR draft.
+- Следующий шаг: F7 — персистентность (octopus state / registry поля F4), либо F7-доки: docs + AGENTS.md/skills репо-уровня.

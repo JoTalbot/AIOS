@@ -39,6 +39,9 @@ class FakeClient:
         self.executions.append(conversation_id)
         return "idle"
 
+    def events_search(self, conversation_id, *, limit=100):
+        return {"events": []}
+
     def conversation_url(self, conversation_id):
         return f"https://app.all-hands.dev/conversations/{conversation_id}"
 
