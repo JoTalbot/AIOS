@@ -20,6 +20,7 @@ from .permissions import check_paths
 from .profiles import build_prompt, conversation_title
 from .prompt_optimizer import PromptOptimizationSuggestion, suggest_improvements
 from .specialist_pipeline import SpecialistResult, SpecialistReviewPipeline
+from .specialist_spawner import SpecialistSpawner
 from .state_machine import OHStatus, TransitionError, transition
 from .task_profiles import classify_task
 from .verdicts import parse_review_verdict
@@ -64,6 +65,7 @@ class OHOrchestrator:
         self.scoreboard = scoreboard or AgentScoreboard()
         self._evidence_gate = evidence_gate or EvidenceGate()
         self._ci_provenance = ci_provenance
+        self._specialist_spawner = SpecialistSpawner(client, repository=repository)
 
     def run(self, task_id: str, title: str, description: str, extras: TaskExtras | None = None) -> RunResult:
         extras = extras or TaskExtras(task_id=task_id)
@@ -112,8 +114,12 @@ class OHOrchestrator:
         self._audit.log("security_policy_checked", task_id, AgentRole.ORCHESTRATOR, security_forced=policy.security_forced, reasons=policy.reasons)
         conversation_id = extras.conversation_ids.get(AgentRole.SECURITY.value, "")
         if policy.security_forced and not conversation_id:
-            self._audit.log("security_review_required", task_id, AgentRole.ORCHESTRATOR, reasons=policy.reasons)
-            raise TransitionError("security review required: Security Specialist не был запущен")
+            if self._github is None:
+                raise TransitionError("security review required: GitHub helper unavailable for specialist spawn")
+            spawned = self._specialist_spawner.spawn(role=AgentRole.SECURITY.value, task_id=task_id, title=title, description=description, changed_files=changed, branch=branch, reasons=policy.reasons)
+            conversation_id = spawned.conversation_id
+            extras.conversation_ids[AgentRole.SECURITY.value] = conversation_id
+            self._audit.log("security_specialist_spawned", task_id, AgentRole.ORCHESTRATOR, conversation_id=conversation_id, reasons=policy.reasons)
         return self._run_review_stage(task_id, title, description, extras, branch, memory, AgentRole.SECURITY, OHStatus.QA)
 
     def _audit_gate_identity(self, task_id: str, role: AgentRole, action: str, *, decision: str | None = None, branch: str | None = None) -> None:
@@ -178,50 +184,3 @@ class OHOrchestrator:
         context["test_diff_hash"] = test_diff
         context["evidence_commit_sha"] = context.get("commit_sha")
         context["evidence_diff_hash"] = context.get("diff_hash")
-        context["audit_checkpoint"] = bool(self._audit.chain.checkpoints)
-        return context
-
-    def _finalize(self, task_id: str, title: str, description: str, extras: TaskExtras, branch: str) -> None:
-        if self._github is None:
-            raise TransitionError("COMPLETED запрещён: GitHub helper обязателен для evidence gate")
-        self._github.sync_branch(branch)
-        changed = self._github.changed_files(self._base)
-        allowed, denied = check_paths(AgentRole.CODER, changed)
-        self._audit.log("diff_checked", task_id, AgentRole.ORCHESTRATOR, allowed=len(allowed), denied=denied)
-        if denied:
-            raise RuntimeError(f"diff содержит запрещённые пути: {denied}")
-        if changed:
-            self._github.push_branch(branch)
-        commit_sha = self._github.head_sha()
-        evidence = self._evidence_context(task_id, extras, branch)
-        evidence["commit_sha"] = commit_sha
-        resolved_policy = resolve_ci_policy(description, changed)
-        if self._ci_provenance is None:
-            raise TransitionError("COMPLETED запрещён: CI provenance collector обязателен")
-        provenance = self._ci_provenance.collect(commit_sha, workflow_names=resolved_policy.required_workflows)
-        evidence.update(provenance.as_evidence())
-        evidence["ci_task_type"] = resolved_policy.task_type.value
-        evidence["ci_security_forced"] = resolved_policy.security_forced
-        evidence["ci_policy_reasons"] = resolved_policy.reasons
-        self._audit.log("ci_policy_resolved", task_id, AgentRole.ORCHESTRATOR, task_type=resolved_policy.task_type.value, security_forced=resolved_policy.security_forced, reasons=resolved_policy.reasons, required_workflows=resolved_policy.required_workflows)
-        self._audit.log("ci_provenance_collected", task_id, AgentRole.ORCHESTRATOR, **provenance.as_evidence())
-        gate_result = self._evidence_gate.evaluate(extras, evidence)
-        if not gate_result.allowed:
-            self._audit.log("evidence_gate_block", task_id, AgentRole.ORCHESTRATOR, missing=gate_result.missing)
-            raise TransitionError(f"COMPLETED запрещён: missing evidence={list(gate_result.missing)}")
-        pr = self._github.create_pull_request(branch=branch, title=f"oh({task_id}): {title}", body=description, base=self._base, draft=True)
-        extras.artifacts = (*extras.artifacts, pr.get("html_url", ""))
-        self._audit.log("pr_created", task_id, AgentRole.ORCHESTRATOR, url=pr.get("html_url", ""))
-
-    def _move(self, src: str, dst: str, task_id: str, extras: TaskExtras) -> str:
-        new_status = transition(src, dst, extras)
-        self._audit.log_transition(task_id, AgentRole.ORCHESTRATOR, src, new_status)
-        return new_status
-
-    def _safe_changed_files(self, branch: str) -> list[str]:
-        if self._github is None:
-            return []
-        try:
-            return self._github.changed_files(self._base)
-        except Exception:
-            return []
