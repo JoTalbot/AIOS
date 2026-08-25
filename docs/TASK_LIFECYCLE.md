@@ -39,6 +39,14 @@ PENDING → PLANNING → READY → RUNNING → TESTING → REVIEW → (SECURITY_
   при отсутствии маркера/недоступности events API — fallback APPROVED с аудитом
   `verdict_fallback`).
 
+
+## Автоподбор гейтов автопилотом
+
+`scripts/openhands_autopilot.infer_gates` строит `required_gates` по черновику задачи:
+базовые `tests+review` всегда; пути `deploy/`, `scripts/deploy*`, `aios_core/audit*`,
+`aios_core/advanced_security*`, `docker/` или слова `secret|token|auth|permissions` —
+`security_review`; пути `tests/` — `qa`.
+
 ## Finalize (перед COMPLETED)
 
 1. `GitHubHelper.changed_files(base_branch)` — diff ветки.

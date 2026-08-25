@@ -8,12 +8,15 @@ import argparse
 
 import pytest
 
-from aios_core.openhands import ContourService, ContourStore
+from aios_core.openhands import ContourService, ContourStore, Gate
 from aios_core.orchestrator import TaskStatus
 from scripts.openhands_autopilot import (
     AutopilotResult,
     TaskDraft,
+    build_crontab,
+    build_systemd_unit,
     collect_todo,
+    infer_gates,
     main,
     parse_ruff_output,
     submit_queue,
@@ -90,6 +93,40 @@ class TestMain:
         assert main(["--plan", "--root", str(tmp_path)]) == 0
         out = capsys.readouterr().out
         assert "TODO/FIXME: x.py" in out
+
+
+class TestInferGates:
+    def test_deploy_path_extends_security_gate(self):
+        draft = TaskDraft("todo", "Ruff-замечания: deploy/bootstrap.py", "")
+        assert Gate.SECURITY_REVIEW in infer_gates(draft)
+
+    def test_tests_path_extends_qa_gate(self):
+        draft = TaskDraft("ruff", "Ruff-замечания: tests/test_x.py", "")
+        assert Gate.QA in infer_gates(draft)
+
+    def test_neutral_description_keeps_mvp_only(self):
+        draft = TaskDraft("todo", "TODO/FIXME: aios_core/x.py", "описание")
+        assert infer_gates(draft) == frozenset({Gate.TESTS, Gate.REVIEW})
+
+    def test_security_word_extends_security_gate(self):
+        draft = TaskDraft("todo", "TODO/FIXME: aios_core/x.py", "исправить token-утечку")
+        assert Gate.SECURITY_REVIEW in infer_gates(draft)
+
+
+class TestSchedule:
+    def test_crontab_wraps_command(self):
+        line = build_crontab("python x.py", schedule="* 3 * * 1")
+        assert line.startswith("* 3 * * 1 ") and "python x.py" in line
+
+    def test_systemd_pair(self):
+        timer, svc = build_systemd_unit("python x.py --plan", schedule="daily")
+        assert "OnCalendar=daily" in timer and "WantedBy=timers.target" in timer
+        assert "ExecStart" in svc and "--plan" in svc
+
+    def test_emit_cron_flag(self, capsys):
+        assert main(["--emit-cron", "* 0 * * *"]) == 0
+        out = capsys.readouterr().out
+        assert "--plan" in out
 
 
 class TestBuildService:

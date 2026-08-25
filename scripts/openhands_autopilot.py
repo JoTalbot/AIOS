@@ -24,8 +24,20 @@ if __name__ == "__main__":
 
 from aios_core.openhands import ContourService, Gate, OpenHandsClient
 
+_SCRIPT = Path(__file__).absolute()
+
 RUFF_SCOPE = ("aios_core", "octopus_core", "scripts")
 MARKER_PREFIXES = ("TODO:", "TODO(", "FIXME:", "FIXME(")
+
+SECURITY_TRIGGER_PATHS = (
+    "scripts/deploy",
+    "deploy/",
+    "aios_core/audit",
+    "aios_core/advanced_security",
+    "docker/",
+)
+QA_TRIGGER_PATHS = ("tests/",)
+SECURITY_TRIGGER_WORDS = ("secret", "token", "auth", "permissions", "доступ", "секрет")
 
 # Токены, подвергаемые исключению при обходе корня.
 _SKIP_DIRS = {".git", ".venv", "venv", "node_modules", "__pycache__", ".ruff_cache"}
@@ -41,6 +53,24 @@ class TaskDraft:
 
     def as_dict(self) -> dict[str, str]:
         return {"collector": self.collector, "title": self.title, "description": self.description}
+
+
+def infer_gates(draft: TaskDraft) -> frozenset[Gate]:
+    """Авто-подбор гейтов по пути/тексту черновика.
+
+    MVP-базовые TESTS+REVIEW всегда включены; пути deploy/audit/docker/секреты —
+    SECURITY_REVIEW, тестовые файлы — QA.
+    """
+    gates = {Gate.TESTS, Gate.REVIEW}
+    text = f"{draft.title}\n{draft.description}".lower()
+    if (
+        any(path in draft.title for path in SECURITY_TRIGGER_PATHS)
+        or any(word in text for word in SECURITY_TRIGGER_WORDS)
+    ):
+        gates.add(Gate.SECURITY_REVIEW)
+    if any(path in draft.title for path in QA_TRIGGER_PATHS):
+        gates.add(Gate.QA)
+    return frozenset(gates)
 
 
 @dataclass
@@ -168,7 +198,11 @@ def submit_queue(
     gates: frozenset[Gate] | None = None,
     max_tasks: int | None = None,
 ) -> AutopilotResult:
-    """Подать черновики в сервис, пропуская дубликаты по заголовку."""
+    """Подать черновики в сервис, пропуская дубликаты по заголовку.
+
+    Если ``gates`` не задан (run-в-одном-индексе), для каждого черновика
+    подбираются гейты по ``infer_gates`` — иначе проходит общий набор.
+    """
     known = {entry.task.name for entry in service._tasks.values()}
     result = AutopilotResult()
     for draft in drafts:
@@ -177,10 +211,39 @@ def submit_queue(
         if draft.title in known:
             result.skipped_duplicates.append(draft.title)
             continue
-        task_id = service.submit(draft.title, draft.description, required_gates=gates)
+        resolved = gates if gates is not None else infer_gates(draft)
+        task_id = service.submit(draft.title, draft.description, required_gates=resolved)
         known.add(draft.title)
         result.submitted.append(task_id)
     return result
+
+
+def build_crontab(command: str, *, schedule: str) -> str:
+    """Строка crontab с исполняемой командой."""
+    return f"{schedule} cd {Path(__file__).resolve().parent.parent} && {command}"
+
+
+def build_systemd_unit(command: str, *, schedule: str) -> tuple[str, str]:
+    """Пара ``(timer, service)`` — прямой скоп для двух файлов."""
+    timer = f"""[Unit]
+Description=AIOS OpenHands autopilot (timer)
+
+[Timer]
+OnCalendar={schedule}
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+"""
+    service = f"""[Unit]
+Description=AIOS OpenHands autopilot (service)
+
+[Service]
+Type=oneshot
+WorkingDirectory={Path(__file__).resolve().parent.parent}
+ExecStart=/bin/bash -c {command!r}
+"""
+    return timer, service
 
 
 def _build_service(args: argparse.Namespace) -> ContourService:
@@ -202,7 +265,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--collectors", default="ruff,todo", help="ruff,todo (порядок)")
     parser.add_argument("--repository", default="", help="owner/repo для Cloud-разговоров")
     parser.add_argument("--base-branch", default="main")
+    parser.add_argument("--emit-cron", metavar="CRON", help="печать crontab-строки исполнения")
+    parser.add_argument("--emit-systemd", metavar="CAL", help="печать timer+service для systemd")
     args = parser.parse_args(argv)
+
+    if args.emit_cron:
+        cmd = f"python {_SCRIPT} --plan"
+        print(build_crontab(cmd, schedule=args.emit_cron))
+        return 0
+    if args.emit_systemd:
+        cmd = f"python {_SCRIPT} --plan"
+        timer, service = build_systemd_unit(cmd, schedule=args.emit_systemd)
+        print(f"=== timer ===\n{timer}\n=== service ===\n{service}")
+        return 0
 
     collectors = tuple(name.strip() for name in args.collectors.split(","))
     root = Path(args.root).resolve()
