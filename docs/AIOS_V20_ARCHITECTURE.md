@@ -9,7 +9,7 @@
 SupervisorTask
     ↓ AgentSupervisor / ExecutionGraphBuilder
 Specialist plan (bounded, deterministic)
-    ↓
+    ↓ SupervisorRuntimeExecutor (role → scoped invocation)
 Action + ExecutionContext
     ↓
 ArchitectureRuntime                 ← composition root
@@ -62,8 +62,8 @@ ArchitectureRuntime                 ← composition root
 
 ## Следующие этапы
 
-1. Adapter `Supervisor ExecutionEngine → ArchitectureRuntime.execute` для role capabilities.
-2. Подключить authenticated approval transport к `ApprovalGate.decide`.
-3. Перенести hash-chain sink из local JSONL в append-only durable storage.
+1. Подключить authenticated approval transport к `ApprovalGate.decide`.
+2. Перенести hash-chain sink из local JSONL в append-only durable storage.
+3. Добавить scoped delegation expiry/owner metadata для `SpecialistInvocation`.
 4. Точечный patch protected Orchestrator только после отдельного review/selfguard workflow.
 5. Удаление/закрытие superseded draft PR после подтверждения владельца — без автоматического merge.

@@ -3,6 +3,7 @@
 from .approval import ApprovalGate, ApprovalRequest, ApprovalStatus
 from .audit import ArchitectureAuditStore
 from .runtime import ArchitectureRuntime
+from .supervisor_adapter import SpecialistInvocation, SupervisedRun, SupervisorRuntimeExecutor
 
 __all__ = [
     "ApprovalGate",
@@ -10,4 +11,7 @@ __all__ = [
     "ApprovalStatus",
     "ArchitectureAuditStore",
     "ArchitectureRuntime",
+    "SpecialistInvocation",
+    "SupervisedRun",
+    "SupervisorRuntimeExecutor",
 ]

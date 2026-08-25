@@ -15,6 +15,7 @@
 
 | Обновлено UTC | Агент | Результат | Skill получен |
 |---|---|---|---|
+| 2026-08-25T22:13:48Z | Arena.ai Agent Mode | DONE — каждый specialist role маршрутизируется через ArchitectureRuntime; 43 tests passed. | skills/arena/supervisor-governed-execution/SKILL.md |
 | 2026-08-25T21:53:29Z | Arena.ai Agent Mode | DONE — one-shot approval и hash-chained correlation audit готовы; 40 architecture tests passed. | skills/arena/architecture-approval-audit/SKILL.md |
 | 2026-08-25T20:54:03Z | Arena.ai Agent Mode | DONE — единый PDP → runtime enforcement → PEP composition root и bounded supervisor готовы; 36 tests passed. | skills/arena/v20-architecture-consolidation/SKILL.md |
 | 2026-08-25T20:36:00Z | Arena.ai Agent Mode | DONE — 8 затронутых файлов, 100 tests passed; E/F hard gate и compile clean. | skills/arena/pytest-path-hermeticity/SKILL.md |
@@ -24,7 +25,6 @@
 | 2026-08-25T03:10:00Z | OpenHands (cloud sandbox) | — | — |
 | 2026-08-19T02:40:00Z | Arena.ai Agent Mode | — | — |
 | 2026-08-19T01:00:00Z | Arena.ai Agent Mode | — | — |
-| 2026-08-18T01:20:00Z | Arena.ai Agent Mode | — | — |
 
 ## Блокеры и несогласованности
 

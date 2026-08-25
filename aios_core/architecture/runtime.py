@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 from aios_core.execution import Action, ExecutionContext, ExecutionKernel, Observation
 from aios_core.kernel import ExecutionContext as PolicyContext
@@ -18,6 +19,9 @@ from aios_core.supervisor import (
 
 from .approval import ApprovalGate, ApprovalStatus
 from .audit import ArchitectureAuditStore
+
+if TYPE_CHECKING:
+    from .supervisor_adapter import SpecialistInvocation, SupervisedRun
 
 
 class ArchitectureRuntime:
@@ -135,3 +139,22 @@ class ArchitectureRuntime:
         """Return a bounded specialist decision and its validated execution graph."""
         decision = self.supervisor.plan(task)
         return decision, self.graph_builder.build(decision)
+
+    def run_supervised(
+        self,
+        task: SupervisorTask,
+        invocations: Mapping[str, SpecialistInvocation],
+    ) -> SupervisedRun:
+        """Plan specialists and execute every role through this governed runtime."""
+        from aios_core.supervisor import ExecutionEngine
+
+        from .supervisor_adapter import SupervisedRun, SupervisorRuntimeExecutor
+
+        decision, graph = self.plan(task)
+        adapter = SupervisorRuntimeExecutor(
+            self,
+            task_id=task.task_id,
+            invocations=dict(invocations),
+        )
+        results = ExecutionEngine(adapter, max_agents=task.budget_agents).run(graph)
+        return SupervisedRun(decision, graph, results, dict(adapter.observations))
