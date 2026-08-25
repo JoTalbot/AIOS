@@ -92,3 +92,10 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - Тесты 12 (TestClient, без моков); регресс контур+octopus 139/139, ruff чист.
 - Ветка `agent/oh-f8-http-api`, PR draft. Роутер НЕ смонтирован в main.py (host-монтирование — отдельное решение владельца, main.py entrypoint прод-сервисов).
 - Следующий шаг: F9 — docs (архитектура/интеграция), skills репо-уровня, финальный отчёт.
+
+## F9 (2026-08-25) — документация контура
+
+- docs/OPENHANDS_INTEGRATION.md, AIOS_AGENT_ARCHITECTURE.md, TASK_LIFECYCLE.md, SECURITY_MODEL.md, TESTING_AGENT_SYSTEM.md — по реальному коду (модули, env, API, lifecycle, security, тесты).
+- Код не изменён; регресс контура 131/131.
+- Ветка `agent/oh-f9-docs`, PR draft.
+- Следующий шаг: F10 — repository skills (.agents/skills/*), F11 — финальный отчёт.
