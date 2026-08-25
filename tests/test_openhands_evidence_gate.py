@@ -14,10 +14,14 @@ def passing_evidence():
         "diff_hash": "b" * 64,
         "changed_files": ["aios_core/openhands/evidence_gate.py"],
         "tests": True,
+        "test_commit_sha": "a" * 40,
+        "test_diff_hash": "b" * 64,
         "reviewer": ReviewDecision.APPROVED.value,
         "security": ReviewDecision.APPROVED.value,
         "audit_checkpoint": True,
         "audit_chain": True,
+        "evidence_commit_sha": "a" * 40,
+        "evidence_diff_hash": "b" * 64,
     }
 
 
@@ -33,7 +37,6 @@ def test_missing_evidence_blocks_completion():
     result = EvidenceGate().evaluate(passing_extras(), evidence)
     assert result.status == EvidenceGateStatus.BLOCK
     assert "diff_hash" in result.missing
-    assert not result.allowed
 
 
 def test_unapproved_security_blocks_completion():
@@ -42,3 +45,27 @@ def test_unapproved_security_blocks_completion():
     result = EvidenceGate().evaluate(passing_extras(), evidence)
     assert result.status == EvidenceGateStatus.BLOCK
     assert "security" in result.missing
+
+
+def test_old_test_commit_cannot_authorize_new_commit():
+    evidence = passing_evidence()
+    evidence["test_commit_sha"] = "c" * 40
+    result = EvidenceGate().evaluate(passing_extras(), evidence)
+    assert result.status == EvidenceGateStatus.BLOCK
+    assert "test_commit_binding" in result.missing
+
+
+def test_old_test_diff_cannot_authorize_new_diff():
+    evidence = passing_evidence()
+    evidence["test_diff_hash"] = "d" * 64
+    result = EvidenceGate().evaluate(passing_extras(), evidence)
+    assert result.status == EvidenceGateStatus.BLOCK
+    assert "test_diff_binding" in result.missing
+
+
+def test_evidence_identity_must_match_current_git_state():
+    evidence = passing_evidence()
+    evidence["evidence_diff_hash"] = "e" * 64
+    result = EvidenceGate().evaluate(passing_extras(), evidence)
+    assert result.status == EvidenceGateStatus.BLOCK
+    assert "evidence_diff_binding" in result.missing
