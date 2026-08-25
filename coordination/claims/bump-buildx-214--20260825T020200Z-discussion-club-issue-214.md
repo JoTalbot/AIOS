@@ -1,6 +1,6 @@
 # Claim: bump-buildx-214
 - Session: `20260825T020200Z-discussion-club-issue-214`
-- Status: `ACTIVE`
+- Status: `DONE`
 - Agent: `discussion-club-moderator (OpenHands)`
 - Machine: `openhands-workspace`
 - Started UTC: `2026-08-25T02:02:48Z`
