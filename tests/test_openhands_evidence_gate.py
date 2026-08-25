@@ -26,6 +26,8 @@ def passing_evidence():
         "ci_job_id": 789012,
         "ci_commit_sha": "a" * 40,
         "ci_conclusion": "success",
+        "ci_required_workflows": ("AIOS Core Gate", "OpenHands Audit Integrity"),
+        "ci_required_workflows_success": True,
     }
 
 
@@ -97,3 +99,11 @@ def test_ci_run_requires_job_identity():
     result = EvidenceGate().evaluate(passing_extras(), evidence)
     assert result.status == EvidenceGateStatus.BLOCK
     assert "ci_job_binding" in result.missing
+
+
+def test_missing_required_workflow_blocks_completion():
+    evidence = passing_evidence()
+    evidence["ci_required_workflows_success"] = False
+    result = EvidenceGate().evaluate(passing_extras(), evidence)
+    assert result.status == EvidenceGateStatus.BLOCK
+    assert "ci_required_workflows_success" in result.missing
