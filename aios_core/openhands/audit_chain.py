@@ -60,14 +60,15 @@ class AuditChain:
     @classmethod
     def from_persisted(cls, events: Iterable[Mapping[str, Any]]) -> "AuditChain":
         chain = cls()
-        ordered = [dict(event) for event in events if event.get("event_hash") and event.get("event_id")]
+        stored = [dict(event) for event in events]
+        ordered = [event for event in stored if event.get("event_hash") and event.get("event_id") and event.get("type") != "openhands.audit_checkpoint"]
         ordered.sort(key=lambda e: (str(e.get("timestamp", "")), str(e.get("event_id", ""))))
-        for stored in ordered:
-            event_id = str(stored["event_id"])
-            parent_id = stored.get("parent_event_id")
-            payload = {k: v for k, v in stored.items() if k not in {"event_id", "parent_event_id", "event_hash", "id", "timestamp"}}
-            chain._events.append(ChainEvent(event_id, parent_id, payload, str(stored["event_hash"])))
-        chain._restore_checkpoints(ordered)
+        for item in ordered:
+            event_id = str(item["event_id"])
+            parent_id = item.get("parent_event_id")
+            payload = {k: v for k, v in item.items() if k not in {"event_id", "parent_event_id", "event_hash", "id", "timestamp"}}
+            chain._events.append(ChainEvent(event_id, parent_id, payload, str(item["event_hash"])))
+        chain._restore_checkpoints(stored)
         if not chain.verify():
             raise ValueError("persisted OpenHands audit chain or checkpoint is invalid")
         if chain._events:
@@ -76,9 +77,9 @@ class AuditChain:
         return chain
 
     def _restore_checkpoints(self, stored_events: list[Mapping[str, Any]]) -> None:
-        for stored in stored_events:
-            if stored.get("type") != "openhands.audit_checkpoint":
-                continue
+        checkpoints = [event for event in stored_events if event.get("type") == "openhands.audit_checkpoint"]
+        checkpoints.sort(key=lambda e: (int(e.get("sequence", -1)), str(e.get("last_event_id", ""))))
+        for stored in checkpoints:
             try:
                 checkpoint = ChainCheckpoint(
                     int(stored["sequence"]), stored.get("last_event_id"), str(stored["root_hash"]),
