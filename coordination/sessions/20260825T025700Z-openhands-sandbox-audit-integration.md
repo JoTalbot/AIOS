@@ -137,3 +137,14 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - check_dependency_contract --strict: 0 ошибок; async-тесты собираются (test_admin_api 20); контур-регресс зелёный.
 - Оставшиеся failure на PR #233 — преэкзистинг main: ruff по старым файлам, CodeQL 3.37.6 vs 4.37.8, dashboard-browser Docker digest.
 - Следующий шаг: дождаться CI на 767ff311, затем мерж #233 (стек 229–232 входит в него кумулятивно) — решение владельца.
+
+## Добивка CI — финал (2026-08-25, head 12b3c5b1)
+
+- `[ops]` убран из заголовка #233: вместо bypass удалён `.env.example` из диффа
+  (переменные OH_CONTOUR_* уже описаны в docs/OPENHANDS_INTEGRATION.md) — no-secrets gate зелёный.
+- `docs/PROJECT_INVENTORY.md` регенерирован (коммит 12b3c5b1) — validation прошёл stale-check.
+- pytest_asyncio починен: validation теперь падает на преэкзистинге `No module named pandas`
+  (test_basket_*, test_best_move, test_lead_lag) — идентично main.
+- Итог CI на 12b3c5b1: gate ✅; 20 success; 12 failure — полностью совпадают с baseline main
+  (ruff legacy, CodeQL версия, dashboard digest, pandas в validation, pinned-image scan).
+- PR #233 готов к мержу по решению владельца (стек #229–#232 входит кумулятивно).
