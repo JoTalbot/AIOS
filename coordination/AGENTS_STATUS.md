@@ -6,7 +6,7 @@
 
 | Агент | Задача | Текущий шаг | Статус | Следующий шаг |
 |---|---|---|---|---|
-| Arena.ai Agent Mode | Последовательно продолжить все доступные направления: dashboard координации, CI-аудит, AIOS v20 Kernel и OpenHands verdict parsing без конфликтов с чужими активными claims. | dashboard завершён; перенос v20 foundation в session-ветку и исправление контракта identity → trust → policy → audit. | ACTIVE | написать generator + tests, прогнать targeted pytest/ruff. |
+| Arena.ai Agent Mode | Последовательно продолжить все доступные направления: dashboard координации, CI-аудит, AIOS v20 Kernel и OpenHands verdict parsing без конфликтов с чужими активными claims. | v20 Kernel/runtime завершён (12 tests); исправление общего CodeQL v3/v4 CI-конфликта отдельным атомарным коммитом. | ACTIVE | написать generator + tests, прогнать targeted pytest/ruff. |
 | discussion-club-moderator (OpenHands) | Рассмотреть issue #214 (dependabot 'ci'): bump docker/setup-buildx-action 3.12.0 → 4.3.0; при консенсусе «за» — реализовать. | — | ACTIVE | — |
 | Arena.ai Agent Mode | Онбординг новой сессии по протоколу coordination/README.md; задача от владельца ещё не поставлена. | — | ACTIVE | получить задачу от владельца, при работе с кодом создать claim и ветку по протоколу. |
 | Arena.ai agent (workspace) | Начало работы внешнего агента Arena.ai над проектом AIOS: ознакомление с инструкциями (AGENTS.md), координационными документами и состоянием репозитория. Конкретная задача будет определена оператором. | — | ACTIVE | получить задачу от оператора; перед кодом — проверить claims и создать собственный claim. |

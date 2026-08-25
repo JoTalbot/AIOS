@@ -4,7 +4,7 @@ status: "ACTIVE"
 agent: "Arena.ai Agent Mode"
 machine: "e2b.local"
 started_utc: "2026-08-25T19:23:42Z"
-updated_utc: "2026-08-25T19:41:00Z"
+updated_utc: "2026-08-25T19:58:00Z"
 branch: "arena/01a03a3f-aios"
 base_commit: "e12c34c10e51c16f62bfcbc24327818dad0a8a9c"
 claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-all-workstreams.md"
@@ -37,8 +37,8 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 
 ## Текущий шаг (виден другим агентам)
 
-- Текущий шаг: dashboard завершён; перенос v20 foundation в session-ветку и исправление контракта identity → trust → policy → audit.
-- Обновлено UTC: 2026-08-25T19:41:00Z
+- Текущий шаг: v20 Kernel/runtime завершён (12 tests); исправление общего CodeQL v3/v4 CI-конфликта отдельным атомарным коммитом.
+- Обновлено UTC: 2026-08-25T19:58:00Z
 
 ## Ход работы и решения
 
@@ -48,6 +48,8 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 - 19:35Z — dashboard generator завершён: парсит frontmatter/sections, показывает ACTIVE/PAUSED/BLOCKED, последние завершённые сессии и stale claims; запись atomic, `--check` детерминирован.
 - 19:38Z — CI baseline через GitHub Checks API: main на `e12c34c` зелёный по CI/validation/coverage, падают Docker и CodeQL; CodeQL точно смешивает config 3.37.6 с runner 4.37.8. PR #247 дополнительно падает на legacy `accounting_reporter.py` ruff и других baseline jobs; это не дефект Kernel-кода.
 - 19:41Z — deep research Kernel: NIST ZTA разделяет policy engine и enforcement point, требует динамической проверки identity/context/trust и audit каждого решения. В PR #247 фактический `Kernel.process` несовместим с API: `PolicyEngine.evaluate(capability)` вызывается как `(context, trust)`, а `AuditLogger.record(dict)` получает dataclass. Следующий шаг — типизированный fail-closed контракт и regression tests.
+- 19:58Z — v20 foundation интегрирован и исправлен: IdentityRegistry, валидируемые trust levels, explicit fail-closed policy reasons, immutable decisions, non-mutating UTC audit. Runtime hardened: ordered lifecycle, monotonic heartbeat TTL, exhausted budget rejection. Targeted tests 12/12, ruff/compile/size-budget зелёные.
+- 19:58Z — внешний Python dataclasses reference подтвердил `frozen=True` для read-only decision objects; репозиторный runtime показал, что wall-clock heartbeat и вечный `alive` были небезопасны, поэтому использован monotonic TTL.
 
 ## Изменённые файлы
 
@@ -55,7 +57,11 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 - `tests/test_generate_agents_status.py` — 3 unit-теста parser/render/inconsistency/write/check.
 - `coordination/AGENTS_STATUS.md` — сгенерированный фактический dashboard.
 - `skills/arena/coordination-dashboard/SKILL.md` — дистиллированный алгоритм.
-- Этот журнал и claim — текущий handoff.
+- `aios_core/kernel/**` — v20 identity/trust/policy/audit decision point.
+- `aios_core/runtime/**` — bounded lifecycle/heartbeat/budget foundation.
+- `tests/kernel/**` — 12 foundation/chain/runtime regression tests.
+- `skills/arena/v20-kernel-contract/SKILL.md` — Kernel/runtime safety algorithm.
+- Этот журнал и coordination claims — текущий handoff.
 
 ## Проверки
 
@@ -64,7 +70,11 @@ claim: "coordination/claims/coordination-dashboard-ci--20260825T192342Z-arena-al
 - `[PASS]` `python -m py_compile scripts/generate_agents_status.py tests/test_generate_agents_status.py`.
 - `[PASS]` `python scripts/generate_agents_status.py --check`.
 - `[PASS]` `git diff --check`.
-- `[NOT RUN]` full pytest — sandbox lacks production dependencies; targeted test intentionally used `--noconftest` after repo conftest required PyYAML.
+- `[PASS]` `/tmp/aios-check-venv/bin/python -m pytest --noconftest tests/kernel -q` — 12 passed.
+- `[PASS]` `/tmp/aios-check-venv/bin/ruff check aios_core/kernel aios_core/runtime tests/kernel`.
+- `[PASS]` `python -m py_compile aios_core/kernel/*.py aios_core/runtime/*.py tests/kernel/*.py`.
+- `[PASS]` `python scripts/check_module_size_budget.py --strict` — 0 contract errors.
+- `[NOT RUN]` full pytest — sandbox lacks full production dependencies; targeted tests used an isolated temporary venv.
 
 ## Git
 
