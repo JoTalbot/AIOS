@@ -41,6 +41,8 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - 03:00Z — структурный аудит: 3537 py-файлов, 531 тест-файл; `aios_core/openhands/` и `.agents/` отсутствуют; упоминаний OpenHands в коде нет.
 - 03:05Z — детальный inventory (subagent + спотчеки): реальный Agent Registry = `octopus_core/agent_orchestrator_api.py` (НЕ `agents/agent_registry.py` — это stub; `aios_core/agent_registry.py` не существует). Каноническая Task-модель = `aios_core/orchestrator.py::Task/TaskStatus`. Найдено P1: `aios_core/autocoder_v3_1.py` отсутствует, prod-runner молча фолбэчит на AutocoderV3.
 - 03:10Z — созданы `AIOS_ARCHITECTURE_AUDIT.md` и `AIOS_OPENHANDS_INTEGRATION_PLAN.md` (вкл. конфликты C1–C6 и фазы F0–F11).
+- 03:20Z — оператор подтвердил полный цикл (ветка→коммит→draft PR на фазу), OpenHands = Cloud API. Ветка `agent/oh-f1-openhands-skeleton`; коммит `a3c218b` (документы аудита).
+- 03:35Z — F1: `aios_core/openhands/` (`models.py`, `state_machine.py`) + 31 unit-тест. Проверки: py_compile OK, ruff OK, новые тесты 31/31, regression `tests/test_orchestrator_*` 106/106. Коммит `0e6d07a`. Песочница потребовала доустановки pytest/ruff/pytest-asyncio/pyyaml/starlette (prod venv недоступен — ок, это среда разработки).
 
 ## Результат / handoff
 
