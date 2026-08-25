@@ -39,7 +39,7 @@ def validate_gate(
     *,
     actual_files: Iterable[str] | None = None,
     allowed_paths: Iterable[str] = (),
-    deny_paths: Iterable[str> = (),
+    deny_paths: Iterable[str] = (),
 ) -> GateResult:
     """Fail closed unless handoff, verified report and supplied git reality pass."""
     reasons: list[str] = []
