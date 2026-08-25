@@ -6,12 +6,14 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from aios_core.orchestrator import TaskStatus
+from .agent_score import AgentScoreboard
 from .audit import OHAuditLogger
 from .github import GitHubHelper
 from .memory import AgentMemoryEntry, TaskMemory
 from .models import AgentRole, FailureReport, Gate, ReviewDecision, TaskExtras
 from .permissions import check_paths
 from .profiles import build_prompt, conversation_title
+from .prompt_optimizer import PromptOptimizationSuggestion, suggest_improvements
 from .state_machine import OHStatus, TransitionError, transition
 from .verdicts import parse_review_verdict
 
@@ -31,6 +33,8 @@ class RunResult:
     report: FailureReport | None = None
     pr_url: str | None = None
     error: str | None = None
+    scoreboard: AgentScoreboard | None = None
+    prompt_suggestions: tuple[PromptOptimizationSuggestion, ...] = ()
 
 
 _MVP_STAGES: tuple[tuple[str, AgentRole | None, str], ...] = (
@@ -44,12 +48,13 @@ _MVP_STAGES: tuple[tuple[str, AgentRole | None, str], ...] = (
 class OHOrchestrator:
     """Lifecycle runner: plan → code → test → review → optional gates → PR."""
 
-    def __init__(self, client: ConversationClient, github: GitHubHelper | None = None, audit: OHAuditLogger | None = None, repository: str | None = None, base_branch: str = "main") -> None:
+    def __init__(self, client: ConversationClient, github: GitHubHelper | None = None, audit: OHAuditLogger | None = None, repository: str | None = None, base_branch: str = "main", scoreboard: AgentScoreboard | None = None) -> None:
         self._client = client
         self._github = github
         self._audit = audit or OHAuditLogger()
         self._repository = repository
         self._base = base_branch
+        self.scoreboard = scoreboard or AgentScoreboard()
 
     def run(self, task_id: str, title: str, description: str, extras: TaskExtras | None = None) -> RunResult:
         extras = extras or TaskExtras(task_id=task_id)
@@ -74,6 +79,7 @@ class OHOrchestrator:
                     status = self._move(status, OHStatus.BLOCKED, task_id, extras)
                 else:
                     raise
+        suggestions = suggest_improvements(self.scoreboard)
         report = None
         if status != TaskStatus.COMPLETED:
             report = FailureReport(
@@ -85,7 +91,7 @@ class OHOrchestrator:
                 suggested_next_step="разобрать отчёт и завести задачу вручную",
             )
             self._audit.log_decision(task_id, AgentRole.ORCHESTRATOR, "failed", reason=report.reason)
-        return RunResult(status=status, extras=extras, report=report, error=last_error)
+        return RunResult(status=status, extras=extras, report=report, error=last_error, scoreboard=self.scoreboard, prompt_suggestions=suggestions)
 
     def _step(self, status: str, task_id: str, title: str, description: str, extras: TaskExtras, branch: str, memory: TaskMemory) -> str:
         if status == TaskStatus.PENDING:
@@ -94,7 +100,6 @@ class OHOrchestrator:
             if not extras.can_retry():
                 return self._move(status, TaskStatus.CANCELLED, task_id, extras)
             return self._move(status, TaskStatus.PLANNING, task_id, extras)
-
         stage = self._stage_of(status, extras)
         if stage is None:
             raise RuntimeError(f"неизвестный статус стадии: {status}")
@@ -103,16 +108,14 @@ class OHOrchestrator:
             decision = self._run_stage(task_id, role, description, extras, branch, memory)
             if role == AgentRole.REVIEWER and decision == ReviewDecision.CHANGES_REQUESTED:
                 extras.review_decision = ReviewDecision.CHANGES_REQUESTED
-                self._audit.log_decision(task_id, AgentRole.REVIEWER, decision)
                 if not extras.can_repair():
                     raise TransitionError(f"лимит repair-итераций исчерпан ({extras.repair_count}/{extras.max_repairs})")
                 extras.register_repair()
                 return self._move(status, TaskStatus.RUNNING, task_id, extras)
-            if role in (AgentRole.TESTER, AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA):
-                if decision != ReviewDecision.APPROVED:
-                    raise TransitionError(f"{role.value}: gate не подтверждён, verdict={decision}")
-                if role == AgentRole.REVIEWER:
-                    extras.review_decision = ReviewDecision.APPROVED
+            if role in (AgentRole.TESTER, AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA) and decision != ReviewDecision.APPROVED:
+                raise TransitionError(f"{role.value}: gate не подтверждён, verdict={decision}")
+            if role == AgentRole.REVIEWER:
+                extras.review_decision = ReviewDecision.APPROVED
         else:
             self._audit.log("stage_skip_conversation", task_id, AgentRole.ORCHESTRATOR, stage=status)
         if next_status == TaskStatus.COMPLETED:
@@ -125,9 +128,7 @@ class OHOrchestrator:
         if status == OHStatus.TESTING:
             return AgentRole.TESTER, OHStatus.REVIEW
         if status == OHStatus.REVIEW:
-            if has_security:
-                return AgentRole.REVIEWER, OHStatus.SECURITY_REVIEW
-            return AgentRole.REVIEWER, TaskStatus.COMPLETED
+            return (AgentRole.REVIEWER, OHStatus.SECURITY_REVIEW) if has_security else (AgentRole.REVIEWER, TaskStatus.COMPLETED)
         if status == OHStatus.SECURITY_REVIEW:
             return (AgentRole.SECURITY, OHStatus.QA) if has_qa else (AgentRole.SECURITY, TaskStatus.COMPLETED)
         return {s: (role, nxt) for s, role, nxt in _MVP_STAGES}.get(status)
@@ -150,14 +151,22 @@ class OHOrchestrator:
             raise RuntimeError(f"OpenHands не вернул conversation_id для роли {role.value}")
         extras.conversation_ids[role.value] = conversation_id
         self._audit.log("conversation_started", task_id, role, conversation_id=conversation_id, url=self._client.conversation_url(conversation_id))
-        self._client.wait_execution(conversation_id)
+        execution_result = self._client.wait_execution(conversation_id)
         verdict = self._verdict_of(task_id, role, conversation_id) if role in (AgentRole.REVIEWER, AgentRole.SECURITY, AgentRole.QA, AgentRole.TESTER) else None
+        self.scoreboard.record(
+            role.value,
+            success=verdict in (None, ReviewDecision.APPROVED),
+            iterations=extras.repair_count + 1,
+            reviewer_rejected=role == AgentRole.REVIEWER and verdict == ReviewDecision.CHANGES_REQUESTED,
+            security_violation=role == AgentRole.SECURITY and verdict == ReviewDecision.CHANGES_REQUESTED,
+        )
+        evidence_text = execution_result if isinstance(execution_result, str) else str(execution_result)
         memory.add(
             AgentMemoryEntry(
                 role=role.value,
                 summary=f"Завершена стадия {role.value}; verdict={verdict.value if verdict else 'n/a'}",
                 decisions=[verdict.value] if verdict else [],
-                evidence=["conversation completed"],
+                evidence=[evidence_text[-1500:] or "conversation completed"],
             )
         )
         return verdict
