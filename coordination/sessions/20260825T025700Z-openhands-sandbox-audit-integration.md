@@ -84,3 +84,11 @@ claim: "coordination/claims/audit-docs--20260825T025700Z-openhands-sandbox-audit
 - Тесты 13; регресс контура 119/119, octopus 8/8, ruff чист. .gitignore += .oh_contour/.
 - Ветка `agent/oh-f7-persistence`, PR draft.
 - Следующий шаг: F8 — HTTP API поверх ContourService (FastAPI router, токен-авторизация как в octopus).
+
+## F8 (2026-08-25) — HTTP API контура
+
+- `api.py`: router /api/v1/oh-contour (submit 201, run, status, verdict); x-octopus-token (OH_CONTOUR_TOKEN → OCTOPUS_TOKEN → default); self-contained production-сервис по env; set_service для встраивания.
+- `service.py`: status() + review_decision. FailureReport в ответе run.
+- Тесты 12 (TestClient, без моков); регресс контур+octopus 139/139, ruff чист.
+- Ветка `agent/oh-f8-http-api`, PR draft. Роутер НЕ смонтирован в main.py (host-монтирование — отдельное решение владельца, main.py entrypoint прод-сервисов).
+- Следующий шаг: F9 — docs (архитектура/интеграция), skills репо-уровня, финальный отчёт.
