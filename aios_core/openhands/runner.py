@@ -8,7 +8,9 @@ from typing import Protocol
 from aios_core.orchestrator import TaskStatus
 from .agent_score import AgentScoreboard
 from .audit import OHAuditLogger
+from .gates import apply_gate, can_advance
 from .github import GitHubHelper
+from .handoff import AgentHandoff
 from .memory import AgentMemoryEntry, TaskMemory
 from .models import AgentRole, FailureReport, Gate, ReviewDecision, TaskExtras
 from .permissions import check_paths
@@ -61,7 +63,6 @@ class OHOrchestrator:
     def run(self, task_id: str, title: str, description: str, extras: TaskExtras | None = None) -> RunResult:
         extras = extras or TaskExtras(task_id=task_id)
         branch = extras.branch or f"agent/oh-{task_id}"
-        branch = branch
         memory = TaskMemory(task_id)
         if self._github is not None:
             self._github.prepare_branch(branch, self._base)
@@ -129,10 +130,6 @@ class OHOrchestrator:
             return (AgentRole.SECURITY, OHStatus.QA) if has_qa else (AgentRole.SECURITY, TaskStatus.COMPLETED)
         return {s: (role, nxt) for s, role, nxt in _MVP_STAGES}.get(status)
 
-    @staticmethod
-    def _gate_for_role(role: AgentRole) -> Gate | None:
-        return {AgentRole.TESTER: Gate.TESTS, AgentRole.REVIEWER: Gate.REVIEW, AgentRole.SECURITY: Gate.SECURITY_REVIEW, AgentRole.QA: Gate.QA}.get(role)
-
     def _run_specialists(self, task_id: str, description: str, branch: str, task_type: str, memory: TaskMemory) -> ReviewDecision:
         def executor(spec, context: str) -> SpecialistResult:
             prompt = build_prompt(spec.role, f"SPECIALIST REVIEW: {spec.name}\nPurpose: {spec.purpose}\n\nTask:\n{description}", context=context)
@@ -187,13 +184,23 @@ class OHOrchestrator:
             specialist_decision = self._run_specialists(task_id, description, branch, task_type, memory)
             if specialist_decision != ReviewDecision.APPROVED:
                 verdict = ReviewDecision.CHANGES_REQUESTED
+        evidence_text = execution_result if isinstance(execution_result, str) else str(execution_result)
         if verdict == ReviewDecision.APPROVED:
-            gate = self._gate_for_role(role)
+            handoff = AgentHandoff(
+                status="COMPLETED",
+                summary=f"Stage {role.value} completed with explicit approval.",
+                commands_run=(f"OpenHands conversation {conversation_id}",),
+                evidence=(evidence_text[-1500:] or "conversation completed",),
+                next_action=f"Advance after {role.value}",
+                verdict="APPROVED",
+            )
+            gate_result = apply_gate(role, handoff, extras)
+            if not can_advance(gate_result):
+                raise TransitionError(f"{role.value}: quality gate blocked: {gate_result.reasons}")
+            gate = {AgentRole.TESTER: Gate.TESTS, AgentRole.REVIEWER: Gate.REVIEW, AgentRole.SECURITY: Gate.SECURITY_REVIEW, AgentRole.QA: Gate.QA}.get(role)
             if gate is not None:
-                extras.mark_gate_passed(gate)
                 self._audit.log("gate_passed", task_id, role, gate=gate.value, missing=sorted(g.value for g in extras.missing_gates()))
         self.scoreboard.record(role.value, success=verdict in (None, ReviewDecision.APPROVED), iterations=extras.repair_count + 1, reviewer_rejected=role == AgentRole.REVIEWER and verdict == ReviewDecision.CHANGES_REQUESTED, security_violation=role == AgentRole.SECURITY and verdict == ReviewDecision.CHANGES_REQUESTED)
-        evidence_text = execution_result if isinstance(execution_result, str) else str(execution_result)
         memory.add(AgentMemoryEntry(role=role.value, summary=f"Завершена стадия {role.value}; verdict={verdict.value if verdict else 'n/a'}", decisions=[verdict.value] if verdict else [], evidence=[evidence_text[-1500:] or "conversation completed"]))
         return verdict
 
