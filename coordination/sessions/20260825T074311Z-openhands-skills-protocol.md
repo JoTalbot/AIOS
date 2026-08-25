@@ -95,3 +95,11 @@ claim: "coordination/claims/agent-skills-protocol--20260825T074311Z-openhands-sk
 - Риски: scripts/test_agents_md.py жёстко читает /root/AIOS/AGENTS.md — после merge в main
   проверка пройдёт на сервере (блок уже выполнен pre-merge как PASS).
 - Что нельзя делать без повторной проверки: push в origin и PR — без согласия владельца.
+
+## Финал (2026-08-25) — PR #241 и #233 смержены
+
+- PR #233 (post-F11 стек #229–#232 + pytest-asyncio + inventory) — squash-мерж `cb5060b3`.
+  Ветка удалена автоматически; PR #229–#232 закрыты (входят кумулятивно), их ветки удалены.
+- PR #241 (протокол скиллов) — конфликт docs/PROJECT_INVENTORY.md разрешён регенерацией
+  на merged-дереве (merge main, e9196e06), squash-мерж `ad5bda0f`. Ветка удалена.
+- Открытые PR после мержа: #234–#240 (quant/ops/lint, отдельные треки), dependabot #213.
