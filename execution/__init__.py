@@ -14,20 +14,17 @@ from .events import (
 )
 from .lifecycle import ExecutionAttempt, ExecutionLifecycle
 from .result import ExecutionResult
+from .status import (
+    EXECUTION_COMPLETED_STATUS,
+    EXECUTION_FAILED_STATUS,
+    TERMINAL_EXECUTION_STATUSES,
+    is_terminal_status,
+)
 
 __all__ = [
-    "Checkpoint",
-    "CheckpointStore",
-    "PersistenceCheckpointStore",
-    "ExecutionCoordinator",
-    "ExecutionEventSink",
-    "ExecutionAttempt",
-    "ExecutionLifecycle",
-    "ExecutionResult",
-    "EXECUTION_STARTED",
-    "EXECUTION_COMPLETED",
-    "EXECUTION_RECOVERY",
-    "EXECUTION_FAILED",
-    "TERMINAL_EXECUTION_EVENTS",
-    "build_event",
+    "Checkpoint", "CheckpointStore", "PersistenceCheckpointStore", "ExecutionCoordinator",
+    "ExecutionEventSink", "ExecutionAttempt", "ExecutionLifecycle", "ExecutionResult",
+    "EXECUTION_STARTED", "EXECUTION_COMPLETED", "EXECUTION_RECOVERY", "EXECUTION_FAILED",
+    "TERMINAL_EXECUTION_EVENTS", "build_event", "EXECUTION_COMPLETED_STATUS",
+    "EXECUTION_FAILED_STATUS", "TERMINAL_EXECUTION_STATUSES", "is_terminal_status",
 ]
