@@ -25,40 +25,27 @@ class Supervisor:
             decision = self._recover(component, payload)
             self._record_recovery(component, decision)
             return decision
-
         if event == "success":
             self.state.healthy = True
-
         return self.state
 
     def _recover(self, component: str, payload: Any = None):
         if self.recovery and hasattr(self.recovery, "evaluate"):
-            from core.execution.recovery import RecoverySignal
+            from execution.recovery import RecoverySignal
             signal = RecoverySignal(
                 component=component,
                 error=str(payload),
                 attempts=self.state.recovery_attempts,
             )
             return self.recovery.evaluate(signal)
-
         if self.recovery and hasattr(self.recovery, "recover"):
             return self.recovery.recover(component, payload)
-
         return None
 
     def _record_recovery(self, component: str, decision: Any):
         if not self.persistence:
             return
-
-        record = {
-            "type": "recovery_decision",
-            "component": component,
-            "decision": decision,
-        }
-
-        # Prefer the runtime's semantic persistence API when available.
-        # Keep the generic record() fallback for lightweight adapters and
-        # backwards compatibility with existing integrations.
+        record = {"type": "recovery_decision", "component": component, "decision": decision}
         if hasattr(self.persistence, "record_recovery"):
             self.persistence.record_recovery(record)
         elif hasattr(self.persistence, "record"):
