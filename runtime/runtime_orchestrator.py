@@ -8,6 +8,7 @@ from .execution_store import ExecutionStore
 from .recovery_manager import RecoveryManager
 from .runtime_bootstrap import RecoveryReport, RuntimeBootstrap
 from .runtime_factory import build_execution_loop
+from .shutdown_manager import ShutdownManager
 
 
 @dataclass
@@ -17,6 +18,7 @@ class RuntimeComponents:
     recovery_manager: RecoveryManager
     bootstrap: RuntimeBootstrap
     loop: Any
+    shutdown_manager: ShutdownManager
 
 
 class RuntimeOrchestrator:
@@ -28,12 +30,13 @@ class RuntimeOrchestrator:
                                           lease_store=self.lease_store, owner_id=owner_id)
         self.loop = build_execution_loop(executor, planner, owner_id=owner_id, store=self.store,
                                          lease_store=self.lease_store, policy=policy, event_bus=event_bus)
+        self.shutdown_manager = ShutdownManager()
         self.owner_id = owner_id
         self.started = False
 
     @property
     def components(self) -> RuntimeComponents:
-        return RuntimeComponents(self.store, self.lease_store, self.recovery_manager, self.bootstrap, self.loop)
+        return RuntimeComponents(self.store, self.lease_store, self.recovery_manager, self.bootstrap, self.loop, self.shutdown_manager)
 
     async def start(self, agent: Any, context: Optional[dict] = None) -> RecoveryReport:
         if self.started:
@@ -52,4 +55,6 @@ class RuntimeOrchestrator:
         return await self.loop.run(goal, agent, context=context)
 
     async def shutdown(self):
+        result = await self.shutdown_manager.shutdown()
         self.started = False
+        return result
