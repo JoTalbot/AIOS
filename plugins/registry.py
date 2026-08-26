@@ -1,4 +1,4 @@
-"""Plugin registry foundation."""
+"""AIOS plugin registry."""
 
 
 class PluginRegistry:
@@ -10,3 +10,6 @@ class PluginRegistry:
 
     def get(self, name):
         return self.plugins.get(name)
+
+    def list(self):
+        return list(self.plugins.keys())
