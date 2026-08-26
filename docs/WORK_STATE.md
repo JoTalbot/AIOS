@@ -2,9 +2,9 @@
 
 ## STOP / RESUME POINT
 
-**Status:** KernelFactory now binds an available ExecutionCoordinator to the canonical RuntimePersistenceFacade before VNextOrchestrator wiring. Next step is the true RuntimeContext.execute() integration regression.
+**Status:** true RuntimeContext → VNextOrchestrator → Scheduler → ExecutionCoordinator integration regression has been added, including terminal-result replay protection.
 
-**Latest main:** `5398d53c73c4e76c2f4d605e3795aeb25f192c9a`
+**Latest main:** `d868f5fecdb313e2e1dbbc44d4afc0102216cf31`
 
 ### Completed
 - API → Runtime → Orchestrator → Scheduler → Execution regression coverage.
@@ -22,9 +22,11 @@
 - RuntimeContext owns the canonical recovery entrypoint.
 - RuntimePersistenceFacade exposes canonical result/state operations.
 - KernelFactory binds an existing execution service to the canonical runtime persistence facade.
+- True RuntimeContext execution integration regression added.
+- Same-task replay is verified against persisted terminal state.
 
 ### Exact next task
-Add/validate the true `KernelFactory → RuntimeContext.execute() → VNextOrchestrator → Scheduler → ExecutionCoordinator → canonical persistence` integration regression, including replay of the same task ID without a second coordinator execution.
+Run/validate the complete integration suite against current `main`. If the real path exposes mismatched method signatures or result serialization, fix those at the canonical boundary and add regression coverage. Then validate cancellation/restart through the same Factory-created RuntimeContext rather than directly constructing Scheduler.
 
 ### Required invariants
 1. Terminal result is persisted before response.
@@ -43,6 +45,7 @@ Add/validate the true `KernelFactory → RuntimeContext.execute() → VNextOrche
 14. Factory wiring preserves one canonical persistence/recovery path.
 15. RuntimeContext.execute() reaches the real VNextOrchestrator and ExecutionCoordinator.
 16. ExecutionCoordinator and Scheduler share the same canonical persistence object.
+17. Factory-created RuntimeContext is the integration path used by recovery tests.
 
 ### Rule for the next agent
 Inspect current `main` first. Do not introduce another persistence store. Preserve parallel-agent changes and never force-push.
