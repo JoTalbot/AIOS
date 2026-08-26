@@ -35,6 +35,16 @@ class Kernel:
     def restore(self):
         self.recovery.restore_status(self.state)
 
+    def initialize(self):
+        self.restore()
+        self.events.publish(
+            KernelEvent(
+                name="kernel.initialized",
+                source="kernel",
+                payload={"status": self.state.status},
+            )
+        )
+
     def start(self):
         self.lifecycle.transition(LifecyclePhase.START)
         self.state.status = RuntimeStatus.RUNNING
