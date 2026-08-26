@@ -2,23 +2,23 @@
 
 ## STOP / RESUME POINT
 
-**Status:** canonical crash/restart test now uses the real `CheckpointStore` backed by `ExecutionStore`; ready for crash/cancellation hardening.
+**Status:** cancellation → real checkpoint → restart/recovery regression added; next step is to validate and harden the cancellation boundary.
 
-**Latest main:** `1bac0c0`
+**Latest main:** `14e8942`
 
 ### Completed
 - API → Runtime → Orchestrator → Scheduler → Execution regression coverage.
 - Execution terminal results are persisted before response return.
 - Duplicate execution is prevented by persisted terminal results.
-- `CheckpointStore` is a compatibility facade over canonical `ExecutionStore`.
+- `CheckpointStore` is a facade over canonical `ExecutionStore`.
 - Recovery skips tasks whose terminal result already exists.
 - Scheduler checks persistence before enqueue and before execution.
-- Real `ExecutionCoordinator` is exercised through the Scheduler execution loop.
-- Restart/replay regression proves completed tasks are not executed twice.
-- Crash/restart/replay regression now uses the repository's actual `CheckpointStore` and `ExecutionStore`, not a mock checkpoint store.
+- Real `ExecutionCoordinator` is exercised through Scheduler.
+- Crash/restart/replay regression uses the real `CheckpointStore`.
+- Cancellation/restart regression now verifies cancellation leaves a resumable checkpoint and recovery completes the task without duplicate execution.
 
 ### Exact next task
-Harden cancellation/crash boundaries: prove a cancellation during execution leaves a valid resumable checkpoint, then restart a fresh Scheduler/Coordinator and complete the task without duplicate execution.
+Validate the cancellation regression against the actual Scheduler worker lifecycle and harden worker shutdown/cancellation semantics so queue accounting and checkpoint persistence remain correct under cancellation.
 
 ### Required invariants
 1. Terminal result is persisted before response.
@@ -27,9 +27,10 @@ Harden cancellation/crash boundaries: prove a cancellation during execution leav
 4. Checkpoint cleanup is idempotent.
 5. Recovery and Scheduler share the same lifecycle state.
 6. A recovered task executes exactly once after restart.
-7. A completed task can be replayed without invoking the agent/tool again.
-8. A crash/cancellation before terminal persistence leaves a valid resumable checkpoint.
-9. The production checkpoint path is tested; mocks do not replace it.
+7. Completed replay does not invoke agent/tool again.
+8. Cancellation before terminal persistence leaves a valid resumable checkpoint.
+9. Production checkpoint path is tested.
+10. Worker cancellation does not corrupt `Queue.join()` accounting.
 
 ### Rule for the next agent
 Inspect current `main` first. Do not introduce another persistence store. Preserve parallel-agent changes and never force-push.
