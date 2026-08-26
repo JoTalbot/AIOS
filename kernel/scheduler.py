@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -84,7 +85,7 @@ class Scheduler:
                 task.state = TaskState.DONE
                 task.error = None
                 self._save_checkpoint(task)
-                self._record(EXECUTION_COMPLETED, task, {"attempt": task.attempts})
+                self._record(EXECUTION_COMPLETED, task, {"attempt": task.attempts, **task.result.to_event_payload()})
                 return
             except asyncio.CancelledError:
                 raise
@@ -102,7 +103,7 @@ class Scheduler:
                     continue
                 task.state = TaskState.FAILED
                 task.result = ExecutionResult.failure(task.id, exc, metadata={"attempt": task.attempts})
-                self._record(EXECUTION_FAILED, task, {"attempt": task.attempts, "error": task.error})
+                self._record(EXECUTION_FAILED, task, {"attempt": task.attempts, **task.result.to_event_payload()})
                 return
 
     def _recovery_action(self, task, error):
@@ -143,6 +144,7 @@ class Scheduler:
     async def execute(self, task):
         if self.executor is not None:
             value = self.executor(task.payload)
-            return await value if hasattr(value, "__await__") else value
+            value = await value if inspect.isawaitable(value) else value
+            return value if isinstance(value, ExecutionResult) else ExecutionResult.success(task.id, value=value)
         await asyncio.sleep(0)
         return ExecutionResult.success(task.id, value={"agent": task.agent, "status": EXECUTION_COMPLETED_STATUS})
