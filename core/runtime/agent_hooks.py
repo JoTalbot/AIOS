@@ -1,6 +1,5 @@
-"""Agent execution lifecycle hooks v2."""
+"""Agent execution lifecycle hooks v3."""
 
-import asyncio
 import inspect
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -17,6 +16,7 @@ class HookEvent:
 class AgentHooks:
     def __init__(self):
         self._hooks: Dict[str, List[Callable]] = {}
+        self._history: List[HookEvent] = []
 
     def register(self, event: str, callback: Callable):
         self._hooks.setdefault(event, []).append(callback)
@@ -28,6 +28,7 @@ class AgentHooks:
 
     def emit(self, event: str, *args, **kwargs):
         hook_event = HookEvent(event, payload=kwargs)
+        self._history.append(hook_event)
         results = []
         for callback in self._hooks.get(event, []):
             results.append(callback(hook_event, *args, **kwargs))
@@ -35,6 +36,7 @@ class AgentHooks:
 
     async def emit_async(self, event: str, *args, **kwargs):
         hook_event = HookEvent(event, payload=kwargs)
+        self._history.append(hook_event)
         results = []
         for callback in self._hooks.get(event, []):
             result = callback(hook_event, *args, **kwargs)
@@ -42,3 +44,9 @@ class AgentHooks:
                 result = await result
             results.append(result)
         return results
+
+    def history(self):
+        return list(self._history)
+
+    def clear_history(self):
+        self._history.clear()
