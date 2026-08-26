@@ -8,12 +8,14 @@ class RestartManager:
 
     def __init__(self, context, event_emitter=None):
         self.context = context
-        self.events = event_emitter or RestartEventEmitter()
+        self.events = event_emitter or RestartEventEmitter(
+            getattr(context, "event_bus", None)
+        )
 
     def restart(self):
-        self.events.emit("runtime.restart.started")
+        self.events.started({"source": "restart_manager"})
         self.context.stop()
         self.context.start()
-        self.events.emit("runtime.restart.completed")
-        self.events.emit("runtime.recovered")
+        self.events.recovered({"source": "restart_manager"})
+        self.events.completed({"source": "restart_manager"})
         return self.context
