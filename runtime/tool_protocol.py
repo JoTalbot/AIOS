@@ -19,11 +19,12 @@ class ToolResult:
     ok: bool
     value: Any = None
     error: Optional[str] = None
+    retryable: bool = False
 
     @classmethod
     def success(cls, call: ToolCall, value: Any):
         return cls(call.call_id, call.tool, True, value=value)
 
     @classmethod
-    def failure(cls, call: ToolCall, error: BaseException):
-        return cls(call.call_id, call.tool, False, error=str(error))
+    def failure(cls, call: ToolCall, error: BaseException, *, retryable: bool = False):
+        return cls(call.call_id, call.tool, False, error=str(error), retryable=retryable)
