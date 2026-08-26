@@ -4,6 +4,8 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Optional
 
+from .execution_audit import ExecutionAuditLog
+from .execution_commit import ExecutionCommitCoordinator
 from .execution_lease import ExecutionLeaseStore
 from .execution_store import ExecutionStore
 from .recovery_manager import RecoveryManager
@@ -19,13 +21,16 @@ class RecoveryReport:
 
 
 class RuntimeBootstrap:
-    def __init__(self, store: Optional[ExecutionStore] = None, recovery_manager: Optional[RecoveryManager] = None, lease_store: Optional[ExecutionLeaseStore] = None, owner_id: str = "aios-runtime", heartbeat_interval: Optional[float] = None):
+    def __init__(self, store: Optional[ExecutionStore] = None, recovery_manager: Optional[RecoveryManager] = None,
+                 lease_store: Optional[ExecutionLeaseStore] = None, owner_id: str = "aios-runtime",
+                 heartbeat_interval: Optional[float] = None, commit_coordinator: Optional[ExecutionCommitCoordinator] = None):
         self.store = store or ExecutionStore()
         self.recovery_manager = recovery_manager or RecoveryManager(self.store)
         self.lease_store = lease_store or ExecutionLeaseStore()
         self.owner_id = owner_id
         ttl = self.lease_store.ttl_seconds
         self.heartbeat_interval = heartbeat_interval if heartbeat_interval is not None else max(0.1, ttl / 3)
+        self.commit_coordinator = commit_coordinator
 
     async def _heartbeat(self, execution_id: str):
         while True:
@@ -34,6 +39,8 @@ class RuntimeBootstrap:
                 raise RuntimeError(f"execution lease lost: {execution_id}")
 
     async def recover_pending(self, resume: Callable[[Any], Awaitable[Any]]) -> RecoveryReport:
+        if self.commit_coordinator is not None:
+            self.commit_coordinator.reconcile()
         pending = self.store.resumable()
         recovered = failed = skipped = 0
         for state in pending:
