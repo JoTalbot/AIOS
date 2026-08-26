@@ -1,4 +1,4 @@
-"""Agent execution lifecycle hooks v8."""
+"""Agent execution lifecycle hooks v9."""
 
 import inspect
 from dataclasses import dataclass, field
@@ -26,6 +26,7 @@ class AgentHooks:
         self._decisions: List[Dict[str, Any]] = []
         self._analytics: List[Dict[str, Any]] = []
         self._observers: List[Callable] = []
+        self._observer_events = 0
 
     def register(self, event: str, callback: Callable, priority: int = 0):
         self._hooks.setdefault(event, []).append(HookEntry(priority, callback))
@@ -38,10 +39,10 @@ class AgentHooks:
         self._observers = [item for item in self._observers if item != callback]
 
     def unregister(self, event: str, callback: Callable):
-        callbacks = self._hooks.get(event, [])
-        self._hooks[event] = [entry for entry in callbacks if entry.callback != callback]
+        self._hooks[event] = [entry for entry in self._hooks.get(event, []) if entry.callback != callback]
 
     def _notify_observers(self, event):
+        self._observer_events += 1
         for observer in self._observers:
             observer(event)
 
@@ -49,22 +50,16 @@ class AgentHooks:
         hook_event = HookEvent(event, payload=kwargs)
         self._history.append(hook_event)
         self._notify_observers(hook_event)
-        results = []
-        for entry in self._hooks.get(event, []):
-            results.append(entry.callback(hook_event, *args, **kwargs))
-        return results
+        return [entry.callback(hook_event, *args, **kwargs) for entry in self._hooks.get(event, [])]
 
     async def emit_async(self, event: str, *args, **kwargs):
-        hook_event = HookEvent(event, payload=kwargs)
-        self._history.append(hook_event)
-        self._notify_observers(hook_event)
-        results = []
-        for entry in self._hooks.get(event, []):
-            result = entry.callback(hook_event, *args, **kwargs)
+        results = self.emit(event, *args, **kwargs)
+        resolved = []
+        for result in results:
             if inspect.isawaitable(result):
                 result = await result
-            results.append(result)
-        return results
+            resolved.append(result)
+        return resolved
 
     def emit_recovery_decision(self, decision: str, **metadata):
         record = {"decision": decision, **metadata}
@@ -82,6 +77,9 @@ class AgentHooks:
     def decisions(self):
         return list(self._decisions)
 
+    def observability(self):
+        return {"observers": len(self._observers), "events": self._observer_events, "history": len(self._history)}
+
     def history(self, event: str = None):
         if event is None:
             return list(self._history)
@@ -91,3 +89,4 @@ class AgentHooks:
         self._history.clear()
         self._decisions.clear()
         self._analytics.clear()
+        self._observer_events = 0
