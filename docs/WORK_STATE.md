@@ -2,9 +2,9 @@
 
 ## STOP / RESUME POINT
 
-**Status:** crash/restart recovery boundary now covered; ready for the next lifecycle integration batch.
+**Status:** scheduler terminal-persistence/restart boundary covered; ready to integrate real `ExecutionCoordinator` into the recovered Scheduler path.
 
-**Current main marker:** `8bc3849`
+**Current main marker:** `89d2f12` (latest work-state update should be verified against `main` before continuing)
 
 ### Completed
 - API → Runtime → Orchestrator → Scheduler → Execution regression coverage.
@@ -13,10 +13,12 @@
 - `CheckpointStore` is a compatibility facade over canonical `ExecutionStore`.
 - Checkpoints and terminal results share one lifecycle store.
 - Recovery skips tasks whose terminal result already exists.
-- Added crash/restart regression coverage: checkpoint → recovery → terminal result → second recovery does not enqueue again.
+- Scheduler now checks persisted terminal results before enqueue/execution.
+- Scheduler persists successful terminal results before checkpoint cleanup.
+- Added restart regression coverage proving a second Scheduler does not invoke the executor again.
 
 ### Exact next task
-Wire the recovered task through the **real Scheduler execution loop** and prove the full crash/restart path with an actual `ExecutionCoordinator`, not only the recovery boundary test.
+Wire a recovered task through the **real Scheduler execution loop with `ExecutionCoordinator`**, including an actual interrupted/restart scenario. Prove: checkpoint → restart → recovery → exactly-once continuation → terminal persistence → replay without agent/tool invocation.
 
 ### Required invariants
 1. Terminal result is persisted before response.
