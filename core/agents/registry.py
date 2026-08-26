@@ -1,12 +1,29 @@
-"""Agent registry foundation."""
+"""AIOS Agent Registry foundation."""
+
+from dataclasses import dataclass
+
+
+@dataclass
+class Agent:
+    agent_id: str
+    role: str
+    status: str = "idle"
 
 
 class AgentRegistry:
+
     def __init__(self):
-        self._agents = {}
+        self.agents = {}
 
-    def register(self, agent):
-        self._agents[agent.name] = agent
+    def register(self, agent: Agent):
+        self.agents[agent.agent_id] = agent
 
-    def get(self, name):
-        return self._agents.get(name)
+    def get(self, agent_id: str):
+        return self.agents.get(agent_id)
+
+    def available(self):
+        return [
+            agent
+            for agent in self.agents.values()
+            if agent.status == "idle"
+        ]
