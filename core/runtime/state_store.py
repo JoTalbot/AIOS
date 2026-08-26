@@ -1,4 +1,4 @@
-"""Execution state persistence foundation with adaptive recovery policy."""
+"""Execution state persistence foundation with adaptive recovery analytics."""
 
 
 class StateStore:
@@ -8,6 +8,7 @@ class StateStore:
         self._checkpoints = {}
         self._health = {}
         self._policies = {}
+        self._metrics = {}
 
     def save(self, key, value, version=1):
         self._states[key] = dict(value) if isinstance(value, dict) else value
@@ -27,18 +28,22 @@ class StateStore:
         self._checkpoints.pop(key, None)
         self._health.pop(key, None)
         self._policies.pop(key, None)
+        self._metrics.pop(key, None)
 
     def checkpoint(self, key):
         self._checkpoints[key] = self.load(key)
+        self.record_metric(key, "checkpoints")
         return self.load(key)
 
     def rollback(self, key):
         if key in self._checkpoints:
             self.save(key, self._checkpoints[key], version=self.version(key))
+            self.record_metric(key, "rollbacks")
         return self.load(key)
 
     def mark_failed(self, key, reason=None):
         self._health[key] = {"status": "failed", "reason": reason}
+        self.record_metric(key, "failures")
 
     def mark_healthy(self, key):
         self._health[key] = {"status": "healthy"}
@@ -53,10 +58,20 @@ class StateStore:
         return dict(self._policies.get(key, {"retries": 0, "rollback": True}))
 
     def should_retry(self, key, attempts):
-        return attempts < self.policy(key).get("retries", 0)
+        allowed = attempts < self.policy(key).get("retries", 0)
+        if allowed:
+            self.record_metric(key, "retries")
+        return allowed
 
     def should_rollback(self, key):
         return bool(self.policy(key).get("rollback", True))
+
+    def record_metric(self, key, metric):
+        metrics = self._metrics.setdefault(key, {})
+        metrics[metric] = metrics.get(metric, 0) + 1
+
+    def metrics(self, key):
+        return dict(self._metrics.get(key, {}))
 
 
 class AgentStateStore(StateStore):
