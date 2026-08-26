@@ -50,7 +50,10 @@ class ComponentLifecycleManager:
 
     def initialize_all(self):
         self.discover_dependencies()
-        self.validate_dependencies()
+        validation = self.validate_dependencies()
+
+        if not validation["valid"]:
+            return validation
 
         for name in self.dependencies.startup_order():
             component = self.registry.get(name)
@@ -61,9 +64,14 @@ class ComponentLifecycleManager:
                 initialize()
             self._emit("component.initialized", {"name": name})
 
+        return validation
+
     def start_all(self):
         self.discover_dependencies()
-        self.validate_dependencies()
+        validation = self.validate_dependencies()
+
+        if not validation["valid"]:
+            return validation
 
         for name in self.dependencies.startup_order():
             component = self.registry.get(name)
@@ -73,6 +81,8 @@ class ComponentLifecycleManager:
             if start:
                 start()
             self._emit("component.started", {"name": name})
+
+        return validation
 
     def stop_all(self):
         self.discover_dependencies()
