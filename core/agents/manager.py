@@ -1,6 +1,6 @@
 """Agent lifecycle manager."""
 
-from .runtime import AgentRuntime
+from .runtime import AgentRuntime, AgentRuntimeState
 
 
 class AgentManager:
@@ -18,11 +18,36 @@ class AgentManager:
         self.runtimes[agent.name] = AgentRuntime(agent, event_bus=self.event_bus)
         self._publish("agent.registered", {"agent": agent.name})
 
+    def unregister(self, name):
+        runtime = self.runtimes.pop(name, None)
+        self.agents.pop(name, None)
+        self._publish("agent.unregistered", {"agent": name})
+        return runtime
+
     def get(self, name):
         return self.agents.get(name)
 
     def get_runtime(self, name):
         return self.runtimes.get(name)
+
+    def snapshot(self):
+        return {
+            name: runtime.state.value
+            for name, runtime in self.runtimes.items()
+        }
+
+    def recover(self, snapshot):
+        for name, state in snapshot.items():
+            runtime = self.get_runtime(name)
+            if not runtime:
+                continue
+            if state == AgentRuntimeState.RUNNING.value:
+                runtime.start()
+            elif state == AgentRuntimeState.STOPPED.value:
+                runtime.stop()
+
+        self._publish("agent.recovered", snapshot)
+        return self.snapshot()
 
     def start(self, name):
         runtime = self.get_runtime(name)
