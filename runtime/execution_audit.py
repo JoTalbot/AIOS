@@ -2,6 +2,7 @@
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -18,6 +19,14 @@ class ExecutionAuditEvent:
     attempt: int = 0
     reason: Optional[str] = None
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    event_id: str = ""
+    correlation_id: Optional[str] = None
+
+    def with_identity(self):
+        if self.event_id:
+            return self
+        payload = f"{self.execution_id}|{self.from_status}|{self.to_status}|{self.attempt}|{self.reason}|{self.timestamp}|{self.correlation_id}"
+        return ExecutionAuditEvent(**{**asdict(self), "event_id": hashlib.sha256(payload.encode()).hexdigest()})
 
 
 @dataclass
@@ -29,6 +38,7 @@ class AuditEvent:
     metadata: Dict[str, Any] = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     execution_id: Optional[str] = None
+    correlation_id: Optional[str] = None
 
 
 class ExecutionAuditLog:
@@ -37,9 +47,17 @@ class ExecutionAuditLog:
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def append(self, event: ExecutionAuditEvent) -> ExecutionAuditEvent:
+        event = event.with_identity()
+        if self._contains(event.event_id):
+            return event
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(asdict(event), ensure_ascii=False) + "\n")
         return event
+
+    def _contains(self, event_id: str) -> bool:
+        if not self.path.exists():
+            return False
+        return any(json.loads(line).get("event_id") == event_id for line in self.path.read_text(encoding="utf-8").splitlines() if line.strip())
 
     def events(self, execution_id: Optional[str] = None):
         if not self.path.exists():
@@ -57,8 +75,8 @@ class ExecutionAudit:
     def __init__(self):
         self.events: List[AuditEvent] = []
 
-    def record(self, event: str, agent_id: str, tool: Optional[str] = None, status: str = "ok", context: Optional[ExecutionContext] = None, **metadata):
-        item = AuditEvent(event, agent_id, tool, status, metadata, execution_id=getattr(context, "execution_id", None))
+    def record(self, event: str, agent_id: str, tool: Optional[str] = None, status: str = "ok", context: Optional[ExecutionContext] = None, correlation_id: Optional[str] = None, **metadata):
+        item = AuditEvent(event, agent_id, tool, status, metadata, execution_id=getattr(context, "execution_id", None), correlation_id=correlation_id)
         self.events.append(item)
         return item
 
