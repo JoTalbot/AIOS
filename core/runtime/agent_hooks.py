@@ -1,4 +1,4 @@
-"""Agent execution lifecycle hooks v9."""
+"""Agent execution lifecycle hooks v10."""
 
 import inspect
 from dataclasses import dataclass, field
@@ -26,6 +26,7 @@ class AgentHooks:
         self._decisions: List[Dict[str, Any]] = []
         self._analytics: List[Dict[str, Any]] = []
         self._observers: List[Callable] = []
+        self._mesh_callbacks: List[Callable] = []
         self._observer_events = 0
 
     def register(self, event: str, callback: Callable, priority: int = 0):
@@ -34,6 +35,12 @@ class AgentHooks:
 
     def register_observer(self, callback: Callable):
         self._observers.append(callback)
+
+    def register_mesh_callback(self, callback: Callable):
+        self._mesh_callbacks.append(callback)
+
+    def unregister_mesh_callback(self, callback: Callable):
+        self._mesh_callbacks = [item for item in self._mesh_callbacks if item != callback]
 
     def unregister_observer(self, callback: Callable):
         self._observers = [item for item in self._observers if item != callback]
@@ -45,6 +52,8 @@ class AgentHooks:
         self._observer_events += 1
         for observer in self._observers:
             observer(event)
+        for callback in self._mesh_callbacks:
+            callback(event)
 
     def emit(self, event: str, *args, **kwargs):
         hook_event = HookEvent(event, payload=kwargs)
@@ -78,7 +87,7 @@ class AgentHooks:
         return list(self._decisions)
 
     def observability(self):
-        return {"observers": len(self._observers), "events": self._observer_events, "history": len(self._history)}
+        return {"observers": len(self._observers), "mesh_callbacks": len(self._mesh_callbacks), "events": self._observer_events, "history": len(self._history)}
 
     def history(self, event: str = None):
         if event is None:
