@@ -7,18 +7,32 @@ class CheckpointRecovery:
     def __init__(self, checkpoint_store):
         self.store = checkpoint_store
 
+    @staticmethod
+    def _valid(checkpoint):
+        return (
+            checkpoint is not None
+            and isinstance(getattr(checkpoint, "task_id", None), str)
+            and bool(checkpoint.task_id)
+            and isinstance(getattr(checkpoint, "payload", None), dict)
+            and isinstance(getattr(checkpoint, "attempt", 0), int)
+            and checkpoint.attempt >= 0
+        )
+
     async def restore(self, scheduler):
         if self.store is None or not hasattr(self.store, "_items"):
             return []
         restored = []
         for task_id, checkpoint in list(self.store._items.items()):
-            if task_id in scheduler.tasks:
+            if task_id in scheduler.tasks or not self._valid(checkpoint):
                 continue
             payload = dict(checkpoint.payload)
-            task_payload = dict(payload.get("task_payload", payload))
-            if task_payload.get("result") is not None:
+            task_payload = payload.get("task_payload", payload)
+            if not isinstance(task_payload, dict) or task_payload.get("result") is not None:
                 continue
-            task = AgentTask(task_id, task_payload.get("agent", "unknown"), task_payload)
+            agent = task_payload.get("agent", "unknown")
+            if not isinstance(agent, str) or not agent:
+                continue
+            task = AgentTask(task_id, agent, dict(task_payload))
             task.attempts = checkpoint.attempt
             task.checkpoint = payload
             task.state = TaskState.RESTORING
