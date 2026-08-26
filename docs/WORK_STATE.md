@@ -2,9 +2,9 @@
 
 ## STOP / RESUME POINT
 
-**Status:** inspected the real vNext orchestrator and execution coordinator. The next integration must wire a real `execution` service through `KernelFactory` so `VNextOrchestrator` delegates to `ExecutionCoordinator.execute` rather than using a test-only executor.
+**Status:** KernelFactory now binds an available ExecutionCoordinator to the canonical RuntimePersistenceFacade before VNextOrchestrator wiring. Next step is the true RuntimeContext.execute() integration regression.
 
-**Latest main:** `f8baba3`
+**Latest main:** `5398d53c73c4e76c2f4d605e3795aeb25f192c9a`
 
 ### Completed
 - API → Runtime → Orchestrator → Scheduler → Execution regression coverage.
@@ -20,13 +20,11 @@
 - Full worker lifecycle regression covers cancellation, restart, recovery, persistence and replay.
 - KernelFactory wires scheduler + checkpoint store + recovery into RuntimeContext.
 - RuntimeContext owns the canonical recovery entrypoint.
-- Factory recovery idempotency regression exists.
+- RuntimePersistenceFacade exposes canonical result/state operations.
+- KernelFactory binds an existing execution service to the canonical runtime persistence facade.
 
 ### Exact next task
-Wire a real `ExecutionCoordinator` into `KernelFactory` when the execution service is available, then add a true `KernelFactory → RuntimeContext.execute() → VNextOrchestrator → Scheduler → ExecutionCoordinator → persistence` integration regression. Do not bypass the orchestrator.
-
-### Important implementation finding
-`VNextOrchestrator` currently assigns `scheduler.executor = execution.execute` when an execution service is supplied. `ExecutionCoordinator.execute()` itself persists terminal results. Therefore the integration must use this canonical path and avoid a second persistence implementation.
+Add/validate the true `KernelFactory → RuntimeContext.execute() → VNextOrchestrator → Scheduler → ExecutionCoordinator → canonical persistence` integration regression, including replay of the same task ID without a second coordinator execution.
 
 ### Required invariants
 1. Terminal result is persisted before response.
@@ -44,6 +42,7 @@ Wire a real `ExecutionCoordinator` into `KernelFactory` when the execution servi
 13. RuntimeContext recovery initialization is idempotent.
 14. Factory wiring preserves one canonical persistence/recovery path.
 15. RuntimeContext.execute() reaches the real VNextOrchestrator and ExecutionCoordinator.
+16. ExecutionCoordinator and Scheduler share the same canonical persistence object.
 
 ### Rule for the next agent
 Inspect current `main` first. Do not introduce another persistence store. Preserve parallel-agent changes and never force-push.
