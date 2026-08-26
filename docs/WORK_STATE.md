@@ -2,9 +2,9 @@
 
 ## STOP / RESUME POINT
 
-**Status:** real Scheduler → ExecutionCoordinator restart/replay boundary covered; ready for the next lifecycle integration batch.
+**Status:** crash-during-execution checkpoint/restart/replay regression added; ready to validate and then harden the recovery lifecycle.
 
-**Latest main:** `46ec32f2ceadb665745f255fffe33986b60429bf`
+**Latest main:** `81eb2eb0b79a56de9d3074fcf01963e848915cb1`
 
 ### Completed
 - API → Runtime → Orchestrator → Scheduler → Execution regression coverage.
@@ -14,10 +14,11 @@
 - Recovery skips tasks whose terminal result already exists.
 - Scheduler checks persistence before enqueue and again before execution.
 - Real `ExecutionCoordinator` has been exercised through the Scheduler execution loop.
-- Restart/replay regression proves the coordinator is invoked once and the second Scheduler does not enqueue the completed task.
+- Restart/replay regression proves completed tasks are not executed twice.
+- Added crash-once runner regression: first execution fails before terminal persistence, checkpoint remains, recovery resumes on a fresh Scheduler, terminal result is persisted, checkpoint is removed, and later replay does not execute again.
 
 ### Exact next task
-Add a genuine **crash-during-execution** test: persist a resumable checkpoint before simulated process termination, create a fresh Scheduler/ExecutionCoordinator, recover the task, continue execution, persist the terminal result, and verify replay does not execute again.
+Validate the crash/restart regression against the repository's actual checkpoint implementation and then harden checkpoint persistence so cancellation/crash boundaries cannot lose resumable state.
 
 ### Required invariants
 1. Terminal result is persisted before response.
