@@ -1,6 +1,5 @@
 """Runtime supervisor foundation."""
 
-from .agent_hooks import HookEvent
 from .state_store import StateStore
 
 
@@ -62,7 +61,8 @@ class RuntimeSupervisor:
     def recover(self):
         state = self.state_store.load(self.agent_id)
         self.recovery_attempts += 1
-        self._emit("state.recovery", agent_id=self.agent_id, state=state, attempt=self.recovery_attempts)
+        policy = self.state_store.policy(self.agent_id) if hasattr(self.state_store, "policy") else None
+        self._emit("state.recovery", agent_id=self.agent_id, state=state, attempt=self.recovery_attempts, policy=policy)
         if state is not None:
             self.health_status = "healthy"
         return state
