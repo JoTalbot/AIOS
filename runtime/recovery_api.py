@@ -22,12 +22,15 @@ class RecoveryOperatorService:
 
     def resolve(self, execution_id: str, action: str, *, actor: str = "operator", reason: Optional[str] = None):
         try:
-            result = self.queue.resolve(execution_id, action)
+            changed = self.queue.resolve(execution_id, action)
         except Exception as exc:
-            self.audit_log.append(OperatorAuditEvent(action, execution_id, actor, "failed", str(exc), getattr(result, "correlation_id", None) if "result" in locals() else None))
+            self.audit_log.append(OperatorAuditEvent(action, execution_id, actor, "failed", str(exc)))
             raise
-        self.audit_log.append(OperatorAuditEvent(action, execution_id, actor, "resolved", reason, getattr(result, "correlation_id", None)))
-        return result
+        outcome = "resolved" if changed else "not_found"
+        self.audit_log.append(OperatorAuditEvent(action, execution_id, actor, outcome, reason))
+        if not changed:
+            raise KeyError(f"recovery item not found: {execution_id}/{action}")
+        return {"execution_id": execution_id, "action": action, "resolved": True}
 
     def resolve_item(self, execution_id: str, action: str, *, actor: str = "operator", reason: Optional[str] = None):
         return self.resolve(execution_id, action, actor=actor, reason=reason)
