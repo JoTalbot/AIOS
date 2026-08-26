@@ -23,6 +23,10 @@ class MeshRuntimeBridge:
             decision=decision,
         )
 
+    def publish_recovery_decision(self):
+        decision = self.supervisor.recovery_decision() if hasattr(self.supervisor, "recovery_decision") else {}
+        return self.publish_recovery(decision)
+
     def publish_message(self, name, target="broadcast", **payload):
         return self.mesh.publish(
             name=name,
