@@ -61,5 +61,12 @@ class Scheduler:
                 self.queue.task_done()
 
     async def execute(self, task):
+        executor = task.payload.get("executor")
+        if executor is not None:
+            return await executor.execute(
+                task.payload["agent"],
+                task.payload.get("plan", ()),
+                task.payload.get("context", {}),
+            )
         await asyncio.sleep(0)
         return {"agent": task.agent, "status": "completed"}
