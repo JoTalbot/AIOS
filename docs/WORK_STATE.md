@@ -2,9 +2,9 @@
 
 ## STOP / RESUME POINT
 
-**Status:** canonical checkpoint adapter now delegates directly to the supplied persistence object; a fresh adapter instance can recover and delete the same persisted checkpoint without relying on its own in-memory `_items` cache.
+**Status:** Factory no longer eagerly executes checkpoint recovery during construction. Recovery is deferred to the RuntimeContext lifecycle, and a fresh RuntimeContext regression verifies persisted checkpoints are restored exactly once.
 
-**Latest main:** `f31b0bab89d8cae1536347cb6cc1187bc8466077`
+**Latest main:** `d7b0fd47804cb13084f4fa768a24f558e52a0dff`
 
 ### Completed
 - Canonical RuntimeContext → VNextOrchestrator → Scheduler → ExecutionCoordinator path.
@@ -16,9 +16,11 @@
 - Concurrent execute/recover recovery race regression.
 - PersistenceCheckpointStore uses the supplied canonical persistence object directly.
 - Fresh-store checkpoint recovery regression.
+- Factory defers checkpoint restore to RuntimeContext lifecycle.
+- Fresh RuntimeContext recovery regression.
 
 ### Exact next task
-Run the complete integration suite on current `main`. Fix any contract/signature failures exposed by the real Factory-created path. Then add a true fresh-process RuntimeContext restart test where the second context is built with a new checkpoint adapter over the same persisted state.
+Run/validate the complete Factory-created suite. Then verify a fresh RuntimeContext can execute a recovered task through the real VNextOrchestrator → Scheduler → ExecutionCoordinator path and that replay of the same task_id does not invoke the agent runner again.
 
 ### Required invariants
 1. Terminal result is persisted before response.
@@ -42,7 +44,8 @@ Run the complete integration suite on current `main`. Fix any contract/signature
 19. Restart does not duplicate workers or queue entries.
 20. Concurrent RuntimeContext restarts are serialized.
 21. Checkpoint recovery survives a fresh adapter/store instance.
-22. Fresh RuntimeContext restart recovers from persisted state, not process-local memory.
+22. Fresh RuntimeContext recovery uses persisted state.
+23. Factory construction itself does not eagerly consume recovery state.
 
 ### Rule for the next agent
 Inspect current `main` first. Do not introduce another persistence store. Preserve parallel-agent changes and never force-push.
