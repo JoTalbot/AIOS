@@ -1,6 +1,7 @@
 """Runtime context for the AIOS kernel stack."""
 
 from .runtime_lifecycle import RuntimeLifecycle
+from .restart_manager import RestartManager
 
 
 class RuntimeContext:
@@ -12,6 +13,7 @@ class RuntimeContext:
         self.bootstrap = bootstrap
         self.registry = registry
         self.lifecycle = RuntimeLifecycle(self)
+        self.restart_manager = RestartManager(self)
 
     def services(self):
         return {
@@ -26,3 +28,6 @@ class RuntimeContext:
 
     def stop(self):
         return self.lifecycle.stop()
+
+    def restart(self):
+        return self.restart_manager.restart()
