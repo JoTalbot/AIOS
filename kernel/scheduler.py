@@ -47,9 +47,14 @@ class Scheduler:
     async def submit(self, task: AgentTask):
         existing = self.tasks.get(task.id)
         if existing is not None:
-            if existing.state in {TaskState.DONE, TaskState.RUNNING, TaskState.RESTORING}:
-                return existing
             return existing
+        persisted = self.persistence.load_result(task.id) if self.persistence else None
+        if persisted is not None:
+            task.result = ExecutionResult.from_dict(persisted) if hasattr(ExecutionResult, "from_dict") else persisted
+            task.payload["result"] = getattr(task.result, "value", persisted)
+            task.state = TaskState.DONE
+            self.tasks[task.id] = task
+            return task
         self.tasks[task.id] = task
         await self.queue.put(task)
         return task
@@ -79,6 +84,12 @@ class Scheduler:
                 self.queue.task_done()
 
     async def _execute_with_recovery(self, task):
+        persisted = self.persistence.load_result(task.id) if self.persistence else None
+        if persisted is not None:
+            task.result = ExecutionResult.from_dict(persisted) if hasattr(ExecutionResult, "from_dict") else persisted
+            task.payload["result"] = getattr(task.result, "value", persisted)
+            task.state = TaskState.DONE
+            return
         self._record(EXECUTION_STARTED, task, {"attempt": task.attempts + 1})
         while True:
             task.state = TaskState.RUNNING
@@ -93,6 +104,8 @@ class Scheduler:
                 task.payload["result"] = task.result.value
                 task.state = TaskState.DONE
                 task.error = None
+                if self.persistence:
+                    self.persistence.save_result(task.id, task.result.to_dict())
                 self._finalize_checkpoint(task)
                 self._record(EXECUTION_COMPLETED, task, {"attempt": task.attempts, **task.result.to_event_payload()})
                 return
@@ -112,6 +125,8 @@ class Scheduler:
                     continue
                 task.state = TaskState.FAILED
                 task.result = ExecutionResult.failure(task.id, exc, metadata={"attempt": task.attempts})
+                if self.persistence:
+                    self.persistence.save(task.id, {"status": "failed", "result": task.result.to_dict()})
                 self._record(EXECUTION_FAILED, task, {"attempt": task.attempts, **task.result.to_event_payload()})
                 return
 
@@ -140,10 +155,8 @@ class Scheduler:
         self.checkpoint_store.save(Checkpoint(task.id, payload, task.attempts))
 
     def _finalize_checkpoint(self, task):
-        """Commit terminal state then remove the resumable checkpoint."""
         if self.checkpoint_store is None:
             return
-        self._save_checkpoint(task)
         delete = getattr(self.checkpoint_store, "delete", None)
         if delete is not None:
             delete(task.id)
