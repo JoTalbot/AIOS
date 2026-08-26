@@ -4,8 +4,9 @@ from kernel.scheduler import AgentTask, TaskState
 
 
 class CheckpointRecovery:
-    def __init__(self, checkpoint_store):
+    def __init__(self, checkpoint_store, persistence=None):
         self.store = checkpoint_store
+        self.persistence = persistence
 
     @staticmethod
     def _valid(checkpoint):
@@ -18,12 +19,15 @@ class CheckpointRecovery:
             and checkpoint.attempt >= 0
         )
 
+    def _already_completed(self, task_id):
+        return self.persistence is not None and self.persistence.load_result(task_id) is not None
+
     async def restore(self, scheduler):
         if self.store is None or not hasattr(self.store, "_items"):
             return []
         restored = []
         for task_id, checkpoint in list(self.store._items.items()):
-            if task_id in scheduler.tasks or not self._valid(checkpoint):
+            if task_id in scheduler.tasks or self._already_completed(task_id) or not self._valid(checkpoint):
                 continue
             payload = dict(checkpoint.payload)
             task_payload = payload.get("task_payload", payload)
