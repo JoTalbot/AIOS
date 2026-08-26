@@ -25,3 +25,9 @@ def test_adapter_does_not_swallow_persistence_load_failure():
     store = PersistenceCheckpointStore(FailingPersistence())
     with pytest.raises(RuntimeError, match="persistence unavailable"):
         store.load("task-1")
+
+
+def test_adapter_does_not_swallow_persistence_delete_failure():
+    store = PersistenceCheckpointStore(FailingPersistence())
+    with pytest.raises(RuntimeError, match="persistence unavailable"):
+        store.delete("task-1")
