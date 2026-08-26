@@ -1,5 +1,7 @@
 """Factory for constructing the new AIOS kernel stack."""
 
+import inspect
+
 from .runtime_context import RuntimeContext
 from .runtime_persistence_facade import RuntimePersistenceFacade
 from .checkpoint_recovery import CheckpointRecovery
@@ -69,7 +71,11 @@ class KernelFactory:
                 scheduler = self.container.resolve("scheduler")
                 checkpoint_store = PersistenceCheckpointStore(facade)
                 scheduler.checkpoint_store = checkpoint_store
-                CheckpointRecovery(checkpoint_store).restore(scheduler)
+                restored = CheckpointRecovery(checkpoint_store).restore(scheduler)
+                if inspect.isawaitable(restored):
+                    context._checkpoint_recovery = restored
+                else:
+                    context._checkpoint_recovery = restored
         if Supervisor:
             recovery = RecoveryEngine() if RecoveryEngine else None
             context.supervisor = Supervisor(recovery=recovery, persistence=context.persistence)
