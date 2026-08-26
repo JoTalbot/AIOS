@@ -2,25 +2,24 @@
 
 ## STOP / RESUME POINT
 
-**Status:** Factory no longer eagerly executes checkpoint recovery during construction. Recovery is deferred to the RuntimeContext lifecycle, and a fresh RuntimeContext regression verifies persisted checkpoints are restored exactly once.
+**Status:** fresh RuntimeContext recovery now has an integration regression covering persisted checkpoint → new context → recovery → execution → terminal persistence → replay protection.
 
-**Latest main:** `d7b0fd47804cb13084f4fa768a24f558e52a0dff`
+**Latest main:** `f054b002514f7e25ff460090800bbce60d4e5369`
 
 ### Completed
 - Canonical RuntimeContext → VNextOrchestrator → Scheduler → ExecutionCoordinator path.
 - Terminal result persistence and replay protection.
 - Checkpoint recovery idempotency per Scheduler.
 - Factory-created cancellation → restart → recovery → persistence → replay coverage.
-- Async RuntimeContext lifecycle and serialized restart.
-- RuntimeContext invokes checkpoint `restore()` through the canonical Scheduler.
+- Async RuntimeContext lifecycle and serialized restart/recovery.
+- RuntimeContext invokes checkpoint restore through the canonical Scheduler.
 - Concurrent execute/recover recovery race regression.
 - PersistenceCheckpointStore uses the supplied canonical persistence object directly.
 - Fresh-store checkpoint recovery regression.
-- Factory defers checkpoint restore to RuntimeContext lifecycle.
-- Fresh RuntimeContext recovery regression.
+- Fresh RuntimeContext persisted-checkpoint execution regression.
 
 ### Exact next task
-Run/validate the complete Factory-created suite. Then verify a fresh RuntimeContext can execute a recovered task through the real VNextOrchestrator → Scheduler → ExecutionCoordinator path and that replay of the same task_id does not invoke the agent runner again.
+Run the full integration suite against current `main`. Focus first on the fresh RuntimeContext test: validate the recovered task is actually consumed by the real Scheduler and ExecutionCoordinator, terminal state is persisted, checkpoint is deleted, and a subsequent submission with the same task id is a no-op.
 
 ### Required invariants
 1. Terminal result is persisted before response.
@@ -44,8 +43,8 @@ Run/validate the complete Factory-created suite. Then verify a fresh RuntimeCont
 19. Restart does not duplicate workers or queue entries.
 20. Concurrent RuntimeContext restarts are serialized.
 21. Checkpoint recovery survives a fresh adapter/store instance.
-22. Fresh RuntimeContext recovery uses persisted state.
-23. Factory construction itself does not eagerly consume recovery state.
+22. Fresh RuntimeContext restart recovers from persisted state, not process-local memory.
+23. Fresh RuntimeContext executes a recovered task exactly once and protects terminal replay.
 
 ### Rule for the next agent
 Inspect current `main` first. Do not introduce another persistence store. Preserve parallel-agent changes and never force-push.
