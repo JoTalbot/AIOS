@@ -20,9 +20,13 @@ class ExecutionCoordinator:
         try:
             self._emit(EXECUTION_STARTED, task_id)
             self._publish("execution.started", request)
+            remembered = self.memory.recall(request.get("memory_query", request.get("goal")))
+            context = dict(request.get("context") or {})
+            if remembered:
+                context["memory"] = remembered
             self._remember({"type": "execution_started", "task_id": task_id, "goal": request.get("goal")})
-            value = await self._run_agent(request.get("goal"), request.get("plan", []), request.get("context", {}))
-            value = await self._run_tools(value, request.get("context", {}))
+            value = await self._run_agent(request.get("goal"), request.get("plan", []), context)
+            value = await self._run_tools(value, context)
             result = ExecutionResult.success(task_id, value=value)
             self._remember({"type": "execution_completed", "task_id": task_id, "result": value}, permanent=True)
             self._observe("execution", "success", result)
