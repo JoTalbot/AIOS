@@ -23,24 +23,25 @@ class ExecutionCoordinator:
             self._publish("execution.started", request)
             remembered = self.memory.recall(request.get("memory_query", request.get("goal")))
             context = dict(request.get("context") or {})
+            context["task_id"] = task_id
             if remembered:
                 context["memory"] = remembered
             self._remember({"type": "execution_started", "task_id": task_id, "goal": request.get("goal")})
             value = await self._run_agent(request.get("goal"), request.get("plan", []), context)
             value = await self._run_tools(value, context, request)
-            result = ExecutionResult.success(task_id, value=value)
-            self._remember({"type": "execution_completed", "task_id": task_id, "result": value}, permanent=True)
+            result = value if isinstance(value, ExecutionResult) else ExecutionResult.success(task_id, value=value)
+            self._remember({"type": "execution_completed", "task_id": task_id, "result": result.to_dict()}, permanent=True)
             self._observe("execution", "success", result)
-            self._emit(EXECUTION_COMPLETED, task_id, status=result.status)
-            self._publish("execution.completed", result.__dict__)
-            return result.__dict__
+            self._emit(EXECUTION_COMPLETED, task_id, **result.to_event_payload())
+            self._publish("execution.completed", result.to_event_payload())
+            return result.to_dict()
         except Exception as error:
             result = ExecutionResult.failure(task_id, error)
-            self._remember({"type": "execution_failed", "task_id": task_id, "error": str(error)}, permanent=True)
+            self._remember({"type": "execution_failed", "task_id": task_id, "error": result.error}, permanent=True)
             recovery = self._observe("execution", "failure", error)
-            self._emit(EXECUTION_RECOVERY, task_id, error=str(error), recovery=recovery)
-            self._emit(EXECUTION_FAILED, task_id, error=str(error), status=result.status)
-            self._publish("execution.recovery_requested", {"result": result.__dict__, "recovery": recovery})
+            self._emit(EXECUTION_RECOVERY, task_id, error=result.error, recovery=recovery)
+            self._emit(EXECUTION_FAILED, task_id, **result.to_event_payload())
+            self._publish("execution.recovery_requested", {"result": result.to_event_payload(), "recovery": recovery})
             raise
 
     def _emit(self, event_type, task_id, **data):
