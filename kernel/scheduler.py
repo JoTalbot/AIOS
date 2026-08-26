@@ -67,8 +67,8 @@ class Scheduler:
         while True:
             task.state = TaskState.RUNNING
             task.attempts += 1
-            self._restore_checkpoint(task)
             try:
+                self._restore_checkpoint(task)
                 task.payload["result"] = await self.execute(task)
                 task.state = TaskState.DONE
                 task.error = None
@@ -114,9 +114,7 @@ class Scheduler:
         self.checkpoint_store.save(Checkpoint(task.id, payload, task.attempts))
 
     def _restore_checkpoint(self, task):
-        checkpoint = None
-        if self.checkpoint_store is not None:
-            checkpoint = self.checkpoint_store.load(task.id)
+        checkpoint = self.checkpoint_store.load(task.id) if self.checkpoint_store else None
         if checkpoint is None and task.checkpoint is not None:
             task.payload.update(task.checkpoint)
             return True
