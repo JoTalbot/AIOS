@@ -84,7 +84,7 @@ class Scheduler:
                 task.payload["result"] = task.result.value
                 task.state = TaskState.DONE
                 task.error = None
-                self._save_checkpoint(task)
+                self._finalize_checkpoint(task)
                 self._record(EXECUTION_COMPLETED, task, {"attempt": task.attempts, **task.result.to_event_payload()})
                 return
             except asyncio.CancelledError:
@@ -127,8 +127,17 @@ class Scheduler:
             return
         from execution.checkpoint import Checkpoint
         payload = dict(task.checkpoint or {})
-        payload.setdefault("task_payload", dict(task.payload))
+        payload["task_payload"] = dict(task.payload)
         self.checkpoint_store.save(Checkpoint(task.id, payload, task.attempts))
+
+    def _finalize_checkpoint(self, task):
+        """Commit terminal state then remove the resumable checkpoint."""
+        if self.checkpoint_store is None:
+            return
+        self._save_checkpoint(task)
+        delete = getattr(self.checkpoint_store, "delete", None)
+        if delete is not None:
+            delete(task.id)
 
     def _restore_checkpoint(self, task):
         checkpoint = self.checkpoint_store.load(task.id) if self.checkpoint_store else None
