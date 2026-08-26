@@ -5,6 +5,18 @@ class DependencyGraph:
     def add(self, component, requires=None):
         self.dependencies[component] = requires or []
 
+    def from_registry(self, registry):
+        """Build dependency graph from registered kernel components."""
+        self.dependencies.clear()
+
+        for component in registry.list_components():
+            self.add(
+                component,
+                registry.get_dependencies(component),
+            )
+
+        return self
+
     def resolve(self):
         resolved = []
         visiting = set()
