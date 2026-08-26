@@ -24,3 +24,12 @@ class RuntimeContextPersistence:
         if not self.facade:
             return None
         return self.facade.last_recovery()
+
+    def record_recovery(self, decision):
+        """Store a recovery decision in the runtime persistence stream."""
+        if not self.facade:
+            return None
+        return self.facade.record({
+            "type": "recovery.decision",
+            "decision": decision,
+        })
