@@ -1,6 +1,0 @@
-services:
-  aios:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
-    restart: unless-stopped
