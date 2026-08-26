@@ -6,19 +6,22 @@ from fastapi import FastAPI, HTTPException, Request
 
 from runtime.recovery_api import RecoveryOperatorService
 from runtime.recovery_http import build_recovery_router
-from .security import SecurityContext
+from .auth_config import ControlPlaneAuthConfig
+from .security import SecurityContext, authenticate
 
 
 def create_app(*, recovery_service: Optional[RecoveryOperatorService] = None,
                operator_validator: Optional[Callable[[Request], Optional[SecurityContext]]] = None,
-               readiness_check: Optional[Callable[[], bool]] = None):
+               readiness_check: Optional[Callable[[], bool]] = None,
+               auth_config: Optional[ControlPlaneAuthConfig] = None):
     app = FastAPI(title="AIOS API", version="vNext")
     service = recovery_service or RecoveryOperatorService()
+    config = auth_config
+    if config is None and operator_validator is None:
+        config = ControlPlaneAuthConfig.from_env()
 
     def authorize(request: Request):
-        if operator_validator is None:
-            raise HTTPException(status_code=403, detail="operator authorization is not configured")
-        context = operator_validator(request)
+        context = operator_validator(request) if operator_validator is not None else authenticate(request, config)
         if not context:
             raise HTTPException(status_code=403, detail="operator authorization required")
         request.state.operator_context = context
