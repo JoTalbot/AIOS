@@ -2,9 +2,9 @@
 
 ## STOP / RESUME POINT
 
-**Status:** cancellation → real checkpoint → restart/recovery regression added; next step is to validate and harden the cancellation boundary.
+**Status:** Scheduler worker cancellation now saves a resumable checkpoint; shutdown/cancellation regression added. Next step is full cancellation → restart validation and lifecycle hardening.
 
-**Latest main:** `14e8942`
+**Latest main:** `0fd58fe`
 
 ### Completed
 - API → Runtime → Orchestrator → Scheduler → Execution regression coverage.
@@ -15,10 +15,12 @@
 - Scheduler checks persistence before enqueue and before execution.
 - Real `ExecutionCoordinator` is exercised through Scheduler.
 - Crash/restart/replay regression uses the real `CheckpointStore`.
-- Cancellation/restart regression now verifies cancellation leaves a resumable checkpoint and recovery completes the task without duplicate execution.
+- Cancellation/restart regression covers resumable checkpoint recovery.
+- Scheduler worker cancellation now saves a checkpoint before propagating `CancelledError`.
+- Worker always calls `queue.task_done()` in `finally`, preserving queue accounting.
 
 ### Exact next task
-Validate the cancellation regression against the actual Scheduler worker lifecycle and harden worker shutdown/cancellation semantics so queue accounting and checkpoint persistence remain correct under cancellation.
+Run the complete cancellation → fresh Scheduler/Coordinator → recovery → terminal persistence → replay path against the current production checkpoint implementation. Then harden shutdown so cancelled workers can be restarted safely without stale worker references.
 
 ### Required invariants
 1. Terminal result is persisted before response.
@@ -31,6 +33,7 @@ Validate the cancellation regression against the actual Scheduler worker lifecyc
 8. Cancellation before terminal persistence leaves a valid resumable checkpoint.
 9. Production checkpoint path is tested.
 10. Worker cancellation does not corrupt `Queue.join()` accounting.
+11. Cancelled worker references can be safely replaced on restart.
 
 ### Rule for the next agent
 Inspect current `main` first. Do not introduce another persistence store. Preserve parallel-agent changes and never force-push.
