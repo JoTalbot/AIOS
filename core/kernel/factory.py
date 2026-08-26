@@ -1,5 +1,7 @@
 """Factory for constructing the new AIOS kernel stack."""
 
+from .runtime_context import RuntimeContext
+
 
 class KernelFactory:
     """Builds core services through the dependency container and registry."""
@@ -28,12 +30,12 @@ class KernelFactory:
         if bootstrap:
             bootstrap.initialize()
 
-        return {
-            "kernel": self.container.resolve("kernel"),
-            "agent_manager": self.container.resolve("agent_manager"),
-            "bootstrap": bootstrap,
-        }
+        return RuntimeContext(
+            kernel=self.container.resolve("kernel"),
+            agent_manager=self.container.resolve("agent_manager"),
+            bootstrap=bootstrap,
+            registry=self.registry,
+        )
 
     def create_kernel(self):
-        runtime = self.create_runtime()
-        return runtime["kernel"]
+        return self.create_runtime().kernel
