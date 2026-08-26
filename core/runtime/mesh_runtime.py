@@ -23,6 +23,7 @@ class MeshRuntimeBridge:
             target="broadcast",
             decision=decision,
             confidence=confidence,
+            priority=self._priority(confidence),
         )
 
     def _confidence(self, decision):
@@ -30,6 +31,13 @@ class MeshRuntimeBridge:
             return self.supervisor.recovery_confidence(decision)
         score = decision.get("score", 0) if isinstance(decision, dict) else 0
         return min(100, max(0, score))
+
+    def _priority(self, confidence):
+        if confidence >= 80:
+            return "high"
+        if confidence >= 40:
+            return "normal"
+        return "low"
 
     def publish_recovery_decision(self):
         decision = self.supervisor.recovery_decision() if hasattr(self.supervisor, "recovery_decision") else {}
@@ -68,10 +76,12 @@ class MeshRuntimeBridge:
         return self.mesh.recover(event, reason=reason)
 
     def broadcast_recovery(self, decision):
+        confidence = self._confidence(decision)
         return self.publish_message(
             "recovery.broadcast",
             decision=decision,
-            confidence=self._confidence(decision),
+            confidence=confidence,
+            priority=self._priority(confidence),
             broadcast=True,
         )
 
