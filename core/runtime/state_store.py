@@ -1,4 +1,4 @@
-"""Execution state persistence foundation."""
+"""Execution state persistence foundation with adaptive recovery policy."""
 
 
 class StateStore:
@@ -7,6 +7,7 @@ class StateStore:
         self._versions = {}
         self._checkpoints = {}
         self._health = {}
+        self._policies = {}
 
     def save(self, key, value, version=1):
         self._states[key] = dict(value) if isinstance(value, dict) else value
@@ -25,6 +26,7 @@ class StateStore:
         self._versions.pop(key, None)
         self._checkpoints.pop(key, None)
         self._health.pop(key, None)
+        self._policies.pop(key, None)
 
     def checkpoint(self, key):
         self._checkpoints[key] = self.load(key)
@@ -43,6 +45,12 @@ class StateStore:
 
     def health(self, key):
         return self._health.get(key, {"status": "unknown"})
+
+    def set_policy(self, key, policy):
+        self._policies[key] = dict(policy)
+
+    def policy(self, key):
+        return dict(self._policies.get(key, {"retries": 0, "rollback": True}))
 
 
 class AgentStateStore(StateStore):
