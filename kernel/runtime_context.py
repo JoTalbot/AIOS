@@ -57,7 +57,11 @@ class RuntimeContext:
 
     async def restart_async(self):
         await self.stop_async()
-        await self.start_async()
+        await self._await_checkpoint_recovery()
+        if self.scheduler is not None:
+            self.scheduler._worker_tasks = [w for w in self.scheduler._worker_tasks if not w.done()]
+            await self.scheduler.start()
+        self.lifecycle.start()
         return self
 
     async def execute(self, goal, task_id, metadata=None):
