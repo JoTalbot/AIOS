@@ -6,10 +6,12 @@ class StateStore:
         self._states = {}
         self._versions = {}
         self._checkpoints = {}
+        self._health = {}
 
     def save(self, key, value, version=1):
         self._states[key] = dict(value) if isinstance(value, dict) else value
         self._versions[key] = version
+        self.mark_healthy(key)
 
     def load(self, key):
         value = self._states.get(key)
@@ -22,6 +24,7 @@ class StateStore:
         self._states.pop(key, None)
         self._versions.pop(key, None)
         self._checkpoints.pop(key, None)
+        self._health.pop(key, None)
 
     def checkpoint(self, key):
         self._checkpoints[key] = self.load(key)
@@ -31,6 +34,15 @@ class StateStore:
         if key in self._checkpoints:
             self.save(key, self._checkpoints[key], version=self.version(key))
         return self.load(key)
+
+    def mark_failed(self, key, reason=None):
+        self._health[key] = {"status": "failed", "reason": reason}
+
+    def mark_healthy(self, key):
+        self._health[key] = {"status": "healthy"}
+
+    def health(self, key):
+        return self._health.get(key, {"status": "unknown"})
 
 
 class AgentStateStore(StateStore):
