@@ -47,10 +47,6 @@ class KernelFactory:
             event_bus=event_bus,
         )
 
-        if Supervisor:
-            recovery = RecoveryEngine() if RecoveryEngine else None
-            context.supervisor = Supervisor(recovery=recovery)
-
         persistence = None
         if self.container.has("persistence"):
             persistence = self.container.resolve("persistence")
@@ -59,6 +55,13 @@ class KernelFactory:
 
         if persistence:
             context.persistence.attach(RuntimePersistenceFacade(persistence))
+
+        if Supervisor:
+            recovery = RecoveryEngine() if RecoveryEngine else None
+            context.supervisor = Supervisor(
+                recovery=recovery,
+                persistence=context.persistence,
+            )
 
         return context
 
