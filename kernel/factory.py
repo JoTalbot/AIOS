@@ -53,32 +53,31 @@ class KernelFactory:
         bootstrap = self.container.resolve("bootstrap")
         event_bus = self.container.resolve("event_bus") if self.container.has("event_bus") else None
         kernel = self.container.resolve("kernel")
-        context = RuntimeContext(
-            kernel=kernel, agent_manager=self.container.resolve("agent_manager"),
-            bootstrap=bootstrap, registry=self.registry, event_bus=event_bus,
-            persistence=RuntimePersistenceFacade(),
-        )
         persistence = None
         if self.container.has("persistence"):
             persistence = self.container.resolve("persistence")
         elif self.container.has("persistence_store"):
             persistence = self.container.resolve("persistence_store")
-        if persistence:
-            facade = RuntimePersistenceFacade(persistence)
-            context.persistence_runtime.attach(facade)
-            context.persistence = facade
-            if self.container.has("scheduler"):
-                scheduler = self.container.resolve("scheduler")
-                checkpoint_store = PersistenceCheckpointStore(facade)
-                scheduler.checkpoint_store = checkpoint_store
-                restored = CheckpointRecovery(checkpoint_store).restore(scheduler)
-                if inspect.isawaitable(restored):
-                    context._checkpoint_recovery = restored
-                else:
-                    context._checkpoint_recovery = restored
+        persistence_facade = RuntimePersistenceFacade(persistence) if persistence else RuntimePersistenceFacade()
+        scheduler = self.container.resolve("scheduler") if self.container.has("scheduler") else None
+        checkpoint_store = None
+        recovery = None
+        if scheduler is not None and persistence:
+            checkpoint_store = PersistenceCheckpointStore(persistence_facade)
+            scheduler.checkpoint_store = checkpoint_store
+            recovery = CheckpointRecovery(checkpoint_store)
+            restored = recovery.restore(scheduler)
+            recovery = restored if inspect.isawaitable(restored) else restored
+        context = RuntimeContext(
+            kernel=kernel, agent_manager=self.container.resolve("agent_manager"),
+            bootstrap=bootstrap, registry=self.registry, event_bus=event_bus,
+            persistence=persistence_facade, scheduler=scheduler,
+            checkpoint_store=checkpoint_store, checkpoint_recovery=recovery,
+        )
+        context.persistence_runtime.attach(persistence_facade)
         if Supervisor:
-            recovery = RecoveryEngine() if RecoveryEngine else None
-            context.supervisor = Supervisor(recovery=recovery, persistence=context.persistence)
+            recovery_engine = RecoveryEngine() if RecoveryEngine else None
+            context.supervisor = Supervisor(recovery=recovery_engine, persistence=context.persistence)
         context.orchestrator = self._build_orchestrator(context)
         if context.orchestrator is not None and hasattr(kernel, "attach_orchestrator"):
             kernel.attach_orchestrator(context.orchestrator)
