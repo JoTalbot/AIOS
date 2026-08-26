@@ -1,8 +1,4 @@
-"""Execution coordinator for AIOS vNext.
-
-Coordinates agent, tool, memory, event and supervision layers through one
-explicit asynchronous execution boundary.
-"""
+"""Execution coordinator for AIOS vNext."""
 
 from execution.result import ExecutionResult
 
@@ -18,19 +14,14 @@ class ExecutionCoordinator:
     async def execute(self, request):
         task_id = request.get("task_id", "unknown")
         try:
-            self._observe("execution", "success", {"phase": "started", "task_id": task_id})
             self._publish("execution.started", request)
-            context = request.get("context", {})
-            goal = request.get("goal")
-            plan = request.get("plan", [])
-            self._remember({"type": "execution_started", "task_id": task_id, "goal": goal})
-
-            value = await self._run_agent(goal, plan, context)
-            value = await self._run_tools(value, context)
+            self._remember({"type": "execution_started", "task_id": task_id, "goal": request.get("goal")})
+            value = await self._run_agent(request.get("goal"), request.get("plan", []), request.get("context", {}))
+            value = await self._run_tools(value, request.get("context", {}))
             result = ExecutionResult.success(task_id, value=value)
             self._remember({"type": "execution_completed", "task_id": task_id, "result": value}, permanent=True)
-            self._publish("execution.completed", result.__dict__)
             self._observe("execution", "success", result)
+            self._publish("execution.completed", result.__dict__)
             return result.__dict__
         except Exception as error:
             result = ExecutionResult.failure(task_id, error)
@@ -52,13 +43,9 @@ class ExecutionCoordinator:
         return await value if hasattr(value, "__await__") else value
 
     async def _run_tools(self, result, context):
-        manager = self.tool_manager
-        if manager is None:
+        if not self.tool_manager or not hasattr(self.tool_manager, "execute"):
             return result
-        method = getattr(manager, "execute", None)
-        if method is None:
-            return result
-        value = method(result, context=context)
+        value = self.tool_manager.execute(result, context=context)
         return await value if hasattr(value, "__await__") else value
 
     def _remember(self, item, permanent=False):
