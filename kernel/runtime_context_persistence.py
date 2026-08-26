@@ -1,6 +1,6 @@
 """Runtime persistence wiring layer.
 
-Connects RuntimeContext with the persistence facade.
+Connects RuntimeContext with the persistence facade and checkpoint contract.
 """
 
 
@@ -16,20 +16,24 @@ class RuntimeContextPersistence:
         return facade
 
     def history(self):
-        if not self.facade:
-            return []
-        return self.facade.history()
+        return self.facade.history() if self.facade else []
 
     def last_recovery(self):
-        if not self.facade:
-            return None
-        return self.facade.last_recovery()
+        return self.facade.last_recovery() if self.facade else None
 
     def record_recovery(self, decision):
-        """Store a recovery decision in the runtime persistence stream."""
         if not self.facade:
             return None
-        return self.facade.record({
+        return self.facade.record_recovery({
             "type": "recovery.decision",
             "decision": decision,
         })
+
+    def save_checkpoint(self, checkpoint):
+        return self.facade.save_checkpoint(checkpoint) if self.facade else None
+
+    def load_checkpoint(self, task_id):
+        return self.facade.load_checkpoint(task_id) if self.facade else None
+
+    def delete_checkpoint(self, task_id):
+        return self.facade.delete_checkpoint(task_id) if self.facade else None
