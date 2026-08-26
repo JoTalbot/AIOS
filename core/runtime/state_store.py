@@ -52,6 +52,12 @@ class StateStore:
     def policy(self, key):
         return dict(self._policies.get(key, {"retries": 0, "rollback": True}))
 
+    def should_retry(self, key, attempts):
+        return attempts < self.policy(key).get("retries", 0)
+
+    def should_rollback(self, key):
+        return bool(self.policy(key).get("rollback", True))
+
 
 class AgentStateStore(StateStore):
     """Agent-specific state persistence API."""
