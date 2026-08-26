@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, Request
 
 from runtime.recovery_api import RecoveryOperatorService
 from runtime.recovery_http import build_recovery_router
-from runtime.security_context import OperatorContext, Role
+from runtime.security_context import OperatorContext
 
 
 def create_app(*, recovery_service: Optional[RecoveryOperatorService] = None,
