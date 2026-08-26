@@ -9,7 +9,7 @@ jobs:
   security-regression:
     runs-on: ubuntu-latest
     env:
-      AIOS_OPERATOR_TOKEN: ci-test-token
+      AIOS_OPERATOR_TOKEN: ci-test-token-16
       AIOS_OPERATOR_ROLE: operator
       AIOS_OPERATOR_ACTOR: ci
     steps:
