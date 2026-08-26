@@ -64,6 +64,15 @@ class RuntimeSupervisor:
             self._emit("state.rollback", agent_id=self.agent_id, state=restored)
         return restored
 
+    def analytics(self):
+        return {
+            "agent_id": self.agent_id,
+            "health": self.health_status,
+            "attempts": self.recovery_attempts,
+            "metrics": dict(self.recovery_metrics),
+            "state_metrics": self.state_store.metrics(self.agent_id) if hasattr(self.state_store, "metrics") else {},
+        }
+
     def health(self):
         return {
             "agent_id": self.agent_id,
