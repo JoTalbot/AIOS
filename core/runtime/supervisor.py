@@ -14,6 +14,7 @@ class RuntimeSupervisor:
         self.health_status = "unknown"
         self.recovery_attempts = 0
         self.recovery_metrics = {"recoveries": 0, "rollbacks": 0, "failures": 0}
+        self.decision_history = []
 
     def _emit(self, name, **metadata):
         if self.hooks:
@@ -43,7 +44,7 @@ class RuntimeSupervisor:
         self.recovery_metrics["recoveries"] += 1
         policy = self.state_store.policy(self.agent_id) if hasattr(self.state_store, "policy") else {}
         state = self.state_store.load(self.agent_id)
-        decision = {"retry": self.recovery_attempts <= policy.get("retries", 0), "rollback": policy.get("rollback", True) and state is not None}
+        decision = self.recovery_decision()
         self._emit("recovery.analytics", agent_id=self.agent_id, metrics=self.recovery_metrics)
         self._emit("recovery.decision", agent_id=self.agent_id, decision=decision, policy=policy)
         if state is not None:
@@ -52,12 +53,25 @@ class RuntimeSupervisor:
 
     def recovery_decision(self):
         policy = self.state_store.policy(self.agent_id) if hasattr(self.state_store, "policy") else {}
+        rollback_available = self.state_store.load(self.agent_id) is not None
+        score = 0
+        if self.health_status == "failed":
+            score += 40
+        if rollback_available:
+            score += 30
+        if self.recovery_attempts < policy.get("retries", 0):
+            score += 20
+        if policy.get("rollback", True):
+            score += 10
         decision = {
             "agent_id": self.agent_id,
             "health": self.health_status,
+            "score": score,
             "retry_available": self.recovery_attempts < policy.get("retries", 0),
-            "rollback_available": self.state_store.load(self.agent_id) is not None,
+            "rollback_available": rollback_available,
+            "action": "rollback" if rollback_available else "retry",
         }
+        self.decision_history.append(decision)
         self._emit("recovery.intelligence", decision=decision)
         return decision
 
@@ -72,15 +86,15 @@ class RuntimeSupervisor:
             self._emit("state.rollback", agent_id=self.agent_id, state=restored)
         return restored
 
+    def decision_history_snapshot(self):
+        return list(self.decision_history)
+
     def analytics(self):
         return {"agent_id": self.agent_id, "health": self.health_status, "attempts": self.recovery_attempts, "metrics": dict(self.recovery_metrics), "state_metrics": self.state_store.metrics(self.agent_id) if hasattr(self.state_store, "metrics") else {}}
 
     def observability_snapshot(self):
         snapshot = self.analytics()
-        if hasattr(self.state_store, "analytics"):
-            snapshot["state_analytics"] = self.state_store.analytics(self.agent_id)
-        if self.hooks and hasattr(self.hooks, "analytics"):
-            snapshot["hook_analytics"] = self.hooks.analytics()
+        snapshot["decision_history"] = self.decision_history_snapshot()
         self._emit("observability.snapshot", agent_id=self.agent_id, snapshot=snapshot)
         return snapshot
 
