@@ -26,7 +26,7 @@ async def test_orchestrator_executes_plan_through_tool_boundary():
     registry = ToolRegistry()
     registry.register("add", add, permissions={"compute"})
     audit = ExecutionAudit()
-    sandbox = ToolSandbox(registry, audit)
+    sandbox = ToolSandbox(registry, audit, authorization={"agent-1": {"compute"}})
     executor = AgentExecutor(sandbox)
     orchestrator = VNextOrchestrator(
         planner=Planner(),
@@ -43,3 +43,20 @@ async def test_orchestrator_executes_plan_through_tool_boundary():
         "tool.execution.started",
         "tool.execution.completed",
     ]
+
+
+@pytest.mark.asyncio
+async def test_context_cannot_self_grant_unauthorized_permissions():
+    registry = ToolRegistry()
+    registry.register("add", add, permissions={"compute"})
+    sandbox = ToolSandbox(registry, authorization={"agent-1": set()})
+    executor = AgentExecutor(sandbox)
+
+    result = await executor.execute(
+        Agent(),
+        [{"tool": "add", "arguments": {"a": 1, "b": 2}}],
+        {"permissions": ["compute"]},
+    )
+
+    assert result[0].ok is False
+    assert "requires permissions" in (result[0].error or "")
