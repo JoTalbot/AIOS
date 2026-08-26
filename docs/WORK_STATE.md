@@ -2,9 +2,9 @@
 
 ## STOP / RESUME POINT
 
-**Status:** RuntimeContext now invokes the real checkpoint recovery object exactly once through the canonical Scheduler, and concurrent `execute()` / `recover()` calls are covered by regression.
+**Status:** canonical checkpoint adapter now delegates directly to the supplied persistence object; a fresh adapter instance can recover and delete the same persisted checkpoint without relying on its own in-memory `_items` cache.
 
-**Latest main:** `43f22c0ec786d06ac154d575e4ce3268246b8a5e`
+**Latest main:** `f31b0bab89d8cae1536347cb6cc1187bc8466077`
 
 ### Completed
 - Canonical RuntimeContext → VNextOrchestrator → Scheduler → ExecutionCoordinator path.
@@ -12,11 +12,13 @@
 - Checkpoint recovery idempotency per Scheduler.
 - Factory-created cancellation → restart → recovery → persistence → replay coverage.
 - Async RuntimeContext lifecycle and serialized restart.
-- RuntimeContext now executes checkpoint `restore()` instead of merely marking recovery initialized.
+- RuntimeContext invokes checkpoint `restore()` through the canonical Scheduler.
 - Concurrent execute/recover recovery race regression.
+- PersistenceCheckpointStore uses the supplied canonical persistence object directly.
+- Fresh-store checkpoint recovery regression.
 
 ### Exact next task
-Run the complete integration suite on current `main`. Then harden the canonical persistence/checkpoint adapter so restart recovery uses persisted checkpoints across a fresh process/store instance, not an in-memory `_items` cache.
+Run the complete integration suite on current `main`. Fix any contract/signature failures exposed by the real Factory-created path. Then add a true fresh-process RuntimeContext restart test where the second context is built with a new checkpoint adapter over the same persisted state.
 
 ### Required invariants
 1. Terminal result is persisted before response.
@@ -35,11 +37,12 @@ Run the complete integration suite on current `main`. Then harden the canonical 
 14. Factory wiring preserves one canonical persistence/recovery path.
 15. RuntimeContext.execute() reaches the real VNextOrchestrator and ExecutionCoordinator.
 16. ExecutionCoordinator and Scheduler share the same canonical persistence object.
-17. Recovery restores each checkpointed task exactly once.
-18. Restart does not duplicate workers or queue entries.
-19. Concurrent RuntimeContext restarts are serialized.
-20. Concurrent execute/recover calls initialize recovery exactly once.
-21. Recovery works from persisted state after a fresh RuntimeContext/store instance.
+17. Factory-created RuntimeContext is the integration path used by recovery tests.
+18. Recovery restores each checkpointed task exactly once.
+19. Restart does not duplicate workers or queue entries.
+20. Concurrent RuntimeContext restarts are serialized.
+21. Checkpoint recovery survives a fresh adapter/store instance.
+22. Fresh RuntimeContext restart recovers from persisted state, not process-local memory.
 
 ### Rule for the next agent
 Inspect current `main` first. Do not introduce another persistence store. Preserve parallel-agent changes and never force-push.
