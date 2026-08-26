@@ -1,6 +1,7 @@
 """Factory for constructing the new AIOS kernel stack."""
 
 from .runtime_context import RuntimeContext
+from .runtime_persistence_facade import RuntimePersistenceFacade
 
 
 class KernelFactory:
@@ -31,13 +32,24 @@ class KernelFactory:
         if self.container.has("event_bus"):
             event_bus = self.container.resolve("event_bus")
 
-        return RuntimeContext(
+        context = RuntimeContext(
             kernel=self.container.resolve("kernel"),
             agent_manager=self.container.resolve("agent_manager"),
             bootstrap=bootstrap,
             registry=self.registry,
             event_bus=event_bus,
         )
+
+        persistence = None
+        if self.container.has("persistence"):
+            persistence = self.container.resolve("persistence")
+        elif self.container.has("persistence_store"):
+            persistence = self.container.resolve("persistence_store")
+
+        if persistence:
+            context.persistence.attach(RuntimePersistenceFacade(persistence))
+
+        return context
 
     def create_kernel(self):
         return self.create_runtime().kernel
