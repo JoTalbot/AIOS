@@ -6,6 +6,7 @@ from typing import Any
 class SupervisorState:
     healthy: bool = True
     failures: list[str] = field(default_factory=list)
+    recovery_attempts: int = 0
 
 
 class Supervisor:
@@ -19,10 +20,25 @@ class Supervisor:
         if event == "failure":
             self.state.healthy = False
             self.state.failures.append(component)
-            self._recover(component, payload)
+            self.state.recovery_attempts += 1
+            return self._recover(component, payload)
+
+        if event == "success":
+            self.state.healthy = True
+
         return self.state
 
     def _recover(self, component: str, payload: Any = None):
+        if self.recovery and hasattr(self.recovery, "evaluate"):
+            from core.execution.recovery import RecoverySignal
+            signal = RecoverySignal(
+                component=component,
+                error=str(payload),
+                attempts=self.state.recovery_attempts,
+            )
+            return self.recovery.evaluate(signal)
+
         if self.recovery and hasattr(self.recovery, "recover"):
             return self.recovery.recover(component, payload)
+
         return None
