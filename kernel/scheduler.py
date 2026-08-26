@@ -67,6 +67,7 @@ class Scheduler:
                 task.payload["agent"],
                 task.payload.get("plan", ()),
                 task.payload.get("context", {}),
+                execution_context=task.payload.get("execution_context"),
             )
         await asyncio.sleep(0)
         return {"agent": task.agent, "status": "completed"}
