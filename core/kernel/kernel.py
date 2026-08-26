@@ -1,8 +1,10 @@
 from .lifecycle import LifecycleManager, LifecyclePhase
 from .registry import KernelRegistry
 from .state import KernelState, RuntimeStatus
+from .recovery import KernelRecovery
 from core.events.bus import EventBus
 from core.events.event import KernelEvent
+from core.events.persistence import EventStore
 
 
 class Kernel:
@@ -10,7 +12,9 @@ class Kernel:
         self.state = KernelState()
         self.registry = KernelRegistry()
         self.lifecycle = LifecycleManager()
-        self.events = EventBus()
+        self.event_store = EventStore()
+        self.events = EventBus(self.event_store)
+        self.recovery = KernelRecovery(self.event_store)
 
         self.lifecycle.subscribe(
             self._on_lifecycle_change
@@ -27,6 +31,9 @@ class Kernel:
                 },
             )
         )
+
+    def restore(self):
+        self.recovery.restore_status(self.state)
 
     def start(self):
         self.lifecycle.transition(LifecyclePhase.START)
