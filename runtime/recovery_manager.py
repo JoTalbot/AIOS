@@ -1,21 +1,32 @@
-"""Recovery manager foundation for AIOS runtime."""
+"""Startup recovery for restart-safe AIOS executions."""
+
+from typing import Any, Optional
+
+from .execution_store import ExecutionState, ExecutionStore
 
 
 class RecoveryManager:
-    def __init__(self, store=None):
+    """Discover resumable executions and hand them back to the runtime."""
+
+    def __init__(self, store: ExecutionStore):
         self.store = store
-        self.events = []
 
-    async def recover(self, execution_id):
-        event = {
-            "execution_id": execution_id,
-            "action": "recovery_requested"
-        }
-        self.events.append(event)
+    def pending(self):
+        return self.store.resumable()
 
-        if self.store:
-            return await self.store.load(execution_id)
-        return None
+    async def recover(self, loop, agent: Any, context: Optional[dict] = None):
+        recovered = []
+        for state in self.pending():
+            result = await loop.run(
+                state.goal,
+                agent,
+                context=context,
+                execution_context=None,
+            )
+            recovered.append((state.execution_id, result))
+        return recovered
 
-    def history(self):
-        return self.events
+    def mark_failed(self, state: ExecutionState, error: BaseException):
+        state.status = "failed"
+        state.error = str(error)
+        return self.store.save(state)
