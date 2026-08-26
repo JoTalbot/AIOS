@@ -9,3 +9,9 @@ class APIServer:
 
     def handle(self, request):
         return invoke(request, self.pipeline)
+
+    async def status(self):
+        return {
+            "system": "AIOS",
+            "api": "online"
+        }
