@@ -1,7 +1,6 @@
 """Factory for constructing the new AIOS kernel stack."""
 
 from .runtime_context import RuntimeContext
-from .runtime_lifecycle import RuntimeLifecycle
 
 
 class KernelFactory:
@@ -28,15 +27,17 @@ class KernelFactory:
         self.wire_registry()
 
         bootstrap = self.container.resolve("bootstrap")
-        context = RuntimeContext(
+        event_bus = None
+        if self.container.has("event_bus"):
+            event_bus = self.container.resolve("event_bus")
+
+        return RuntimeContext(
             kernel=self.container.resolve("kernel"),
             agent_manager=self.container.resolve("agent_manager"),
             bootstrap=bootstrap,
             registry=self.registry,
+            event_bus=event_bus,
         )
-
-        context.lifecycle = RuntimeLifecycle(context)
-        return context
 
     def create_kernel(self):
         return self.create_runtime().kernel
