@@ -31,6 +31,7 @@ class RuntimeOrchestrator:
         self.loop = build_execution_loop(executor, planner, owner_id=owner_id, store=self.store,
                                          lease_store=self.lease_store, policy=policy, event_bus=event_bus)
         self.shutdown_manager = ShutdownManager()
+        self.shutdown_manager.register_release(self._release_owned_leases)
         self.owner_id = owner_id
         self.started = False
 
@@ -53,6 +54,10 @@ class RuntimeOrchestrator:
         if not self.started:
             await self.start(agent, context=context)
         return await self.loop.run(goal, agent, context=context)
+
+    async def _release_owned_leases(self):
+        for state in self.store.resumable():
+            self.lease_store.release(state.execution_id, self.owner_id)
 
     async def shutdown(self):
         result = await self.shutdown_manager.shutdown()
