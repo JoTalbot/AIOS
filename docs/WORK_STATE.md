@@ -2,25 +2,26 @@
 
 ## STOP / RESUME POINT
 
-**Status:** Scheduler worker cancellation now saves a resumable checkpoint; shutdown/cancellation regression added. Next step is full cancellation → restart validation and lifecycle hardening.
+**Status:** Scheduler worker lifecycle hardened for cancellation/restart; cancelled worker references are removed and fresh workers can be started safely.
 
-**Latest main:** `0fd58fe`
+**Latest main:** `813ddd7`
 
 ### Completed
 - API → Runtime → Orchestrator → Scheduler → Execution regression coverage.
-- Execution terminal results are persisted before response return.
+- Terminal execution results persist before response.
 - Duplicate execution is prevented by persisted terminal results.
-- `CheckpointStore` is a facade over canonical `ExecutionStore`.
+- CheckpointStore is a facade over canonical ExecutionStore.
 - Recovery skips tasks whose terminal result already exists.
 - Scheduler checks persistence before enqueue and before execution.
-- Real `ExecutionCoordinator` is exercised through Scheduler.
-- Crash/restart/replay regression uses the real `CheckpointStore`.
+- Real ExecutionCoordinator is exercised through Scheduler.
+- Crash/restart/replay regression uses the real CheckpointStore.
 - Cancellation/restart regression covers resumable checkpoint recovery.
-- Scheduler worker cancellation now saves a checkpoint before propagating `CancelledError`.
-- Worker always calls `queue.task_done()` in `finally`, preserving queue accounting.
+- Worker cancellation saves a checkpoint and preserves queue accounting.
+- `Scheduler.start()` removes completed/cancelled worker references before creating replacements.
+- `Scheduler.stop()` clears worker references before cancellation/gather.
 
 ### Exact next task
-Run the complete cancellation → fresh Scheduler/Coordinator → recovery → terminal persistence → replay path against the current production checkpoint implementation. Then harden shutdown so cancelled workers can be restarted safely without stale worker references.
+Run a full worker lifecycle regression: cancel a worker during execution, restart workers on the same Scheduler, recover the checkpoint, complete the task, and verify a later replay does not execute again.
 
 ### Required invariants
 1. Terminal result is persisted before response.
@@ -32,7 +33,7 @@ Run the complete cancellation → fresh Scheduler/Coordinator → recovery → t
 7. Completed replay does not invoke agent/tool again.
 8. Cancellation before terminal persistence leaves a valid resumable checkpoint.
 9. Production checkpoint path is tested.
-10. Worker cancellation does not corrupt `Queue.join()` accounting.
+10. Worker cancellation does not corrupt Queue.join() accounting.
 11. Cancelled worker references can be safely replaced on restart.
 
 ### Rule for the next agent
