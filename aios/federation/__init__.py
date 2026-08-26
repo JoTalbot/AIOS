@@ -1,6 +1,9 @@
-"""AIOS Planetary Federation Layer."""
+"""AIOS Planetary Federation Layer.
 
-from .federation import Federation
+Federated coordination primitives for distributed AIOS nodes.
+"""
+
+from .federation import Federation, FederationRuntime
 from .models import FederationNode
 
-__all__ = ["Federation", "FederationNode"]
+__all__ = ["Federation", "FederationNode", "FederationRuntime"]
