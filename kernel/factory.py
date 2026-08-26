@@ -42,6 +42,8 @@ class KernelFactory:
             return None
         execution = self.container.resolve("execution") if self.container.has("execution") else None
         reflection = self.container.resolve("reflection") if self.container.has("reflection") else None
+        if execution is not None and context.persistence is not None and hasattr(execution, "persistence"):
+            execution.persistence = context.persistence
         return VNextOrchestrator(
             self.container.resolve("planner"), self.container.resolve("scheduler"),
             self.container.resolve("agent"), reflection=reflection, execution=execution,
