@@ -3,6 +3,11 @@
 from .runtime_context import RuntimeContext
 from .runtime_persistence_facade import RuntimePersistenceFacade
 
+try:
+    from core.supervision.supervisor import Supervisor
+except ImportError:
+    Supervisor = None
+
 
 class KernelFactory:
     """Builds core services through the dependency container and registry."""
@@ -39,6 +44,9 @@ class KernelFactory:
             registry=self.registry,
             event_bus=event_bus,
         )
+
+        if Supervisor:
+            context.supervisor = Supervisor(event_bus=event_bus)
 
         persistence = None
         if self.container.has("persistence"):
