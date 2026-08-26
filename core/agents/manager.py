@@ -46,7 +46,6 @@ class AgentManager:
         if snapshot is None and self.persistence:
             snapshot = self.persistence.load_runtime_snapshot()
         snapshot = snapshot or {}
-
         for name, state in snapshot.items():
             runtime = self.get_runtime(name)
             if not runtime:
@@ -55,7 +54,6 @@ class AgentManager:
                 runtime.start()
             elif state == AgentRuntimeState.STOPPED.value:
                 runtime.stop()
-
         self._publish("agent.recovered", snapshot)
         return self.snapshot()
 
