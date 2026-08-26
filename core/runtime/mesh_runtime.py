@@ -9,18 +9,26 @@ class MeshRuntimeBridge:
     def publish_snapshot(self):
         snapshot = self.supervisor.observability_snapshot()
         return self.mesh.publish(
-            event="agent.snapshot",
+            name="agent.snapshot",
             source=self.supervisor.agent_id,
-            payload=snapshot,
-            broadcast=True,
+            target="broadcast",
+            snapshot=snapshot,
         )
 
     def publish_recovery(self, decision):
         return self.mesh.publish(
-            event="recovery.decision",
+            name="recovery.decision",
             source=self.supervisor.agent_id,
-            payload={"decision": decision},
-            broadcast=True,
+            target="broadcast",
+            decision=decision,
+        )
+
+    def publish_message(self, name, target="broadcast", **payload):
+        return self.mesh.publish(
+            name=name,
+            source=self.supervisor.agent_id,
+            target=target,
+            **payload,
         )
 
     def snapshot(self):
