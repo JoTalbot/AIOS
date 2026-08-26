@@ -32,6 +32,11 @@ class KernelRegistry:
             self.register("bootstrap", bootstrap)
         return self
 
+    def wire_container(self, container):
+        for name, component in self.components.items():
+            container.register(name, component)
+        return container
+
     def restore(self, recovery):
         recovery.restore(self)
         return self
