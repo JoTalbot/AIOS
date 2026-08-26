@@ -18,7 +18,7 @@ class ExecutionCoordinator:
     async def execute(self, request):
         task_id = request.get("task_id", "unknown")
         try:
-            self._observe("runtime", "start", request)
+            self._observe("execution", "success", {"phase": "started", "task_id": task_id})
             self._publish("execution.started", request)
             context = request.get("context", {})
             goal = request.get("goal")
