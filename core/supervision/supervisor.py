@@ -47,9 +47,19 @@ class Supervisor:
         return None
 
     def _record_recovery(self, component: str, decision: Any):
-        if self.persistence and hasattr(self.persistence, "record"):
-            self.persistence.record({
-                "type": "recovery_decision",
-                "component": component,
-                "decision": decision,
-            })
+        if not self.persistence:
+            return
+
+        record = {
+            "type": "recovery_decision",
+            "component": component,
+            "decision": decision,
+        }
+
+        # Prefer the runtime's semantic persistence API when available.
+        # Keep the generic record() fallback for lightweight adapters and
+        # backwards compatibility with existing integrations.
+        if hasattr(self.persistence, "record_recovery"):
+            self.persistence.record_recovery(record)
+        elif hasattr(self.persistence, "record"):
+            self.persistence.record(record)
