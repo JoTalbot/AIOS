@@ -1,4 +1,4 @@
-"""Agent execution lifecycle hooks v7."""
+"""Agent execution lifecycle hooks v8."""
 
 import inspect
 from dataclasses import dataclass, field
@@ -25,18 +25,30 @@ class AgentHooks:
         self._history: List[HookEvent] = []
         self._decisions: List[Dict[str, Any]] = []
         self._analytics: List[Dict[str, Any]] = []
+        self._observers: List[Callable] = []
 
     def register(self, event: str, callback: Callable, priority: int = 0):
         self._hooks.setdefault(event, []).append(HookEntry(priority, callback))
         self._hooks[event].sort()
 
+    def register_observer(self, callback: Callable):
+        self._observers.append(callback)
+
+    def unregister_observer(self, callback: Callable):
+        self._observers = [item for item in self._observers if item != callback]
+
     def unregister(self, event: str, callback: Callable):
         callbacks = self._hooks.get(event, [])
         self._hooks[event] = [entry for entry in callbacks if entry.callback != callback]
 
+    def _notify_observers(self, event):
+        for observer in self._observers:
+            observer(event)
+
     def emit(self, event: str, *args, **kwargs):
         hook_event = HookEvent(event, payload=kwargs)
         self._history.append(hook_event)
+        self._notify_observers(hook_event)
         results = []
         for entry in self._hooks.get(event, []):
             results.append(entry.callback(hook_event, *args, **kwargs))
@@ -45,6 +57,7 @@ class AgentHooks:
     async def emit_async(self, event: str, *args, **kwargs):
         hook_event = HookEvent(event, payload=kwargs)
         self._history.append(hook_event)
+        self._notify_observers(hook_event)
         results = []
         for entry in self._hooks.get(event, []):
             result = entry.callback(hook_event, *args, **kwargs)
