@@ -1,7 +1,7 @@
 """Execution coordinator for AIOS vNext."""
 
 from execution.event_sink import ExecutionEventSink
-from execution.events import EXECUTION_COMPLETED, EXECUTION_FAILED, EXECUTION_RECOVERY, build_event
+from execution.events import EXECUTION_COMPLETED, EXECUTION_FAILED, EXECUTION_RECOVERY, EXECUTION_STARTED, build_event
 from execution.result import ExecutionResult
 
 
@@ -17,6 +17,7 @@ class ExecutionCoordinator:
     async def execute(self, request):
         task_id = request.get("task_id", "unknown")
         try:
+            self._emit(EXECUTION_STARTED, task_id)
             self._publish("execution.started", request)
             self._remember({"type": "execution_started", "task_id": task_id, "goal": request.get("goal")})
             value = await self._run_agent(request.get("goal"), request.get("plan", []), request.get("context", {}))
