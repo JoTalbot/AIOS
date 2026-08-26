@@ -45,8 +45,14 @@ class Scheduler:
         self._worker_tasks = []
 
     async def submit(self, task: AgentTask):
+        existing = self.tasks.get(task.id)
+        if existing is not None:
+            if existing.state in {TaskState.DONE, TaskState.RUNNING, TaskState.RESTORING}:
+                return existing
+            return existing
         self.tasks[task.id] = task
         await self.queue.put(task)
+        return task
 
     async def start(self):
         if not self._worker_tasks:
@@ -79,6 +85,9 @@ class Scheduler:
             task.attempts += 1
             try:
                 self._restore_checkpoint(task)
+                if self._terminal_checkpoint(task):
+                    task.state = TaskState.DONE
+                    return
                 value = await self.execute(task)
                 task.result = value if isinstance(value, ExecutionResult) else ExecutionResult.success(task.id, value=value)
                 task.payload["result"] = task.result.value
@@ -142,13 +151,17 @@ class Scheduler:
     def _restore_checkpoint(self, task):
         checkpoint = self.checkpoint_store.load(task.id) if self.checkpoint_store else None
         if checkpoint is None and task.checkpoint is not None:
-            task.payload.update(task.checkpoint)
+            task.payload.update(task.checkpoint.get("task_payload", task.checkpoint))
             return True
         if checkpoint is None:
             return False
         payload = dict(checkpoint.payload)
         task.payload.update(payload.get("task_payload", payload))
+        task.checkpoint = payload
         return True
+
+    def _terminal_checkpoint(self, task):
+        return task.payload.get("result") is not None
 
     async def execute(self, task):
         if self.executor is not None:
