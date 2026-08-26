@@ -60,6 +60,7 @@ class Scheduler:
         return task
 
     async def start(self):
+        self._worker_tasks = [worker for worker in self._worker_tasks if not worker.done()]
         if not self._worker_tasks:
             self._worker_tasks = [asyncio.create_task(self.worker()) for _ in range(self.workers)]
         return self
@@ -69,11 +70,12 @@ class Scheduler:
         await self.queue.join()
 
     async def stop(self):
-        for worker in self._worker_tasks:
-            worker.cancel()
-        if self._worker_tasks:
-            await asyncio.gather(*self._worker_tasks, return_exceptions=True)
+        workers = list(self._worker_tasks)
         self._worker_tasks = []
+        for worker in workers:
+            worker.cancel()
+        if workers:
+            await asyncio.gather(*workers, return_exceptions=True)
 
     async def worker(self):
         while True:
