@@ -17,12 +17,7 @@ class RecoveryManager:
     async def recover(self, loop, agent: Any, context: Optional[dict] = None):
         recovered = []
         for state in self.pending():
-            result = await loop.run(
-                state.goal,
-                agent,
-                context=context,
-                execution_context=None,
-            )
+            result = await loop.resume(state.execution_id, agent, context=context)
             recovered.append((state.execution_id, result))
         return recovered
 
