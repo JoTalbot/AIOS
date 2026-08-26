@@ -2,7 +2,7 @@
 
 
 class KernelContainer:
-    """Minimal dependency registry used by bootstrap."""
+    """Dependency registry used by the kernel bootstrap flow."""
 
     def __init__(self):
         self._services = {}
@@ -13,6 +13,12 @@ class KernelContainer:
 
     def resolve(self, name):
         return self._services.get(name)
+
+    def list_services(self):
+        return list(self._services.keys())
+
+    def has(self, name):
+        return name in self._services
 
     def build_bootstrap(self, kernel, agent_manager, event_hooks=None):
         from .bootstrap import KernelBootstrap
