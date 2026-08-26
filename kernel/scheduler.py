@@ -26,12 +26,13 @@ class AgentTask:
 
 
 class Scheduler:
-    def __init__(self, workers=1, executor=None, recovery=None):
+    def __init__(self, workers=1, executor=None, recovery=None, checkpoint_store=None):
         self.queue = asyncio.Queue()
         self.tasks = {}
         self.workers = max(1, workers)
         self.executor = executor
         self.recovery = recovery
+        self.checkpoint_store = checkpoint_store
         self._worker_tasks = []
 
     async def submit(self, task: AgentTask):
@@ -66,10 +67,12 @@ class Scheduler:
         while True:
             task.state = TaskState.RUNNING
             task.attempts += 1
+            self._restore_checkpoint(task)
             try:
                 task.payload["result"] = await self.execute(task)
                 task.state = TaskState.DONE
                 task.error = None
+                self._save_checkpoint(task)
                 return
             except asyncio.CancelledError:
                 raise
@@ -79,10 +82,10 @@ class Scheduler:
                 action = self._recovery_action(task, exc)
                 if action == "retry":
                     task.state = TaskState.RETRYING
+                    self._save_checkpoint(task)
                     continue
-                if action == "restore" and task.checkpoint is not None:
+                if action == "restore" and self._restore_checkpoint(task):
                     task.state = TaskState.RESTORING
-                    task.payload.update(task.checkpoint)
                     continue
                 task.state = TaskState.FAILED
                 return
@@ -92,12 +95,36 @@ class Scheduler:
             return "retry"
         if self.recovery and hasattr(self.recovery, "evaluate"):
             from execution.recovery import RecoverySignal
-            metadata = {"checkpoint": "available"} if task.checkpoint else {}
-            decision = self.recovery.evaluate(
-                RecoverySignal(task.agent, str(error), task.attempts, metadata)
-            )
+            metadata = {"checkpoint": "available"} if self._has_checkpoint(task) else {}
+            decision = self.recovery.evaluate(RecoverySignal(task.agent, str(error), task.attempts, metadata))
             return getattr(getattr(decision, "action", None), "value", "abort")
         return "abort"
+
+    def _has_checkpoint(self, task):
+        if task.checkpoint is not None:
+            return True
+        return bool(self.checkpoint_store and self.checkpoint_store.load(task.id))
+
+    def _save_checkpoint(self, task):
+        if self.checkpoint_store is None:
+            return
+        from execution.checkpoint import Checkpoint
+        payload = dict(task.checkpoint or {})
+        payload.setdefault("task_payload", dict(task.payload))
+        self.checkpoint_store.save(Checkpoint(task.id, payload, task.attempts))
+
+    def _restore_checkpoint(self, task):
+        checkpoint = None
+        if self.checkpoint_store is not None:
+            checkpoint = self.checkpoint_store.load(task.id)
+        if checkpoint is None and task.checkpoint is not None:
+            task.payload.update(task.checkpoint)
+            return True
+        if checkpoint is None:
+            return False
+        payload = dict(checkpoint.payload)
+        task.payload.update(payload.get("task_payload", payload))
+        return True
 
     async def execute(self, task):
         if self.executor is not None:
