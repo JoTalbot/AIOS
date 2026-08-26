@@ -1,4 +1,4 @@
-"""Persistent execution state with an explicit, validated lifecycle."""
+"""Persistent execution state backed by a domain state machine."""
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -6,9 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-
-class InvalidExecutionTransition(ValueError):
-    pass
+from .execution_state_machine import ExecutionStateMachine, InvalidExecutionTransition
 
 
 @dataclass
@@ -24,19 +22,12 @@ class ExecutionState:
 
 
 class ExecutionStore:
-    """Small atomic JSON store; validates lifecycle transitions."""
+    """Small atomic JSON store delegating lifecycle rules to the domain machine."""
 
-    TRANSITIONS = {
-        "pending": {"running"},
-        "running": {"retrying", "completed", "failed"},
-        "retrying": {"running", "failed"},
-        "completed": set(),
-        "failed": {"retrying"},
-    }
-
-    def __init__(self, path: str = "data/executions.json"):
+    def __init__(self, path: str = "data/executions.json", state_machine: Optional[ExecutionStateMachine] = None):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.state_machine = state_machine or ExecutionStateMachine()
         if not self.path.exists():
             self._write({})
 
@@ -55,9 +46,7 @@ class ExecutionStore:
         data = self._read()
         previous = data.get(state.execution_id)
         if previous:
-            old_status = previous.get("status", "pending")
-            if state.status != old_status and state.status not in self.TRANSITIONS.get(old_status, set()):
-                raise InvalidExecutionTransition(f"invalid execution transition: {old_status} -> {state.status}")
+            self.state_machine.validate(previous.get("status", "pending"), state.status)
         state.updated_at = datetime.now(timezone.utc).isoformat()
         data[state.execution_id] = asdict(state)
         self._write(data)
@@ -69,6 +58,7 @@ class ExecutionStore:
             if status != "pending":
                 raise KeyError(execution_id)
             state = ExecutionState(execution_id=execution_id)
+        self.state_machine.validate(state.status, status)
         state.status = status
         for key, value in updates.items():
             setattr(state, key, value)
