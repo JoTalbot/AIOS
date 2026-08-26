@@ -36,6 +36,6 @@ def test_correlation_propagates_to_audit(tmp_path):
     response = TestClient(app).post("/recovery/resolve", json={"execution_id": "e2", "action": "manual_review"})
     assert response.status_code == 200
     event = service.audit_events()[-1]
-    assert event.actor == "alice"
-    assert event.correlation_id == "corr-99"
-    assert event.outcome == "resolved"
+    assert event["actor"] == "alice"
+    assert event["correlation_id"] == "corr-99"
+    assert event["outcome"] == "resolved"
