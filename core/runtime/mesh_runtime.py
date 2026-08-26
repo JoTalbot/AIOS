@@ -31,6 +31,19 @@ class MeshRuntimeBridge:
             **payload,
         )
 
+    def subscribe(self, callback):
+        return self.mesh.subscribe(callback)
+
+    def unsubscribe(self, callback):
+        return self.mesh.unsubscribe(callback)
+
+    def broadcast_recovery(self, decision):
+        return self.publish_message(
+            "recovery.broadcast",
+            decision=decision,
+            broadcast=True,
+        )
+
     def snapshot(self):
         return {
             "agent_id": self.supervisor.agent_id,
