@@ -26,5 +26,13 @@ def create_app(*, recovery_service: Optional[RecoveryOperatorService] = None,
             raise HTTPException(status_code=403, detail="operator authorization required")
         return True
 
+    @app.get("/health", tags=["system"])
+    async def health():
+        return {"status": "ok", "system": "AIOS"}
+
+    @app.get("/ready", tags=["system"])
+    async def ready():
+        return {"status": "ready", "system": "AIOS"}
+
     app.include_router(build_recovery_router(service, authorize_operator=authorize))
     return app
