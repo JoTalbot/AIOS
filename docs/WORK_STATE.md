@@ -2,9 +2,9 @@
 
 ## STOP / RESUME POINT
 
-**Status:** RuntimeContext now owns the canonical scheduler/checkpoint/recovery wiring; next step is to validate factory/runtime lifecycle integration end-to-end.
+**Status:** RuntimeContext recovery ownership is wired and an integration regression now verifies idempotent recovery initialization.
 
-**Latest main:** `41bf3e0`
+**Latest main:** `808830a`
 
 ### Completed
 - API → Runtime → Orchestrator → Scheduler → Execution regression coverage.
@@ -18,11 +18,12 @@
 - Cancellation saves a resumable checkpoint and preserves queue accounting.
 - Cancelled worker references can be safely replaced on restart.
 - Full worker lifecycle regression covers cancellation, restart, recovery, persistence and replay.
-- `KernelFactory` now wires scheduler + checkpoint store + recovery into `RuntimeContext`.
-- `RuntimeContext` exposes `scheduler`, `checkpoint_store`, and a single `recover()` lifecycle entrypoint.
+- KernelFactory wires scheduler + checkpoint store + recovery into RuntimeContext.
+- RuntimeContext owns the canonical recovery entrypoint.
+- Added RuntimeContext factory regression for idempotent recovery initialization.
 
 ### Exact next task
-Add/validate an integration regression through `KernelFactory.create_runtime()`: factory wiring → RuntimeContext → recovery → Scheduler → ExecutionCoordinator → terminal persistence. Ensure recovery is initialized once and no duplicate restore occurs on repeated `execute()` calls.
+Extend the factory integration test with a real scheduler/persistence/executor path, then validate that `RuntimeContext.execute()` does not trigger duplicate recovery initialization or duplicate checkpoint restoration.
 
 ### Required invariants
 1. Terminal result is persisted before response.
@@ -38,6 +39,7 @@ Add/validate an integration regression through `KernelFactory.create_runtime()`:
 11. Cancelled worker references can be safely replaced on restart.
 12. RuntimeContext owns the canonical restart/recovery lifecycle.
 13. RuntimeContext recovery initialization is idempotent.
+14. Factory wiring must preserve one canonical persistence/recovery path.
 
 ### Rule for the next agent
 Inspect current `main` first. Do not introduce another persistence store. Preserve parallel-agent changes and never force-push.
