@@ -4,7 +4,7 @@ from enum import Enum
 
 from execution import ExecutionResult
 from execution.event_sink import ExecutionEventSink
-from execution.events import EXECUTION_COMPLETED, EXECUTION_FAILED, EXECUTION_RECOVERY, build_event
+from execution.events import EXECUTION_COMPLETED, EXECUTION_FAILED, EXECUTION_RECOVERY, EXECUTION_STARTED, build_event
 from execution.status import EXECUTION_COMPLETED_STATUS
 
 
@@ -72,6 +72,7 @@ class Scheduler:
                 self.queue.task_done()
 
     async def _execute_with_recovery(self, task):
+        self._record(EXECUTION_STARTED, task, {"attempt": task.attempts + 1})
         while True:
             task.state = TaskState.RUNNING
             task.attempts += 1
