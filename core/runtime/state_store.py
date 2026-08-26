@@ -5,6 +5,7 @@ class StateStore:
     def __init__(self):
         self._states = {}
         self._versions = {}
+        self._checkpoints = {}
 
     def save(self, key, value, version=1):
         self._states[key] = dict(value) if isinstance(value, dict) else value
@@ -20,6 +21,16 @@ class StateStore:
     def delete(self, key):
         self._states.pop(key, None)
         self._versions.pop(key, None)
+        self._checkpoints.pop(key, None)
+
+    def checkpoint(self, key):
+        self._checkpoints[key] = self.load(key)
+        return self.load(key)
+
+    def rollback(self, key):
+        if key in self._checkpoints:
+            self.save(key, self._checkpoints[key], version=self.version(key))
+        return self.load(key)
 
 
 class AgentStateStore(StateStore):
@@ -37,3 +48,9 @@ class AgentStateStore(StateStore):
             state = handler(self.load(agent_id), current, target_version)
             self.save(agent_id, state, version=target_version)
         return self.load(agent_id)
+
+    def checkpoint_agent(self, agent_id):
+        return self.checkpoint(agent_id)
+
+    def rollback_agent(self, agent_id):
+        return self.rollback(agent_id)
