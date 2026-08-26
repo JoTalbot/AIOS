@@ -52,7 +52,7 @@ class AgentExecutor:
         tool_context = ToolExecutionContext(agent_id=agent_id, permissions=permissions)
         result = await self.tool_executor.execute(call, tool_context, execution_context=ctx)
         attempts = 0
-        while not result.ok and attempts < self.retries:
+        while result.retryable and not result.ok and attempts < self.retries:
             attempts += 1
             await asyncio.sleep(min(0.25 * (2 ** (attempts - 1)), 2.0))
             result = await self.tool_executor.execute(call, tool_context, execution_context=ctx)
