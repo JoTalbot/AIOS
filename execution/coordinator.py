@@ -3,21 +3,26 @@
 from execution.event_sink import ExecutionEventSink
 from execution.events import EXECUTION_COMPLETED, EXECUTION_FAILED, EXECUTION_RECOVERY, EXECUTION_STARTED, build_event
 from execution.memory_adapter import ExecutionMemoryAdapter
+from execution.persistence import ExecutionStore
 from execution.result import ExecutionResult
 from execution.tool_adapter import ExecutionToolAdapter
 
 
 class ExecutionCoordinator:
-    def __init__(self, agent_runner=None, tool_manager=None, memory=None, events=None, supervisor=None, event_sink=None):
+    def __init__(self, agent_runner=None, tool_manager=None, memory=None, events=None, supervisor=None, event_sink=None, persistence=None):
         self.agent_runner = agent_runner
         self.tool_manager = tool_manager
         self.memory = ExecutionMemoryAdapter(memory)
         self.events = events
         self.supervisor = supervisor
         self.event_sink = event_sink or ExecutionEventSink()
+        self.persistence = persistence or ExecutionStore()
 
     async def execute(self, request):
         task_id = request.get("task_id", "unknown")
+        persisted = self.persistence.load_result(task_id)
+        if persisted is not None:
+            return persisted
         try:
             self._emit(EXECUTION_STARTED, task_id)
             self._publish("execution.started", request)
@@ -30,11 +35,13 @@ class ExecutionCoordinator:
             value = await self._run_agent(request.get("goal"), request.get("plan", []), context)
             value = await self._run_tools(value, context, request)
             result = value if isinstance(value, ExecutionResult) else ExecutionResult.success(task_id, value=value)
-            self._remember({"type": "execution_completed", "task_id": task_id, "result": result.to_dict()}, permanent=True)
+            result_dict = result.to_dict()
+            self.persistence.save_result(task_id, result_dict)
+            self._remember({"type": "execution_completed", "task_id": task_id, "result": result_dict}, permanent=True)
             self._observe("execution", "success", result)
             self._emit(EXECUTION_COMPLETED, task_id, **result.to_event_payload())
             self._publish("execution.completed", result.to_event_payload())
-            return result.to_dict()
+            return result_dict
         except Exception as error:
             result = ExecutionResult.failure(task_id, error)
             self._remember({"type": "execution_failed", "task_id": task_id, "error": result.error}, permanent=True)
