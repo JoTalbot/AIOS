@@ -1,4 +1,4 @@
-"""Bounded autonomous execution loop with restart-safe persistence."""
+"""Bounded autonomous execution loop with restart-safe, lease-aware persistence."""
 
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -19,8 +19,6 @@ class LoopResult:
 
 
 class AutonomousExecutionLoop:
-    """Execute plans with durable checkpoints and restart-safe recovery."""
-
     def __init__(self, executor, planner, policy: Optional[ReplanningPolicy] = None, event_bus=None, store: Optional[ExecutionStore] = None, checkpoint: Optional[RecoveryCheckpoint] = None):
         self.executor = executor
         self.planner = planner
