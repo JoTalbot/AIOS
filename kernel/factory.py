@@ -2,6 +2,7 @@
 
 from .runtime_context import RuntimeContext
 from .runtime_persistence_facade import RuntimePersistenceFacade
+from execution.checkpoint_adapter import PersistenceCheckpointStore
 
 try:
     from supervision.supervisor import Supervisor
@@ -52,7 +53,12 @@ class KernelFactory:
         elif self.container.has("persistence_store"):
             persistence = self.container.resolve("persistence_store")
         if persistence:
-            context.persistence_runtime.attach(RuntimePersistenceFacade(persistence))
+            facade = RuntimePersistenceFacade(persistence)
+            context.persistence_runtime.attach(facade)
+            context.persistence = facade
+            if self.container.has("scheduler"):
+                scheduler = self.container.resolve("scheduler")
+                scheduler.checkpoint_store = PersistenceCheckpointStore(facade)
 
         if Supervisor:
             recovery = RecoveryEngine() if RecoveryEngine else None
