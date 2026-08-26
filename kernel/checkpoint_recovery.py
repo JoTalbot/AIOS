@@ -12,9 +12,10 @@ class CheckpointRecovery:
             return []
         restored = []
         for task_id, checkpoint in list(self.store._items.items()):
+            if task_id in scheduler.tasks:
+                continue
             payload = dict(checkpoint.payload)
             task_payload = dict(payload.get("task_payload", payload))
-            # Completed checkpoints are terminal and must never be replayed.
             if task_payload.get("result") is not None:
                 continue
             task = AgentTask(task_id, task_payload.get("agent", "unknown"), task_payload)
