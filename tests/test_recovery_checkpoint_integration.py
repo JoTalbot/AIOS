@@ -35,4 +35,10 @@ async def test_loop_uses_recovery_checkpoint_for_attempts_and_completion(tmp_pat
     result = await loop.run("checkpoint me", "agent-1")
 
     assert result.status == "completed"
-    state = store.get(result=result) if False else store.get(result="unused")
+    execution_id = next(iter(store._read()))
+    state = store.get(execution_id)
+    assert state.status == "completed"
+    assert state.attempt == 2
+    assert state.result[0].ok is True
+    assert state.error is None
+    assert planner.calls == 2
