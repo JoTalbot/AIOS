@@ -1,0 +1,13 @@
+system:
+  name: AIOS
+  version: vNext
+
+kernel:
+  scheduler: enabled
+  memory: enabled
+  communication: enabled
+  security: enabled
+
+agent:
+  default_timeout: 60
+  reflection: true
