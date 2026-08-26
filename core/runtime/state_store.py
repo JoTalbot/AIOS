@@ -85,6 +85,14 @@ class StateStore:
             "analytics": self.analytics(key),
         }
 
+    def fleet_summary(self):
+        return {
+            "agents": list(self._states.keys()),
+            "count": len(self._states),
+            "health": {key: self.health(key) for key in self._states},
+            "analytics": {key: self.analytics(key) for key in self._states},
+        }
+
 
 class AgentStateStore(StateStore):
     """Agent-specific state persistence API."""
