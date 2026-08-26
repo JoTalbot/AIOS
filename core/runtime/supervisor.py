@@ -43,10 +43,7 @@ class RuntimeSupervisor:
         self.recovery_metrics["recoveries"] += 1
         policy = self.state_store.policy(self.agent_id) if hasattr(self.state_store, "policy") else {}
         state = self.state_store.load(self.agent_id)
-        decision = {
-            "retry": self.recovery_attempts <= policy.get("retries", 0),
-            "rollback": policy.get("rollback", True) and state is not None,
-        }
+        decision = {"retry": self.recovery_attempts <= policy.get("retries", 0), "rollback": policy.get("rollback", True) and state is not None}
         self._emit("recovery.analytics", agent_id=self.agent_id, metrics=self.recovery_metrics)
         self._emit("recovery.decision", agent_id=self.agent_id, decision=decision, policy=policy)
         if state is not None:
@@ -65,13 +62,7 @@ class RuntimeSupervisor:
         return restored
 
     def analytics(self):
-        return {
-            "agent_id": self.agent_id,
-            "health": self.health_status,
-            "attempts": self.recovery_attempts,
-            "metrics": dict(self.recovery_metrics),
-            "state_metrics": self.state_store.metrics(self.agent_id) if hasattr(self.state_store, "metrics") else {},
-        }
+        return {"agent_id": self.agent_id, "health": self.health_status, "attempts": self.recovery_attempts, "metrics": dict(self.recovery_metrics), "state_metrics": self.state_store.metrics(self.agent_id) if hasattr(self.state_store, "metrics") else {}}
 
     def observability_snapshot(self):
         snapshot = self.analytics()
@@ -82,11 +73,10 @@ class RuntimeSupervisor:
         self._emit("observability.snapshot", agent_id=self.agent_id, snapshot=snapshot)
         return snapshot
 
+    def fleet_snapshot(self):
+        snapshot = {self.agent_id: self.observability_snapshot()}
+        self._emit("fleet.snapshot", agents=list(snapshot.keys()))
+        return snapshot
+
     def health(self):
-        return {
-            "agent_id": self.agent_id,
-            "status": self.health_status,
-            "running": self.running,
-            "recovery_attempts": self.recovery_attempts,
-            "recovery_metrics": dict(self.recovery_metrics),
-        }
+        return {"agent_id": self.agent_id, "status": self.health_status, "running": self.running, "recovery_attempts": self.recovery_attempts, "recovery_metrics": dict(self.recovery_metrics)}
