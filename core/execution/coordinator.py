@@ -30,6 +30,14 @@ class ExecutionCoordinator:
 
             return result
         except Exception as error:
+            recovery = None
             if self.supervisor:
-                self.supervisor.on_failure(error)
+                recovery = self.supervisor.on_failure(error)
+
+            if self.events:
+                self.events.publish(
+                    "execution.recovery_requested",
+                    {"error": str(error), "recovery": recovery},
+                )
+
             raise
