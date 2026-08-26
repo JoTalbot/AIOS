@@ -3,6 +3,8 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
+from .status import EXECUTION_COMPLETED_STATUS, EXECUTION_FAILED_STATUS
+
 
 @dataclass
 class ExecutionResult:
@@ -14,12 +16,12 @@ class ExecutionResult:
 
     @property
     def ok(self) -> bool:
-        return self.status == "completed" and self.error is None
+        return self.status == EXECUTION_COMPLETED_STATUS and self.error is None
 
     @classmethod
     def success(cls, task_id, value=None, metadata=None):
-        return cls(task_id, "completed", value=value, metadata=dict(metadata or {}))
+        return cls(task_id, EXECUTION_COMPLETED_STATUS, value=value, metadata=dict(metadata or {}))
 
     @classmethod
     def failure(cls, task_id, error, metadata=None):
-        return cls(task_id, "failed", error=str(error), metadata=dict(metadata or {}))
+        return cls(task_id, EXECUTION_FAILED_STATUS, error=str(error), metadata=dict(metadata or {}))
