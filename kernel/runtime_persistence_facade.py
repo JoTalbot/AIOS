@@ -1,6 +1,6 @@
 """Runtime persistence facade.
 
-Provides one runtime-facing API for events, recovery records and checkpoints.
+Provides one runtime-facing API for events, results, recovery records and checkpoints.
 """
 
 
@@ -19,6 +19,28 @@ class RuntimePersistenceFacade:
 
     def record(self, event):
         return self.adapter.record(event) if self.adapter and hasattr(self.adapter, "record") else None
+
+    def save(self, key, value):
+        if self.adapter and hasattr(self.adapter, "save"):
+            return self.adapter.save(key, value)
+        return value
+
+    def load(self, key):
+        return self.adapter.load(key) if self.adapter and hasattr(self.adapter, "load") else None
+
+    def delete(self, key):
+        return self.adapter.delete(key) if self.adapter and hasattr(self.adapter, "delete") else None
+
+    def save_result(self, task_id, result):
+        if self.adapter and hasattr(self.adapter, "save_result"):
+            return self.adapter.save_result(task_id, result)
+        return self.save(task_id, {"status": "completed", "result": result})
+
+    def load_result(self, task_id):
+        if self.adapter and hasattr(self.adapter, "load_result"):
+            return self.adapter.load_result(task_id)
+        state = self.load(task_id)
+        return state.get("result") if isinstance(state, dict) and state.get("status") == "completed" else None
 
     def save_checkpoint(self, checkpoint):
         if self.adapter and hasattr(self.adapter, "save_checkpoint"):
