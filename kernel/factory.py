@@ -4,15 +4,18 @@ from .runtime_context import RuntimeContext
 from .runtime_persistence_facade import RuntimePersistenceFacade
 
 try:
-    from core.supervision.supervisor import Supervisor
-    from core.execution.recovery import RecoveryEngine
+    from supervision.supervisor import Supervisor
 except ImportError:
     Supervisor = None
+
+try:
+    from execution.recovery import RecoveryEngine
+except ImportError:
     RecoveryEngine = None
 
 
 class KernelFactory:
-    """Builds core services through the dependency container and registry."""
+    """Build core services through the dependency container and registry."""
 
     def __init__(self, container, registry=None):
         self.container = container
@@ -21,10 +24,8 @@ class KernelFactory:
     def register_services(self):
         if not self.registry:
             return
-
         for name in self.container.list_services():
-            component = self.container.resolve(name)
-            self.registry.register(name, component)
+            self.registry.register(name, self.container.resolve(name))
 
     def wire_registry(self):
         if self.registry and hasattr(self.registry, "wire_container"):
@@ -35,10 +36,7 @@ class KernelFactory:
         self.wire_registry()
 
         bootstrap = self.container.resolve("bootstrap")
-        event_bus = None
-        if self.container.has("event_bus"):
-            event_bus = self.container.resolve("event_bus")
-
+        event_bus = self.container.resolve("event_bus") if self.container.has("event_bus") else None
         context = RuntimeContext(
             kernel=self.container.resolve("kernel"),
             agent_manager=self.container.resolve("agent_manager"),
@@ -52,17 +50,12 @@ class KernelFactory:
             persistence = self.container.resolve("persistence")
         elif self.container.has("persistence_store"):
             persistence = self.container.resolve("persistence_store")
-
         if persistence:
             context.persistence.attach(RuntimePersistenceFacade(persistence))
 
         if Supervisor:
             recovery = RecoveryEngine() if RecoveryEngine else None
-            context.supervisor = Supervisor(
-                recovery=recovery,
-                persistence=context.persistence,
-            )
-
+            context.supervisor = Supervisor(recovery=recovery, persistence=context.persistence)
         return context
 
     def create_kernel(self):
