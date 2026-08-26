@@ -1,4 +1,4 @@
-"""Agent execution lifecycle hooks v10."""
+"""Agent execution lifecycle hooks v11."""
 
 import inspect
 from dataclasses import dataclass, field
@@ -27,7 +27,9 @@ class AgentHooks:
         self._analytics: List[Dict[str, Any]] = []
         self._observers: List[Callable] = []
         self._mesh_callbacks: List[Callable] = []
+        self._recovery_callbacks: List[Callable] = []
         self._observer_events = 0
+        self._recovery_events = 0
 
     def register(self, event: str, callback: Callable, priority: int = 0):
         self._hooks.setdefault(event, []).append(HookEntry(priority, callback))
@@ -38,6 +40,12 @@ class AgentHooks:
 
     def register_mesh_callback(self, callback: Callable):
         self._mesh_callbacks.append(callback)
+
+    def register_recovery_callback(self, callback: Callable):
+        self._recovery_callbacks.append(callback)
+
+    def unregister_recovery_callback(self, callback: Callable):
+        self._recovery_callbacks = [item for item in self._recovery_callbacks if item != callback]
 
     def unregister_mesh_callback(self, callback: Callable):
         self._mesh_callbacks = [item for item in self._mesh_callbacks if item != callback]
@@ -54,6 +62,10 @@ class AgentHooks:
             observer(event)
         for callback in self._mesh_callbacks:
             callback(event)
+        if event.name.startswith("recovery"):
+            self._recovery_events += 1
+            for callback in self._recovery_callbacks:
+                callback(event)
 
     def emit(self, event: str, *args, **kwargs):
         hook_event = HookEvent(event, payload=kwargs)
@@ -87,7 +99,7 @@ class AgentHooks:
         return list(self._decisions)
 
     def observability(self):
-        return {"observers": len(self._observers), "mesh_callbacks": len(self._mesh_callbacks), "events": self._observer_events, "history": len(self._history)}
+        return {"observers": len(self._observers), "mesh_callbacks": len(self._mesh_callbacks), "recovery_callbacks": len(self._recovery_callbacks), "events": self._observer_events, "recovery_events": self._recovery_events, "history": len(self._history)}
 
     def history(self, event: str = None):
         if event is None:
@@ -99,3 +111,4 @@ class AgentHooks:
         self._decisions.clear()
         self._analytics.clear()
         self._observer_events = 0
+        self._recovery_events = 0
