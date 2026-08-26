@@ -6,7 +6,7 @@ runtime coordinators and multi-agent consensus layers.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List
+from typing import Any, Callable, Dict, List
 
 
 class RecoveryAction(str, Enum):
@@ -29,6 +29,28 @@ class RecoveryDecision:
     action: RecoveryAction
     reason: str
     confidence: float
+
+
+@dataclass
+class RecoveryResult:
+    recovered: bool
+    value: Any = None
+
+
+class RecoveryHandler:
+    """Optional recovery callback after execution failure."""
+
+    def __init__(self, handler: Callable[[Exception, Any], Any] | None = None):
+        self.handler = handler
+
+    async def recover(self, error: Exception, context: Any) -> RecoveryResult:
+        if self.handler is None:
+            return RecoveryResult(recovered=False)
+
+        return RecoveryResult(
+            recovered=True,
+            value=self.handler(error, context),
+        )
 
 
 class RecoveryEngine:
