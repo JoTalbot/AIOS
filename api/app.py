@@ -6,11 +6,11 @@ from fastapi import FastAPI, HTTPException, Request
 
 from runtime.recovery_api import RecoveryOperatorService
 from runtime.recovery_http import build_recovery_router
-from runtime.security_context import OperatorContext
+from .security import SecurityContext
 
 
 def create_app(*, recovery_service: Optional[RecoveryOperatorService] = None,
-               operator_validator: Optional[Callable[[Request], Optional[OperatorContext]]] = None,
+               operator_validator: Optional[Callable[[Request], Optional[SecurityContext]]] = None,
                readiness_check: Optional[Callable[[], bool]] = None):
     app = FastAPI(title="AIOS API", version="vNext")
     service = recovery_service or RecoveryOperatorService()
