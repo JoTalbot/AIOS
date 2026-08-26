@@ -12,7 +12,7 @@ class Planner:
 
 class Executor:
     async def execute(self, *args):
-        raise asyncio.CancelledError()
+        raise RuntimeError("simulated recovery failure")
 
 
 @pytest.mark.asyncio
