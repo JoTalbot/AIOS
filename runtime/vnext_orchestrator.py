@@ -42,9 +42,6 @@ class VNextOrchestrator:
     def _build_task(self, task_id, goal, plan, context):
         from kernel.scheduler import AgentTask
         payload = {"goal": goal, "plan": plan, "context": context, "agent": self.agent}
+        if self.executor:
+            payload["executor"] = self.executor
         return AgentTask(id=task_id, agent=str(self.agent), payload=payload)
-
-    async def execute_task(self, task):
-        if not self.executor:
-            raise RuntimeError("AgentExecutor is required for tool-backed execution")
-        return await self.executor.execute(task.payload["agent"], task.payload["plan"], task.payload["context"])
