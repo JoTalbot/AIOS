@@ -10,10 +10,11 @@ class SupervisorState:
 
 
 class Supervisor:
-    """Coordinates runtime health and recovery decisions."""
+    """Coordinates runtime health, recovery decisions and persistence."""
 
-    def __init__(self, recovery=None):
+    def __init__(self, recovery=None, persistence=None):
         self.recovery = recovery
+        self.persistence = persistence
         self.state = SupervisorState()
 
     def observe(self, component: str, event: str, payload: Any = None):
@@ -21,7 +22,9 @@ class Supervisor:
             self.state.healthy = False
             self.state.failures.append(component)
             self.state.recovery_attempts += 1
-            return self._recover(component, payload)
+            decision = self._recover(component, payload)
+            self._record_recovery(component, decision)
+            return decision
 
         if event == "success":
             self.state.healthy = True
@@ -42,3 +45,11 @@ class Supervisor:
             return self.recovery.recover(component, payload)
 
         return None
+
+    def _record_recovery(self, component: str, decision: Any):
+        if self.persistence and hasattr(self.persistence, "record"):
+            self.persistence.record({
+                "type": "recovery_decision",
+                "component": component,
+                "decision": decision,
+            })
