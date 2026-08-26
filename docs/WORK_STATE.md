@@ -2,23 +2,23 @@
 
 ## STOP / RESUME POINT
 
-**Status:** crash-during-execution checkpoint/restart/replay regression added; ready to validate and then harden the recovery lifecycle.
+**Status:** canonical crash/restart test now uses the real `CheckpointStore` backed by `ExecutionStore`; ready for crash/cancellation hardening.
 
-**Latest main:** `81eb2eb0b79a56de9d3074fcf01963e848915cb1`
+**Latest main:** `1bac0c0`
 
 ### Completed
 - API → Runtime → Orchestrator → Scheduler → Execution regression coverage.
 - Execution terminal results are persisted before response return.
 - Duplicate execution is prevented by persisted terminal results.
-- `CheckpointStore` and `ExecutionStore` share the execution lifecycle.
+- `CheckpointStore` is a compatibility facade over canonical `ExecutionStore`.
 - Recovery skips tasks whose terminal result already exists.
-- Scheduler checks persistence before enqueue and again before execution.
-- Real `ExecutionCoordinator` has been exercised through the Scheduler execution loop.
+- Scheduler checks persistence before enqueue and before execution.
+- Real `ExecutionCoordinator` is exercised through the Scheduler execution loop.
 - Restart/replay regression proves completed tasks are not executed twice.
-- Added crash-once runner regression: first execution fails before terminal persistence, checkpoint remains, recovery resumes on a fresh Scheduler, terminal result is persisted, checkpoint is removed, and later replay does not execute again.
+- Crash/restart/replay regression now uses the repository's actual `CheckpointStore` and `ExecutionStore`, not a mock checkpoint store.
 
 ### Exact next task
-Validate the crash/restart regression against the repository's actual checkpoint implementation and then harden checkpoint persistence so cancellation/crash boundaries cannot lose resumable state.
+Harden cancellation/crash boundaries: prove a cancellation during execution leaves a valid resumable checkpoint, then restart a fresh Scheduler/Coordinator and complete the task without duplicate execution.
 
 ### Required invariants
 1. Terminal result is persisted before response.
@@ -28,7 +28,8 @@ Validate the crash/restart regression against the repository's actual checkpoint
 5. Recovery and Scheduler share the same lifecycle state.
 6. A recovered task executes exactly once after restart.
 7. A completed task can be replayed without invoking the agent/tool again.
-8. A crash before terminal persistence leaves a resumable checkpoint.
+8. A crash/cancellation before terminal persistence leaves a valid resumable checkpoint.
+9. The production checkpoint path is tested; mocks do not replace it.
 
 ### Rule for the next agent
 Inspect current `main` first. Do not introduce another persistence store. Preserve parallel-agent changes and never force-push.
