@@ -1,6 +1,7 @@
 import pytest
 
 from runtime.autonomous_loop import AutonomousExecutionLoop
+from runtime.execution_context import ExecutionContext
 from runtime.execution_store import ExecutionStore
 from runtime.replanning import ReplanningPolicy
 from runtime.tool_protocol import ToolResult
@@ -27,12 +28,16 @@ class Executor:
 
 
 @pytest.mark.asyncio
-async def test_loop_persists_retrying_before_replan(tmp_path):
+async def test_loop_routes_retry_through_state_machine(tmp_path):
     store = ExecutionStore(str(tmp_path / "executions.json"))
     planner = Planner()
     loop = AutonomousExecutionLoop(Executor(), planner, ReplanningPolicy(max_attempts=2), store=store)
+    execution = ExecutionContext(agent_id="agent-1", goal="task")
 
-    result = await loop.run("task", "agent-1")
+    result = await loop.run("task", "agent-1", execution_context=execution)
+    state = store.get(execution.execution_id)
 
     assert result.status == "completed"
-    assert store.get(result.execution_id if hasattr(result, "execution_id") else "unknown") is None
+    assert state.status == "completed"
+    assert state.attempt == 1
+    assert planner.calls == 2
