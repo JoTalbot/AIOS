@@ -32,10 +32,14 @@ class Supervisor:
     def _recover(self, component: str, payload: Any = None):
         if self.recovery and hasattr(self.recovery, "evaluate"):
             from execution.recovery import RecoverySignal
+            metadata = {}
+            if isinstance(payload, dict):
+                metadata.update(payload.get("metadata") or {})
             signal = RecoverySignal(
                 component=component,
                 error=str(payload),
                 attempts=self.state.recovery_attempts,
+                metadata=metadata,
             )
             return self.recovery.evaluate(signal)
         if self.recovery and hasattr(self.recovery, "recover"):
