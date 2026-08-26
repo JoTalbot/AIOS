@@ -16,6 +16,7 @@ class RuntimeContext:
         self.registry = registry
         self.event_bus = event_bus
         self.persistence = persistence
+        self.supervisor = None
         self.restart_events = RestartEventEmitter(event_bus)
         self.lifecycle = RuntimeLifecycle(self)
         self.restart_manager = RestartManager(self)
@@ -29,9 +30,12 @@ class RuntimeContext:
             "registry": self.registry,
             "event_bus": self.event_bus,
             "persistence": self.persistence,
+            "supervisor": self.supervisor,
         }
 
     def start(self):
+        if self.supervisor and hasattr(self.supervisor, "observe"):
+            self.supervisor.observe("runtime", "success")
         return self.lifecycle.start()
 
     def stop(self):
