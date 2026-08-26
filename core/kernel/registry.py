@@ -10,3 +10,7 @@ class KernelRegistry:
 
     def list_components(self):
         return list(self.components.keys())
+
+    def restore(self, recovery):
+        recovery.restore(self)
+        return self
