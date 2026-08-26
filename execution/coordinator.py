@@ -2,6 +2,7 @@
 
 from execution.event_sink import ExecutionEventSink
 from execution.events import EXECUTION_COMPLETED, EXECUTION_FAILED, EXECUTION_RECOVERY, EXECUTION_STARTED, build_event
+from execution.memory_adapter import ExecutionMemoryAdapter
 from execution.result import ExecutionResult
 
 
@@ -9,7 +10,7 @@ class ExecutionCoordinator:
     def __init__(self, agent_runner=None, tool_manager=None, memory=None, events=None, supervisor=None, event_sink=None):
         self.agent_runner = agent_runner
         self.tool_manager = tool_manager
-        self.memory = memory
+        self.memory = ExecutionMemoryAdapter(memory)
         self.events = events
         self.supervisor = supervisor
         self.event_sink = event_sink or ExecutionEventSink()
@@ -59,8 +60,7 @@ class ExecutionCoordinator:
         return await value if hasattr(value, "__await__") else value
 
     def _remember(self, item, permanent=False):
-        if self.memory and hasattr(self.memory, "remember"):
-            self.memory.remember(item, permanent=permanent)
+        self.memory.remember(item, permanent=permanent)
 
     def _publish(self, event, payload):
         if self.events and hasattr(self.events, "publish"):
