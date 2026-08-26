@@ -27,6 +27,19 @@ class RuntimeBootstrap:
             try:
                 await resume(state)
                 recovered += 1
-            except Exception:
+            except Exception as exc:
                 failed += 1
+                self.recovery_manager.mark_failed(state, exc)
+        return RecoveryReport(len(pending), len(pending), recovered, failed)
+
+    async def recover_with_loop(self, loop, agent: Any, context: Optional[dict] = None) -> RecoveryReport:
+        pending = self.store.resumable()
+        recovered = failed = 0
+        for state in pending:
+            try:
+                await loop.resume(state.execution_id, agent, context=context)
+                recovered += 1
+            except Exception as exc:
+                failed += 1
+                self.recovery_manager.mark_failed(state, exc)
         return RecoveryReport(len(pending), len(pending), recovered, failed)
