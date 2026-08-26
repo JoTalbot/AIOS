@@ -1,10 +1,10 @@
 """Checkpoint adapter that refuses stale execution owners."""
 
-from .execution_checkpoint import ExecutionCheckpoint
+from .recovery_checkpoint import RecoveryCheckpoint
 
 
 class LeaseAwareCheckpoint:
-    def __init__(self, checkpoint: ExecutionCheckpoint, lease_store, owner_id: str):
+    def __init__(self, checkpoint: RecoveryCheckpoint, lease_store, owner_id: str):
         self.checkpoint = checkpoint
         self.lease_store = lease_store
         self.owner_id = owner_id
