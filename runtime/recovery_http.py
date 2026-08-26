@@ -15,51 +15,61 @@ if APIRouter is not None:
     class ResolveRequest(BaseModel):
         execution_id: str = Field(min_length=1)
         action: str = Field(min_length=1)
+        reason: Optional[str] = None
 
     class RetryRequest(BaseModel):
         execution_id: str = Field(min_length=1)
+        reason: Optional[str] = None
 
 
 def build_recovery_router(service: RecoveryOperatorService, authorize_operator: Optional[Callable] = None):
     if APIRouter is None:
         raise RuntimeError("FastAPI is required for the recovery HTTP transport")
-
     router = APIRouter(prefix="/recovery", tags=["operator-recovery"])
 
-    def guard(request: Request):
+    def context(request: Request):
         if authorize_operator is None:
             raise HTTPException(status_code=403, detail="operator authorization is not configured")
-        result = authorize_operator(request)
-        if result is False:
+        value = authorize_operator(request)
+        if not value:
             raise HTTPException(status_code=403, detail="operator authorization required")
-        return True
+        return value
 
-    @router.get("/queue", dependencies=[Depends(guard)])
-    def queue(action: Optional[str] = None):
+    @router.get("/queue")
+    def queue(request: Request, action: Optional[str] = None):
+        context(request)
         return service.list(action=action)
 
-    @router.get("/quarantine", dependencies=[Depends(guard)])
-    def quarantine():
+    @router.get("/quarantine")
+    def quarantine(request: Request):
+        context(request)
         return service.list(action="quarantine")
 
-    @router.get("/manual-review", dependencies=[Depends(guard)])
-    def manual_review():
+    @router.get("/manual-review")
+    def manual_review(request: Request):
+        context(request)
         return service.list(action="manual_review")
 
-    @router.post("/resolve", dependencies=[Depends(guard)])
-    def resolve(payload: ResolveRequest):
-        if payload.action not in {"retry", "skip", "quarantine", "manual_review"}:
-            raise HTTPException(status_code=422, detail="unsupported recovery action")
-        changed = service.resolve(payload.execution_id, payload.action)
-        if not changed:
-            raise HTTPException(status_code=404, detail="recovery queue item not found")
-        return {"resolved": True, "execution_id": payload.execution_id, "action": payload.action}
+    @router.post("/resolve")
+    def resolve(payload: ResolveRequest, request: Request):
+        operator = context(request)
+        role = getattr(operator, "role", None)
+        if getattr(role, "value", role) not in {"operator", "admin"}:
+            raise HTTPException(status_code=403, detail="operator role required")
+        try:
+            return service.resolve(payload.execution_id, payload.action, actor=operator.actor, reason=payload.reason, correlation_id=operator.correlation_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @router.post("/retry", dependencies=[Depends(guard)])
-    def retry(payload: RetryRequest):
-        changed = service.resolve(payload.execution_id, "manual_review") or service.resolve(payload.execution_id, "quarantine")
-        if not changed:
-            raise HTTPException(status_code=404, detail="recovery queue item not found")
-        return {"resolved": True, "execution_id": payload.execution_id, "action": "retry"}
+    @router.post("/retry")
+    def retry(payload: RetryRequest, request: Request):
+        operator = context(request)
+        role = getattr(operator, "role", None)
+        if getattr(role, "value", role) not in {"operator", "admin"}:
+            raise HTTPException(status_code=403, detail="operator role required")
+        try:
+            return service.resolve(payload.execution_id, "retry", actor=operator.actor, reason=payload.reason, correlation_id=operator.correlation_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     return router
