@@ -15,7 +15,7 @@ class AgentManager:
 
     def register(self, agent):
         self.agents[agent.name] = agent
-        self.runtimes[agent.name] = AgentRuntime(agent)
+        self.runtimes[agent.name] = AgentRuntime(agent, event_bus=self.event_bus)
         self._publish("agent.registered", {"agent": agent.name})
 
     def get(self, name):
