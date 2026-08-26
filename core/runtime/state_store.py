@@ -78,6 +78,13 @@ class StateStore:
         total = sum(metrics.values())
         return {"metrics": metrics, "total_events": total}
 
+    def recovery_summary(self, key):
+        return {
+            "health": self.health(key),
+            "policy": self.policy(key),
+            "analytics": self.analytics(key),
+        }
+
 
 class AgentStateStore(StateStore):
     """Agent-specific state persistence API."""
