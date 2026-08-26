@@ -1,7 +1,9 @@
-"""Checkpoint contracts for resumable AIOS vNext execution."""
+"""Checkpoint contracts backed by the execution lifecycle store."""
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
+
+from execution.persistence import ExecutionStore
 
 
 @dataclass
@@ -13,21 +15,26 @@ class Checkpoint:
 
 
 class CheckpointStore:
-    """Small persistence-neutral checkpoint store.
+    """Compatibility facade over the canonical ExecutionStore."""
 
-    A persistence adapter can implement ``save``/``load`` externally; this
-    in-memory implementation provides the runtime contract and safe defaults.
-    """
-
-    def __init__(self):
-        self._items: Dict[str, Checkpoint] = {}
+    def __init__(self, persistence: Optional[ExecutionStore] = None):
+        self.persistence = persistence or ExecutionStore()
 
     def save(self, checkpoint: Checkpoint) -> Checkpoint:
-        self._items[checkpoint.task_id] = checkpoint
+        self.persistence.save_checkpoint(checkpoint)
         return checkpoint
 
     def load(self, task_id: str) -> Optional[Checkpoint]:
-        return self._items.get(task_id)
+        return self.persistence.load_checkpoint(task_id)
 
     def delete(self, task_id: str) -> None:
-        self._items.pop(task_id, None)
+        self.persistence.delete_checkpoint(task_id)
+
+    @property
+    def _items(self):
+        """Compatibility view for legacy recovery code."""
+        return {
+            task_id: state["checkpoint"]
+            for task_id, state in self.persistence._states.items()
+            if isinstance(state, dict) and state.get("status") == "checkpoint"
+        }
