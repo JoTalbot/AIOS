@@ -1,4 +1,4 @@
-"""Runtime supervisor foundation."""
+"""Runtime supervisor foundation with adaptive recovery analytics."""
 
 from .state_store import StateStore
 
@@ -13,6 +13,7 @@ class RuntimeSupervisor:
         self.last_checkpoint = None
         self.health_status = "unknown"
         self.recovery_attempts = 0
+        self.recovery_metrics = {"recoveries": 0, "rollbacks": 0, "failures": 0}
 
     def _emit(self, name, **metadata):
         if self.hooks:
@@ -39,14 +40,15 @@ class RuntimeSupervisor:
 
     def recover(self):
         self.recovery_attempts += 1
+        self.recovery_metrics["recoveries"] += 1
         policy = self.state_store.policy(self.agent_id) if hasattr(self.state_store, "policy") else {}
         state = self.state_store.load(self.agent_id)
         decision = {
             "retry": self.recovery_attempts <= policy.get("retries", 0),
             "rollback": policy.get("rollback", True) and state is not None,
         }
+        self._emit("recovery.analytics", agent_id=self.agent_id, metrics=self.recovery_metrics)
         self._emit("recovery.decision", agent_id=self.agent_id, decision=decision, policy=policy)
-        self._emit("state.recovery", agent_id=self.agent_id, state=state, attempt=self.recovery_attempts, policy=policy)
         if state is not None:
             self.health_status = "healthy"
         return state
@@ -54,9 +56,11 @@ class RuntimeSupervisor:
     def fail(self, error):
         self.running = False
         self.health_status = "failed"
+        self.recovery_metrics["failures"] += 1
         restored = self.recover()
         self._emit("runtime.error", error=str(error), recovery_state=restored)
         if restored is not None:
+            self.recovery_metrics["rollbacks"] += 1
             self._emit("state.rollback", agent_id=self.agent_id, state=restored)
         return restored
 
@@ -66,4 +70,5 @@ class RuntimeSupervisor:
             "status": self.health_status,
             "running": self.running,
             "recovery_attempts": self.recovery_attempts,
+            "recovery_metrics": dict(self.recovery_metrics),
         }
