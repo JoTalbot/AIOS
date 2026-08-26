@@ -26,13 +26,14 @@ class AgentTask:
 
 
 class Scheduler:
-    def __init__(self, workers=1, executor=None, recovery=None, checkpoint_store=None):
+    def __init__(self, workers=1, executor=None, recovery=None, checkpoint_store=None, persistence=None):
         self.queue = asyncio.Queue()
         self.tasks = {}
         self.workers = max(1, workers)
         self.executor = executor
         self.recovery = recovery
         self.checkpoint_store = checkpoint_store
+        self.persistence = persistence
         self._worker_tasks = []
 
     async def submit(self, task: AgentTask):
@@ -73,6 +74,7 @@ class Scheduler:
                 task.state = TaskState.DONE
                 task.error = None
                 self._save_checkpoint(task)
+                self._record("execution.completed", task, {"attempt": task.attempts})
                 return
             except asyncio.CancelledError:
                 raise
@@ -80,6 +82,7 @@ class Scheduler:
                 task.error = str(exc)
                 task.history.append({"attempt": task.attempts, "error": task.error})
                 action = self._recovery_action(task, exc)
+                self._record("execution.recovery", task, {"attempt": task.attempts, "action": action, "error": task.error})
                 if action == "retry":
                     task.state = TaskState.RETRYING
                     self._save_checkpoint(task)
@@ -88,6 +91,7 @@ class Scheduler:
                     task.state = TaskState.RESTORING
                     continue
                 task.state = TaskState.FAILED
+                self._record("execution.failed", task, {"attempt": task.attempts, "error": task.error})
                 return
 
     def _recovery_action(self, task, error):
@@ -99,6 +103,14 @@ class Scheduler:
             decision = self.recovery.evaluate(RecoverySignal(task.agent, str(error), task.attempts, metadata))
             return getattr(getattr(decision, "action", None), "value", "abort")
         return "abort"
+
+    def _record(self, event_type, task, data):
+        if self.persistence is None:
+            return None
+        event = {"type": event_type, "task_id": task.id, **data}
+        if hasattr(self.persistence, "record"):
+            return self.persistence.record(event)
+        return None
 
     def _has_checkpoint(self, task):
         if task.checkpoint is not None:
