@@ -3,6 +3,7 @@
 from .runtime_context import RuntimeContext
 from .runtime_persistence_facade import RuntimePersistenceFacade
 from execution.checkpoint_adapter import PersistenceCheckpointStore
+from runtime.vnext_orchestrator import VNextOrchestrator
 
 try:
     from supervision.supervisor import Supervisor
@@ -32,6 +33,20 @@ class KernelFactory:
         if self.registry and hasattr(self.registry, "wire_container"):
             self.registry.wire_container(self.container)
 
+    def _build_orchestrator(self, context):
+        required = ("planner", "scheduler", "agent")
+        if not all(self.container.has(name) for name in required):
+            return None
+        execution = self.container.resolve("execution") if self.container.has("execution") else None
+        reflection = self.container.resolve("reflection") if self.container.has("reflection") else None
+        return VNextOrchestrator(
+            self.container.resolve("planner"),
+            self.container.resolve("scheduler"),
+            self.container.resolve("agent"),
+            reflection=reflection,
+            execution=execution,
+        )
+
     def create_runtime(self):
         self.register_services()
         self.wire_registry()
@@ -57,12 +72,12 @@ class KernelFactory:
             context.persistence_runtime.attach(facade)
             context.persistence = facade
             if self.container.has("scheduler"):
-                scheduler = self.container.resolve("scheduler")
-                scheduler.checkpoint_store = PersistenceCheckpointStore(facade)
+                self.container.resolve("scheduler").checkpoint_store = PersistenceCheckpointStore(facade)
 
         if Supervisor:
             recovery = RecoveryEngine() if RecoveryEngine else None
             context.supervisor = Supervisor(recovery=recovery, persistence=context.persistence)
+        context.orchestrator = self._build_orchestrator(context)
         return context
 
     def create_kernel(self):
