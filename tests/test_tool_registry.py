@@ -38,7 +38,7 @@ async def test_agent_executor_runs_plan_and_audits_tool():
     registry = ToolRegistry()
     registry.register("add", add, permissions={"compute"})
     audit = ExecutionAudit()
-    sandbox = ToolSandbox(registry, audit)
+    sandbox = ToolSandbox(registry, audit, authorization={"agent-1": {"compute"}})
     executor = AgentExecutor(sandbox)
 
     result = await executor.execute("agent-1", [{"tool": "add", "arguments": {"a": 4, "b": 5}}], {"permissions": {"compute"}})
