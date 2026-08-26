@@ -1,5 +1,7 @@
 import pytest
 
+from runtime.agent_executor import AgentExecutor
+from runtime.execution_audit import ExecutionAudit
 from runtime.tool_registry import ToolPermissionError, ToolRegistry
 from runtime.tool_sandbox import ToolExecutionContext, ToolSandbox
 
@@ -29,3 +31,20 @@ async def test_tool_sandbox_requires_agent_identity():
         await sandbox.execute("add", ToolExecutionContext(agent_id=""), a=1, b=2)
 
     assert await sandbox.execute("add", ToolExecutionContext(agent_id="agent-1"), a=2, b=3) == 5
+
+
+@pytest.mark.asyncio
+async def test_agent_executor_runs_plan_and_audits_tool():
+    registry = ToolRegistry()
+    registry.register("add", add, permissions={"compute"})
+    audit = ExecutionAudit()
+    sandbox = ToolSandbox(registry, audit)
+    executor = AgentExecutor(sandbox)
+
+    result = await executor.execute("agent-1", [{"tool": "add", "arguments": {"a": 4, "b": 5}}], {"permissions": {"compute"}})
+
+    assert result == [9]
+    assert [event.event for event in audit.snapshot()] == [
+        "tool.execution.started",
+        "tool.execution.completed",
+    ]
