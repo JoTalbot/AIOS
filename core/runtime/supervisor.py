@@ -12,23 +12,27 @@ class RuntimeSupervisor:
         self.agent_id = agent_id
         self.running = False
         self.last_checkpoint = None
+        self.health_status = "unknown"
+        self.recovery_attempts = 0
 
     def _emit(self, name, **metadata):
         if self.hooks:
-            self.hooks.emit(HookEvent(name=name, metadata=metadata))
+            self.hooks.emit(name, **metadata)
 
     async def _emit_async(self, name, **metadata):
         if self.hooks and hasattr(self.hooks, "emit_async"):
-            await self.hooks.emit_async(HookEvent(name=name, metadata=metadata))
+            await self.hooks.emit_async(name, **metadata)
 
     def checkpoint(self, state):
         self.last_checkpoint = dict(state) if isinstance(state, dict) else state
         self.state_store.save(self.agent_id, self.last_checkpoint)
+        self.health_status = "healthy"
         self._emit("state.checkpoint", agent_id=self.agent_id)
 
     def start(self):
         restored = self.state_store.load(self.agent_id)
         self.running = True
+        self.health_status = "healthy"
         self._emit("runtime.start", running=self.running, restored_state=restored)
         if restored is not None:
             self._emit("state.restored", agent_id=self.agent_id, state=restored)
@@ -37,6 +41,7 @@ class RuntimeSupervisor:
     async def start_async(self):
         restored = self.state_store.load(self.agent_id)
         self.running = True
+        self.health_status = "healthy"
         await self._emit_async("runtime.start", running=self.running, restored_state=restored)
         if restored is not None:
             await self._emit_async("state.restored", agent_id=self.agent_id, state=restored)
@@ -54,10 +59,27 @@ class RuntimeSupervisor:
         self.running = False
         await self._emit_async("runtime.stop", running=self.running)
 
+    def recover(self):
+        state = self.state_store.load(self.agent_id)
+        self.recovery_attempts += 1
+        self._emit("state.recovery", agent_id=self.agent_id, state=state, attempt=self.recovery_attempts)
+        if state is not None:
+            self.health_status = "healthy"
+        return state
+
     def fail(self, error):
         self.running = False
-        restored = self.state_store.load(self.agent_id)
+        self.health_status = "failed"
+        restored = self.recover()
         self._emit("runtime.error", error=str(error), recovery_state=restored)
         if restored is not None:
             self._emit("state.rollback", agent_id=self.agent_id, state=restored)
         return restored
+
+    def health(self):
+        return {
+            "agent_id": self.agent_id,
+            "status": self.health_status,
+            "running": self.running,
+            "recovery_attempts": self.recovery_attempts,
+        }
