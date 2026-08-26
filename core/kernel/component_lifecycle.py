@@ -11,10 +11,24 @@ class ComponentLifecycleManager:
         if self.events:
             self.events.publish(name, payload)
 
+    def discover_dependencies(self):
+        """Build dependency graph automatically from registered components."""
+        self.dependencies = DependencyGraph()
+
+        for name in self.registry.list_components():
+            self.dependencies.add(
+                name,
+                self.registry.get_dependencies(name),
+            )
+
+        return self.dependencies
+
     def set_dependencies(self, component, requires=None):
         self.dependencies.add(component, requires)
 
     def initialize_all(self):
+        self.discover_dependencies()
+
         for name in self.dependencies.startup_order():
             component = self.registry.get(name)
             if component is None:
@@ -25,6 +39,8 @@ class ComponentLifecycleManager:
             self._emit("component.initialized", {"name": name})
 
     def start_all(self):
+        self.discover_dependencies()
+
         for name in self.dependencies.startup_order():
             component = self.registry.get(name)
             if component is None:
@@ -35,6 +51,8 @@ class ComponentLifecycleManager:
             self._emit("component.started", {"name": name})
 
     def stop_all(self):
+        self.discover_dependencies()
+
         for name in self.dependencies.shutdown_order():
             component = self.registry.get(name)
             if component is None:
