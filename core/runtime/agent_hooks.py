@@ -1,4 +1,4 @@
-"""Agent execution lifecycle hooks v4."""
+"""Agent execution lifecycle hooks v5."""
 
 import inspect
 from dataclasses import dataclass, field
@@ -51,8 +51,13 @@ class AgentHooks:
             results.append(result)
         return results
 
-    def history(self):
-        return list(self._history)
+    def emit_recovery_decision(self, decision: str, **metadata):
+        return self.emit("recovery.decision", decision=decision, **metadata)
+
+    def history(self, event: str = None):
+        if event is None:
+            return list(self._history)
+        return [item for item in self._history if item.name == event]
 
     def clear_history(self):
         self._history.clear()
