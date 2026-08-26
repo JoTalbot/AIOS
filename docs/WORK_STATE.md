@@ -2,9 +2,9 @@
 
 ## STOP / RESUME POINT
 
-**Status:** Scheduler worker lifecycle hardened for cancellation/restart; cancelled worker references are removed and fresh workers can be started safely.
+**Status:** full worker cancellation → restart → recovery → persistence → replay regression added.
 
-**Latest main:** `813ddd7`
+**Latest main:** `2d0a0cd`
 
 ### Completed
 - API → Runtime → Orchestrator → Scheduler → Execution regression coverage.
@@ -15,13 +15,12 @@
 - Scheduler checks persistence before enqueue and before execution.
 - Real ExecutionCoordinator is exercised through Scheduler.
 - Crash/restart/replay regression uses the real CheckpointStore.
-- Cancellation/restart regression covers resumable checkpoint recovery.
-- Worker cancellation saves a checkpoint and preserves queue accounting.
-- `Scheduler.start()` removes completed/cancelled worker references before creating replacements.
-- `Scheduler.stop()` clears worker references before cancellation/gather.
+- Cancellation saves a resumable checkpoint and preserves queue accounting.
+- Cancelled worker references can be safely replaced on restart.
+- Full worker lifecycle regression covers cancellation, worker restart, checkpoint recovery, terminal persistence and replay without duplicate execution.
 
 ### Exact next task
-Run a full worker lifecycle regression: cancel a worker during execution, restart workers on the same Scheduler, recover the checkpoint, complete the task, and verify a later replay does not execute again.
+Validate the new worker lifecycle test against the current production execution path. Then move the recovery lifecycle from test-oriented orchestration into the canonical RuntimeContext lifecycle, ensuring restart/recovery is initialized once and owns Scheduler + persistence consistently.
 
 ### Required invariants
 1. Terminal result is persisted before response.
@@ -35,6 +34,7 @@ Run a full worker lifecycle regression: cancel a worker during execution, restar
 9. Production checkpoint path is tested.
 10. Worker cancellation does not corrupt Queue.join() accounting.
 11. Cancelled worker references can be safely replaced on restart.
+12. RuntimeContext owns the canonical restart/recovery lifecycle.
 
 ### Rule for the next agent
 Inspect current `main` first. Do not introduce another persistence store. Preserve parallel-agent changes and never force-push.
