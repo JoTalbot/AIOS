@@ -2,9 +2,9 @@
 
 ## STOP / RESUME POINT
 
-**Status:** factory/runtime recovery integration regression added; next step is to run and repair the real orchestrator execution path if required.
+**Status:** inspected the real vNext orchestrator and execution coordinator. The next integration must wire a real `execution` service through `KernelFactory` so `VNextOrchestrator` delegates to `ExecutionCoordinator.execute` rather than using a test-only executor.
 
-**Latest main:** `a350e57`
+**Latest main:** `f8baba3`
 
 ### Completed
 - API → Runtime → Orchestrator → Scheduler → Execution regression coverage.
@@ -20,13 +20,16 @@
 - Full worker lifecycle regression covers cancellation, restart, recovery, persistence and replay.
 - KernelFactory wires scheduler + checkpoint store + recovery into RuntimeContext.
 - RuntimeContext owns the canonical recovery entrypoint.
-- Factory/runtime integration regression now exercises real ExecutionStore + Scheduler wiring and verifies recovery identity is stable across repeated `recover()` calls.
+- Factory recovery idempotency regression exists.
 
 ### Exact next task
-Run the factory/runtime E2E test against the actual `VNextOrchestrator` path. If `RuntimeContext.execute()` fails because planner/agent/execution services are not fully wired in the test container, wire the minimum production-equivalent services rather than bypassing the orchestrator.
+Wire a real `ExecutionCoordinator` into `KernelFactory` when the execution service is available, then add a true `KernelFactory → RuntimeContext.execute() → VNextOrchestrator → Scheduler → ExecutionCoordinator → persistence` integration regression. Do not bypass the orchestrator.
+
+### Important implementation finding
+`VNextOrchestrator` currently assigns `scheduler.executor = execution.execute` when an execution service is supplied. `ExecutionCoordinator.execute()` itself persists terminal results. Therefore the integration must use this canonical path and avoid a second persistence implementation.
 
 ### Required invariants
-1. Terminal execution results persist before response.
+1. Terminal result is persisted before response.
 2. Restart never executes a task again when terminal result exists.
 3. Stale checkpoint never overrides terminal state.
 4. Checkpoint cleanup is idempotent.
@@ -40,7 +43,7 @@ Run the factory/runtime E2E test against the actual `VNextOrchestrator` path. If
 12. RuntimeContext owns the canonical restart/recovery lifecycle.
 13. RuntimeContext recovery initialization is idempotent.
 14. Factory wiring preserves one canonical persistence/recovery path.
-15. RuntimeContext.execute() traverses the real orchestrator path.
+15. RuntimeContext.execute() reaches the real VNextOrchestrator and ExecutionCoordinator.
 
 ### Rule for the next agent
 Inspect current `main` first. Do not introduce another persistence store. Preserve parallel-agent changes and never force-push.
