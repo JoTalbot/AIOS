@@ -110,6 +110,8 @@ class Scheduler:
                 self._record(EXECUTION_COMPLETED, task, {"attempt": task.attempts, **task.result.to_event_payload()})
                 return
             except asyncio.CancelledError:
+                self._save_checkpoint(task)
+                task.state = TaskState.RESTORING
                 raise
             except Exception as exc:
                 task.error = str(exc)
