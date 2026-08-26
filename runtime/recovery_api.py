@@ -3,7 +3,7 @@
 from dataclasses import asdict
 from typing import Optional
 
-from .recovery_queue import RecoveryQueue, RecoveryQueueItem
+from .recovery_queue import RecoveryQueue
 
 
 class RecoveryOperatorService:
@@ -16,12 +16,7 @@ class RecoveryOperatorService:
         return [asdict(item) for item in self.queue.items(action=action, unresolved_only=True)]
 
     def resolve(self, execution_id: str, action: str):
-        items = self.queue.items(action=action, unresolved_only=True)
-        target = next((item for item in items if item.execution_id == execution_id), None)
-        if target is None:
-            return False
-        self.queue.enqueue(RecoveryQueueItem(target.execution_id, target.action, target.reason, target.attempt, target.correlation_id, target.created_at, resolved=True))
-        return True
+        return self.queue.resolve(execution_id, action)
 
     def resolve_item(self, execution_id: str, action: str):
         return self.resolve(execution_id, action)
