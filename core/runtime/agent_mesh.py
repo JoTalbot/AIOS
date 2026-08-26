@@ -18,13 +18,14 @@ class MeshEvent:
 
 
 class AgentMesh:
-    """Lightweight coordination bus with delivery recovery."""
+    """Lightweight coordination bus with delivery recovery intelligence."""
 
     def __init__(self):
         self._events: List[MeshEvent] = []
         self._subscribers: List[Callable[[MeshEvent], None]] = []
         self._delivery_callbacks: List[Callable[[MeshEvent], None]] = []
         self._recovery_callbacks: List[Callable[[MeshEvent], None]] = []
+        self._recovery_metrics: Dict[str, int] = {"failures": 0, "recoveries": 0, "retries": 0}
 
     def publish(self, name: str, source: str, target: str = "broadcast", **payload):
         event = MeshEvent(name=name, source=source, target=target, payload=payload)
@@ -32,11 +33,11 @@ class AgentMesh:
         self._deliver(event)
         return event
 
-    def subscribe(self, callback: Callable[[MeshEvent], None]):
+    def subscribe(self, callback):
         self._subscribers.append(callback)
         return callback
 
-    def unsubscribe(self, callback: Callable[[MeshEvent], None]):
+    def unsubscribe(self, callback):
         if callback in self._subscribers:
             self._subscribers.remove(callback)
 
@@ -56,29 +57,35 @@ class AgentMesh:
         if callback in self._recovery_callbacks:
             self._recovery_callbacks.remove(callback)
 
-    def _deliver(self, event: MeshEvent):
+    def _deliver(self, event):
         try:
             for callback in list(self._subscribers):
                 callback(event)
             event.delivery_status = "delivered"
         except Exception:
+            self._recovery_metrics["failures"] += 1
             self.recover(event)
         for callback in list(self._delivery_callbacks):
             callback(event)
 
-    def recover(self, event: MeshEvent):
+    def recover(self, event):
         event.retries += 1
+        self._recovery_metrics["recoveries"] += 1
+        self._recovery_metrics["retries"] += 1
         event.delivery_status = "recovering"
         for callback in list(self._recovery_callbacks):
             callback(event)
         return event
 
-    def acknowledge(self, event: MeshEvent):
+    def acknowledge(self, event):
         event.acknowledged = True
         event.delivery_status = "acknowledged"
         return event
 
-    def events(self, target: str = None):
+    def recovery_metrics(self):
+        return dict(self._recovery_metrics)
+
+    def events(self, target=None):
         if target is None:
             return list(self._events)
         return [event for event in self._events if event.target in (target, "broadcast")]
@@ -94,4 +101,5 @@ class AgentMesh:
             "delivery_callbacks": len(self._delivery_callbacks),
             "recovery_callbacks": len(self._recovery_callbacks),
             "acknowledged": sum(event.acknowledged for event in self._events),
+            "recovery_metrics": self.recovery_metrics(),
         }
