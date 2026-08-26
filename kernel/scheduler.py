@@ -2,6 +2,13 @@ import asyncio
 from dataclasses import dataclass, field
 from enum import Enum
 
+from execution.events import (
+    EXECUTION_COMPLETED,
+    EXECUTION_FAILED,
+    EXECUTION_RECOVERY,
+    build_event,
+)
+
 
 class TaskState(Enum):
     CREATED = "created"
@@ -74,7 +81,7 @@ class Scheduler:
                 task.state = TaskState.DONE
                 task.error = None
                 self._save_checkpoint(task)
-                self._record("execution.completed", task, {"attempt": task.attempts})
+                self._record(EXECUTION_COMPLETED, task, {"attempt": task.attempts})
                 return
             except asyncio.CancelledError:
                 raise
@@ -82,35 +89,40 @@ class Scheduler:
                 task.error = str(exc)
                 task.history.append({"attempt": task.attempts, "error": task.error})
                 action = self._recovery_action(task, exc)
-                self._record("execution.recovery", task, {"attempt": task.attempts, "action": action, "error": task.error})
+                self._record(EXECUTION_RECOVERY, task, {
+                    "attempt": task.attempts,
+                    "action": action,
+                    "error": task.error,
+                })
                 if action == "retry":
                     task.state = TaskState.RETRYING
                     self._save_checkpoint(task)
                     continue
-                if action == "restore" and self._restore_checkpoint(task):
-                    task.state = TaskState.RESTORING
-                    continue
+                if action == "restore":
+                    if self._restore_checkpoint(task):
+                        task.state = TaskState.RESTORING
+                        continue
                 task.state = TaskState.FAILED
-                self._record("execution.failed", task, {"attempt": task.attempts, "error": task.error})
+                self._record(EXECUTION_FAILED, task, {
+                    "attempt": task.attempts,
+                    "error": task.error,
+                })
                 return
 
     def _recovery_action(self, task, error):
-        if task.attempts < task.max_attempts:
-            return "retry"
         if self.recovery and hasattr(self.recovery, "evaluate"):
             from execution.recovery import RecoverySignal
             metadata = {"checkpoint": "available"} if self._has_checkpoint(task) else {}
-            decision = self.recovery.evaluate(RecoverySignal(task.agent, str(error), task.attempts, metadata))
+            decision = self.recovery.evaluate(
+                RecoverySignal(task.agent, str(error), task.attempts, metadata)
+            )
             return getattr(getattr(decision, "action", None), "value", "abort")
-        return "abort"
+        return "retry" if task.attempts < task.max_attempts else "abort"
 
     def _record(self, event_type, task, data):
-        if self.persistence is None:
+        if self.persistence is None or not hasattr(self.persistence, "record"):
             return None
-        event = {"type": event_type, "task_id": task.id, **data}
-        if hasattr(self.persistence, "record"):
-            return self.persistence.record(event)
-        return None
+        return self.persistence.record(build_event(event_type, task.id, **data))
 
     def _has_checkpoint(self, task):
         if task.checkpoint is not None:
