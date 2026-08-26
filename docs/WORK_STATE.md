@@ -4,13 +4,14 @@
 
 **Status:** paused at the persistence/recovery boundary.
 
-**Current main:** `8dbda99`
+**Current main:** `e4fae49` (work-state marker; verify `main` before continuing)
 
 ### Completed
 - API endpoint/runtime adapter wiring started.
 - API → Runtime → Orchestrator → Scheduler → Execution path has regression coverage.
 - Execution checkpoint lifecycle and duplicate-execution protection were implemented.
 - Recovery checks persistent terminal results before restoring stale checkpoints.
+- Work-state marker is committed in this file so another agent can resume from this exact boundary.
 
 ### Exact next task
 Unify `CheckpointStore` and `ExecutionStore` behind one execution lifecycle/source of truth.
