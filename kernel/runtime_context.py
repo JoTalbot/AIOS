@@ -42,6 +42,24 @@ class RuntimeContext:
     async def recover(self):
         return await self._await_checkpoint_recovery()
 
+    async def start_async(self):
+        self.lifecycle.start()
+        await self._await_checkpoint_recovery()
+        if self.scheduler is not None:
+            await self.scheduler.start()
+        return self
+
+    async def stop_async(self):
+        if self.scheduler is not None:
+            await self.scheduler.stop()
+        self.lifecycle.stop()
+        return self
+
+    async def restart_async(self):
+        await self.stop_async()
+        await self.start_async()
+        return self
+
     async def execute(self, goal, task_id, metadata=None):
         if self.orchestrator is None:
             raise RuntimeError("vNext orchestrator is not configured")
