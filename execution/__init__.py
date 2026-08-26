@@ -5,6 +5,7 @@ from .checkpoint_adapter import PersistenceCheckpointStore
 from .coordinator import ExecutionCoordinator
 from .event_sink import ExecutionEventSink
 from .events import EXECUTION_COMPLETED, EXECUTION_FAILED, EXECUTION_RECOVERY, build_event
+from .lifecycle import ExecutionAttempt, ExecutionLifecycle
 from .result import ExecutionResult
 
 __all__ = [
@@ -13,6 +14,8 @@ __all__ = [
     "PersistenceCheckpointStore",
     "ExecutionCoordinator",
     "ExecutionEventSink",
+    "ExecutionAttempt",
+    "ExecutionLifecycle",
     "ExecutionResult",
     "EXECUTION_COMPLETED",
     "EXECUTION_RECOVERY",
