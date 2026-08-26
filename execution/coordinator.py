@@ -4,6 +4,7 @@ from execution.event_sink import ExecutionEventSink
 from execution.events import EXECUTION_COMPLETED, EXECUTION_FAILED, EXECUTION_RECOVERY, EXECUTION_STARTED, build_event
 from execution.memory_adapter import ExecutionMemoryAdapter
 from execution.result import ExecutionResult
+from execution.tool_adapter import ExecutionToolAdapter
 
 
 class ExecutionCoordinator:
@@ -26,7 +27,7 @@ class ExecutionCoordinator:
                 context["memory"] = remembered
             self._remember({"type": "execution_started", "task_id": task_id, "goal": request.get("goal")})
             value = await self._run_agent(request.get("goal"), request.get("plan", []), context)
-            value = await self._run_tools(value, context)
+            value = await self._run_tools(value, context, request)
             result = ExecutionResult.success(task_id, value=value)
             self._remember({"type": "execution_completed", "task_id": task_id, "result": value}, permanent=True)
             self._observe("execution", "success", result)
@@ -57,11 +58,18 @@ class ExecutionCoordinator:
         value = runner(goal, plan, context) if callable(runner) else None
         return await value if hasattr(value, "__await__") else value
 
-    async def _run_tools(self, result, context):
-        if not self.tool_manager or not hasattr(self.tool_manager, "execute"):
+    async def _run_tools(self, result, context, request):
+        if not self.tool_manager:
             return result
-        value = self.tool_manager.execute(result, context=context)
-        return await value if hasattr(value, "__await__") else value
+        if isinstance(self.tool_manager, ExecutionToolAdapter):
+            tool_name = request.get("tool") or request.get("tool_name")
+            if not tool_name:
+                return result
+            return await self.tool_manager.execute(tool_name, request.get("arguments"), context=context)
+        if hasattr(self.tool_manager, "execute"):
+            value = self.tool_manager.execute(result, context=context)
+            return await value if hasattr(value, "__await__") else value
+        return result
 
     def _remember(self, item, permanent=False):
         self.memory.remember(item, permanent=permanent)
