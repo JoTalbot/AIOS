@@ -6,7 +6,10 @@ class AgentEndpoint:
         self.service = service
 
     async def invoke(self, request):
-        return await self.service.execute(request)
+        result = self.service.execute(request)
+        if hasattr(result, "__await__"):
+            result = await result
+        return result
 
 
 async def invoke(request, pipeline=None):
@@ -14,10 +17,9 @@ async def invoke(request, pipeline=None):
     if pipeline is None:
         return request
     if hasattr(pipeline, "handle"):
-        return await pipeline.handle(request)
+        value = pipeline.handle(request)
+        return await value if hasattr(value, "__await__") else value
     if callable(pipeline):
         value = pipeline(request)
-        if hasattr(value, "__await__"):
-            value = await value
-        return value
+        return await value if hasattr(value, "__await__") else value
     raise TypeError("pipeline must be callable or expose handle(request)")
