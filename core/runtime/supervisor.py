@@ -1,4 +1,4 @@
-"""Runtime supervisor foundation with adaptive recovery analytics."""
+"""Runtime supervisor foundation with adaptive recovery analytics and observability."""
 
 from .state_store import StateStore
 
@@ -72,6 +72,15 @@ class RuntimeSupervisor:
             "metrics": dict(self.recovery_metrics),
             "state_metrics": self.state_store.metrics(self.agent_id) if hasattr(self.state_store, "metrics") else {},
         }
+
+    def observability_snapshot(self):
+        snapshot = self.analytics()
+        if hasattr(self.state_store, "analytics"):
+            snapshot["state_analytics"] = self.state_store.analytics(self.agent_id)
+        if self.hooks and hasattr(self.hooks, "analytics"):
+            snapshot["hook_analytics"] = self.hooks.analytics()
+        self._emit("observability.snapshot", agent_id=self.agent_id, snapshot=snapshot)
+        return snapshot
 
     def health(self):
         return {
