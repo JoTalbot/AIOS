@@ -11,6 +11,7 @@ class RuntimeSupervisor:
         self.state_store = state_store or StateStore()
         self.agent_id = agent_id
         self.running = False
+        self.last_checkpoint = None
 
     def _emit(self, name, **metadata):
         if self.hooks:
@@ -19,6 +20,11 @@ class RuntimeSupervisor:
     async def _emit_async(self, name, **metadata):
         if self.hooks and hasattr(self.hooks, "emit_async"):
             await self.hooks.emit_async(HookEvent(name=name, metadata=metadata))
+
+    def checkpoint(self, state):
+        self.last_checkpoint = dict(state) if isinstance(state, dict) else state
+        self.state_store.save(self.agent_id, self.last_checkpoint)
+        self._emit("state.checkpoint", agent_id=self.agent_id)
 
     def start(self):
         restored = self.state_store.load(self.agent_id)
@@ -49,4 +55,9 @@ class RuntimeSupervisor:
         await self._emit_async("runtime.stop", running=self.running)
 
     def fail(self, error):
-        self._emit("runtime.error", error=str(error))
+        self.running = False
+        restored = self.state_store.load(self.agent_id)
+        self._emit("runtime.error", error=str(error), recovery_state=restored)
+        if restored is not None:
+            self._emit("state.rollback", agent_id=self.agent_id, state=restored)
+        return restored
