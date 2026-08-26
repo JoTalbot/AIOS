@@ -23,11 +23,34 @@ class ComponentLifecycleManager:
 
         return self.dependencies
 
+    def validate_dependencies(self):
+        """Validate that all declared dependencies exist before startup."""
+        errors = []
+
+        for name in self.registry.list_components():
+            for dependency in self.registry.get_dependencies(name):
+                if self.registry.get(dependency) is None:
+                    errors.append(
+                        {
+                            "component": name,
+                            "missing": dependency,
+                        }
+                    )
+
+        result = {
+            "valid": len(errors) == 0,
+            "errors": errors,
+        }
+
+        self._emit("component.dependencies.validated", result)
+        return result
+
     def set_dependencies(self, component, requires=None):
         self.dependencies.add(component, requires)
 
     def initialize_all(self):
         self.discover_dependencies()
+        self.validate_dependencies()
 
         for name in self.dependencies.startup_order():
             component = self.registry.get(name)
@@ -40,6 +63,7 @@ class ComponentLifecycleManager:
 
     def start_all(self):
         self.discover_dependencies()
+        self.validate_dependencies()
 
         for name in self.dependencies.startup_order():
             component = self.registry.get(name)
