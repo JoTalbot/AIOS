@@ -1,5 +1,7 @@
 """Runtime context for the AIOS kernel stack."""
 
+from .runtime_lifecycle import RuntimeLifecycle
+
 
 class RuntimeContext:
     """Single object carrying wired kernel services."""
@@ -9,6 +11,7 @@ class RuntimeContext:
         self.agent_manager = agent_manager
         self.bootstrap = bootstrap
         self.registry = registry
+        self.lifecycle = RuntimeLifecycle(self)
 
     def services(self):
         return {
@@ -17,3 +20,9 @@ class RuntimeContext:
             "bootstrap": self.bootstrap,
             "registry": self.registry,
         }
+
+    def start(self):
+        return self.lifecycle.start()
+
+    def stop(self):
+        return self.lifecycle.stop()
