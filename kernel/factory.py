@@ -43,6 +43,7 @@ class KernelFactory:
             bootstrap=bootstrap,
             registry=self.registry,
             event_bus=event_bus,
+            persistence=RuntimePersistenceFacade(),
         )
 
         persistence = None
@@ -51,7 +52,7 @@ class KernelFactory:
         elif self.container.has("persistence_store"):
             persistence = self.container.resolve("persistence_store")
         if persistence:
-            context.persistence.attach(RuntimePersistenceFacade(persistence))
+            context.persistence_runtime.attach(RuntimePersistenceFacade(persistence))
 
         if Supervisor:
             recovery = RecoveryEngine() if RecoveryEngine else None
