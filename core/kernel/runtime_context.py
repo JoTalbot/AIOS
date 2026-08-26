@@ -2,16 +2,19 @@
 
 from .runtime_lifecycle import RuntimeLifecycle
 from .restart_manager import RestartManager
+from .restart_events import RestartEventEmitter
 
 
 class RuntimeContext:
     """Single object carrying wired kernel services."""
 
-    def __init__(self, kernel=None, agent_manager=None, bootstrap=None, registry=None):
+    def __init__(self, kernel=None, agent_manager=None, bootstrap=None, registry=None, event_bus=None):
         self.kernel = kernel
         self.agent_manager = agent_manager
         self.bootstrap = bootstrap
         self.registry = registry
+        self.event_bus = event_bus
+        self.restart_events = RestartEventEmitter(event_bus)
         self.lifecycle = RuntimeLifecycle(self)
         self.restart_manager = RestartManager(self)
 
@@ -21,6 +24,7 @@ class RuntimeContext:
             "agent_manager": self.agent_manager,
             "bootstrap": self.bootstrap,
             "registry": self.registry,
+            "event_bus": self.event_bus,
         }
 
     def start(self):
