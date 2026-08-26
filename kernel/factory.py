@@ -53,8 +53,9 @@ class KernelFactory:
 
         bootstrap = self.container.resolve("bootstrap")
         event_bus = self.container.resolve("event_bus") if self.container.has("event_bus") else None
+        kernel = self.container.resolve("kernel")
         context = RuntimeContext(
-            kernel=self.container.resolve("kernel"),
+            kernel=kernel,
             agent_manager=self.container.resolve("agent_manager"),
             bootstrap=bootstrap,
             registry=self.registry,
@@ -78,6 +79,8 @@ class KernelFactory:
             recovery = RecoveryEngine() if RecoveryEngine else None
             context.supervisor = Supervisor(recovery=recovery, persistence=context.persistence)
         context.orchestrator = self._build_orchestrator(context)
+        if context.orchestrator is not None and hasattr(kernel, "attach_orchestrator"):
+            kernel.attach_orchestrator(context.orchestrator)
         return context
 
     def create_kernel(self):
