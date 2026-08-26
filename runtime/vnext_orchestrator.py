@@ -22,10 +22,32 @@ class VNextOrchestrator:
         self.agent = agent
         self.reflection = reflection
         self.execution = execution
+        self._started = False
         if execution is not None:
             self.scheduler.executor = execution.execute
 
+    async def start(self):
+        if self._started:
+            return
+        starter = getattr(self.scheduler, "start", None)
+        if starter is not None:
+            value = starter()
+            if hasattr(value, "__await__"):
+                await value
+        self._started = True
+
+    async def stop(self):
+        if not self._started:
+            return
+        stopper = getattr(self.scheduler, "stop", None)
+        if stopper is not None:
+            value = stopper()
+            if hasattr(value, "__await__"):
+                await value
+        self._started = False
+
     async def run(self, goal: str, task_id: str, metadata: Optional[Dict[str, Any]] = None):
+        await self.start()
         context = dict(metadata or {})
         plan = await self.planner.create_plan(goal)
         context["plan"] = plan
