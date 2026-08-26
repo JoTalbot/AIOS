@@ -18,7 +18,7 @@ class MeshEvent:
 
 
 class AgentMesh:
-    """Lightweight coordination bus with delivery recovery intelligence."""
+    """Lightweight coordination bus with recovery consensus intelligence."""
 
     def __init__(self):
         self._events: List[MeshEvent] = []
@@ -28,6 +28,7 @@ class AgentMesh:
         self._decision_history: List[Dict[str, Any]] = []
         self._decision_scores: Dict[str, int] = {}
         self._confidence_history: List[Dict[str, Any]] = []
+        self._consensus_history: List[Dict[str, Any]] = []
         self._recovery_metrics: Dict[str, int] = {"failures": 0, "recoveries": 0, "retries": 0}
 
     def publish(self, name: str, source: str, target: str = "broadcast", **payload):
@@ -80,8 +81,18 @@ class AgentMesh:
         return score
 
     def calculate_confidence(self, decision):
-        score = self.score_decision(decision)
-        return min(1.0, score / 5)
+        return min(1.0, self.score_decision(decision) / 5)
+
+    def record_consensus(self, decisions, source="network"):
+        if not decisions:
+            return None
+        winner = max(decisions, key=lambda item: item.get("confidence", 0))
+        result = {"source": source, "decision": winner, "votes": len(decisions), "timestamp": datetime.now(timezone.utc).isoformat()}
+        self._consensus_history.append(result)
+        return result
+
+    def consensus_history(self):
+        return list(self._consensus_history)
 
     def confidence_history(self):
         return list(self._confidence_history)
@@ -118,12 +129,10 @@ class AgentMesh:
         return dict(self._recovery_metrics)
 
     def events(self, target=None):
-        if target is None:
-            return list(self._events)
-        return [event for event in self._events if event.target in (target, "broadcast")]
+        return list(self._events) if target is None else [event for event in self._events if event.target in (target, "broadcast")]
 
     def clear(self):
         self._events.clear()
 
     def snapshot(self):
-        return {"events": len(self._events), "agents": sorted({event.source for event in self._events}), "subscribers": len(self._subscribers), "delivery_callbacks": len(self._delivery_callbacks), "recovery_callbacks": len(self._recovery_callbacks), "acknowledged": sum(event.acknowledged for event in self._events), "recovery_metrics": self.recovery_metrics(), "decisions": len(self._decision_history), "scored_decisions": len(self._decision_scores), "confidence_records": len(self._confidence_history)}
+        return {"events": len(self._events), "agents": sorted({event.source for event in self._events}), "subscribers": len(self._subscribers), "delivery_callbacks": len(self._delivery_callbacks), "recovery_callbacks": len(self._recovery_callbacks), "acknowledged": sum(event.acknowledged for event in self._events), "recovery_metrics": self.recovery_metrics(), "decisions": len(self._decision_history), "scored_decisions": len(self._decision_scores), "confidence_records": len(self._confidence_history), "consensus_records": len(self._consensus_history)}
