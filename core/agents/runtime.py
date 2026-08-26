@@ -5,7 +5,9 @@ from enum import Enum
 
 class AgentRuntimeState(str, Enum):
     CREATED = "created"
+    READY = "ready"
     RUNNING = "running"
+    PAUSED = "paused"
     STOPPED = "stopped"
     FAILED = "failed"
 
@@ -23,27 +25,42 @@ class AgentRuntime:
         if self.event_bus:
             self.event_bus.publish(name, payload or {}, source="agent_runtime")
 
-    def start(self):
-        self.state = AgentRuntimeState.RUNNING
-        self._emit("agent.started", {"agent": self.agent.name})
+    def transition(self, state):
+        self.state = state
+        self._emit(
+            "agent.state_changed",
+            {"agent": self.agent.name, "state": state.value},
+        )
         return self.state
 
+    def prepare(self):
+        return self.transition(AgentRuntimeState.READY)
+
+    def start(self):
+        return self.transition(AgentRuntimeState.RUNNING)
+
+    def pause(self):
+        return self.transition(AgentRuntimeState.PAUSED)
+
     def stop(self):
-        self.state = AgentRuntimeState.STOPPED
-        self._emit("agent.stopped", {"agent": self.agent.name})
-        return self.state
+        return self.transition(AgentRuntimeState.STOPPED)
 
     def fail(self, error=None):
         self.error = error
-        self.state = AgentRuntimeState.FAILED
+        self.transition(AgentRuntimeState.FAILED)
         self._emit("agent.failed", {"agent": self.agent.name, "error": error})
         return self.state
 
     def execute(self, request):
-        if self.state != AgentRuntimeState.RUNNING:
+        if self.state not in (
+            AgentRuntimeState.RUNNING,
+            AgentRuntimeState.READY,
+        ):
             self.start()
         try:
-            return self.agent.execute(request)
+            result = self.agent.execute(request)
+            self._emit("agent.execution.completed", {"agent": self.agent.name})
+            return result
         except Exception as error:
             self.fail(error)
             raise
