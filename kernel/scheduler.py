@@ -19,10 +19,11 @@ class AgentTask:
 
 
 class Scheduler:
-    def __init__(self, workers=1):
+    def __init__(self, workers=1, executor=None):
         self.queue = asyncio.Queue()
         self.tasks = {}
         self.workers = max(1, workers)
+        self.executor = executor
         self._worker_tasks = []
 
     async def submit(self, task: AgentTask):
@@ -61,5 +62,8 @@ class Scheduler:
                 self.queue.task_done()
 
     async def execute(self, task):
+        if self.executor is not None:
+            value = self.executor(task.payload)
+            return await value if hasattr(value, "__await__") else value
         await asyncio.sleep(0)
         return {"agent": task.agent, "status": "completed"}
