@@ -50,6 +50,17 @@ class RuntimeSupervisor:
             self.health_status = "healthy"
         return state
 
+    def recovery_decision(self):
+        policy = self.state_store.policy(self.agent_id) if hasattr(self.state_store, "policy") else {}
+        decision = {
+            "agent_id": self.agent_id,
+            "health": self.health_status,
+            "retry_available": self.recovery_attempts < policy.get("retries", 0),
+            "rollback_available": self.state_store.load(self.agent_id) is not None,
+        }
+        self._emit("recovery.intelligence", decision=decision)
+        return decision
+
     def fail(self, error):
         self.running = False
         self.health_status = "failed"
