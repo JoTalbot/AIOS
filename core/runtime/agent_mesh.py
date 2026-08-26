@@ -27,6 +27,7 @@ class AgentMesh:
         self._recovery_callbacks: List[Callable[[MeshEvent], None]] = []
         self._decision_history: List[Dict[str, Any]] = []
         self._decision_scores: Dict[str, int] = {}
+        self._confidence_history: List[Dict[str, Any]] = []
         self._recovery_metrics: Dict[str, int] = {"failures": 0, "recoveries": 0, "retries": 0}
 
     def publish(self, name: str, source: str, target: str = "broadcast", **payload):
@@ -61,9 +62,11 @@ class AgentMesh:
 
     def publish_decision(self, decision, source="system"):
         score = self.score_decision(decision)
-        record = {"source": source, "decision": decision, "score": score, "timestamp": datetime.now(timezone.utc).isoformat()}
+        confidence = self.calculate_confidence(decision)
+        record = {"source": source, "decision": decision, "score": score, "confidence": confidence, "timestamp": datetime.now(timezone.utc).isoformat()}
         self._decision_history.append(record)
-        return self.publish("recovery.decision", source=source, decision=decision, score=score)
+        self._confidence_history.append(record)
+        return self.publish("recovery.decision", source=source, decision=decision, score=score, confidence=confidence)
 
     def score_decision(self, decision):
         score = 0
@@ -75,6 +78,13 @@ class AgentMesh:
             score += 2
         self._decision_scores[str(decision)] = score
         return score
+
+    def calculate_confidence(self, decision):
+        score = self.score_decision(decision)
+        return min(1.0, score / 5)
+
+    def confidence_history(self):
+        return list(self._confidence_history)
 
     def decision_history(self):
         return list(self._decision_history)
@@ -116,4 +126,4 @@ class AgentMesh:
         self._events.clear()
 
     def snapshot(self):
-        return {"events": len(self._events), "agents": sorted({event.source for event in self._events}), "subscribers": len(self._subscribers), "delivery_callbacks": len(self._delivery_callbacks), "recovery_callbacks": len(self._recovery_callbacks), "acknowledged": sum(event.acknowledged for event in self._events), "recovery_metrics": self.recovery_metrics(), "decisions": len(self._decision_history), "scored_decisions": len(self._decision_scores)}
+        return {"events": len(self._events), "agents": sorted({event.source for event in self._events}), "subscribers": len(self._subscribers), "delivery_callbacks": len(self._delivery_callbacks), "recovery_callbacks": len(self._recovery_callbacks), "acknowledged": sum(event.acknowledged for event in self._events), "recovery_metrics": self.recovery_metrics(), "decisions": len(self._decision_history), "scored_decisions": len(self._decision_scores), "confidence_records": len(self._confidence_history)}
