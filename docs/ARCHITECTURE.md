@@ -16,3 +16,19 @@ AIOS is a modular operating system architecture for autonomous agents.
 ## Execution flow
 
 Intent -> Planner -> Scheduler -> Agent -> Tools -> Memory -> Reflection
+
+## Runtime orchestration contract
+
+`KernelFactory` assembles the runtime through `KernelContainer` and `KernelRegistry`. The resulting `RuntimeContext` owns lifecycle, persistence, recovery, and restart services.
+
+`Scheduler` owns task state and execution. `SchedulerLoop` owns worker lifecycle and queue draining. This separation keeps scheduling policy independent from process lifetime and makes the runtime testable without a permanent background loop.
+
+`AutonomousLoopController` coordinates bounded autonomous cycles on top of `SchedulerLoop`. A cycle starts workers, drains submitted work, records its cycle number, and can be stopped cleanly. Components communicate through explicit runtime services rather than reaching into global state.
+
+## Lifecycle guarantees
+
+1. Startup recovers agent state before entering normal execution.
+2. Scheduler workers are created explicitly and can be stopped deterministically.
+3. Queued tasks are drained before scheduler shutdown.
+4. Agent snapshots and persistence hooks run during runtime shutdown.
+5. Recovery and restart remain owned by the runtime context instead of individual agents.
