@@ -8,7 +8,8 @@ from .execution_commit import ExecutionCommitCoordinator
 from .execution_lease import ExecutionLeaseStore
 from .execution_store import ExecutionStore
 from .recovery_manager import RecoveryManager
-from .recovery_policy import RecoveryAction, RecoveryDecision, RecoveryPolicy
+from .recovery_policy import RecoveryAction, RecoveryPolicy
+from .recovery_queue import RecoveryQueue, RecoveryQueueItem
 
 
 @dataclass(frozen=True)
@@ -29,7 +30,7 @@ class RuntimeBootstrap:
     def __init__(self, store: Optional[ExecutionStore] = None, recovery_manager: Optional[RecoveryManager] = None,
                  lease_store: Optional[ExecutionLeaseStore] = None, owner_id: str = "aios-runtime",
                  heartbeat_interval: Optional[float] = None, commit_coordinator: Optional[ExecutionCommitCoordinator] = None,
-                 recovery_policy: Optional[RecoveryPolicy] = None):
+                 recovery_policy: Optional[RecoveryPolicy] = None, recovery_queue: Optional[RecoveryQueue] = None):
         self.store = store or ExecutionStore()
         self.recovery_manager = recovery_manager or RecoveryManager(self.store)
         self.lease_store = lease_store or ExecutionLeaseStore()
@@ -38,6 +39,7 @@ class RuntimeBootstrap:
         self.heartbeat_interval = heartbeat_interval if heartbeat_interval is not None else max(0.1, ttl / 3)
         self.commit_coordinator = commit_coordinator
         self.recovery_policy = recovery_policy or RecoveryPolicy()
+        self.recovery_queue = recovery_queue or RecoveryQueue()
 
     async def _heartbeat(self, execution_id: str):
         while True:
@@ -62,11 +64,12 @@ class RuntimeBootstrap:
             if decision.action is RecoveryAction.SKIP:
                 skipped += 1
                 continue
-            if decision.action is RecoveryAction.QUARANTINE:
-                quarantined += 1
-                continue
-            if decision.action is RecoveryAction.MANUAL_REVIEW:
-                manual_review += 1
+            if decision.action in {RecoveryAction.QUARANTINE, RecoveryAction.MANUAL_REVIEW}:
+                self.recovery_queue.enqueue(RecoveryQueueItem(state.execution_id, decision.action.value, decision.reason, state.attempt, getattr(state, "correlation_id", None)))
+                if decision.action is RecoveryAction.QUARANTINE:
+                    quarantined += 1
+                else:
+                    manual_review += 1
                 continue
             retried += 1
             lease = self.lease_store.acquire(state.execution_id, self.owner_id)
