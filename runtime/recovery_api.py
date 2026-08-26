@@ -20,17 +20,17 @@ class RecoveryOperatorService:
     def audit_events(self):
         return self.audit_log.events()
 
-    def resolve(self, execution_id: str, action: str, *, actor: str = "operator", reason: Optional[str] = None):
+    def resolve(self, execution_id: str, action: str, *, actor: str = "operator", reason: Optional[str] = None, correlation_id: Optional[str] = None):
         try:
             changed = self.queue.resolve(execution_id, action)
         except Exception as exc:
-            self.audit_log.append(OperatorAuditEvent(action, execution_id, actor, "failed", str(exc)))
+            self.audit_log.append(OperatorAuditEvent(action, execution_id, actor, "failed", str(exc), correlation_id))
             raise
         outcome = "resolved" if changed else "not_found"
-        self.audit_log.append(OperatorAuditEvent(action, execution_id, actor, outcome, reason))
+        self.audit_log.append(OperatorAuditEvent(action, execution_id, actor, outcome, reason, correlation_id))
         if not changed:
             raise KeyError(f"recovery item not found: {execution_id}/{action}")
-        return {"execution_id": execution_id, "action": action, "resolved": True}
+        return {"execution_id": execution_id, "action": action, "resolved": True, "correlation_id": correlation_id}
 
-    def resolve_item(self, execution_id: str, action: str, *, actor: str = "operator", reason: Optional[str] = None):
-        return self.resolve(execution_id, action, actor=actor, reason=reason)
+    def resolve_item(self, execution_id: str, action: str, *, actor: str = "operator", reason: Optional[str] = None, correlation_id: Optional[str] = None):
+        return self.resolve(execution_id, action, actor=actor, reason=reason, correlation_id=correlation_id)
