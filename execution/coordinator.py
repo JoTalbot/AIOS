@@ -1,7 +1,10 @@
 """Execution coordinator for AIOS vNext.
 
-Coordinates agent, tool, memory and event layers through explicit dependencies.
+Coordinates agent, tool, memory, event and supervision layers through one
+explicit asynchronous execution boundary.
 """
+
+from execution.result import ExecutionResult
 
 
 class ExecutionCoordinator:
@@ -13,27 +16,27 @@ class ExecutionCoordinator:
         self.supervisor = supervisor
 
     async def execute(self, request):
-        if self.supervisor:
-            self.supervisor.on_start(request)
+        task_id = request.get("task_id", "unknown")
         try:
+            self._observe("runtime", "start", request)
             self._publish("execution.started", request)
             context = request.get("context", {})
             goal = request.get("goal")
             plan = request.get("plan", [])
-            self._remember({"type": "execution_started", "task_id": request.get("task_id"), "goal": goal})
+            self._remember({"type": "execution_started", "task_id": task_id, "goal": goal})
 
-            result = await self._run_agent(goal, plan, context)
-            result = await self._run_tools(result, context)
-
-            completed = {"request": request, "result": result, "status": "completed"}
-            self._remember({"type": "execution_completed", "task_id": request.get("task_id"), "result": result}, permanent=True)
-            self._publish("execution.completed", completed)
-            if self.supervisor:
-                self.supervisor.on_success(completed)
-            return completed
+            value = await self._run_agent(goal, plan, context)
+            value = await self._run_tools(value, context)
+            result = ExecutionResult.success(task_id, value=value)
+            self._remember({"type": "execution_completed", "task_id": task_id, "result": value}, permanent=True)
+            self._publish("execution.completed", result.__dict__)
+            self._observe("execution", "success", result)
+            return result.__dict__
         except Exception as error:
-            recovery = self.supervisor.on_failure(error) if self.supervisor else None
-            self._publish("execution.recovery_requested", {"error": str(error), "recovery": recovery})
+            result = ExecutionResult.failure(task_id, error)
+            self._remember({"type": "execution_failed", "task_id": task_id, "error": str(error)}, permanent=True)
+            recovery = self._observe("execution", "failure", error)
+            self._publish("execution.recovery_requested", {"result": result.__dict__, "recovery": recovery})
             raise
 
     async def _run_agent(self, goal, plan, context):
@@ -65,3 +68,8 @@ class ExecutionCoordinator:
     def _publish(self, event, payload):
         if self.events and hasattr(self.events, "publish"):
             self.events.publish(event, payload=payload, source="execution-coordinator")
+
+    def _observe(self, component, event, payload=None):
+        if self.supervisor and hasattr(self.supervisor, "observe"):
+            return self.supervisor.observe(component, event, payload)
+        return None
