@@ -43,8 +43,26 @@ class ExecutionCommitCoordinator:
         commit = ExecutionCommit(commit_id, current.execution_id, current.status, to_status, current.attempt, checkpoint, reason, correlation_id=current.correlation_id)
         self._append_journal(commit)
         self.store.transition(current.execution_id, to_status, result=checkpoint if to_status == "completed" else current.result, error=reason if to_status == "failed" else current.error)
-        self.audit_log.append(ExecutionAuditEvent(current.execution_id, current.status, to_status, current.attempt, reason, correlation_id=current.correlation_id))
+        self.audit_log.append(ExecutionAuditEvent(current.execution_id, current.status, to_status, current.attempt, reason, correlation_id=current.correlation_id, event_id=commit_id))
         return commit
+
+    def reconcile(self):
+        """Replay journaled commits whose state transition did not survive a crash."""
+        repaired = []
+        for commit in self.pending():
+            state = self.store.get(commit.execution_id)
+            if not state or state.status == commit.to_status:
+                continue
+            if state.status != commit.from_status:
+                continue
+            self.store.transition(commit.execution_id, commit.to_status,
+                                  result=commit.checkpoint if commit.to_status == "completed" else state.result,
+                                  error=commit.reason if commit.to_status == "failed" else state.error)
+            self.audit_log.append(ExecutionAuditEvent(commit.execution_id, commit.from_status, commit.to_status,
+                                                      commit.attempt, commit.reason,
+                                                      correlation_id=commit.correlation_id, event_id=commit.commit_id))
+            repaired.append(commit.commit_id)
+        return repaired
 
     def pending(self):
         if not self.journal_path.exists():
