@@ -1,9 +1,0 @@
-{
-  "id": "meta_skill_health",
-  "vector": "meta",
-  "skill": "meta/skill-health-monitor",
-  "prompt": "Верни сводку здоровья реестра скиллов: total, grade, stubs.",
-  "expected": "Должен вернуть total_skills, by_category, grade, index_exists.",
-  "expected_keys": ["total_skills", "by_category", "grade"],
-  "fixtures": null
-}

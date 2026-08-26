@@ -1,9 +1,0 @@
-[Unit]
-Description=AIOS Market Regime Engine (daily indicators -> regime + history)
-
-[Service]
-Type=oneshot
-User=root
-WorkingDirectory=/root/AIOS
-Environment=PYTHONPATH=/root/AIOS
-ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/quant_regime_engine.py

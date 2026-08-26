@@ -1,5 +1,0 @@
-# Units masked to /dev/null on Hetzner, snapshot 2026-08-15 UTC.
-aios-auto-coder.service
-aios-auto-promote.service
-aios-auto-promote.timer
-aios-groq-key.service

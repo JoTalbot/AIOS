@@ -1,3 +1,0 @@
-# Add with: crontab -e
-# Starts Android emulator headless, boots into pre-saved "logged_in" snapshot.
-@reboot /opt/android-sdk/emulator/emulator -avd AIOS_OLX -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -netdelay none -netspeed full -memory 2048 -cores 4 -accel on -port 5554 -snapshot logged_in -no-snapshot-save > /root/AIOS/logs/emulator.log 2>&1 &

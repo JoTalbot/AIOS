@@ -1,9 +1,0 @@
-[Unit]
-Description=AIOS Autonomy Daily Summary timer (daily 09:30)
-
-[Timer]
-OnCalendar=*-*-* 09:30:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target

@@ -1,9 +1,0 @@
-[Unit]
-Description=AIOS Autonomy metrics timer (every 5 min)
-
-[Timer]
-OnBootSec=60
-OnUnitActiveSec=300
-
-[Install]
-WantedBy=timers.target

@@ -1,9 +1,0 @@
-[Unit]
-Description=Hourly derivatives history accumulation
-
-[Timer]
-OnCalendar=*:25
-Persistent=false
-
-[Install]
-WantedBy=timers.target

@@ -1,9 +1,0 @@
-{
-  "service_id": "systemd_repair",
-  "order_id": "EXAMPLE-NOT-A-REAL-ORDER",
-  "idempotency_key": "example-systemd_repair-001",
-  "requirements": "Предоставить диагностический bundle или безопасный SSH-доступ только после отдельного согласования.",
-  "acceptance_criteria": "systemd-analyze verify passes; service starts or dry-run reason is documented; backup path is recorded; rollback command is included",
-  "payment_status": "pending",
-  "status": "example_only"
-}

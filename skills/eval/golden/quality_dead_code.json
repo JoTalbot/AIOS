@@ -1,9 +1,0 @@
-{
-  "id": "quality_dead_code",
-  "vector": "quality",
-  "skill": "core/dead-code-hunter",
-  "prompt": "Найди неиспользуемые импорты и мёртвые функции в коде скилла.",
-  "expected": "Должен вернуть список находок (unused imports / dead functions) с указанием файла.",
-  "expected_keys": ["findings", "score"],
-  "fixtures": null
-}

@@ -1,9 +1,0 @@
-{
-  "service_id": "python_to_systemd_packaging",
-  "order_id": "EXAMPLE-NOT-A-REAL-ORDER",
-  "idempotency_key": "example-python_to_systemd_packaging-001",
-  "requirements": "Example only; no execution.",
-  "acceptance_criteria": "required artifact exists; validation passes; rollback or no-change statement included",
-  "payment_status": "pending",
-  "status": "example_only"
-}

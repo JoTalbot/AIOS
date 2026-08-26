@@ -1,9 +1,0 @@
-{
-  "id": "quality_backup_gap",
-  "vector": "quality",
-  "skill": "core/backup-gap-analyzer",
-  "prompt": "Проверь свежесть критичных бэкапов и наличие IPFS-pin и GitHub-sync.",
-  "expected": "Должен вернуть анализ gap'ов (freshness) и статус репликации.",
-  "expected_keys": ["gaps", "score"],
-  "fixtures": null
-}

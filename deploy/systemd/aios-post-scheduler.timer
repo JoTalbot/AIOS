@@ -1,9 +1,0 @@
-[Unit]
-Description=AIOS Post Scheduler (каждую минуту)
-
-[Timer]
-OnCalendar=*:0/1
-Persistent=true
-
-[Install]
-WantedBy=timers.target

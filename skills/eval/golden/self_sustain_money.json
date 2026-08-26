@@ -1,9 +1,0 @@
-{
-  "id": "self_sustain_money",
-  "vector": "self_sustain",
-  "skill": "core/money-earner-orchestrator",
-  "prompt": "Покажи текущий ledger zero-cost методов заработка и paper-PnL без реальных средств.",
-  "expected": "Должен вернуть ledger методов и paper-PnL, БЕЗ реальных ордеров/приватных ключей.",
-  "expected_keys": ["ledger", "paper_pnl", "score"],
-  "fixtures": null
-}

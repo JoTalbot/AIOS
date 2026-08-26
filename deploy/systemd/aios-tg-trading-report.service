@@ -1,9 +1,0 @@
-[Unit]
-Description=AIOS Morning trading report to the investor Telegram chat (839699134)
-
-[Service]
-Type=oneshot
-User=root
-WorkingDirectory=/root/AIOS
-Environment=PYTHONPATH=/root/AIOS
-ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/scripts/send_trading_report.py --chat 839699134

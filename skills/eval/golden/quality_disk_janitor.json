@@ -1,9 +1,0 @@
-{
-  "id": "quality_disk_janitor",
-  "vector": "quality",
-  "skill": "core/disk-space-janitor",
-  "prompt": "Очисти старые бэкапы в каталоге проекта, верни сколько файлов очищено.",
-  "expected": "Должен вернуть cleaned_files (число) и score, status. Read-only по умолчанию.",
-  "expected_keys": ["cleaned_files", "score", "status"],
-  "fixtures": null
-}

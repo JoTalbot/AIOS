@@ -1,9 +1,0 @@
-[Unit]
-Description=AIOS OLX Autoreply (every 30 min)
-
-[Timer]
-OnCalendar=*:0/30
-Persistent=true
-
-[Install]
-WantedBy=timers.target

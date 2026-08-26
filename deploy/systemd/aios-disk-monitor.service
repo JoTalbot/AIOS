@@ -1,9 +1,0 @@
-[Unit]
-Description=AIOS disk monitor
-
-[Service]
-Type=oneshot
-User=root
-WorkingDirectory=/root/AIOS
-Environment=PYTHONPATH=/root/AIOS
-ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_disk_monitor.py --check

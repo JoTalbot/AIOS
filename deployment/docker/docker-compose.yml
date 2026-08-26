@@ -1,7 +1,0 @@
-services:
-  aios:
-    build:
-      context: ../..
-    restart: unless-stopped
-    environment:
-      - AIOS_ENV=production

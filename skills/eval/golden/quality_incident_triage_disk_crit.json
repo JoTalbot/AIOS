@@ -1,9 +1,0 @@
-{
-  "id": "quality_incident_triage_disk_crit",
-  "vector": "quality",
-  "skill": "core/incident-triage",
-  "prompt": "В системе диск заполнен на 92%, есть упавший systemd-юнит nginx. Какие инциденты и какой высший severity?",
-  "expected": "Должен вернуть инцидент disk с severity P1 (>=90%) и упавший unit как P2, отсортировать по severity.",
-  "expected_keys": ["total_incidents", "by_severity", "highest_severity", "incidents"],
-  "fixtures": null
-}

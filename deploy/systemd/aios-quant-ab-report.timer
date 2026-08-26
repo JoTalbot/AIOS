@@ -1,9 +1,0 @@
-[Unit]
-Description=Weekly A/B paper comparison (Sun 16:30 UTC)
-
-[Timer]
-OnCalendar=Sun 16:30
-Persistent=true
-
-[Install]
-WantedBy=timers.target

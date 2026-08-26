@@ -1,7 +1,0 @@
-global:
-  scrape_interval: 15s
-
-scrape_configs:
-  - job_name: 'octopus'
-    static_configs:
-      - targets: ['localhost:8000', 'localhost:8787', 'localhost:8899']

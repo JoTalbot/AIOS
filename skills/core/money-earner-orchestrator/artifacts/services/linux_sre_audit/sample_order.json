@@ -1,9 +1,0 @@
-{
-  "service_id": "linux_sre_audit",
-  "order_id": "EXAMPLE-NOT-A-REAL-ORDER",
-  "idempotency_key": "example-linux_sre_audit-001",
-  "requirements": "Предоставить диагностический bundle или безопасный SSH-доступ только после отдельного согласования.",
-  "acceptance_criteria": "report contains severity-ranked findings; every critical finding has evidence; recommended actions include rollback notes; no production changes are made",
-  "payment_status": "pending",
-  "status": "example_only"
-}

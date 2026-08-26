@@ -1,9 +1,0 @@
-{
-  "id": "swarm_consensus",
-  "vector": "swarm",
-  "skill": "swarm/bft-consensus",
-  "prompt": "Проверь состояние BFT-консенсуса в swarм-е: есть ли failed bft-сервисы.",
-  "expected": "Должен вернуть список релевантных сервисов и findings по failed.",
-  "expected_keys": ["services", "findings", "summary"],
-  "fixtures": null
-}

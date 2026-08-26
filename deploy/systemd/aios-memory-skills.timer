@@ -1,9 +1,0 @@
-[Unit]
-Description=AIOS: еженедельный майнинг ошибок автокодера в SKILLL.md
-
-[Timer]
-OnCalendar=Mon *-*-* 04:00:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target

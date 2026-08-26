@@ -1,9 +1,0 @@
-{
-  "service_id": "data_collection_worker",
-  "order_id": "EXAMPLE-NOT-A-REAL-ORDER",
-  "idempotency_key": "example-data_collection_worker-001",
-  "requirements": "Example only; no execution.",
-  "acceptance_criteria": "required artifact exists; validation passes; rollback or no-change statement included",
-  "payment_status": "pending",
-  "status": "example_only"
-}

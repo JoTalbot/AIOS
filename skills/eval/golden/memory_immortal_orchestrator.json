@@ -1,9 +1,0 @@
-{
-  "id": "memory_immortal_orchestrator",
-  "vector": "memory",
-  "skill": "memory/immortal-memory-orchestrator",
-  "prompt": "Проверь целостность и доступность долговременной памяти (CAS/IPFS), верни статус репликации.",
-  "expected": "Должен вернуть статус памяти, coverage, признаки репликации/пина.",
-  "expected_keys": ["status", "score"],
-  "fixtures": null
-}

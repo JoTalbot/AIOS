@@ -1,9 +1,0 @@
-[Unit]
-Description=AIOS OLX Price Alerts (every 60 min)
-
-[Timer]
-OnCalendar=*:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target

@@ -1,9 +1,0 @@
-{
-  "id": "live_autoheal",
-  "vector": "live",
-  "skill": "core/octopus-autoheal",
-  "prompt": "Обнаружь нездоровые сервисы и предложи bounded-шаг восстановления без деструктивных действий.",
-  "expected": "Должен вернуть список нездоровых юнитов и proposal восстановления (с rollback).",
-  "expected_keys": ["unhealthy", "proposal", "score"],
-  "fixtures": null
-}

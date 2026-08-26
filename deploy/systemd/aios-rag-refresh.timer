@@ -1,9 +1,0 @@
-[Unit]
-Description=AIOS RAG Base Refresh (daily, 03:00)
-
-[Timer]
-OnCalendar=*-*-* 03:00:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target

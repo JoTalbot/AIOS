@@ -1,9 +1,0 @@
-[Unit]
-Description=Hourly crypto news sentiment collection
-
-[Timer]
-OnCalendar=*:20
-Persistent=true
-
-[Install]
-WantedBy=timers.target

@@ -1,9 +1,0 @@
-{
-  "id": "quality_api_smoke",
-  "vector": "quality",
-  "skill": "core/api-smoke-matrix",
-  "prompt": "Проверь доступность эндпоинтов /health и /metrics локального сервиса, верни матрицу статусов.",
-  "expected": "Должен вернуть матрицу эндпоинтов с latency и статусом OK/FAIL.",
-  "expected_keys": ["endpoints", "score"],
-  "fixtures": null
-}

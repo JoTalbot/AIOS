@@ -1,7 +1,0 @@
-[Unit]
-Description=AIOS scheduled local backup and verification
-After=docker.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/python3 /root/AIOS/tools/run_local_backup.py

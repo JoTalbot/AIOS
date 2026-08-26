@@ -1,9 +1,0 @@
-[Unit]
-Description=AIOS 2captcha balance check
-
-[Service]
-Type=oneshot
-User=root
-WorkingDirectory=/root/AIOS
-Environment=PYTHONPATH=/root/AIOS
-ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_2captcha_balance.py --check
