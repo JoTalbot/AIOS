@@ -1,10 +1,23 @@
-"""Durable audit trail for operator recovery actions."""
+"""Durable, typed audit trail for operator recovery actions."""
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from enum import Enum
 import json
 from pathlib import Path
 from typing import Optional
+
+
+class OperatorAuditAction(str, Enum):
+    RESOLVE = "resolve"
+    RETRY = "retry"
+    QUARANTINE = "quarantine"
+    MANUAL_REVIEW = "manual_review"
+
+
+class OperatorAuditOutcome(str, Enum):
+    RESOLVED = "resolved"
+    FAILED = "failed"
 
 
 @dataclass(frozen=True)
