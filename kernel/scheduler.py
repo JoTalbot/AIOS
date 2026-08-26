@@ -2,19 +2,16 @@ import asyncio
 from dataclasses import dataclass, field
 from enum import Enum
 
+from execution import ExecutionResult
 from execution.event_sink import ExecutionEventSink
-from execution.events import (
-    EXECUTION_COMPLETED,
-    EXECUTION_FAILED,
-    EXECUTION_RECOVERY,
-    build_event,
-)
+from execution.events import EXECUTION_COMPLETED, EXECUTION_FAILED, EXECUTION_RECOVERY, build_event
+from execution.status import EXECUTION_COMPLETED_STATUS
 
 
 class TaskState(Enum):
     CREATED = "created"
     RUNNING = "running"
-    DONE = "done"
+    DONE = EXECUTION_COMPLETED_STATUS
     FAILED = "failed"
     RETRYING = "retrying"
     RESTORING = "restoring"
@@ -31,6 +28,7 @@ class AgentTask:
     checkpoint: dict | None = None
     error: str | None = None
     history: list[dict] = field(default_factory=list)
+    result: ExecutionResult | None = None
 
 
 class Scheduler:
@@ -79,7 +77,9 @@ class Scheduler:
             task.attempts += 1
             try:
                 self._restore_checkpoint(task)
-                task.payload["result"] = await self.execute(task)
+                value = await self.execute(task)
+                task.result = value if isinstance(value, ExecutionResult) else ExecutionResult.success(task.id, value=value)
+                task.payload["result"] = task.result.value
                 task.state = TaskState.DONE
                 task.error = None
                 self._save_checkpoint(task)
@@ -100,6 +100,7 @@ class Scheduler:
                     task.state = TaskState.RESTORING
                     continue
                 task.state = TaskState.FAILED
+                task.result = ExecutionResult.failure(task.id, exc, metadata={"attempt": task.attempts})
                 self._record(EXECUTION_FAILED, task, {"attempt": task.attempts, "error": task.error})
                 return
 
@@ -143,4 +144,4 @@ class Scheduler:
             value = self.executor(task.payload)
             return await value if hasattr(value, "__await__") else value
         await asyncio.sleep(0)
-        return {"agent": task.agent, "status": "completed"}
+        return ExecutionResult.success(task.id, value={"agent": task.agent, "status": EXECUTION_COMPLETED_STATUS})
