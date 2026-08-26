@@ -1,6 +1,7 @@
 import pytest
 
-from runtime.execution_store import ExecutionState, ExecutionStore, InvalidExecutionTransition
+from runtime.execution_store import ExecutionState, ExecutionStore
+from runtime.execution_state_machine import InvalidExecutionTransition
 
 
 def test_valid_execution_lifecycle(tmp_path):
