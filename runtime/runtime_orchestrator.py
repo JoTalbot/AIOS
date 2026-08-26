@@ -24,16 +24,10 @@ class RuntimeOrchestrator:
         self.store = store or ExecutionStore()
         self.lease_store = lease_store or ExecutionLeaseStore()
         self.recovery_manager = RecoveryManager(self.store)
-        self.bootstrap = RuntimeBootstrap(
-            store=self.store,
-            recovery_manager=self.recovery_manager,
-            lease_store=self.lease_store,
-            owner_id=owner_id,
-        )
-        self.loop = build_execution_loop(
-            executor, planner, owner_id=owner_id, store=self.store,
-            lease_store=self.lease_store, policy=policy, event_bus=event_bus,
-        )
+        self.bootstrap = RuntimeBootstrap(store=self.store, recovery_manager=self.recovery_manager,
+                                          lease_store=self.lease_store, owner_id=owner_id)
+        self.loop = build_execution_loop(executor, planner, owner_id=owner_id, store=self.store,
+                                         lease_store=self.lease_store, policy=policy, event_bus=event_bus)
         self.owner_id = owner_id
         self.started = False
 
@@ -44,8 +38,13 @@ class RuntimeOrchestrator:
     async def start(self, agent: Any, context: Optional[dict] = None) -> RecoveryReport:
         if self.started:
             return RecoveryReport(0, 0, 0, 0, 0)
-        self.started = True
-        return await self.bootstrap.recover_with_loop(self.loop, agent, context=context)
+        try:
+            report = await self.bootstrap.recover_with_loop(self.loop, agent, context=context)
+            self.started = True
+            return report
+        except Exception:
+            self.started = False
+            raise
 
     async def execute(self, goal: str, agent: Any, context: Optional[dict] = None):
         if not self.started:
