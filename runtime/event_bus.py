@@ -17,4 +17,8 @@ class EventBus:
     async def publish(self, event_type: str, event: Any):
         handlers = tuple(self._handlers.get(event_type, ()))
         if handlers:
-            await asyncio.gather(*(handler(event) for handler in handlers))
+            results = await asyncio.gather(*(handler(event) for handler in handlers), return_exceptions=True)
+            # Subscribers are observers: one broken observer must not fail execution.
+            for result in results:
+                if isinstance(result, Exception):
+                    continue
