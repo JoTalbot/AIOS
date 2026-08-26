@@ -15,14 +15,14 @@ class PersistenceCheckpointStore(CheckpointStore):
             self.persistence.save_checkpoint(checkpoint)
         return super().save(checkpoint)
 
-    def load(self, task_id):
+    def load(self, task_id: str):
         if self.persistence and hasattr(self.persistence, "load_checkpoint"):
             value = self.persistence.load_checkpoint(task_id)
             if isinstance(value, Checkpoint):
                 self._items[task_id] = value
         return super().load(task_id)
 
-    def delete(self, task_id):
+    def delete(self, task_id: str):
         if self.persistence and hasattr(self.persistence, "delete_checkpoint"):
             self.persistence.delete_checkpoint(task_id)
         return super().delete(task_id)
