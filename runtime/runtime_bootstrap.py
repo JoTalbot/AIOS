@@ -4,7 +4,6 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Optional
 
-from .execution_audit import ExecutionAuditLog
 from .execution_commit import ExecutionCommitCoordinator
 from .execution_lease import ExecutionLeaseStore
 from .execution_store import ExecutionStore
@@ -18,6 +17,8 @@ class RecoveryReport:
     recovered: int
     failed: int
     skipped: int = 0
+    reconciled: int = 0
+    reconciliation_failed: int = 0
 
 
 class RuntimeBootstrap:
@@ -38,9 +39,16 @@ class RuntimeBootstrap:
             if self.lease_store.renew(execution_id, self.owner_id) is None:
                 raise RuntimeError(f"execution lease lost: {execution_id}")
 
+    def _reconcile(self):
+        if self.commit_coordinator is None:
+            return 0, 0
+        try:
+            return len(self.commit_coordinator.reconcile()), 0
+        except Exception:
+            return 0, 1
+
     async def recover_pending(self, resume: Callable[[Any], Awaitable[Any]]) -> RecoveryReport:
-        if self.commit_coordinator is not None:
-            self.commit_coordinator.reconcile()
+        reconciled, reconciliation_failed = self._reconcile()
         pending = self.store.resumable()
         recovered = failed = skipped = 0
         for state in pending:
@@ -63,7 +71,7 @@ class RuntimeBootstrap:
                 except asyncio.CancelledError:
                     pass
                 self.lease_store.release(state.execution_id, self.owner_id)
-        return RecoveryReport(len(pending), recovered + failed, recovered, failed, skipped)
+        return RecoveryReport(len(pending), recovered + failed, recovered, failed, skipped, reconciled, reconciliation_failed)
 
     async def recover_with_loop(self, loop, agent: Any, context: Optional[dict] = None) -> RecoveryReport:
         return await self.recover_pending(lambda state: loop.resume(state.execution_id, agent, context=context))
