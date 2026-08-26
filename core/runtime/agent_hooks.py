@@ -1,4 +1,4 @@
-"""Agent execution lifecycle hooks v6."""
+"""Agent execution lifecycle hooks v7."""
 
 import inspect
 from dataclasses import dataclass, field
@@ -24,6 +24,7 @@ class AgentHooks:
         self._hooks: Dict[str, List[HookEntry]] = {}
         self._history: List[HookEvent] = []
         self._decisions: List[Dict[str, Any]] = []
+        self._analytics: List[Dict[str, Any]] = []
 
     def register(self, event: str, callback: Callable, priority: int = 0):
         self._hooks.setdefault(event, []).append(HookEntry(priority, callback))
@@ -57,6 +58,14 @@ class AgentHooks:
         self._decisions.append(record)
         return self.emit("recovery.decision", **record)
 
+    def record_analytics(self, metric: str, value: Any = 1, **metadata):
+        record = {"metric": metric, "value": value, **metadata}
+        self._analytics.append(record)
+        return self.emit("recovery.analytics", **record)
+
+    def analytics(self):
+        return list(self._analytics)
+
     def decisions(self):
         return list(self._decisions)
 
@@ -68,3 +77,4 @@ class AgentHooks:
     def clear_history(self):
         self._history.clear()
         self._decisions.clear()
+        self._analytics.clear()
