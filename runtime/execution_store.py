@@ -6,8 +6,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from .execution_audit import ExecutionAudit, ExecutionAuditEvent, ExecutionAuditLog
-from .execution_state_machine import ExecutionStateMachine, InvalidExecutionTransition
+from .execution_audit import ExecutionAuditEvent, ExecutionAuditLog
+from .execution_state_machine import ExecutionStateMachine
 
 
 @dataclass
@@ -20,12 +20,13 @@ class ExecutionState:
     result: Any = None
     error: Optional[str] = None
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    correlation_id: Optional[str] = None
 
 
 class ExecutionStore:
     """Small atomic JSON store delegating lifecycle rules to the domain machine."""
 
-    def __init__(self, path: str = "data/executions.json", state_machine: Optional[ExecutionStateMachine] = None, audit_log=None):
+    def __init__(self, path: str = "data/executions.json", state_machine: Optional[ExecutionStateMachine] = None, audit_log: Optional[ExecutionAuditLog] = None):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.state_machine = state_machine or ExecutionStateMachine()
@@ -54,7 +55,7 @@ class ExecutionStore:
         data[state.execution_id] = asdict(state)
         self._write(data)
         if self.audit_log and old_status != state.status:
-            self.audit_log.append(ExecutionAuditEvent(state.execution_id, old_status or "new", state.status, state.attempt, state.error))
+            self.audit_log.append(ExecutionAuditEvent(state.execution_id, old_status or "new", state.status, state.attempt, state.error, correlation_id=state.correlation_id))
         return state
 
     def transition(self, execution_id: str, status: str, **updates) -> ExecutionState:
