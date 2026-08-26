@@ -16,14 +16,24 @@ class KernelFactory:
             component = self.container.resolve(name)
             self.registry.register(name, component)
 
-    def create_kernel(self):
+    def wire_registry(self):
+        if self.registry and hasattr(self.registry, "wire_container"):
+            self.registry.wire_container(self.container)
+
+    def create_runtime(self):
         self.register_services()
+        self.wire_registry()
 
-        kernel = self.container.resolve("kernel")
-        agent_manager = self.container.resolve("agent_manager")
         bootstrap = self.container.resolve("bootstrap")
+        if bootstrap:
+            bootstrap.initialize()
 
-        bootstrap.agent_manager = agent_manager
-        bootstrap.initialize()
+        return {
+            "kernel": self.container.resolve("kernel"),
+            "agent_manager": self.container.resolve("agent_manager"),
+            "bootstrap": bootstrap,
+        }
 
-        return kernel
+    def create_kernel(self):
+        runtime = self.create_runtime()
+        return runtime["kernel"]
