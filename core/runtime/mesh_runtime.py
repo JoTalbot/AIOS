@@ -37,6 +37,15 @@ class MeshRuntimeBridge:
     def unsubscribe(self, callback):
         return self.mesh.unsubscribe(callback)
 
+    def register_delivery_callback(self, callback):
+        return self.mesh.register_delivery_callback(callback)
+
+    def unregister_delivery_callback(self, callback):
+        return self.mesh.unregister_delivery_callback(callback)
+
+    def acknowledge(self, event):
+        return self.mesh.acknowledge(event)
+
     def broadcast_recovery(self, decision):
         return self.publish_message(
             "recovery.broadcast",
