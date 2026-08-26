@@ -30,8 +30,9 @@ class ToolExecutor:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            result = ToolResult.failure(call, exc)
-            await self._publish(TOOL_FAILED, ctx, {"tool": call.tool, "call_id": call.call_id, "error": str(exc)})
+            retryable = isinstance(exc, (asyncio.TimeoutError, TimeoutError, ConnectionError, OSError))
+            result = ToolResult.failure(call, exc, retryable=retryable)
+            await self._publish(TOOL_FAILED, ctx, {"tool": call.tool, "call_id": call.call_id, "error": str(exc), "retryable": retryable})
             return result
 
     async def _publish(self, event_type: str, context: ExecutionContext, data: dict):
