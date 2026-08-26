@@ -5,8 +5,10 @@ from .runtime_persistence_facade import RuntimePersistenceFacade
 
 try:
     from core.supervision.supervisor import Supervisor
+    from core.execution.recovery import RecoveryEngine
 except ImportError:
     Supervisor = None
+    RecoveryEngine = None
 
 
 class KernelFactory:
@@ -46,7 +48,8 @@ class KernelFactory:
         )
 
         if Supervisor:
-            context.supervisor = Supervisor(event_bus=event_bus)
+            recovery = RecoveryEngine() if RecoveryEngine else None
+            context.supervisor = Supervisor(recovery=recovery)
 
         persistence = None
         if self.container.has("persistence"):
