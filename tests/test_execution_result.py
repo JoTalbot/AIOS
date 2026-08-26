@@ -14,3 +14,10 @@ def test_failure_result_contract():
     assert not result.ok
     assert result.status == "failed"
     assert result.error == "boom"
+
+
+def test_result_metadata_isolated_from_input():
+    metadata = {"attempt": 2}
+    result = ExecutionResult.success("task-3", metadata=metadata)
+    metadata["attempt"] = 99
+    assert result.metadata == {"attempt": 2}
