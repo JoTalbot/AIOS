@@ -9,13 +9,15 @@ class APIServer:
         self.endpoint = AgentEndpoint(service) if service is not None else None
 
     async def handle(self, request):
+        if isinstance(request, tuple) and len(request) == 2:
+            path, payload = request
+            if self.pipeline is None:
+                raise RuntimeError("API pipeline is not configured")
+            return await self.pipeline.dispatch(path, payload)
         if self.endpoint is not None:
             return await self.endpoint.invoke(request)
         from .endpoint import invoke
         return await invoke(request, self.pipeline)
 
     async def status(self):
-        return {
-            "system": "AIOS",
-            "api": "online"
-        }
+        return {"system": "AIOS", "api": "online"}
