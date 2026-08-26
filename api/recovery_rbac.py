@@ -2,22 +2,20 @@
 
 from fastapi import HTTPException, Request
 
-from .security_context import OperatorContext, Role
+from .security import OperatorRole, SecurityContext
 
 
-def get_operator_context(request: Request) -> OperatorContext:
+def get_operator_context(request: Request) -> SecurityContext:
     context = getattr(request.state, "operator_context", None)
     if context is None:
         raise HTTPException(status_code=401, detail="operator authentication required")
     return context
 
 
-def require_role(required: Role):
-    def dependency(request: Request) -> OperatorContext:
+def require_role(required: OperatorRole):
+    def dependency(request: Request) -> SecurityContext:
         context = get_operator_context(request)
-        try:
-            context.require(required)
-        except PermissionError as exc:
-            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        if not context.role.allows(required):
+            raise HTTPException(status_code=403, detail=f"role {required.value} required")
         return context
     return dependency
