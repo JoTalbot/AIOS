@@ -2,6 +2,7 @@ from .lifecycle import LifecycleManager, LifecyclePhase
 from .registry import KernelRegistry
 from .state import KernelState, RuntimeStatus
 from .recovery import KernelRecovery
+from .validation import KernelValidation
 from core.events.bus import EventBus
 from core.events.event import KernelEvent
 from core.events.persistence import EventStore
@@ -15,6 +16,7 @@ class Kernel:
         self.event_store = EventStore()
         self.events = EventBus(self.event_store)
         self.recovery = KernelRecovery(self.event_store)
+        self.validation = KernelValidation()
 
         self.lifecycle.subscribe(
             self._on_lifecycle_change
@@ -35,15 +37,28 @@ class Kernel:
     def restore(self):
         self.recovery.restore_status(self.state)
 
+    def validate(self):
+        return self.validation.validate(
+            self.state,
+            self.registry,
+        )
+
     def initialize(self):
         self.restore()
+        result = self.validate()
+
         self.events.publish(
             KernelEvent(
                 name="kernel.initialized",
                 source="kernel",
-                payload={"status": self.state.status},
+                payload={
+                    "status": self.state.status,
+                    "valid": result["valid"],
+                },
             )
         )
+
+        return result
 
     def start(self):
         self.lifecycle.transition(LifecyclePhase.START)
