@@ -1,4 +1,4 @@
-"""Execution persistence boundary with idempotent result operations."""
+"""Execution persistence boundary and single source of truth for lifecycle state."""
 
 
 class ExecutionStore:
@@ -23,3 +23,17 @@ class ExecutionStore:
         if not isinstance(state, dict) or state.get("status") != "completed":
             return None
         return state.get("result")
+
+    def save_checkpoint(self, checkpoint):
+        return self.save(checkpoint.task_id, {"status": "checkpoint", "checkpoint": checkpoint})
+
+    def load_checkpoint(self, task_id):
+        state = self.load(task_id)
+        if not isinstance(state, dict) or state.get("status") != "checkpoint":
+            return None
+        return state.get("checkpoint")
+
+    def delete_checkpoint(self, task_id):
+        state = self.load(task_id)
+        if isinstance(state, dict) and state.get("status") == "checkpoint":
+            self.delete(task_id)
