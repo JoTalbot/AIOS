@@ -73,6 +73,11 @@ class StateStore:
     def metrics(self, key):
         return dict(self._metrics.get(key, {}))
 
+    def analytics(self, key):
+        metrics = self.metrics(key)
+        total = sum(metrics.values())
+        return {"metrics": metrics, "total_events": total}
+
 
 class AgentStateStore(StateStore):
     """Agent-specific state persistence API."""
