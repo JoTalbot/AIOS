@@ -15,11 +15,11 @@ def test_runtime_api_service_normalizes_and_dispatches():
     assert result == {"task_id": "t1", "result": {"goal": "hello", "metadata": {"source": "api"}}}
 
 
-@pytest.mark.parametrize("request, error", [
+@pytest.mark.parametrize("req, error", [
     ({"task_id": "t1"}, ValueError),
     ({"goal": "hello"}, ValueError),
     ({"goal": "hello", "task_id": "t1", "metadata": []}, TypeError),
 ])
-def test_runtime_api_service_validates_request(request, error):
+def test_runtime_api_service_validates_request(req, error):
     with pytest.raises(error):
-        asyncio.run(RuntimeAPIService(Runtime()).execute(request))
+        asyncio.run(RuntimeAPIService(Runtime()).execute(req))
