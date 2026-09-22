@@ -369,9 +369,13 @@ class LocalAutonomousReasoningFallback(BaseLLMProvider):
 # (16,2 ток/с у qwen2.5:3b против qwen2.5:1.5b), но при его отказе шим
 # деградирует на локальную модель сервера 1, а не падает.
 ARM_MODEL_PROVIDERS = [
-    # (имя, модель, тир, вес, таймаут)
-    ("arm-qwen2.5-3b", "qwen2.5:3b", "local", 5, 30.0),
-    ("arm-qwen2.5-coder-7b", "qwen2.5-coder:7b", "local", 6, 60.0),
+    # (имя, модель, тир, вес, таймаут, максимум знаков во входе)
+    # Предел входа измерен 2026-09-22: запрос 1669 знаков (1500 знаков текста + инструкция)
+    # заставил 3B и 7B уйти в таймаут (30 с + 60 с впустую), а ответ дал сервер 1. Запрос
+    # 622 знака та же 3B обработала за 15,6 с. Это предел не вывода, а ЧТЕНИЯ входа: четыре
+    # ARM-ядра без GPU префиллят медленно. Задача длиннее предела — работа для облака.
+    ("arm-qwen2.5-3b", "qwen2.5:3b", "local", 5, 30.0, 1000),
+    ("arm-qwen2.5-coder-7b", "qwen2.5-coder:7b", "local", 6, 60.0, 1200),
 ]
 
 
@@ -400,11 +404,16 @@ class RemoteArmModelProvider(OpenAICompatibleCloudProvider):
     def __init__(self, name: str, base_url: str, model: str, keys: List[str],
                  tier: str = "fast", weight: int = 1, timeout: float = 20.0,
                  health_url: Optional[str] = None,
-                 extra_headers: Optional[Dict[str, str]] = None):
+                 extra_headers: Optional[Dict[str, str]] = None,
+                 max_prompt_chars: int = 0):
         super().__init__(name, base_url, model, keys, tier=tier, weight=weight,
                          timeout=timeout, extra_headers=extra_headers)
         self.health_url = health_url or (base_url.rstrip("/").rsplit("/v1", 1)[0] + "/health")
         self._health_cache = {"at": 0.0, "ok": False}
+        # Предел длины входа: медленный префилл на ARM означает, что запрос длиннее предела
+        # всё равно уйдёт в таймаут — и это будет потраченное впустую время, а не ответ.
+        # 0 = предела нет.
+        self.max_prompt_chars = max_prompt_chars
 
     def is_available(self) -> bool:
         now = time.time()
@@ -528,10 +537,10 @@ class LLMBalancer:
         arm_keys = self._extract_keys("MODEL_API_KEY")
         arm_url = os.environ.get("MODEL_API_URL", "").strip()
         if arm_keys and arm_url:
-            for mname, mmodel, mtier, mweight, mtimeout in ARM_MODEL_PROVIDERS:
+            for mname, mmodel, mtier, mweight, mtimeout, mcap in ARM_MODEL_PROVIDERS:
                 self.providers.append(RemoteArmModelProvider(
                     mname, arm_url, mmodel, arm_keys, tier=mtier,
-                    weight=mweight, timeout=mtimeout))
+                    weight=mweight, timeout=mtimeout, max_prompt_chars=mcap))
         # ARM-LOCAL-END
 
         # ARENA-GATEWAY-BEGIN — Arena AI (direct mode) через локальный шлюз 127.0.0.1:8791
@@ -606,6 +615,12 @@ class LLMBalancer:
             # strict_tier (арена): провайдер отвечает только на запросы своего тира,
             # иначе хрупкий лимит reCAPTCHA выжигался бы в общем фолбэке.
             if getattr(provider, "strict_tier", False) and provider.tier != target_tier:
+                continue
+            # Вход длиннее предела провайдера: он не успеет его прочитать за свой таймаут,
+            # поэтому честнее пропустить, чем ждать 30-60 с ради исключения (замер 2026-09-22).
+            cap = getattr(provider, "max_prompt_chars", 0)
+            if cap and len(prompt) > cap:
+                last_err = "%s: prompt %d chars > cap %d" % (provider.name, len(prompt), cap)
                 continue
             try:
                 if cloud_only:
